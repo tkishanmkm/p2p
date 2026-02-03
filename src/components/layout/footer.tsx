@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { Facebook, Twitter, Linkedin } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -28,7 +29,7 @@ export function Footer() {
       links: [
         { label: "Contact Us", href: "/support" },
         { label: "FAQ", href: "/faq" },
-        { label: "Dispute Resolution", href: "/adminnarayan/login" },
+        { label: "Dispute Resolution", href: "/support" },
       ],
     },
   ];

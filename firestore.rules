@@ -1,3 +1,4 @@
+
 /**
  * Core Philosophy:
  * This ruleset enforces a security model based on user ownership, shared access for collaborators, and role-based access for administrators.
@@ -207,7 +208,7 @@ service cloud.firestore {
     }
     
     match /support_tickets/{ticketId} {
-      allow create: if isSignedIn();
+      allow create: if request.resource.data.email is string && request.resource.data.message is string;
       allow read, update: if isAdmin();
       allow delete: if false;
     }

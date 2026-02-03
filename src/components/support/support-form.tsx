@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useForm } from "react-hook-form"
@@ -17,31 +18,56 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useFirebase } from "@/firebase"
+import { useEffect, useState } from "react"
+import { createSupportTicket } from "@/lib/support"
+import { Loader2 } from "lucide-react"
 
 const supportFormSchema = z.object({
-  userId: z.string().min(1, "User ID is required."),
+  userId: z.string().optional(),
   email: z.string().email("Invalid email address."),
   message: z.string().min(20, "Message must be at least 20 characters long.").max(1000, "Message cannot exceed 1000 characters."),
 })
 
 export function SupportForm() {
     const { toast } = useToast()
-  const form = useForm<z.infer<typeof supportFormSchema>>({
-    resolver: zodResolver(supportFormSchema),
-    defaultValues: {
-      userId: "",
-      email: "",
-      message: "",
-    },
-  })
+    const { firestore, user } = useFirebase();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function onSubmit(values: z.infer<typeof supportFormSchema>) {
-    console.log(values)
-    toast({
-        title: "Support Ticket Submitted",
-        description: "Our team will get back to you shortly.",
+    const form = useForm<z.infer<typeof supportFormSchema>>({
+      resolver: zodResolver(supportFormSchema),
+      defaultValues: {
+        userId: "",
+        email: "",
+        message: "",
+      },
     })
-    form.reset()
+
+    useEffect(() => {
+      if (user) {
+        form.setValue('userId', user.displayName || '');
+        form.setValue('email', user.email || '');
+      }
+    }, [user, form]);
+
+  async function onSubmit(values: z.infer<typeof supportFormSchema>) {
+    if (!firestore) {
+      toast({ variant: "destructive", title: "Error", description: "Database connection not available."});
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await createSupportTicket(firestore, values);
+      toast({
+          title: "Support Ticket Submitted",
+          description: "Our team will get back to you shortly.",
+      })
+      form.reset()
+    } catch(error: any) {
+       toast({ variant: "destructive", title: "Submission Failed", description: "Could not submit your ticket. Please try again." });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -61,7 +87,7 @@ export function SupportForm() {
                 name="userId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Your User ID</FormLabel>
+                    <FormLabel>Your User ID (Optional)</FormLabel>
                     <FormControl>
                       <Input placeholder="YourUniqueUserID" {...field} />
                     </FormControl>
@@ -103,7 +129,10 @@ export function SupportForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit">Submit Ticket</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Submit Ticket
+            </Button>
           </form>
         </Form>
       </CardContent>

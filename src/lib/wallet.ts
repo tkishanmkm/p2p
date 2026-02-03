@@ -1,4 +1,4 @@
-// This is a new file
+
 'use client';
 import {
   Firestore,
@@ -11,8 +11,9 @@ import {
   updateDoc,
   getDoc,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal } from './types';
 import { add } from 'date-fns';
+import type { User } from 'firebase/auth';
 
 // A simple utility for generating short, random IDs
 function generateTradeId() {
@@ -169,6 +170,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     await runTransaction(db, async (transaction) => {
         // re-fetch inside transaction
         const freshTradeDoc = await transaction.get(tradeRef);
+        if (!freshTradeDoc.exists()) throw new Error("Trade not found.");
         const freshTrade = freshTradeDoc.data() as Trade;
         
         if (freshTrade.status !== 'released') throw new Error("Funds have not been released by the seller.");

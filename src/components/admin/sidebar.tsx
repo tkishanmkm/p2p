@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -31,17 +32,9 @@ import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-
-const menuItems = [
-  { href: "/adminnarayan/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/adminnarayan/users", label: "Users", icon: Users },
-  { href: "/adminnarayan/trades", label: "Trades", icon: ArrowLeftRight },
-  { href: "/adminnarayan/deposits", label: "Deposits", icon: ArrowDownToLine, badge: 3 },
-  { href: "/adminnarayan/withdrawals", label: "Withdrawals", icon: ArrowUpFromLine, badge: 1 },
-  { href: "/adminnarayan/ads", label: "Ads", icon: FileText },
-  { href: "/adminnarayan/support", label: "Support", icon: LifeBuoy, badge: 2 },
-  { href: "/adminnarayan/disputes", label: "Disputes", icon: ShieldAlert, badge: 1 },
-];
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { query, where, collection, collectionGroup } from "firebase/firestore";
+import type { Deposit, Withdrawal, Dispute, SupportTicket } from "@/lib/types";
 
 const settingsItems = [
     { href: "/adminnarayan/appearance", label: "Appearance", icon: Brush },
@@ -51,6 +44,30 @@ const settingsItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const { firestore } = useFirebase();
+  
+  const pendingDepositsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'deposits'), where('status', '==', 'pending')) : null, [firestore]);
+  const { data: pendingDeposits } = useCollection<Deposit>(pendingDepositsQuery);
+  
+  const pendingWithdrawalsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'withdrawals'), where('status', '==', 'pending')) : null, [firestore]);
+  const { data: pendingWithdrawals } = useCollection<Withdrawal>(pendingWithdrawalsQuery);
+  
+  const openTicketsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'support_tickets'), where('status', '==', 'Open')) : null, [firestore]);
+  const { data: openTickets } = useCollection<SupportTicket>(openTicketsQuery);
+  
+  const openDisputesQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'disputes'), where('status', '==', 'open')) : null, [firestore]);
+  const { data: openDisputes } = useCollection<Dispute>(openDisputesQuery);
+
+  const menuItems = [
+    { href: "/adminnarayan/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/adminnarayan/users", label: "Users", icon: Users },
+    { href: "/adminnarayan/trades", label: "Trades", icon: ArrowLeftRight },
+    { href: "/adminnarayan/deposits", label: "Deposits", icon: ArrowDownToLine, badge: pendingDeposits?.length || 0 },
+    { href: "/adminnarayan/withdrawals", label: "Withdrawals", icon: ArrowUpFromLine, badge: pendingWithdrawals?.length || 0 },
+    { href: "/adminnarayan/ads", label: "Ads", icon: FileText },
+    { href: "/adminnarayan/support", label: "Support", icon: LifeBuoy, badge: openTickets?.length || 0 },
+    { href: "/adminnarayan/disputes", label: "Disputes", icon: ShieldAlert, badge: openDisputes?.length || 0 },
+  ];
 
   return (
     <Sidebar>
@@ -69,7 +86,7 @@ export function AdminSidebar() {
                   tooltip={item.label}
                 >
                   <span className="flex-grow">{item.label}</span>
-                  {item.badge && <Badge variant="destructive" className="ml-auto">{item.badge}</Badge>}
+                  {item.badge > 0 && <Badge variant="destructive" className="ml-auto">{item.badge}</Badge>}
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -119,5 +136,3 @@ export function AdminSidebar() {
     </Sidebar>
   );
 }
-
-    

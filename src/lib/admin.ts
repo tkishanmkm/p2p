@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -8,7 +9,7 @@ import {
   Firestore,
   updateDoc,
 } from "firebase/firestore";
-import type { Deposit, Dispute, Trade, UserWallet, Withdrawal } from "./types";
+import type { Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket } from "./types";
 
 /**
  * Approves a deposit and updates the user's wallet balance in a single transaction.
@@ -197,4 +198,9 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
       resolutionNote: `Dispute awarded to ${winnerId === trade.buyerId ? 'buyer' : 'seller'} by moderator.`,
     });
   });
+}
+
+export async function updateSupportTicketStatus(db: Firestore, ticketId: string, status: SupportTicket['status']) {
+  const ticketRef = doc(db, "support_tickets", ticketId);
+  await updateDoc(ticketRef, { status });
 }

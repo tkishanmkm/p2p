@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
@@ -28,14 +29,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { SupportTicket } from "@/lib/types";
+import { updateSupportTicketStatus } from "@/lib/admin";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminSupportPage() {
   const { firestore } = useFirebase();
+  const { toast } = useToast();
   const ticketsQuery = useMemoFirebase(
       () => firestore ? query(collection(firestore, "support_tickets"), orderBy("createdAt", "desc")) : null,
       [firestore]
   );
   const { data: tickets, isLoading } = useCollection<SupportTicket>(ticketsQuery);
+
+  const handleStatusChange = async (ticketId: string, status: SupportTicket['status']) => {
+    if (!firestore) return;
+    try {
+        await updateSupportTicketStatus(firestore, ticketId, status);
+        toast({ title: 'Ticket Updated', description: `Status set to ${status}` });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+    }
+  };
+
 
   return (
     <>
@@ -66,7 +81,7 @@ export default function AdminSupportPage() {
               {isLoading && <TableRow><TableCell colSpan={5} className="text-center">Loading tickets...</TableCell></TableRow>}
               {!isLoading && tickets && tickets.length > 0 ? tickets.map((ticket) => (
                 <TableRow key={ticket.id}>
-                  <TableCell className="font-medium">{ticket.userId}</TableCell>
+                  <TableCell className="font-medium">{ticket.userId || 'N/A'}</TableCell>
                   <TableCell>{ticket.email}</TableCell>
                   <TableCell>
                     <Badge variant={
@@ -89,8 +104,8 @@ export default function AdminSupportPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Mark as In Progress</DropdownMenuItem>
-                        <DropdownMenuItem>Close Ticket</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, 'In Progress')}>Mark as In Progress</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, 'Closed')}>Close Ticket</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -109,5 +124,3 @@ export default function AdminSupportPage() {
     </>
   )
 }
-
-    
