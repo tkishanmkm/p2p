@@ -16,19 +16,24 @@ export default function AdminPanelLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // If the check is complete (`!isLoading`) and the user is not an admin, redirect them.
     if (!isLoading && !isAdmin) {
       router.push("/adminnarayan/login");
     }
   }, [isAdmin, isLoading, router]);
 
+  // While the admin check is in progress, or if the user is not an admin (and is about to be redirected), show a loader.
+  // This prevents flashing the dashboard content to non-admin users.
   if (isLoading || !isAdmin) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="sr-only">Loading...</span>
       </div>
     );
   }
 
+  // If the checks have passed, render the admin dashboard layout.
   return (
     <SidebarProvider>
       <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -36,7 +41,6 @@ export default function AdminPanelLayout({
           <AdminSidebar />
         </div>
         <div className="flex flex-col">
-          {/* A header could be added here for mobile nav trigger etc. */}
           <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-secondary/20">
             {children}
           </main>

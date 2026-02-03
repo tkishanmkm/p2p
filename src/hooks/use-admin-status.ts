@@ -6,44 +6,45 @@ import { doc, getDoc } from 'firebase/firestore';
 export function useAdminStatus() {
   const { user, firestore, isUserLoading } = useFirebase();
   const [isAdmin, setIsAdmin] = useState(false);
-  const [hasChecked, setHasChecked] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Always start in a loading state
 
   useEffect(() => {
-    // If Firebase Auth is still figuring out who the user is, just wait.
+    // We cannot determine admin status until Firebase has confirmed the user's auth state.
     if (isUserLoading) {
+      // If auth is still loading, we stay in a loading state.
+      setIsLoading(true);
       return;
     }
 
-    // If Auth is resolved and there is no user, they can't be an admin.
-    // We can consider the check complete.
+    // If auth is resolved and there is no user, they cannot be an admin.
     if (!user || !firestore) {
       setIsAdmin(false);
-      setHasChecked(true);
+      setIsLoading(false); // We are no longer loading; we know the answer is "no".
       return;
     }
 
-    // If we have a user, we need to check their role in the database.
+    // At this point, auth is resolved and we have a user.
+    // We must now check their role in the database.
     const checkAdminStatus = async () => {
       const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
       try {
         const docSnap = await getDoc(adminRoleRef);
+        // The user is an admin if the document with their UID exists in the roles_admin collection.
         setIsAdmin(docSnap.exists());
       } catch (error) {
+        // If the check fails for any reason (e.g., permissions, network),
+        // default to not being an admin for security.
         console.error("Error checking admin status:", error);
-        // If the check fails for any reason, assume not an admin for security.
         setIsAdmin(false);
       } finally {
-        // No matter the outcome, the check has been performed.
-        setHasChecked(true);
+        // The database check is complete, so we are no longer in a loading state.
+        setIsLoading(false);
       }
     };
 
     checkAdminStatus();
 
-  }, [user, isUserLoading, firestore]);
-
-  // The overall loading state is true until we have performed the check.
-  const isLoading = !hasChecked;
+  }, [user, isUserLoading, firestore]); // This effect re-runs whenever the user or loading state changes.
 
   return { isAdmin, isLoading };
 }
