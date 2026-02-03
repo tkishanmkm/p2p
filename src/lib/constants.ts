@@ -31,3 +31,11 @@ export const LANGUAGES = [
 // In a real app, these would be in environment variables
 export const ADMIN_ID = 'Narayanharihari';
 export const ADMIN_PASS = 'XGY6ukm@5498';
+
+export const SECURITY_QUESTIONS = [
+    "What was your first pet's name?",
+    "What is your mother's maiden name?",
+    "What was the name of your elementary school?",
+    "In what city were you born?",
+    "What is your favorite book?",
+];

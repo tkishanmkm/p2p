@@ -24,10 +24,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
-import { useFirebase, initiateEmailSignIn } from "@/firebase";
+import { useFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const formSchema = z.object({
   userId: z.string().min(1, { message: "User ID is required." }),
@@ -61,15 +62,17 @@ export default function LoginPage() {
 
     try {
       const dummyEmail = `${values.userId}@tradeflow.app`;
-      // We don't await this, but we'll listen for the result
-      await initiateEmailSignIn(auth, dummyEmail, values.password);
+      await signInWithEmailAndPassword(auth, dummyEmail, values.password);
       toast({ title: "Logging In...", description: "Please wait while we log you in." });
-      // The onAuthStateChanged listener in the provider will handle the redirect
       router.push('/dashboard');
     } catch (error: any) {
-      console.error(error);
-      toast({ variant: "destructive", title: "Login Failed", description: "Invalid credentials or user does not exist." });
-      setIsLoading(false);
+      let description = "An unknown error occurred. Please try again.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+          description = "The User ID or password you entered is incorrect.";
+      }
+      toast({ variant: "destructive", title: "Login Failed", description });
+    } finally {
+        setIsLoading(false);
     }
   }
 
@@ -109,7 +112,7 @@ export default function LoginPage() {
                     <div className="flex items-center justify-between">
                       <FormLabel>Password</FormLabel>
                       <Link
-                        href="#"
+                        href="/forgot-password"
                         className="text-sm font-medium text-accent hover:underline"
                       >
                         Forgot password?
@@ -159,5 +162,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    

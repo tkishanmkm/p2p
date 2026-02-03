@@ -19,6 +19,8 @@ export type User = {
   accountAge: string; // Calculated, e.g., "2 years"
   preferredCurrency?: string;
   lastTradeAt?: string;
+  securityQuestion?: string;
+  securityAnswer?: string; // Should be encrypted in a real app
 };
 
 export type UserWallet = {
@@ -185,5 +187,3 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
-
-    
