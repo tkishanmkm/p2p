@@ -44,7 +44,6 @@ import { useRouter } from "next/navigation";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
-import { useEffect } from "react";
 
 const adTags = [
   { id: "no-third-party", label: "No third party" },
@@ -115,12 +114,6 @@ export function CreateAdForm() {
   const watchFiat = form.watch("fiatCurrency");
 
   const currentMarketPrice = prices[watchCrypto] || 0;
-
-  useEffect(() => {
-    if (watchRateType === 'fixed' && currentMarketPrice > 0) {
-        form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
-    }
-  }, [watchRateType, currentMarketPrice, form]);
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
   const fiatOptions = currencies.map((c) => ({ value: c, label: c }));
