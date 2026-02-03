@@ -34,16 +34,16 @@ export function BuySellForm() {
         <TabsTrigger value="sell">Sell</TabsTrigger>
       </TabsList>
       <TabsContent value="buy">
-        <FormContent type="buy" onSubmit={handleSubmit} crypto={crypto} setCrypto={setCrypto} fiat={fiat} setFiat={setFiat} amount={amount} setAmount={setAmount} />
+        <FormContent type="buy" onSubmit={handleSubmit} crypto={crypto} setCrypto={setCrypto} fiat={fiat} setFiat={setFiat} amount={amount} setAmount={setAmount} cryptoOptions={cryptoOptions} fiatOptions={fiatOptions} />
       </TabsContent>
       <TabsContent value="sell">
-        <FormContent type="sell" onSubmit={handleSubmit} crypto={crypto} setCrypto={setCrypto} fiat={fiat} setFiat={setFiat} amount={amount} setAmount={setAmount}/>
+        <FormContent type="sell" onSubmit={handleSubmit} crypto={crypto} setCrypto={setCrypto} fiat={fiat} setFiat={setFiat} amount={amount} setAmount={setAmount} cryptoOptions={cryptoOptions} fiatOptions={fiatOptions} />
       </TabsContent>
     </Tabs>
   );
 }
 
-function FormContent({ type, onSubmit, crypto, setCrypto, fiat, setFiat, amount, setAmount }: any) {
+function FormContent({ type, onSubmit, crypto, setCrypto, fiat, setFiat, amount, setAmount, cryptoOptions, fiatOptions }: any) {
   const youPayLabel = type === 'buy' ? 'You Pay' : 'You Receive';
   const youGetLabel = type === 'buy' ? 'You Receive' : 'You Pay';
 

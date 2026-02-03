@@ -14,8 +14,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 const navLinks = [
   { href: "/buy", label: "Buy Crypto" },
   { href: "/sell", label: "Sell Crypto" },
-  { href: "#", label: "Create Ad" },
-  { href: "#", label: "Support" },
+  { href: "/ads/create", label: "Create Ad" },
+  { href: "/support", label: "Support" },
 ];
 
 export function Header() {
