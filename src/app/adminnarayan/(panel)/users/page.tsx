@@ -1,4 +1,3 @@
-// This is a new file
 "use client";
 
 import { useFirebase, useCollection } from "@/firebase";
@@ -71,17 +70,22 @@ export default function AdminUsersPage() {
               <TableRow>
                 <TableHead>User ID</TableHead>
                 <TableHead>Full Name</TableHead>
+                <TableHead>DOB</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={5}>Loading users...</TableCell></TableRow>}
+              {isLoading && <TableRow><TableCell colSpan={6}>Loading users...</TableCell></TableRow>}
               {!isLoading && users?.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.userId}</TableCell>
+                  <TableCell className="font-medium">
+                    <div>{user.userId}</div>
+                    {user.oldUserId && <div className="text-xs text-muted-foreground">(was {user.oldUserId})</div>}
+                  </TableCell>
                   <TableCell>{user.fullName}</TableCell>
+                  <TableCell>{user.dob}</TableCell>
                   <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -123,7 +127,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !users?.length && <TableRow><TableCell colSpan={5} className="text-center">No users found.</TableCell></TableRow>}
+              {!isLoading && !users?.length && <TableRow><TableCell colSpan={6} className="text-center">No users found.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
