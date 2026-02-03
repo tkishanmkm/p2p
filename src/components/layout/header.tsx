@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Globe, Menu } from "lucide-react";
+import { Globe, Menu, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import {
@@ -7,14 +7,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { LANGUAGES } from "@/lib/constants";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-const navLinks = [
+const mobileNavLinks = [
   { href: "/buy", label: "Buy Crypto" },
   { href: "/sell", label: "Sell Crypto" },
-  { href: "/ads/create", label: "Create Ad" },
+  { href: "/wallets", label: "Wallet" },
   { href: "/support", label: "Support" },
 ];
 
@@ -41,7 +42,7 @@ export function Header() {
                 <Logo />
               </Link>
               <nav className="flex flex-col gap-4">
-                {navLinks.map((link) => (
+                {mobileNavLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -57,20 +58,37 @@ export function Header() {
 
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
           <nav className="hidden md:flex items-center gap-6 text-sm">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="font-medium text-foreground/60 transition-colors hover:text-foreground/80"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                 <Button variant="ghost" className="font-medium text-foreground/60 transition-colors hover:text-foreground/80 px-0">
+                    Trade
+                    <ChevronDown className="relative top-[1px] ml-1 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuGroup>
+                    <DropdownMenuItem asChild><Link href="/buy">Buy Crypto</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/sell">Sell Crypto</Link></DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+             <Link
+                href="/wallets"
+                className="font-medium text-foreground/60 transition-colors hover:text-foreground/80"
+              >
+                Wallet
+              </Link>
+             <Link
+                href="/support"
+                className="font-medium text-foreground/60 transition-colors hover:text-foreground/80"
+              >
+                Support
+              </Link>
+          </nav>
+          <div className="flex items-center gap-4">
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
                   <Globe className="h-5 w-5" />
                   <span className="sr-only">Select language</span>
                 </Button>
@@ -81,8 +99,8 @@ export function Header() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="secondary" asChild>
-              <Link href="/login">Log In</Link>
+            <Button variant="link" asChild className="text-primary px-0 font-semibold">
+              <Link href="/login">Log in</Link>
             </Button>
             <Button asChild>
               <Link href="/signup">Join us</Link>
