@@ -27,7 +27,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Check, X } from "lucide-react";
+import { MoreHorizontal, Check, X, Copy } from "lucide-react";
 import type { Deposit } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { approveDeposit, declineDeposit } from "@/lib/admin";
@@ -56,6 +56,7 @@ export default function AdminDepositsPage() {
   const [showAll, setShowAll] = useState(false);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
+  const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
 
   const depositsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -69,6 +70,12 @@ export default function AdminDepositsPage() {
   }, [firestore, showAll]);
 
   const { data: deposits, isLoading } = useCollection<Deposit>(depositsQuery);
+  
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied to clipboard" });
+  };
+
 
   const handleApprove = async () => {
     if (!firestore || !selectedDeposit) return;
@@ -82,15 +89,16 @@ export default function AdminDepositsPage() {
     setSelectedDeposit(null);
   };
   
-  const handleDecline = async (deposit: Deposit) => {
-    if (!firestore) return;
-     if (!confirm("Are you sure you want to decline this deposit? This action cannot be undone.")) return;
+  const handleDecline = async () => {
+    if (!firestore || !selectedDeposit) return;
     try {
-      await declineDeposit(firestore, deposit);
+      await declineDeposit(firestore, selectedDeposit);
       toast({ title: "Deposit Declined" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Decline Failed", description: e.message });
     }
+    setIsDeclineAlertOpen(false);
+    setSelectedDeposit(null);
   };
 
   return (
@@ -145,7 +153,7 @@ export default function AdminDepositsPage() {
                             <DropdownMenuItem onClick={() => { setSelectedDeposit(deposit); setIsApproveAlertOpen(true); }}>
                                 <Check className="mr-2 h-4 w-4" /> Approve
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDecline(deposit)}>
+                            <DropdownMenuItem className="text-destructive" onClick={() => { setSelectedDeposit(deposit); setIsDeclineAlertOpen(true); }}>
                                 <X className="mr-2 h-4 w-4" /> Decline
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -164,13 +172,55 @@ export default function AdminDepositsPage() {
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Approve Deposit?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    You are about to approve a deposit of <span className="font-bold">{selectedDeposit?.amount} {selectedDeposit?.crypto}</span> for user <span className="font-bold">{selectedDeposit?.userDisplayName}</span>. This will credit their wallet balance. This action cannot be undone.
+                <AlertDialogDescription asChild>
+                    <div className="space-y-4 text-sm pt-2">
+                        <p>You are about to approve the following deposit. This will credit the user's wallet and cannot be undone.</p>
+                        <div className="p-4 border rounded-md space-y-3 bg-secondary/50 text-foreground">
+                            <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">User:</span>
+                                <span className="font-semibold">{selectedDeposit?.userDisplayName}</span>
+                            </div>
+                             <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">Amount:</span>
+                                <span className="font-semibold">{selectedDeposit?.amount} {selectedDeposit?.crypto}</span>
+                            </div>
+                             <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">Chain:</span>
+                                <span className="font-semibold">{selectedDeposit?.chain}</span>
+                            </div>
+                            {selectedDeposit?.txId && (
+                                <div className="flex justify-between items-center gap-2">
+                                    <span className="text-muted-foreground">TxID:</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-xs bg-muted p-1 rounded max-w-[180px] truncate">{selectedDeposit.txId}</span>
+                                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.txId!)}>
+                                            <Copy className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel onClick={() => setSelectedDeposit(null)}>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleApprove}>Confirm & Approve</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isDeclineAlertOpen} onOpenChange={setIsDeclineAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Decline Deposit?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Are you sure you want to decline the deposit of <span className="font-bold">{selectedDeposit?.amount} {selectedDeposit?.crypto}</span> for user <span className="font-bold">{selectedDeposit?.userDisplayName}</span>? This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setSelectedDeposit(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDecline} className="bg-destructive hover:bg-destructive/90">Confirm & Decline</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
