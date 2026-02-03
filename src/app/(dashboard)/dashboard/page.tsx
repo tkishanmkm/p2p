@@ -20,7 +20,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Minus, Plus, BookOpen, ShieldCheck, LifeBuoy, FileText } from 'lucide-react';
 import Link from 'next/link';
-import { Progress } from '@/components/ui/progress';
 import { BtcLogo, EthLogo, UsdtLogo, LtcLogo } from '@/components/icons';
 import type { CryptoCurrency, User, UserWallet, P2PAd } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,20 +40,6 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?:
   }
 };
 
-function DashboardCardSkeleton() {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <Skeleton className="h-4 w-24" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-7 w-32" />
-        <Skeleton className="h-3 w-20 mt-2" />
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function DashboardPage() {
   const { firestore, user: authUser } = useFirebase();
   const { prices } = usePrices();
@@ -70,16 +55,7 @@ export default function DashboardPage() {
     [firestore, authUser]
   );
   const { data: wallets, isLoading: areWalletsLoading } = useCollection<UserWallet>(walletsRef);
-
-  const adsQuery = useMemoFirebase(
-    () =>
-      authUser
-        ? query(collection(firestore, 'p2p_ads'), where('userId', '==', authUser.uid), where('active', '==', true))
-        : null,
-    [firestore, authUser]
-  );
-  const { data: activeAds, isLoading: areAdsLoading } = useCollection<P2PAd>(adsQuery);
-
+  
   const totalWalletValue =
     wallets?.reduce((acc, wallet) => {
       const value = (wallet.balance + wallet.lockedBalance) * (prices[wallet.crypto] || 0);
@@ -99,67 +75,7 @@ export default function DashboardPage() {
           stay on top of your trades.
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-        {isUserLoading ? (
-          <DashboardCardSkeleton />
-        ) : (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
-              <span className="text-sm text-muted-foreground">USD</span>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${parseFloat(user?.tradeVolume || '0').toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">+0% from last month</p>
-            </CardContent>
-          </Card>
-        )}
-        {isUserLoading ? (
-          <DashboardCardSkeleton />
-        ) : (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed Trades</CardTitle>
-              <span className="text-sm text-muted-foreground">Total</span>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{user?.completedTrades || 0}</div>
-              <p className="text-xs text-muted-foreground">+0 since last week</p>
-            </CardContent>
-          </Card>
-        )}
-        {isUserLoading ? (
-          <DashboardCardSkeleton />
-        ) : (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Feedback Score</CardTitle>
-              <span className="text-sm text-muted-foreground">Positive</span>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{user?.feedbackScore || 100}%</div>
-              <Progress value={user?.feedbackScore || 100} className="h-2 mt-2" />
-            </CardContent>
-          </Card>
-        )}
-        {areAdsLoading ? (
-          <DashboardCardSkeleton />
-        ) : (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Ads</CardTitle>
-              <span className="text-sm text-muted-foreground">My Ads</span>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{activeAds?.length || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {activeAds?.filter((ad) => ad.adType === 'sell').length || 0} Sell,{' '}
-                {activeAds?.filter((ad) => ad.adType === 'buy').length || 0} Buy
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      
       <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader className="flex flex-row items-center">

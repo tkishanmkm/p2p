@@ -64,7 +64,7 @@ export default function LoginPage() {
       const dummyEmail = `${values.userId}@tradeflow.app`;
       await signInWithEmailAndPassword(auth, dummyEmail, values.password);
       toast({ title: "Logging In...", description: "Please wait while we log you in." });
-      router.push('/dashboard');
+      router.push('/buy');
     } catch (error: any) {
       let description = "An unknown error occurred. Please try again.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {

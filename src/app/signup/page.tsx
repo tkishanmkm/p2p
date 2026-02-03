@@ -111,8 +111,8 @@ function SignupFormComponent() {
           };
           await setDoc(userDocRef, newUserDoc);
 
-          toast({ title: "Account Created", description: "Redirecting to your dashboard..." });
-          router.push('/dashboard');
+          toast({ title: "Account Created", description: "Redirecting..." });
+          router.push('/buy');
 
         } catch (error: any) {
           console.error("Error creating user profile:", error);
