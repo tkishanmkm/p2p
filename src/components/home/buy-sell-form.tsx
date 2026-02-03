@@ -19,6 +19,7 @@ import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import type { CryptoCurrency } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { currencies } from '@/lib/currencies';
+import { usePrices } from '@/context/price-context';
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
     switch (crypto) {
@@ -58,14 +59,15 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
     const [fiatCurrency, setFiatCurrency] = useState('USD');
     const [cryptoAmount, setCryptoAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('');
+    const { prices } = usePrices();
 
-    const DUMMY_PRICE = 65000; // Price for BTC in USD for dummy conversion
+    const currentPrice = prices[crypto] || 0;
 
     const handleFiatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setFiatAmount(value);
-        if(value && !isNaN(parseFloat(value))) {
-            setCryptoAmount((parseFloat(value) / DUMMY_PRICE).toFixed(6));
+        if(value && !isNaN(parseFloat(value)) && currentPrice > 0) {
+            setCryptoAmount((parseFloat(value) / currentPrice).toFixed(6));
         } else {
             setCryptoAmount('');
         }
@@ -75,7 +77,7 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
         const value = e.target.value;
         setCryptoAmount(value);
         if(value && !isNaN(parseFloat(value))) {
-            setFiatAmount((parseFloat(value) * DUMMY_PRICE).toFixed(2));
+            setFiatAmount((parseFloat(value) * currentPrice).toFixed(2));
         } else {
             setFiatAmount('');
         }

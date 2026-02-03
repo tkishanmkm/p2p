@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { P2PAd } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { usePrices } from "@/context/price-context";
 
 interface AdCardProps {
   ad: P2PAd;
@@ -12,10 +13,19 @@ interface AdCardProps {
 
 export function AdCard({ ad }: AdCardProps) {
   const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-2');
+  const { prices } = usePrices();
+
+  const marketPrice = prices[ad.crypto] || 0;
   
   const priceLabel = ad.rateType === 'fixed'
     ? `${ad.fixedRate?.toLocaleString()} ${ad.fiatCurrency}`
     : `Market ${ad.ratePercent}%`;
+
+  const adPrice = ad.rateType === 'fixed' 
+    ? ad.fixedRate 
+    : marketPrice * (1 + (ad.ratePercent || 0) / 100);
+
+  const availableCrypto = adPrice && adPrice > 0 ? (ad.maxAmount / adPrice).toFixed(5) : 'N/A';
 
   return (
     <Card>
@@ -51,7 +61,7 @@ export function AdCard({ ad }: AdCardProps) {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Available</p>
-                <p className="font-medium">{(ad.maxAmount / (ad.fixedRate || 65000)).toFixed(5)} {ad.crypto}</p>
+                <p className="font-medium">{availableCrypto} {ad.crypto}</p>
               </div>
             </div>
              <div className="mt-2 flex flex-wrap gap-1">

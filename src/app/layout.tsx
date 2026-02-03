@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 import { ThemeProvider } from '@/components/theme-provider';
+import { PriceProvider } from '@/context/price-context';
 
 export const metadata: Metadata = {
   title: 'TradeFlow - Secure P2P Crypto Trading',
@@ -29,9 +30,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <FirebaseClientProvider>
-            {children}
-          </FirebaseClientProvider>
+          <PriceProvider>
+            <FirebaseClientProvider>
+              {children}
+            </FirebaseClientProvider>
+          </PriceProvider>
           <Toaster />
         </ThemeProvider>
       </body>

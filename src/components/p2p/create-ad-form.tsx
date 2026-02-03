@@ -43,6 +43,7 @@ import { createP2PAd } from "@/lib/ads";
 import { useRouter } from "next/navigation";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
+import { usePrices } from "@/context/price-context";
 
 const adTags = [
   { id: "no-third-party", label: "No third party" },
@@ -90,6 +91,7 @@ export function CreateAdForm() {
   const { toast } = useToast();
   const router = useRouter();
   const { firestore, user } = useFirebase();
+  const { prices, isLoading: arePricesLoading } = usePrices();
 
   const userRef = user ? doc(firestore, "users", user.uid) : null;
   const { data: userData } = useDoc<User>(userRef);
@@ -109,6 +111,10 @@ export function CreateAdForm() {
 
   const watchRateType = form.watch("rateType");
   const watchPaymentMethods = form.watch("paymentMethods");
+  const watchCrypto = form.watch("crypto") as CryptoCurrency;
+  const watchFiat = form.watch("fiatCurrency");
+
+  const currentMarketPrice = prices[watchCrypto] || 0;
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
   const fiatOptions = currencies.map((c) => ({ value: c, label: c }));
@@ -277,10 +283,10 @@ export function CreateAdForm() {
                   <FormItem>
                     <FormLabel>Market Rate Adjustment</FormLabel>
                     <div className="relative">
-                      <Input type="number" step="0.01" placeholder="1.5" {...field} />
+                      <Input type="number" step="0.01" placeholder="e.g. 1.5 or -2.0" {...field} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
-                    <FormDescription>Percentage from -50% to +50%.</FormDescription>
+                    <FormDescription>Enter a positive value to sell above market price, or a negative value to sell below. (Range: -50% to +50%)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -292,8 +298,13 @@ export function CreateAdForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fixed Price per Crypto</FormLabel>
-                    <Input type="number" step="any" placeholder="65000.00" {...field} />
-                    <FormDescription>The fixed price in your selected fiat currency.</FormDescription>
+                    <Input 
+                      type="number" 
+                      step="any" 
+                      placeholder={arePricesLoading ? "Loading..." : `${currentMarketPrice.toLocaleString()}`} 
+                      {...field} 
+                    />
+                    <FormDescription>The fixed price in {watchFiat}. Current market price is approx. {currentMarketPrice.toLocaleString()} USD.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -402,5 +413,3 @@ export function CreateAdForm() {
     </Card>
   );
 }
-
-    

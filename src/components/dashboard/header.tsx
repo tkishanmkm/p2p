@@ -34,9 +34,9 @@ import { DefaultAvatar } from "../icons";
 import { Badge } from "../ui/badge";
 import { collection, doc, orderBy, query, updateDoc } from "firebase/firestore";
 import type { UserWallet, Notification } from "@/lib/types";
-import { useEffect, useState } from "react";
 import { Skeleton } from "../ui/skeleton";
 import { cn } from "@/lib/utils";
+import { usePrices } from "@/context/price-context";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -52,6 +52,7 @@ const navItems = [
 export function DashboardHeader() {
   const { user, firestore } = useFirebase();
   const pathname = usePathname();
+  const { prices } = usePrices();
 
   const walletsRef = useMemoFirebase(() => user ? collection(firestore, "users", user.uid, "wallets") : null, [firestore, user]);
   const { data: wallets } = useCollection<UserWallet>(walletsRef);
@@ -60,20 +61,6 @@ export function DashboardHeader() {
   const notificationsQuery = useMemoFirebase(() => notificationsRef ? query(notificationsRef, orderBy("createdAt", "desc")) : null, [notificationsRef]);
   const { data: notifications } = useCollection<Notification>(notificationsQuery);
   const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
-
-  const [prices, setPrices] = useState({ BTC: 65000, ETH: 3500, USDT: 1, LTC: 100 });
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-        setPrices(prev => ({
-            BTC: prev.BTC * (1 + (Math.random() - 0.5) * 0.01),
-            ETH: prev.ETH * (1 + (Math.random() - 0.5) * 0.01),
-            USDT: 1,
-            LTC: prev.LTC * (1 + (Math.random() - 0.5) * 0.01),
-        }))
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
   
   const totalWalletValue = wallets?.reduce((acc, wallet) => {
     const value = (wallet.balance + wallet.lockedBalance) * (prices[wallet.crypto] || 0);

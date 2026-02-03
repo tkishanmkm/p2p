@@ -24,6 +24,7 @@ import { Progress } from "@/components/ui/progress";
 import { BtcLogo, EthLogo, UsdtLogo, LtcLogo } from "@/components/icons";
 import type { CryptoCurrency, User, UserWallet, P2PAd } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePrices } from "@/context/price-context";
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
     switch (crypto) {
@@ -57,6 +58,7 @@ function DashboardCardSkeleton() {
 
 export default function DashboardPage() {
     const { firestore, user: authUser } = useFirebase();
+    const { prices } = usePrices();
     
     const userRef = useMemoFirebase(() => authUser ? doc(firestore, "users", authUser.uid) : null, [firestore, authUser]);
     const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
@@ -68,8 +70,6 @@ export default function DashboardPage() {
     const { data: activeAds, isLoading: areAdsLoading } = useCollection<P2PAd>(adsQuery);
     
     const totalWalletValue = wallets?.reduce((acc, wallet) => {
-        // Dummy prices, replace with real price fetching logic
-        const prices = { BTC: 65000, ETH: 3500, USDT: 1, LTC: 100 };
         const value = (wallet.balance + wallet.lockedBalance) * (prices[wallet.crypto] || 0);
         return acc + value;
     }, 0) || 0;
@@ -160,7 +160,6 @@ export default function DashboardPage() {
                             </TableHeader>
                             <TableBody>
                                 {wallets?.map(wallet => {
-                                    const prices = { BTC: 65000, ETH: 3500, USDT: 1, LTC: 100 };
                                     const value = (wallet.balance + wallet.lockedBalance) * (prices[wallet.crypto] || 0);
                                     return (
                                     <TableRow key={wallet.crypto}>
