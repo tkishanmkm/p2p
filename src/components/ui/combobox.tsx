@@ -66,7 +66,9 @@ export function Combobox({
                   key={option.value}
                   value={option.value}
                   onSelect={(currentValue) => {
-                    onChange(currentValue === value ? "" : currentValue)
+                    // Find the original value from options to preserve casing
+                    const originalOption = options.find(o => o.value.toLowerCase() === currentValue.toLowerCase());
+                    onChange(originalOption ? originalOption.value : currentValue);
                     setOpen(false)
                   }}
                 >

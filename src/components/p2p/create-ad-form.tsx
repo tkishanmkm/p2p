@@ -44,6 +44,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
+import { useEffect } from "react";
 
 const adTags = [
   { id: "no-third-party", label: "No third party" },
@@ -110,11 +111,16 @@ export function CreateAdForm() {
   });
 
   const watchRateType = form.watch("rateType");
-  const watchPaymentMethods = form.watch("paymentMethods");
   const watchCrypto = form.watch("crypto") as CryptoCurrency;
   const watchFiat = form.watch("fiatCurrency");
 
   const currentMarketPrice = prices[watchCrypto] || 0;
+
+  useEffect(() => {
+    if (watchRateType === 'fixed' && currentMarketPrice > 0) {
+        form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
+    }
+  }, [watchRateType, currentMarketPrice, form]);
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
   const fiatOptions = currencies.map((c) => ({ value: c, label: c }));
@@ -126,7 +132,7 @@ export function CreateAdForm() {
         return;
     }
 
-    const adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId'> = {
+    const adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'> = {
         adType: data.adType,
         crypto: data.crypto as CryptoCurrency,
         fiatCurrency: data.fiatCurrency,
@@ -229,14 +235,23 @@ export function CreateAdForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Payment Methods</FormLabel>
-                   <Combobox options={paymentMethodOptions} value={watchPaymentMethods.join(', ')} onChange={(val) => form.setValue('paymentMethods', [...watchPaymentMethods, val])} placeholder="Select payment methods" />
+                   <Combobox 
+                        options={paymentMethodOptions} 
+                        onChange={(val) => {
+                            const current = form.getValues().paymentMethods || [];
+                            if (val && !current.includes(val)) {
+                                form.setValue('paymentMethods', [...current, val]);
+                            }
+                        }} 
+                        placeholder="Select payment methods"
+                    />
                   <FormDescription>You can select multiple payment methods.</FormDescription>
                   <div className="flex flex-wrap gap-2 pt-2">
-                    {watchPaymentMethods.map((pm, index) => (
+                    {field.value?.map((pm, index) => (
                       <Badge key={index} variant="secondary">
                         {pm}
                         <button type="button" onClick={() => {
-                            const updatedPms = [...watchPaymentMethods];
+                            const updatedPms = [...(field.value || [])];
                             updatedPms.splice(index, 1);
                             form.setValue('paymentMethods', updatedPms);
                         }} className="ml-2 rounded-full hover:bg-destructive/50 p-0.5">&times;</button>
