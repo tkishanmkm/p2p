@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "btc",
+      "description": "Bitcoin icon",
+      "imageUrl": "https://images.unsplash.com/photo-1641477437611-de79fbc5022c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxiaXRjb2luJTIwY3VycmVuY3l8ZW58MHx8fHwxNzcwMTAxNDE4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "bitcoin currency"
+    },
+    {
+      "id": "eth",
+      "description": "Ethereum icon",
+      "imageUrl": "https://images.unsplash.com/photo-1641477456386-418d3e974ac2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxldGhlcmV1bSUyMGN1cnJlbmN5fGVufDB8fHx8MTc3MDEwMTQxOHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "ethereum currency"
+    },
+    {
+      "id": "ltc",
+      "description": "Litecoin icon",
+      "imageUrl": "https://images.unsplash.com/photo-1727169704910-0c60b67dd59e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxsaXRlY29pbiUyMGN1cnJlbmN5fGVufDB8fHx8MTc3MDEwMTQxOHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "litecoin currency"
+    },
+    {
+      "id": "usdt",
+      "description": "Tether icon",
+      "imageUrl": "https://images.unsplash.com/photo-1768839724236-5df846a3ea5d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx0ZXRoZXIlMjBjdXJyZW5jeXxlbnwwfHx8fDE3NzAxMDE0MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tether currency"
+    },
+    {
+      "id": "hero-image",
+      "description": "Hero image for the landing page",
+      "imageUrl": "https://images.unsplash.com/photo-1724977490800-7bf332e6f256?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBzZWN1cmV8ZW58MHx8fHwxNzcwMTAxNDE4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern secure"
+    },
+    {
+      "id": "user-avatar-1",
+      "description": "User avatar 1",
+      "imageUrl": "https://images.unsplash.com/flagged/photo-1595514191830-3e96a518989b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzcwMDEyMjc3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "user-avatar-2",
+      "description": "User avatar 2",
+      "imageUrl": "https://images.unsplash.com/photo-1598625873873-52f9aefd7d9d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx3b21hbiUyMHNtaWxpbmd8ZW58MHx8fHwxNzcwMDc4NTE3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman smiling"
+    },
+    {
+      "id": "user-avatar-3",
+      "description": "User avatar 3",
+      "imageUrl": "https://images.unsplash.com/photo-1619678309629-23bb8fa744cc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtYW4lMjBwcm9mZXNzaW9uYWx8ZW58MHx8fHwxNzcwMTAxNDE4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man professional"
+    }
+  ]
 }
