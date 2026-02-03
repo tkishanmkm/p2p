@@ -14,6 +14,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Mail,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,7 @@ const navItems = [
   { href: "/buy", label: "Buy Crypto", icon: ArrowDownToLine },
   { href: "/sell", label: "Sell Crypto", icon: ArrowUpFromLine },
   { href: "/ads/create", label: "Create Ad", icon: PlusCircle },
+  { href: "/my-ads", label: "My Ads", icon: FileText },
   { href: "/trades", label: "My Trades", icon: ArrowLeftRight },
   { href: "/support", label: "Support", icon: LifeBuoy },
 ];
@@ -220,3 +222,5 @@ export function DashboardHeader() {
     </header>
   );
 }
+
+    

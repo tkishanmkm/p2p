@@ -69,6 +69,7 @@ export type Withdrawal = {
 
 export type P2PAd = {
   id: string;
+  publicAdId: string;
   userId: string;
   adType: 'buy' | 'sell';
   crypto: CryptoCurrency;
@@ -83,7 +84,12 @@ export type P2PAd = {
   tags?: string[];
   active: boolean;
   createdAt: string; // TIMESTAMP
-  user: Pick<User, 'userId' | 'feedbackScore' | 'completedTrades'>;
+  user: {
+      userId: string;
+      feedbackScore?: number;
+      completedTrades?: number;
+      photoURL?: string;
+  };
 };
 
 export type TradeStatus = 'active' | 'paid' | 'released' | 'expired' | 'disputed' | 'cancelled';
@@ -179,3 +185,5 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
+
+    

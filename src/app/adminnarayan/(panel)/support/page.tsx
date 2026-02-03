@@ -1,3 +1,7 @@
+"use client";
+
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -23,10 +27,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-const mockSupportTickets: any[] = []; // Empty array
+import type { SupportTicket } from "@/lib/types";
 
 export default function AdminSupportPage() {
+  const { firestore } = useFirebase();
+  const ticketsQuery = useMemoFirebase(
+      () => firestore ? query(collection(firestore, "support_tickets"), orderBy("createdAt", "desc")) : null,
+      [firestore]
+  );
+  const { data: tickets, isLoading } = useCollection<SupportTicket>(ticketsQuery);
+
   return (
     <>
       <div className="flex items-center">
@@ -44,6 +54,7 @@ export default function AdminSupportPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>User ID</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted At</TableHead>
                 <TableHead>
@@ -52,9 +63,11 @@ export default function AdminSupportPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockSupportTickets.length > 0 ? mockSupportTickets.map((ticket) => (
+              {isLoading && <TableRow><TableCell colSpan={5} className="text-center">Loading tickets...</TableCell></TableRow>}
+              {!isLoading && tickets && tickets.length > 0 ? tickets.map((ticket) => (
                 <TableRow key={ticket.id}>
                   <TableCell className="font-medium">{ticket.userId}</TableCell>
+                  <TableCell>{ticket.email}</TableCell>
                   <TableCell>
                     <Badge variant={
                         ticket.status === 'Open' ? 'destructive' : 
@@ -84,7 +97,7 @@ export default function AdminSupportPage() {
                 </TableRow>
               )) : (
                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={5} className="text-center h-24">
                         No support tickets found.
                     </TableCell>
                 </TableRow>
@@ -96,3 +109,5 @@ export default function AdminSupportPage() {
     </>
   )
 }
+
+    

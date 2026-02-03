@@ -35,10 +35,10 @@ import { Badge } from "@/components/ui/badge";
 const menuItems = [
   { href: "/adminnarayan/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/adminnarayan/users", label: "Users", icon: Users },
-  { href: "#", label: "Trades", icon: ArrowLeftRight },
+  { href: "/adminnarayan/trades", label: "Trades", icon: ArrowLeftRight },
   { href: "/adminnarayan/deposits", label: "Deposits", icon: ArrowDownToLine, badge: 3 },
   { href: "/adminnarayan/withdrawals", label: "Withdrawals", icon: ArrowUpFromLine, badge: 1 },
-  { href: "#", label: "Ads", icon: FileText },
+  { href: "/adminnarayan/ads", label: "Ads", icon: FileText },
   { href: "/adminnarayan/support", label: "Support", icon: LifeBuoy, badge: 2 },
   { href: "/adminnarayan/disputes", label: "Disputes", icon: ShieldAlert, badge: 1 },
 ];
@@ -119,3 +119,5 @@ export function AdminSidebar() {
     </Sidebar>
   );
 }
+
+    
