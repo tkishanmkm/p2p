@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,7 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useFirebase, initiateEmailSignUp } from "@/firebase";
 import { onAuthStateChanged, updateProfile } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -47,8 +47,9 @@ const formSchema = z.object({
   }),
 });
 
-export default function SignupPage() {
+function SignupFormComponent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { auth, firestore } = useFirebase();
   const [isSigningUp, setIsSigningUp] = useState(false);
@@ -57,7 +58,7 @@ export default function SignupPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: "",
-      userId: "",
+      userId: searchParams.get("userId") || "",
       password: "",
       captcha: false,
     },
@@ -235,8 +236,8 @@ export default function SignupPage() {
               />
                <div className="text-xs text-muted-foreground">
                 By creating an account, you agree to our{" "}
-                <Link href="#" className="underline">Terms of Service</Link> and{" "}
-                <Link href="#" className="underline">Privacy Policy</Link>.
+                <Link href="/terms" className="underline hover:text-primary">Terms of Service</Link> and{" "}
+                <Link href="/policy" className="underline hover:text-primary">Privacy Policy</Link>.
               </div>
               <Button type="submit" className="w-full" disabled={isSigningUp}>
                 {isSigningUp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -256,4 +257,10 @@ export default function SignupPage() {
   );
 }
 
-    
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignupFormComponent />
+    </Suspense>
+  )
+}

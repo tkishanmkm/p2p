@@ -1,11 +1,12 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BuySellForm } from "@/components/home/buy-sell-form";
+import { HomeSignupForm } from "@/components/home/home-signup-form";
 
 const stats = [
+    { value: "180+", label: "Countries Supported" },
     { value: "500+", label: "Payment methods" },
     { value: "5min", label: "Average trade time" },
-    { value: "180+", label: "Countries Supported" },
 ];
 
 export default function Home() {
@@ -14,24 +15,27 @@ export default function Home() {
       <Header />
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="relative w-full py-20 md:py-32 lg:py-40 bg-white">
-            <div className="container mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-16 items-center">
+        <section className="relative w-full py-16 md:py-24 lg:py-32">
+            <div className="container mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-10 lg:gap-16 items-center">
                 <div className="text-center md:text-left">
-                    <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground leading-tight">
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-tight">
                         Buy and sell crypto
                     </h1>
                      <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto md:mx-0">
                         Peer-to-peer lets you trade crypto directly with other people. Our escrow and dispute moderation keep every trade protected.
                     </p>
+                    <div className="mt-8 max-w-md mx-auto md:mx-0">
+                      <HomeSignupForm />
+                    </div>
                 </div>
-                <div className="relative flex justify-center md:justify-end">
+                <div className="relative flex justify-center">
                     <BuySellForm />
                 </div>
             </div>
         </section>
 
         {/* Stats Section */}
-        <section className="py-20">
+        <section className="py-16 bg-secondary/30">
             <div className="container mx-auto px-4 md:px-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
                     {stats.map(stat => (

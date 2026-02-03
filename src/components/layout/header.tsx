@@ -23,7 +23,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
-        <div className="mr-8 hidden md:flex">
+        <div className="mr-8 flex">
           <Link href="/">
             <Logo />
           </Link>
@@ -65,7 +65,7 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                 <Button variant="ghost" className="font-medium text-foreground/60 transition-colors hover:text-foreground/80 px-0">
+                 <Button variant="ghost" className="font-medium text-foreground/80 transition-colors hover:text-foreground px-0">
                     Trade
                     <ChevronDown className="relative top-[1px] ml-1 h-3 w-3" />
                 </Button>
@@ -74,18 +74,19 @@ export function Header() {
                 <DropdownMenuGroup>
                     <DropdownMenuItem asChild><Link href="/buy">Buy Crypto</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/sell">Sell Crypto</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/ads/create">Create Ad</Link></DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
              <Link
                 href="/wallets"
-                className="font-medium text-foreground/60 transition-colors hover:text-foreground/80"
+                className="font-medium text-foreground/80 transition-colors hover:text-foreground"
               >
                 Wallet
               </Link>
              <Link
                 href="/support"
-                className="font-medium text-foreground/60 transition-colors hover:text-foreground/80"
+                className="font-medium text-foreground/80 transition-colors hover:text-foreground"
               >
                 Support
               </Link>
@@ -94,7 +95,7 @@ export function Header() {
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-                  <Globe className="h-5 w-5" />
+                  <Globe className="h-5 w-5 text-foreground/80" />
                   <span className="sr-only">Select language</span>
                 </Button>
               </DropdownMenuTrigger>
@@ -104,7 +105,7 @@ export function Header() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="link" asChild className="text-primary px-0 font-semibold">
+            <Button variant="ghost" asChild className="text-foreground/80 px-2 font-semibold">
               <Link href="/login">Log in</Link>
             </Button>
             <Button asChild>

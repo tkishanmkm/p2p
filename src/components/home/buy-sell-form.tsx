@@ -18,6 +18,7 @@ import { Card, CardContent } from '../ui/card';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import type { CryptoCurrency } from '@/lib/types';
 import { useRouter } from 'next/navigation';
+import { currencies } from '@/lib/currencies';
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
     switch (crypto) {
@@ -54,6 +55,7 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
     const router = useRouter();
     const [crypto, setCrypto] = useState<CryptoCurrency>('BTC');
     const [fiatAmount, setFiatAmount] = useState('');
+    const [fiatCurrency, setFiatCurrency] = useState('USD');
     const [cryptoAmount, setCryptoAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('');
 
@@ -89,7 +91,7 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
         <div>
             <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">All crypto</Label>
             <Select value={crypto} onValueChange={(v) => setCrypto(v as CryptoCurrency)}>
-                <SelectTrigger className="bg-white h-11 text-sm">
+                <SelectTrigger className="bg-background h-12 text-base">
                     <SelectValue>
                         <div className="flex items-center gap-2">
                             <CryptoLogo crypto={crypto} className="h-6 w-6" />
@@ -113,23 +115,33 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <Label htmlFor="i-have-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">I have</Label>
-                <Input id="i-have-amount" value={cryptoAmount} onChange={handleCryptoChange} placeholder="Amount" className="bg-white h-11" />
+                <Input id="i-have-amount" value={cryptoAmount} onChange={handleCryptoChange} placeholder="Amount" className="bg-background h-12 text-base" />
             </div>
              <div>
                 <Label htmlFor="payment-method" className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment method</Label>
-                <Input id="payment-method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} placeholder="e.g. Bank transfer" className="bg-white h-11" />
+                <Input id="payment-method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} placeholder="e.g. Bank transfer" className="bg-background h-12 text-base" />
              </div>
         </div>
 
         <div>
-            <Label htmlFor="fiat-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">Amount (USD)</Label>
-            <Input id="fiat-amount" value={fiatAmount} onChange={handleFiatChange} placeholder="Enter amount" className="bg-white h-11" />
+            <Label htmlFor="fiat-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">Amount</Label>
+            <div className='flex items-center'>
+              <Input id="fiat-amount" value={fiatAmount} onChange={handleFiatChange} placeholder="Enter amount" className="bg-background h-12 text-base rounded-r-none" />
+              <Select value={fiatCurrency} onValueChange={setFiatCurrency}>
+                  <SelectTrigger className="bg-background h-12 w-32 rounded-l-none text-base">
+                      <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64">
+                      {currencies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+              </Select>
+            </div>
         </div>
       
       <div>
         <Button type="submit" className="w-full h-12 text-base font-semibold" size="lg">
           <Search className="mr-2 h-5 w-5" />
-          Search
+          Find Offers
         </Button>
       </div>
     </form>
