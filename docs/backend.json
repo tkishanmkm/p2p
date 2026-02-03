@@ -1,0 +1,846 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user on the platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Public username for the user (unique)."
+        },
+        "oldUserId": {
+          "type": "string",
+          "description": "Stored username if the user changes their username."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "User's full name (encrypted)."
+        },
+        "dob": {
+          "type": "string",
+          "description": "User's date of birth (encrypted).",
+          "format": "date"
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "Hashed and salted password."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address (optional).",
+          "format": "email"
+        },
+        "isBanned": {
+          "type": "boolean",
+          "description": "Indicates if the user is banned by an administrator."
+        },
+        "isOnHold": {
+          "type": "boolean",
+          "description": "Indicates if the user's account is on hold (lien)."
+        },
+        "tradeVolume": {
+          "type": "number",
+          "description": "Total trade volume of the user (auto-calculated)."
+        },
+        "completedTrades": {
+          "type": "number",
+          "description": "Number of completed trades by the user (auto-calculated)."
+        },
+        "usernameChanged": {
+          "type": "boolean",
+          "description": "Indicates if the user has changed their username (max once)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of when the user account was created.",
+          "format": "date-time"
+        },
+        "lastLoginIp": {
+          "type": "string",
+          "description": "IP address of the user's last login.",
+          "format": "ipv4"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "fullName",
+        "dob",
+        "passwordHash",
+        "isBanned",
+        "isOnHold",
+        "tradeVolume",
+        "completedTrades",
+        "usernameChanged",
+        "createdAt",
+        "lastLoginIp"
+      ]
+    },
+    "UserWallet": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserWallet",
+      "type": "object",
+      "description": "Represents a user's wallet for a specific cryptocurrency.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user wallet.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N UserWallet)"
+        },
+        "crypto": {
+          "type": "string",
+          "description": "Cryptocurrency type (e.g., BTC, ETH, USDT)."
+        },
+        "balance": {
+          "type": "number",
+          "description": "Current balance of the cryptocurrency in the wallet."
+        },
+        "lockedBalance": {
+          "type": "number",
+          "description": "Amount of cryptocurrency locked in trades or other operations."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of when the wallet balance was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "crypto",
+        "balance",
+        "lockedBalance",
+        "updatedAt"
+      ]
+    },
+    "Deposit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Deposit",
+      "type": "object",
+      "description": "Represents a user's deposit request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the deposit request.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Deposit)"
+        },
+        "crypto": {
+          "type": "string",
+          "description": "Cryptocurrency type deposited (e.g., BTC, ETH, USDT)."
+        },
+        "chain": {
+          "type": "string",
+          "description": "Blockchain used for the deposit."
+        },
+        "txId": {
+          "type": "string",
+          "description": "Transaction ID of the deposit on the blockchain (optional)."
+        },
+        "receipt": {
+          "type": "string",
+          "description": "File path to the deposit receipt (optional)."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of cryptocurrency deposited."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the deposit (pending, approved, declined, expired)."
+        },
+        "timerEnd": {
+          "type": "string",
+          "description": "Timestamp when the deposit timer ends.",
+          "format": "date-time"
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to Admin. (Relationship: Admin 1:N Deposit). ID of the admin who approved or declined the deposit."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of when the deposit request was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "crypto",
+        "chain",
+        "amount",
+        "status",
+        "timerEnd",
+        "adminId",
+        "createdAt"
+      ]
+    },
+    "Withdrawal": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Withdrawal",
+      "type": "object",
+      "description": "Represents a user's withdrawal request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the withdrawal request.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Withdrawal)"
+        },
+        "crypto": {
+          "type": "string",
+          "description": "Cryptocurrency type withdrawn (e.g., BTC, ETH, USDT)."
+        },
+        "chain": {
+          "type": "string",
+          "description": "Blockchain used for the withdrawal."
+        },
+        "address": {
+          "type": "string",
+          "description": "Withdrawal address."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of cryptocurrency withdrawn."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the withdrawal (pending, approved, declined)."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to Admin. (Relationship: Admin 1:N Withdrawal). ID of the admin who approved or declined the withdrawal."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of when the withdrawal request was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "crypto",
+        "chain",
+        "address",
+        "amount",
+        "status",
+        "adminId",
+        "createdAt"
+      ]
+    },
+    "P2PAd": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "P2PAd",
+      "type": "object",
+      "description": "Represents a P2P advertisement for buying or selling cryptocurrency.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the P2P ad.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N P2PAd)"
+        },
+        "adType": {
+          "type": "string",
+          "description": "Type of ad (buy or sell)."
+        },
+        "crypto": {
+          "type": "string",
+          "description": "Cryptocurrency type being traded (e.g., BTC, ETH, USDT)."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment method accepted for the trade."
+        },
+        "rateType": {
+          "type": "string",
+          "description": "Type of rate (fixed or market)."
+        },
+        "ratePercent": {
+          "type": "number",
+          "description": "Percentage adjustment to the market rate (if applicable)."
+        },
+        "fixedRate": {
+          "type": "number",
+          "description": "Fixed rate for the cryptocurrency (if applicable)."
+        },
+        "minAmount": {
+          "type": "number",
+          "description": "Minimum trade amount."
+        },
+        "maxAmount": {
+          "type": "number",
+          "description": "Maximum trade amount."
+        },
+        "terms": {
+          "type": "string",
+          "description": "Terms and conditions of the ad."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Indicates if the ad is active."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of when the ad was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "adType",
+        "crypto",
+        "paymentMethod",
+        "rateType",
+        "minAmount",
+        "maxAmount",
+        "terms",
+        "active",
+        "createdAt"
+      ]
+    },
+    "Trade": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Trade",
+      "type": "object",
+      "description": "Represents a trade between a buyer and a seller.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the trade.",
+          "format": "uuid"
+        },
+        "tradeId": {
+          "type": "string",
+          "description": "Public trade ID."
+        },
+        "buyerId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Trade). ID of the buyer."
+        },
+        "sellerId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Trade). ID of the seller."
+        },
+        "adId": {
+          "type": "string",
+          "description": "Reference to P2PAd. (Relationship: P2PAd 1:N Trade). ID of the ad associated with the trade."
+        },
+        "crypto": {
+          "type": "string",
+          "description": "Cryptocurrency type being traded (e.g., BTC, ETH, USDT)."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Total amount of cryptocurrency in the trade."
+        },
+        "lockedAmount": {
+          "type": "number",
+          "description": "Amount of cryptocurrency locked in escrow."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the trade (active, paid, released, expired, disputed, cancelled)."
+        },
+        "expiresAt": {
+          "type": "string",
+          "description": "Timestamp when the trade expires.",
+          "format": "date-time"
+        },
+        "paidAt": {
+          "type": "string",
+          "description": "Timestamp when the buyer marked the trade as paid.",
+          "format": "date-time"
+        },
+        "releasedAt": {
+          "type": "string",
+          "description": "Timestamp when the seller released the cryptocurrency.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of when the trade was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "tradeId",
+        "buyerId",
+        "sellerId",
+        "adId",
+        "crypto",
+        "amount",
+        "lockedAmount",
+        "status",
+        "expiresAt",
+        "createdAt"
+      ]
+    },
+    "TradeChat": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TradeChat",
+      "type": "object",
+      "description": "Represents a chat message within a trade.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat message.",
+          "format": "uuid"
+        },
+        "tradeId": {
+          "type": "string",
+          "description": "Reference to Trade. (Relationship: Trade 1:N TradeChat)"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to User. ID of the user who sent the message."
+        },
+        "message": {
+          "type": "string",
+          "description": "Text content of the message."
+        },
+        "mediaUrl": {
+          "type": "string",
+          "description": "URL of the media file attached to the message (optional).",
+          "format": "uri"
+        },
+        "mediaType": {
+          "type": "string",
+          "description": "Type of media (image, video, none)."
+        },
+        "isModerator": {
+          "type": "boolean",
+          "description": "Indicates if the message was sent by a moderator."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "tradeId",
+        "senderId",
+        "message",
+        "mediaType",
+        "isModerator",
+        "createdAt"
+      ]
+    },
+    "Dispute": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Dispute",
+      "type": "object",
+      "description": "Represents a dispute opened for a trade.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the dispute.",
+          "format": "uuid"
+        },
+        "tradeId": {
+          "type": "string",
+          "description": "Reference to Trade. (Relationship: Trade 1:N Dispute)"
+        },
+        "openedBy": {
+          "type": "string",
+          "description": "Reference to User. ID of the user who opened the dispute."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for opening the dispute."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the dispute (open, resolved, cancelled)."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to Admin. (Relationship: Admin 1:N Dispute) ID of the admin who resolved the dispute."
+        },
+        "resolutionNote": {
+          "type": "string",
+          "description": "Notes on how the dispute was resolved."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of when the dispute was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "tradeId",
+        "openedBy",
+        "reason",
+        "status",
+        "adminId",
+        "resolutionNote",
+        "createdAt"
+      ]
+    },
+    "Feedback": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Feedback",
+      "type": "object",
+      "description": "Represents feedback given for a completed trade.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the feedback.",
+          "format": "uuid"
+        },
+        "tradeId": {
+          "type": "string",
+          "description": "Reference to Trade. (Relationship: Trade 1:N Feedback)"
+        },
+        "fromUser": {
+          "type": "string",
+          "description": "Reference to User. ID of the user giving the feedback."
+        },
+        "toUser": {
+          "type": "string",
+          "description": "Reference to User. ID of the user receiving the feedback."
+        },
+        "rating": {
+          "type": "string",
+          "description": "Rating given (positive or negative)."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Comment accompanying the feedback."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of when the feedback was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "tradeId",
+        "fromUser",
+        "toUser",
+        "rating",
+        "comment",
+        "createdAt"
+      ]
+    },
+    "AdminLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AdminLog",
+      "type": "object",
+      "description": "Represents an action performed by an administrator.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the admin log.",
+          "format": "uuid"
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to Admin. ID of the administrator performing the action."
+        },
+        "action": {
+          "type": "string",
+          "description": "Description of the action performed."
+        },
+        "targetId": {
+          "type": "string",
+          "description": "ID of the target entity (e.g., User ID, Trade ID) affected by the action."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of when the action was performed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "adminId",
+        "action",
+        "targetId",
+        "createdAt"
+      ]
+    },
+    "PaymentMethod": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PaymentMethod",
+      "type": "object",
+      "description": "Represents a payment method available for trading.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the payment method.",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the payment method (e.g., UPI India, Bank Transfer USA)."
+        },
+        "country": {
+          "type": "string",
+          "description": "Country where the payment method is primarily used (e.g., India, USA)."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "country"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Accessible only to the user themselves and admins.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/wallets/{walletId}",
+        "definition": {
+          "entityName": "UserWallet",
+          "schema": {
+            "$ref": "#/backend/entities/UserWallet"
+          },
+          "description": "Stores wallet information for each user. Access controlled by the parent 'users' document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "walletId",
+              "description": "The unique identifier for the user wallet."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/deposits/{depositId}",
+        "definition": {
+          "entityName": "Deposit",
+          "schema": {
+            "$ref": "#/backend/entities/Deposit"
+          },
+          "description": "Stores deposit requests initiated by the user. Access controlled by the parent 'users' document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "depositId",
+              "description": "The unique identifier for the deposit."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/withdrawals/{withdrawalId}",
+        "definition": {
+          "entityName": "Withdrawal",
+          "schema": {
+            "$ref": "#/backend/entities/Withdrawal"
+          },
+          "description": "Stores withdrawal requests made by the user. Access controlled by the parent 'users' document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "withdrawalId",
+              "description": "The unique identifier for the withdrawal."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/p2p_ads/{adId}",
+        "definition": {
+          "entityName": "P2PAd",
+          "schema": {
+            "$ref": "#/backend/entities/P2PAd"
+          },
+          "description": "Stores P2P ad listings. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "adId",
+              "description": "The unique identifier for the P2P ad."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/trades/{tradeId}",
+        "definition": {
+          "entityName": "Trade",
+          "schema": {
+            "$ref": "#/backend/entities/Trade"
+          },
+          "description": "Stores trade information. Includes denormalized 'buyerId' and 'sellerId' for authorization independence.",
+          "params": [
+            {
+              "name": "tradeId",
+              "description": "The unique identifier for the trade."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/trades/{tradeId}/messages/{messageId}",
+        "definition": {
+          "entityName": "TradeChat",
+          "schema": {
+            "$ref": "#/backend/entities/TradeChat"
+          },
+          "description": "Stores chat messages for each trade. Access controlled by the parent 'trades' document.",
+          "params": [
+            {
+              "name": "tradeId",
+              "description": "The unique identifier for the trade."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the chat message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/trades/{tradeId}/disputes/{disputeId}",
+        "definition": {
+          "entityName": "Dispute",
+          "schema": {
+            "$ref": "#/backend/entities/Dispute"
+          },
+          "description": "Stores dispute information for trades. Access restricted to the involved parties and admins.",
+          "params": [
+            {
+              "name": "tradeId",
+              "description": "The unique identifier for the trade."
+            },
+            {
+              "name": "disputeId",
+              "description": "The unique identifier for the dispute."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/trades/{tradeId}/feedback/{feedbackId}",
+        "definition": {
+          "entityName": "Feedback",
+          "schema": {
+            "$ref": "#/backend/entities/Feedback"
+          },
+          "description": "Stores feedback for trades. Access limited to the trade participants.",
+          "params": [
+            {
+              "name": "tradeId",
+              "description": "The unique identifier for the trade."
+            },
+            {
+              "name": "feedbackId",
+              "description": "The unique identifier for the feedback."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/admin_logs/{logId}",
+        "definition": {
+          "entityName": "AdminLog",
+          "schema": {
+            "$ref": "#/backend/entities/AdminLog"
+          },
+          "description": "Stores logs of admin actions. Only admins have access to this collection.",
+          "params": [
+            {
+              "name": "logId",
+              "description": "The unique identifier for the admin log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/payment_methods/{paymentMethodId}",
+        "definition": {
+          "entityName": "PaymentMethod",
+          "schema": {
+            "$ref": "#/backend/entities/PaymentMethod"
+          },
+          "description": "Stores a list of acceptable payment methods for the platform.",
+          "params": [
+            {
+              "name": "paymentMethodId",
+              "description": "The unique identifier for the payment method."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{uid}",
+        "definition": {
+          "entityName": "AdminRole",
+          "schema": {
+            "$ref": "#/backend/entities/AdminLog"
+          },
+          "description": "Indicates admin status. Existence of a document grants admin privileges. Existence over content",
+          "params": [
+            {
+              "name": "uid",
+              "description": "The unique identifier for the user (admin)."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to be secure, scalable, and easily debuggable, adhering to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). Authorization Independence is achieved through denormalization, where authorization-relevant data is copied into subcollections to avoid using `get()` calls in security rules. Structural Segregation is employed to ensure that all documents in a collection share the same security requirements, simplifying rules and improving security posture.\n\n*   **Users Collection:** `/users/{userId}` stores user profiles. This is private user data, accessible only to the user themselves. The `userId` is used as the document ID, enforcing path-based ownership.\n*   **User Wallets Subcollection:** `/users/{userId}/wallets/{walletId}` stores wallet information for each user. The wallet documents inherit access control from the parent `users` document, as the wallets are owned by the user. Denormalization is NOT required here because of the path-based ownership.\n*   **Deposits Subcollection:** `/users/{userId}/deposits/{depositId}` stores deposit requests initiated by the user. Similar to wallets, access is controlled by the parent `users` document, ensuring only the user and admins can access the deposit information.\n*   **Withdrawals Subcollection:** `/users/{userId}/withdrawals/{withdrawalId}` stores withdrawal requests made by the user. The same path-based ownership applies.\n*   **P2P Ads Collection:** `/p2p_ads/{adId}` stores P2P ad listings. The `userId` of the ad creator is denormalized into each document to allow for simple security rules based on ownership without needing to read from the `users` collection. This supports QAPs by enabling secure `list` operations based on ownership or other ad attributes.\n*   **Trades Collection:** `/trades/{tradeId}` stores trade information. The `buyerId` and `sellerId` are denormalized into each document, so that security rules can easily check if the requesting user is either the buyer or the seller. This is critical for Authorization Independence. `adId` also exists on each document for data reasons.\n*   **Trade Chat Subcollection:** `/trades/{tradeId}/messages/{messageId}` stores chat messages for each trade. Access is controlled by checking if the user is either the buyer or seller of the parent `trades` document. The subcollection enforces that only trade participants can access the chat.\n*   **Disputes Subcollection:** `/trades/{tradeId}/disputes/{disputeId}` stores dispute information for trades. Access is restricted to the involved parties and admins. Similar to `trade_chats`, the `tradeId` enforces a hierarchical access pattern.\n*   **Feedback Subcollection:** `/trades/{tradeId}/feedback/{feedbackId}` stores feedback for trades. The parent `tradeId` ensures that feedback is only associated with valid trades, and access is limited to the trade participants.\n*   **Admin Logs Collection:** `/admin_logs/{logId}` stores logs of admin actions. Only admins have access to this collection. Access to this collection is granted based on the existence of a document with the admin's UID in the `/roles_admin/{uid}` collection.\n*   **Payment Methods Collection:** `/payment_methods/{paymentMethodId}` stores a list of acceptable payment methods for the platform.\n*   **Admin Roles Collection:** `/roles_admin/{uid}` stores documents indicating admin status. The existence of a document at this location grants admin privileges.  This approach (Existence over Content) simplifies security rules and improves performance.\n\nThis structure facilitates simple and robust security rules by leveraging path-based ownership where applicable, and denormalizing authorization data where necessary to eliminate `get()` calls.  The explicit structure and naming conventions enhance debuggability and maintainability."
+  }
+}

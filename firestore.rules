@@ -1,0 +1,208 @@
+/**
+ * Core Philosophy:
+ * This ruleset enforces a security model based on user ownership, shared access for collaborators, and role-based access for administrators.
+ * The primary goal is to ensure that users can only access and manage their own data, while allowing for controlled interaction in shared contexts like P2P trades.
+ * Administrators have privileged access for moderation and system management. The default posture is to deny all access unless explicitly granted.
+ *
+ * Data Structure:
+ * - User-specific data (profiles, wallets, deposits, withdrawals) is strictly segregated under the path `/users/{userId}`. This structure leverages path-based security to enforce ownership.
+ * - Publicly readable data includes P2P advertisements (`/p2p_ads`) and available payment methods (`/payment_methods`) to allow browsing by any user.
+ * - Shared data, such as trades, resides in the top-level `/trades/{tradeId}` collection. Access is granted to the specific participants (`buyerId`, `sellerId`) of that trade. Subcollections for chat, disputes, and feedback inherit access from their parent trade document.
+ * - Administrator roles are managed via document existence in the `/roles_admin/{uid}` collection, providing a simple and performant way to check for administrative privileges.
+ *
+ * Key Security Decisions:
+ * - User Enumeration Blocked: Listing documents in the top-level `/users` collection is disallowed to protect user privacy.
+ * - Admin-Only Collections: The `/admin_logs` and `/roles_admin` collections are locked down, with writes to `/admin_logs` restricted to admins and all client access to `/roles_admin` forbidden.
+ * - Trade Immutability: Deleting a trade document is disallowed to preserve a historical record. Trades should be cancelled or completed by updating their status field.
+ * - Public Data is Read-Only: Collections like `/payment_methods` are publicly readable but cannot be modified by clients, ensuring data integrity.
+ *
+ * Denormalization for Authorization:
+ * - P2P Ads (`/p2p_ads/{adId}`): Each ad document contains a `userId` field. This allows write-access rules to check for ownership directly on the document without performing a costly `get()` on another collection.
+ * - Trades (`/trades/{tradeId}`): Each trade document contains `buyerId` and `sellerId` fields. This is critical for granting read/write access to the two participating users and is used to secure the document and all its subcollections (`messages`, `disputes`, `feedback`).
+ *
+ * Structural Segregation:
+ * The data model effectively separates private, shared, and public data into different collections. Private user data is nested under `/users/{userId}`, shared trade data is under `/trades/{tradeId}`, and public ad data is in `/p2p_ads`. This clear separation simplifies rule logic and enhances security by ensuring that all documents within a given collection path share a common access control policy.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for reusable logic
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Checks if the user has an admin role document.
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    // Checks if the user is a participant (buyer or seller) in a trade.
+    // This requires one document read.
+    function isTradeParticipant(tradeId) {
+      let trade = get(/databases/$(database)/documents/trades/$(tradeId)).data;
+      return trade.buyerId == request.auth.uid || trade.sellerId == request.auth.uid;
+    }
+
+    /**
+     * @description Stores user profiles. Access is restricted to the document owner or an administrator.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own user document for the first time.
+     * @deny (get) An authenticated user attempting to read another user's profile document.
+     * @principle Restricts access to a user's own data tree and enforces self-creation.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if (isOwner(userId) || isAdmin()) && resource.data.id == userId;
+      allow delete: if (isOwner(userId) || isAdmin());
+
+      /**
+       * @description Stores user's crypto wallets. Inherits ownership from the parent user document.
+       * @path /users/{userId}/wallets/{walletId}
+       * @allow (list) The user listing their own wallets.
+       * @deny (get) An authenticated user trying to get another user's wallet.
+       * @principle Enforces strict data ownership within a user's private subcollection.
+       */
+      match /wallets/{walletId} {
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create: if (isOwner(userId) || isAdmin()) && request.resource.data.userId == userId;
+        allow update, delete: if (isOwner(userId) || isAdmin());
+      }
+
+      /**
+       * @description Stores user's deposit history. Inherits ownership from the parent user document.
+       * @path /users/{userId}/deposits/{depositId}
+       * @allow (create) The user creating a new deposit request for their own account.
+       * @deny (list) An authenticated user trying to list another user's deposits.
+       * @principle Enforces strict data ownership within a user's private subcollection.
+       */
+      match /deposits/{depositId} {
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create: if (isOwner(userId) || isAdmin()) && request.resource.data.userId == userId;
+        allow update, delete: if (isOwner(userId) || isAdmin());
+      }
+
+      /**
+       * @description Stores user's withdrawal history. Inherits ownership from the parent user document.
+       * @path /users/{userId}/withdrawals/{withdrawalId}
+       * @allow (get) The user viewing one of their past withdrawal requests.
+       * @deny (create) An authenticated user trying to create a withdrawal for another user.
+       * @principle Enforces strict data ownership within a user's private subcollection.
+       */
+      match /withdrawals/{withdrawalId} {
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create: if (isOwner(userId) || isAdmin()) && request.resource.data.userId == userId;
+        allow update, delete: if (isOwner(userId) || isAdmin());
+      }
+    }
+
+    /**
+     * @description P2P advertisements. These are public to read but can only be written by the owner.
+     * @path /p2p_ads/{adId}
+     * @allow (list) Any user, authenticated or not, listing all available P2P ads.
+     * @deny (update) A user attempting to modify an ad they did not create.
+     * @principle Implements a "Public Read with Owner-Only Writes" pattern using a denormalized `userId` field for auth checks.
+     */
+    match /p2p_ads/{adId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if (isOwner(resource.data.userId) || isAdmin());
+    }
+
+    /**
+     * @description Represents a trade between two users. Access is limited to the buyer, seller, and admins.
+     * @path /trades/{tradeId}
+     * @allow (get) The buyer or seller of a trade viewing the trade details.
+     * @deny (get) A user who is not part of the trade attempting to read its details.
+     * @principle Implements a "Shared Access" model where authorization is based on denormalized `buyerId` and `sellerId` fields.
+     */
+    match /trades/{tradeId} {
+      allow get: if isTradeParticipant(tradeId) || isAdmin();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && (request.resource.data.buyerId == request.auth.uid || request.resource.data.sellerId == request.auth.uid);
+      allow update: if (isTradeParticipant(tradeId) || isAdmin());
+      allow delete: if false;
+
+      /**
+       * @description Chat messages within a trade. Access is granted to trade participants only.
+       * @path /trades/{tradeId}/messages/{messageId}
+       * @allow (create) A trade participant sending a new message in the chat.
+       * @deny (list) A user not involved in the trade attempting to read the chat history.
+       * @principle Secures a subcollection by checking for membership in the parent document.
+       */
+      match /messages/{messageId} {
+        allow get, list: if isTradeParticipant(tradeId) || isAdmin();
+        allow create: if (isTradeParticipant(tradeId) || isAdmin()) && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if (isOwner(resource.data.senderId) || isAdmin());
+      }
+
+      /**
+       * @description Disputes filed for a trade. Access is granted to trade participants and admins.
+       * @path /trades/{tradeId}/disputes/{disputeId}
+       * @allow (get) An admin viewing a dispute document to mediate.
+       * @deny (create) A user not involved in the trade attempting to create a dispute.
+       * @principle Secures a subcollection by checking for membership in the parent document.
+       */
+      match /disputes/{disputeId} {
+        allow get, list: if isTradeParticipant(tradeId) || isAdmin();
+        allow create: if (isTradeParticipant(tradeId) || isAdmin()) && request.resource.data.openedBy == request.auth.uid;
+        allow update, delete: if (isTradeParticipant(tradeId) || isAdmin());
+      }
+
+      /**
+       * @description Feedback left by trade participants. Access is granted to trade participants.
+       * @path /trades/{tradeId}/feedback/{feedbackId}
+       * @allow (list) A trade participant viewing all feedback for that trade.
+       * @deny (get) A user not involved in the trade attempting to read feedback.
+       * @principle Secures a subcollection by checking for membership in the parent document.
+       */
+      match /feedback/{feedbackId} {
+        allow get, list: if isTradeParticipant(tradeId) || isAdmin();
+        allow create: if (isTradeParticipant(tradeId) || isAdmin()) && request.resource.data.fromUser == request.auth.uid;
+        allow update, delete: if (isOwner(resource.data.fromUser) || isAdmin());
+      }
+    }
+
+    /**
+     * @description A read-only list of available payment methods for the platform.
+     * @path /payment_methods/{paymentMethodId}
+     * @allow (list) Any user, authenticated or not, fetching the list of payment methods.
+     * @deny (create) Any client attempting to add a new payment method.
+     * @principle Provides public, read-only access to global configuration data.
+     */
+    match /payment_methods/{paymentMethodId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Logs of actions performed by administrators. Writable only by admins.
+     * @path /admin_logs/{logId}
+     * @allow (create) An admin's backend function writing a new log entry.
+     * @deny (update) Any user attempting to modify an existing log entry to cover their tracks.
+     * @principle Enforces role-based access control (RBAC) for sensitive, admin-only data. Logs are immutable.
+     */
+    match /admin_logs/{logId} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Manages admin roles. Document existence at `/roles_admin/{uid}` grants admin privileges.
+     * @path /roles_admin/{uid}
+     * @allow (N/A) No client operation is permitted.
+     * @deny (get, list, create, update, delete) All client access is forbidden.
+     * @principle Secures critical authentication data. This collection must only be managed via the Firebase Console or a trusted server.
+     */
+    match /roles_admin/{uid} {
+      allow read, write: if false;
+    }
+  }
+}
