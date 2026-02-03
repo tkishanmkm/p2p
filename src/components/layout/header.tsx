@@ -6,11 +6,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuGroup,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LANGUAGES } from "@/lib/constants";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 
 const mobileNavLinks = [
   { href: "/buy", label: "Buy Crypto" },
@@ -38,9 +38,14 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left">
-              <Link href="/" className="mb-6">
-                <Logo />
-              </Link>
+                <SheetHeader className="border-b pb-6 mb-6">
+                    <SheetTitle asChild>
+                        <Link href="/">
+                            <Logo />
+                        </Link>
+                    </SheetTitle>
+                    <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
+                </SheetHeader>
               <nav className="flex flex-col gap-4">
                 {mobileNavLinks.map((link) => (
                   <Link
