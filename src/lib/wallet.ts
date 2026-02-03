@@ -11,9 +11,9 @@ import {
   updateDoc,
   getDoc,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User as AppUser } from './types';
 import { add } from 'date-fns';
-import type { User } from 'firebase/auth';
+import type { User as AuthUser } from 'firebase/auth';
 
 // A simple utility for generating short, random IDs
 function generateTradeId() {
@@ -56,7 +56,7 @@ export async function initiateTrade(
        if (!buyerDoc.exists()) {
         throw new Error("Buyer's profile does not exist.");
       }
-      const buyerData = buyerDoc.data() as User;
+      const buyerData = buyerDoc.data() as AppUser;
 
       const sellerWallet = sellerWalletDoc.data() as UserWallet;
       if (sellerWallet.balance < cryptoAmount) {
@@ -161,22 +161,19 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
  */
 export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId: string) {
     const tradeRef = doc(db, 'trades', tradeId);
-    const tradeSnap = await getDoc(tradeRef);
-    if (!tradeSnap.exists()) throw new Error("Trade not found.");
-    const trade = tradeSnap.data() as Trade;
     
-    const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
-
+    // We need to get the crypto type inside the transaction for safety,
+    // so we get it from the trade document itself.
     await runTransaction(db, async (transaction) => {
-        // re-fetch inside transaction
-        const freshTradeDoc = await transaction.get(tradeRef);
-        if (!freshTradeDoc.exists()) throw new Error("Trade not found.");
-        const freshTrade = freshTradeDoc.data() as Trade;
+        const tradeDoc = await transaction.get(tradeRef);
+        if (!tradeDoc.exists()) throw new Error("Trade not found.");
+        const trade = tradeDoc.data() as Trade;
         
-        if (freshTrade.status !== 'released') throw new Error("Funds have not been released by the seller.");
-        if (freshTrade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
-        if (freshTrade.claimedByBuyer) throw new Error("Funds have already been claimed.");
+        if (trade.status !== 'released') throw new Error("Funds have not been released by the seller.");
+        if (trade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
+        if (trade.claimedByBuyer) throw new Error("Funds have already been claimed.");
 
+        const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
         const buyerWalletDoc = await transaction.get(buyerWalletRef);
         let currentBalance = 0;
         let currentLockedBalance = 0;
@@ -186,17 +183,15 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
             currentLockedBalance = (buyerWalletDoc.data() as UserWallet).lockedBalance;
         }
         
-        // Increment buyer's balance (or create wallet if not exists)
         transaction.set(buyerWalletRef, {
-            balance: currentBalance + freshTrade.amount,
+            balance: currentBalance + trade.amount,
             lockedBalance: currentLockedBalance,
-            crypto: freshTrade.crypto,
+            crypto: trade.crypto,
             userId: buyerId,
-            id: freshTrade.crypto,
+            id: trade.crypto,
             updatedAt: serverTimestamp(),
         }, { merge: true });
 
-        // Mark trade as claimed
         transaction.update(tradeRef, { claimedByBuyer: true });
     });
 }
@@ -245,7 +240,7 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
  */
 export async function requestWithdrawal(
   db: Firestore,
-  user: User,
+  user: AuthUser,
   values: Omit<Withdrawal, 'id' | 'createdAt' | 'status' | 'userId' | 'userDisplayName'>
 ): Promise<void> {
   const walletRef = doc(db, "users", user.uid, "wallets", values.crypto);
