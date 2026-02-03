@@ -91,6 +91,25 @@ export async function initiateTrade(
         seller: { userId: ad.user.userId }
       };
 
+      // Create notifications for both users
+      const buyerNotificationRef = doc(collection(db, 'users', buyerId, 'notifications'));
+      transaction.set(buyerNotificationRef, {
+          userId: buyerId,
+          message: `You have started a new trade (${newTrade.tradeId}) with ${ad.user.userId}.`,
+          link: `/trade/${newTradeRef.id}`,
+          isRead: false,
+          createdAt: serverTimestamp(),
+      });
+
+      const sellerNotificationRef = doc(collection(db, 'users', ad.userId, 'notifications'));
+      transaction.set(sellerNotificationRef, {
+          userId: ad.userId,
+          message: `${buyerData.userId} has started a new trade (${newTrade.tradeId}) with you.`,
+          link: `/trade/${newTradeRef.id}`,
+          isRead: false,
+          createdAt: serverTimestamp(),
+      });
+
       transaction.set(newTradeRef, newTrade);
       return newTradeRef.id;
     });

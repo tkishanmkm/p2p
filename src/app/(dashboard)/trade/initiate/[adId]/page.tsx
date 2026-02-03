@@ -1,11 +1,11 @@
-// This is a new file
+
 "use client";
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useDoc, useFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import type { P2PAd } from "@/lib/types";
+import { useDoc, useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, collection, query, where } from "firebase/firestore";
+import type { P2PAd, Trade } from "@/lib/types";
 import { initiateTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,53 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+function ActiveTradePrompt({ trade }: { trade: Trade }) {
+  const router = useRouter();
+  const isBuyer = useFirebase().user?.uid === trade.buyerId;
+  const partner = isBuyer ? trade.seller : trade.buyer;
+
+  return (
+    <div className="flex justify-center items-start pt-10">
+        <Card className="w-full max-w-2xl">
+        <CardHeader>
+            <CardTitle>Active Trade Found</CardTitle>
+            <CardDescription>
+            You already have an active trade for this advertisement.
+            </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="p-4 border rounded-md bg-secondary/50 space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Trade ID</span>
+                    <span className="font-mono">{trade.tradeId}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Your Role</span>
+                    <Badge variant={isBuyer ? "default" : "secondary"}>{isBuyer ? "Buyer" : "Seller"}</Badge>
+                </div>
+                 <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Partner</span>
+                    <span>{partner.userId}</span>
+                </div>
+                 <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Amount</span>
+                    <span className="font-semibold">{trade.amount} {trade.crypto}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge variant="outline" className="capitalize">{trade.status}</Badge>
+                </div>
+            </div>
+            <Button onClick={() => router.push(`/trade/${trade.id}`)} className="w-full" size="lg">
+            Go to Trade Room
+            </Button>
+        </CardContent>
+        </Card>
+    </div>
+  );
+}
 
 export default function InitiateTradePage() {
   const router = useRouter();
@@ -25,6 +72,26 @@ export default function InitiateTradePage() {
 
   const adRef = firestore && adId ? doc(firestore, "p2p_ads", adId) : null;
   const { data: ad, isLoading: isAdLoading } = useDoc<P2PAd>(adRef);
+  
+  const tradesRef = useMemoFirebase(() => (firestore ? collection(firestore, "trades") : null), [firestore]);
+
+  const activeTradeAsBuyerQuery = useMemoFirebase(() => (
+    tradesRef && user && adId
+      ? query(tradesRef, where("adId", "==", adId), where("buyerId", "==", user.uid), where("status", "in", ["active", "paid"]))
+      : null
+  ), [tradesRef, user, adId]);
+  const { data: activeBuyerTrades, isLoading: isLoadingBuyer } = useCollection<Trade>(activeTradeAsBuyerQuery);
+  
+  const activeTradeAsSellerQuery = useMemoFirebase(() => (
+    tradesRef && user && adId
+      ? query(tradesRef, where("adId", "==", adId), where("sellerId", "==", user.uid), where("status", "in", ["active", "paid"]))
+      : null
+  ), [tradesRef, user, adId]);
+  const { data: activeSellerTrades, isLoading: isLoadingSeller } = useCollection<Trade>(activeTradeAsSellerQuery);
+
+  const activeTrade = activeBuyerTrades?.[0] || activeSellerTrades?.[0];
+  const isLoadingActiveTrade = isLoadingBuyer || isLoadingSeller;
+
 
   const [fiatAmount, setFiatAmount] = useState("");
   const [cryptoAmount, setCryptoAmount] = useState("");
@@ -76,8 +143,12 @@ export default function InitiateTradePage() {
     }
   };
 
-  if (isAdLoading) {
-    return <Skeleton className="h-96 w-full max-w-2xl mx-auto" />;
+  if (isAdLoading || isLoadingActiveTrade) {
+    return <div className="pt-10"><Skeleton className="h-96 w-full max-w-2xl mx-auto" /></div>;
+  }
+  
+  if (activeTrade) {
+    return <ActiveTradePrompt trade={activeTrade} />;
   }
 
   if (!ad) {
@@ -86,11 +157,13 @@ export default function InitiateTradePage() {
   
   if (ad.userId === user?.uid) {
     return (
+        <div className="pt-10">
         <Alert variant="destructive" className="max-w-2xl mx-auto">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Action Not Allowed</AlertTitle>
             <AlertDescription>You cannot trade with yourself.</AlertDescription>
         </Alert>
+        </div>
     );
   }
 
