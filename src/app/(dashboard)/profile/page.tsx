@@ -1,4 +1,3 @@
-// This is a new file
 "use client";
 
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
@@ -26,9 +25,9 @@ function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: stri
 }
 
 export default function ProfilePage() {
-    const { user: authUser } = useFirebase();
+    const { user: authUser, firestore } = useFirebase();
     
-    const userRef = useMemoFirebase(() => authUser ? doc(firestore, "users", authUser.uid) : null, [authUser]);
+    const userRef = useMemoFirebase(() => authUser && firestore ? doc(firestore, "users", authUser.uid) : null, [authUser, firestore]);
     const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
 
     if (isUserLoading) {
