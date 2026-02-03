@@ -65,6 +65,7 @@ export default function AdminLoginPage() {
     const adminEmail = `${values.adminId}@tradeflow.app`;
 
     try {
+      // First, try to sign in. This handles existing users.
       await signInWithEmailAndPassword(auth, adminEmail, values.password);
       
       toast({
@@ -74,36 +75,55 @@ export default function AdminLoginPage() {
       router.push("/adminnarayan/dashboard");
 
     } catch (error: any) {
-      // If user not found, try to create them, but only if credentials match the constants.
-      if (error.code === 'auth/user-not-found' && values.adminId === ADMIN_ID && values.password === ADMIN_PASS) {
-        try {
-          const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
-          
-          // IMPORTANT: Create the admin role document in Firestore to grant admin privileges
-          const adminRoleRef = doc(firestore, 'roles_admin', userCredential.user.uid);
-          // The content doesn't matter for the security rules, only the document's existence.
-          await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
+      // If sign-in fails, we analyze the error.
+      // The new SDKs often use 'auth/invalid-credential' for both not-found and wrong-password.
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        
+        // Let's check if the credentials are the ones for initial setup.
+        if (values.adminId === ADMIN_ID && values.password === ADMIN_PASS) {
+            // This might be the first-time login. Let's try creating the account.
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
+                
+                // IMPORTANT: Create the admin role document in Firestore to grant admin privileges
+                const adminRoleRef = doc(firestore, 'roles_admin', userCredential.user.uid);
+                await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
 
-          toast({
-            title: "Admin Account Created",
-            description: "First-time setup successful. Logging you in...",
-          });
-          // No need to call signIn again, createUserWithEmailAndPassword signs the user in.
-          router.push("/adminnarayan/dashboard");
-
-        } catch (signUpError: any) {
-          toast({
-            variant: "destructive",
-            title: "Admin Setup Failed",
-            description: "Could not create the admin user account. " + signUpError.message,
-          });
+                toast({
+                    title: "Admin Account Created",
+                    description: "First-time setup successful. Logging you in...",
+                });
+                router.push("/adminnarayan/dashboard");
+            } catch (signUpError: any) {
+                // If creating the user fails because the email is already in use,
+                // it means the user exists but the password was wrong in the initial signIn attempt.
+                if (signUpError.code === 'auth/email-already-in-use') {
+                    toast({
+                        variant: "destructive",
+                        title: "Login Failed",
+                        description: "Invalid Admin ID or Password.",
+                    });
+                } else {
+                    // Another error occurred during sign-up
+                    toast({
+                        variant: "destructive",
+                        title: "Admin Setup Failed",
+                        description: "Could not create the admin user account. " + signUpError.message,
+                    });
+                }
+            }
+        } else {
+            // Credentials don't match the initial setup ones, so it's a standard wrong password.
+             toast({
+                variant: "destructive",
+                title: "Login Failed",
+                description: "Invalid Admin ID or Password.",
+            });
         }
       } else {
-        // Handle other login errors (wrong password, etc.) as before
+        // Handle other login errors (e.g., network issues)
         let description = "An unknown error occurred.";
-        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-          description = "Invalid Admin ID or Password.";
-        } else if (error.code === 'auth/too-many-requests') {
+        if (error.code === 'auth/too-many-requests') {
           description = "Too many failed login attempts. Please try again later.";
         }
         toast({
