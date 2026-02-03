@@ -41,6 +41,11 @@ service cloud.firestore {
     function isAdmin() {
       return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
+    
+    // Checks if the user is the initial admin based on their email.
+    function isInitialAdmin() {
+      return request.auth.token.email == "Narayanharihari@tradeflow.app";
+    }
 
     // Checks if the user is a participant (buyer or seller) in a trade.
     // This requires one document read.
@@ -242,12 +247,14 @@ service cloud.firestore {
     /**
      * @description Manages admin roles. Document existence at `/roles_admin/{uid}` grants admin privileges.
      * @path /roles_admin/{uid}
-     * @allow (N/A) No client operation is permitted.
-     * @deny (get, list, create, update, delete) All client access is forbidden.
-     * @principle Secures critical authentication data. This collection must only be managed via the Firebase Console or a trusted server.
+     * @allow (create) Allows the initial admin user to create their own role document upon first login.
+     * @deny (read, update, delete) All other client access is forbidden.
+     * @principle Secures critical authentication data. This collection must only be managed via the Firebase Console or a trusted server, with the exception of the initial admin creation.
      */
     match /roles_admin/{uid} {
-      allow read, write: if false;
+      allow create: if isOwner(uid) && isInitialAdmin();
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
   }
 }
