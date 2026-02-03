@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   addDoc,
   updateDoc,
+  getDoc,
 } from 'firebase/firestore';
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User } from './types';
 import { add } from 'date-fns';
@@ -40,15 +41,21 @@ export async function initiateTrade(
     }
 
   const sellerWalletRef = doc(db, 'users', ad.userId, 'wallets', ad.crypto);
+  const buyerDocRef = doc(db, 'users', buyerId);
   const newTradeRef = doc(collection(db, 'trades'));
 
   try {
     const newTradeId = await runTransaction(db, async (transaction) => {
       const sellerWalletDoc = await transaction.get(sellerWalletRef);
+      const buyerDoc = await transaction.get(buyerDocRef);
 
       if (!sellerWalletDoc.exists()) {
         throw new Error("Seller's wallet does not exist.");
       }
+       if (!buyerDoc.exists()) {
+        throw new Error("Buyer's profile does not exist.");
+      }
+      const buyerData = buyerDoc.data() as User;
 
       const sellerWallet = sellerWalletDoc.data() as UserWallet;
       if (sellerWallet.balance < cryptoAmount) {
@@ -79,8 +86,7 @@ export async function initiateTrade(
         claimedByBuyer: false,
         createdAt: new Date().toISOString(),
         expiresAt: add(new Date(), { minutes: 30 }).toISOString(),
-        // Denormalize for easy access in UI
-        buyer: { userId: 'temp-buyer-id' }, // This will be updated with the real user ID later
+        buyer: { userId: buyerData.userId },
         seller: { userId: ad.user.userId }
       };
 
@@ -202,10 +208,14 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
 
     await runTransaction(db, async (transaction) => {
         const tradeDoc = await transaction.get(tradeRef);
-        if (!tradeDoc.exists()) throw new Error("Trade does not exist.");
+        if (!tradeDoc.exists()) {
+          throw new Error("Trade does not exist.");
+        }
         
         const trade = tradeDoc.data() as Trade;
-        if (trade.status !== 'active') throw new Error("Only active trades can be cancelled.");
+        if (trade.status !== 'active' && trade.status !== 'paid') {
+          throw new Error("Only active or paid trades can be cancelled.");
+        }
         
         const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', trade.crypto);
         const sellerWalletDoc = await transaction.get(sellerWalletRef);
@@ -297,10 +307,4 @@ export async function cancelWithdrawal(db: Firestore, withdrawal: Withdrawal): P
         // Update withdrawal status
         transaction.update(withdrawalRef, { status: 'cancelled' });
     });
-}
-
-
-async function getDoc(docRef: any) {
-    const { getDoc } = await import("firebase/firestore");
-    return getDoc(docRef);
 }

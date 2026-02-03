@@ -5,7 +5,7 @@ import { TradeDetails } from "@/components/trade/trade-details";
 import { TradeChat } from "@/components/trade/trade-chat";
 import { TradeStatusStepper } from "@/components/trade/trade-status";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ShieldCheck, Flag, ArrowLeftRight, Award } from "lucide-react";
+import { AlertCircle, ShieldCheck, Flag, ArrowLeftRight, Award, Shield } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,12 +24,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Trade, Dispute } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useAdminStatus } from "@/hooks/use-admin-status";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const [isDetailsLeft, setIsDetailsLeft] = useState(true);
+  const { isAdmin } = useAdminStatus();
 
   const tradeRef = firestore && tradeId ? doc(firestore, "trades", tradeId) : null;
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
@@ -108,6 +111,27 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             Switch View
         </Button>
       </div>
+
+       {isAdmin && (
+        <Card className="my-4 border-amber-500">
+            <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                <Shield className="h-6 w-6 text-amber-500" />
+                <div className="grid gap-1">
+                    <CardTitle>Admin Controls</CardTitle>
+                    <CardDescription>You are viewing this trade as an administrator.</CardDescription>
+                </div>
+            </CardHeader>
+            <CardContent className="flex gap-4">
+                 {trade.status === "paid" && (
+                     <Button variant="outline" onClick={handleReleaseCrypto}>Admin: Force Release</Button>
+                 )}
+                 {(trade.status === "active" || trade.status === "paid") && (
+                     <Button variant="destructive" onClick={handleCancelTrade}>Admin: Cancel Trade</Button>
+                 )}
+            </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
         
         <div className={cn("lg:col-span-1 grid gap-4 auto-rows-min", { "lg:order-last": !isDetailsLeft })}>
@@ -151,7 +175,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            {trade.status === 'active' && (
+            {trade.status === 'active' && currentUserRole !== 'sell' && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="outline" className="w-full">Cancel Trade</Button>
@@ -194,7 +218,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
             </div>
             <div className="h-[60vh] lg:h-auto">
-                <TradeChat currentUserId={user?.uid || ""} trade={trade} />
+                <TradeChat currentUserId={user?.uid || ""} trade={trade} isAdmin={isAdmin} />
             </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -14,60 +14,77 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Paperclip, Info, Loader2 } from "lucide-react";
+import { Send, Paperclip, Info, Loader2, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { TradeChatMessage, User, Trade } from "@/lib/types";
-import { mockTradeChatMessages, mockUsers } from "@/lib/mock-data";
+import type { TradeChatMessage, Trade } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useFirebase } from "@/firebase";
+import { useFirebase, useCollection } from "@/firebase";
 import { addReceiptToTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
+import { collection, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
+import { Skeleton } from "../ui/skeleton";
 
 interface TradeChatProps {
   currentUserId: string;
   trade: Trade;
+  isAdmin: boolean;
 }
 
-export function TradeChat({ currentUserId, trade }: TradeChatProps) {
-  const { firestore } = useFirebase();
+export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
+  const { firestore, user } = useFirebase();
   const { toast } = useToast();
-  const [messages, setMessages] = useState<TradeChatMessage[]>(mockTradeChatMessages);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
+  const messagesRef = firestore ? query(collection(firestore, 'trades', trade.id, 'messages'), orderBy('createdAt', 'asc')) : null;
+  const { data: messages, isLoading: areMessagesLoading } = useCollection<TradeChatMessage>(messagesRef);
+
   const [newMessage, setNewMessage] = useState("");
   const [showUsernames, setShowUsernames] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  useEffect(() => {
+    // Auto-scroll to bottom
+    if (scrollAreaRef.current) {
+        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+        }
+    }
+  }, [messages]);
+
 
   const handleSendMessage = async (e: React.FormEvent, mediaUrl?: string, mediaType?: 'image') => {
     e.preventDefault();
-    if (!newMessage.trim() && !mediaUrl) return;
+    if ((!newMessage.trim() && !mediaUrl) || !firestore || !user) return;
 
     const messageToSend = newMessage;
     setNewMessage("");
 
-    // This is a simulation. In a real app, you would upload the file to Firebase Storage
-    // and then add a new message document to the 'messages' subcollection in the trade.
-    const tempMessage: TradeChatMessage = {
-      id: `temp-${Date.now()}`,
+    const tempMessage: Omit<TradeChatMessage, 'id' | 'createdAt'> = {
       tradeId: trade.id,
       senderId: currentUserId,
-      senderUsername: mockUsers.find(u => u.id === currentUserId)?.userId || 'You',
+      senderUsername: user.displayName || 'User',
       message: messageToSend,
       mediaUrl,
       mediaType,
-      isModerator: false,
-      createdAt: new Date().toISOString(),
+      isModerator: isAdmin,
     };
-    setMessages((prev) => [...prev, tempMessage]);
     
-    if (mediaUrl) {
-        try {
+    try {
+        const messagesCollection = collection(firestore, 'trades', trade.id, 'messages');
+        await addDoc(messagesCollection, {
+            ...tempMessage,
+            createdAt: serverTimestamp()
+        });
+
+        if (mediaUrl) {
             await addReceiptToTrade(firestore, trade.id, mediaUrl);
             toast({ title: "Receipt Uploaded", description: "The seller has been notified." });
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Upload Failed", description: error.message });
-            // remove the optimistic message
-            setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
         }
+    } catch(error: any) {
+        console.error("Failed to send message", error);
+        toast({ variant: "destructive", title: "Send Failed", description: error.message });
     }
   };
   
@@ -76,7 +93,8 @@ export function TradeChat({ currentUserId, trade }: TradeChatProps) {
     if (!file) return;
     setIsUploading(true);
 
-    // Simulate upload and get a URL
+    // In a real app, you'd upload to Firebase Storage here.
+    // For this demo, we'll use a data URL as a placeholder.
     const reader = new FileReader();
     reader.onload = (event) => {
         const result = event.target?.result as string;
@@ -106,7 +124,7 @@ export function TradeChat({ currentUserId, trade }: TradeChatProps) {
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                        <p>{showUsernames ? 'Hide' : 'Show'} full usernames</p>
+                        <p>{showUsernames ? 'Hide full usernames' : 'Show full usernames'}</p>
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
@@ -116,12 +134,21 @@ export function TradeChat({ currentUserId, trade }: TradeChatProps) {
         </div>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
-        <ScrollArea className="h-full pr-4">
+        <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
+          {areMessagesLoading && <div className="space-y-4"><Skeleton className="h-16" /><Skeleton className="h-12" /></div>}
           <div className="space-y-4">
-            {messages.map((msg) => {
-              const user = mockUsers.find(u => u.id === msg.senderId);
+            {messages?.map((msg) => {
               const isCurrentUser = msg.senderId === currentUserId;
-              const senderName = showUsernames ? msg.senderUsername : (isCurrentUser ? 'You' : 'Trader');
+              
+              let senderName = isCurrentUser ? 'You' : trade.buyerId === msg.senderId ? trade.buyer.userId : trade.seller.userId;
+              if (showUsernames && !isCurrentUser) {
+                senderName = msg.senderUsername;
+              }
+
+              if (msg.isModerator) {
+                senderName = "Moderator";
+              }
+
               return (
                 <div
                   key={msg.id}
@@ -132,30 +159,31 @@ export function TradeChat({ currentUserId, trade }: TradeChatProps) {
                 >
                   {!isCurrentUser && (
                     <Avatar className="h-8 w-8">
-                       <AvatarImage src={`https://picsum.photos/seed/${user?.id}/100/100`} />
-                       <AvatarFallback>{user?.userId.substring(0, 2)}</AvatarFallback>
+                       <AvatarImage src={`https://picsum.photos/seed/${msg.senderId}/100/100`} />
+                       <AvatarFallback>{senderName.substring(0, 2)}</AvatarFallback>
                     </Avatar>
                   )}
                   <div
                     className={cn(
                       "max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-2",
-                      isCurrentUser
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
+                      isCurrentUser && !msg.isModerator && "bg-primary text-primary-foreground",
+                      !isCurrentUser && !msg.isModerator && "bg-muted",
+                      msg.isModerator && "bg-amber-100 text-amber-900 border border-amber-200"
                     )}
                   >
-                    <div>
-                        <p className="font-bold mb-1">{senderName}</p>
-                        {msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}
-                         {msg.mediaUrl && msg.mediaType === 'image' && (
-                            <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer">
-                                <Image src={msg.mediaUrl} alt="Uploaded receipt" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" />
-                            </a>
-                        )}
-                        <p className="text-xs mt-1 opacity-70 text-right">
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                    <div className="flex items-center gap-2">
+                        {msg.isModerator && <Shield className="h-4 w-4 text-amber-600"/>}
+                        <p className="font-bold">{senderName}</p>
                     </div>
+                    {msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}
+                     {msg.mediaUrl && msg.mediaType === 'image' && (
+                        <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer">
+                            <Image src={msg.mediaUrl} alt="Uploaded receipt" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" />
+                        </a>
+                    )}
+                    <p className="text-xs mt-1 opacity-70 text-right w-full">
+                      {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'sending...'}
+                    </p>
                   </div>
                 </div>
               );

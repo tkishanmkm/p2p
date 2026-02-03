@@ -138,7 +138,9 @@ service cloud.firestore {
        */
       match /messages/{messageId} {
         allow get, list: if isTradeParticipant(tradeId) || isAdmin();
-        allow create: if (isTradeParticipant(tradeId) || isAdmin()) && request.resource.data.senderId == request.auth.uid;
+        allow create: if (isTradeParticipant(tradeId) || isAdmin()) && 
+                         request.resource.data.senderId == request.auth.uid &&
+                         (request.resource.data.isModerator == true ? isAdmin() : true);
         allow update, delete: if (isOwner(resource.data.senderId) || isAdmin());
       }
 
@@ -249,4 +251,3 @@ service cloud.firestore {
     }
   }
 }
-    
