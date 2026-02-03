@@ -28,7 +28,7 @@ import { useFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 
 const formSchema = z.object({
   userId: z.string().min(1, { message: "User ID is required." }),
@@ -61,6 +61,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      await setPersistence(auth, browserLocalPersistence);
       const dummyEmail = `${values.userId}@tradeflow.app`;
       await signInWithEmailAndPassword(auth, dummyEmail, values.password);
       toast({ title: "Logging In...", description: "Please wait while we log you in." });

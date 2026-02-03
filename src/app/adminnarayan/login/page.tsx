@@ -26,7 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -65,6 +65,7 @@ export default function AdminLoginPage() {
     const adminEmail = `${values.adminId}@tradeflow.app`;
 
     try {
+      await setPersistence(auth, browserLocalPersistence);
       // First, try to sign in. This handles existing users.
       await signInWithEmailAndPassword(auth, adminEmail, values.password);
       

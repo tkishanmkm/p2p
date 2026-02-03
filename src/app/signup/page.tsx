@@ -31,7 +31,7 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { useEffect, useState, Suspense } from "react";
 import { useFirebase } from "@/firebase";
-import { onAuthStateChanged, updateProfile, createUserWithEmailAndPassword } from "firebase/auth";
+import { onAuthStateChanged, updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { SECURITY_QUESTIONS } from "@/lib/constants";
@@ -145,7 +145,8 @@ function SignupFormComponent() {
           setIsSigningUp(false);
           return;
       }
-
+      
+      await setPersistence(auth, browserLocalPersistence);
       const dummyEmail = `${values.userId}@tradeflow.app`;
       await createUserWithEmailAndPassword(auth, dummyEmail, values.password);
 
