@@ -30,11 +30,11 @@ import { Separator } from "@/components/ui/separator";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "#", label: "Wallets", icon: Wallet },
+  { href: "/wallets", label: "Wallets", icon: Wallet },
   { href: "/buy", label: "Buy Crypto", icon: Repeat, query: {type: 'buy'} },
   { href: "/sell", label: "Sell Crypto", icon: Repeat, query: {type: 'sell'} },
   { href: "/ads/create", label: "Create Ad", icon: PlusCircle },
-  { href: "#", label: "My Trades", icon: ArrowLeftRight },
+  { href: "/trades", label: "My Trades", icon: ArrowLeftRight },
   { href: "/support", label: "Support", icon: LifeBuoy },
 ];
 
