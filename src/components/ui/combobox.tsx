@@ -42,13 +42,6 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
-  const handleSelect = (currentValue: string) => {
-    onChange(currentValue);
-    if (shouldCloseOnSelect) {
-      setOpen(false);
-    }
-  };
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -59,7 +52,7 @@ export function Combobox({
           className={cn("w-full justify-between", !value && "text-muted-foreground", className)}
         >
           {value
-            ? options.find((option) => option.value === value)?.label
+            ? options.find((option) => option.value.toLowerCase() === value.toLowerCase())?.label
             : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -74,12 +67,17 @@ export function Combobox({
                 <CommandItem
                   key={option.value}
                   value={option.value}
-                  onSelect={handleSelect}
+                  onSelect={(currentValue) => {
+                    onChange(currentValue)
+                    if (shouldCloseOnSelect) {
+                      setOpen(false)
+                    }
+                  }}
                 >
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
+                      value?.toLowerCase() === option.value.toLowerCase() ? "opacity-100" : "opacity-0"
                     )}
                   />
                   {option.label}
