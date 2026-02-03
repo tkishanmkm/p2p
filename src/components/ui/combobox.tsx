@@ -27,6 +27,7 @@ interface ComboboxProps {
   searchPlaceholder?: string;
   emptyText?: string;
   className?: string;
+  shouldCloseOnSelect?: boolean;
 }
 
 export function Combobox({ 
@@ -36,9 +37,17 @@ export function Combobox({
   placeholder = "Select an option...",
   searchPlaceholder = "Search...",
   emptyText = "No results found.",
-  className
+  className,
+  shouldCloseOnSelect = true
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+
+  const handleSelect = (currentValue: string) => {
+    onChange(currentValue);
+    if (shouldCloseOnSelect) {
+      setOpen(false);
+    }
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -65,10 +74,7 @@ export function Combobox({
                 <CommandItem
                   key={option.value}
                   value={option.value}
-                  onSelect={() => {
-                    onChange(option.value)
-                    setOpen(false)
-                  }}
+                  onSelect={handleSelect}
                 >
                   <Check
                     className={cn(

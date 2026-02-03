@@ -229,14 +229,16 @@ export function CreateAdForm() {
                 <FormItem>
                   <FormLabel>Payment Methods</FormLabel>
                    <Combobox 
-                        options={paymentMethodOptions} 
+                        options={paymentMethodOptions}
+                        value="" // Not used for multi-select, display is handled by badges
                         onChange={(val) => {
-                            const current = form.getValues().paymentMethods || [];
+                            const current = field.value || [];
                             if (val && !current.includes(val)) {
                                 form.setValue('paymentMethods', [...current, val]);
                             }
                         }} 
-                        placeholder="Select payment methods"
+                        placeholder="Add a payment method"
+                        shouldCloseOnSelect={false}
                     />
                   <FormDescription>You can select multiple payment methods.</FormDescription>
                   <div className="flex flex-wrap gap-2 pt-2">
@@ -244,8 +246,7 @@ export function CreateAdForm() {
                       <Badge key={index} variant="secondary">
                         {pm}
                         <button type="button" onClick={() => {
-                            const updatedPms = [...(field.value || [])];
-                            updatedPms.splice(index, 1);
+                            const updatedPms = field.value?.filter((_, i) => i !== index) || [];
                             form.setValue('paymentMethods', updatedPms);
                         }} className="ml-2 rounded-full hover:bg-destructive/50 p-0.5">&times;</button>
                       </Badge>
