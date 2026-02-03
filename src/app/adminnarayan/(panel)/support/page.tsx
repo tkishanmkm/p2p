@@ -16,7 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
-import { mockSupportTickets } from "@/lib/mock-data"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +23,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+
+const mockSupportTickets: any[] = []; // Empty array
 
 export default function AdminSupportPage() {
   return (
@@ -51,7 +52,7 @@ export default function AdminSupportPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockSupportTickets.map((ticket) => (
+              {mockSupportTickets.length > 0 ? mockSupportTickets.map((ticket) => (
                 <TableRow key={ticket.id}>
                   <TableCell className="font-medium">{ticket.userId}</TableCell>
                   <TableCell>
@@ -81,7 +82,13 @@ export default function AdminSupportPage() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              )) : (
+                 <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                        No support tickets found.
+                    </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

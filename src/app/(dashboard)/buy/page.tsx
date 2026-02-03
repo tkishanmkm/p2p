@@ -1,3 +1,7 @@
+"use client";
+
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -8,15 +12,24 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AdCard } from "@/components/p2p/ad-card";
-import { mockP2PAds } from "@/lib/mock-data";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
-import { ListFilter, Search } from "lucide-react";
+import { ListFilter, Search, Wallet } from "lucide-react";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { countries } from "@/lib/countries";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { P2PAd } from "@/lib/types";
 
 export default function BuyPage() {
-  const sellAds = mockP2PAds.filter(ad => ad.adType === 'sell');
+  const { firestore } = useFirebase();
+
+  const sellAdsQuery = useMemoFirebase(() => 
+    firestore 
+      ? query(collection(firestore, "p2p_ads"), where("adType", "==", "sell"), where("active", "==", true))
+      : null,
+    [firestore]
+  );
+  const { data: sellAds, isLoading } = useCollection<P2PAd>(sellAdsQuery);
 
   return (
     <>
@@ -72,9 +85,25 @@ export default function BuyPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {sellAds.map((ad) => (
-            <AdCard key={ad.id} ad={ad} />
-          ))}
+          {isLoading && (
+            <div className="space-y-4">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          )}
+          {!isLoading && sellAds && sellAds.length > 0 && (
+            sellAds.map((ad) => (
+              <AdCard key={ad.id} ad={ad} />
+            ))
+          )}
+          {!isLoading && (!sellAds || sellAds.length === 0) && (
+              <div className="text-center py-10 border-2 border-dashed rounded-lg">
+                  <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-4 text-lg font-semibold">No Ads Available</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">There are currently no ads to buy crypto. Check back later or create a 'buy' ad yourself!</p>
+              </div>
+          )}
         </CardContent>
       </Card>
     </>

@@ -6,18 +6,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Users, ArrowLeftRight, ShieldAlert, DollarSign, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
-import { mockUsers, mockP2PAds, mockTrade, mockSupportTickets } from "@/lib/mock-data";
 
-const stats = [
-    { title: "Total Users", value: mockUsers.length.toLocaleString(), icon: <Users className="h-4 w-4 text-muted-foreground" /> },
-    { title: "Active Trades", value: "32", icon: <ArrowLeftRight className="h-4 w-4 text-muted-foreground" /> },
-    { title: "Open Disputes", value: "4", icon: <ShieldAlert className="h-4 w-4 text-muted-foreground" /> },
-    { title: "24h Volume", value: "$12,405.82", icon: <DollarSign className="h-4 w-4 text-muted-foreground" /> },
-    { title: "Pending Deposits", value: "3", icon: <ArrowDownToLine className="h-4 w-4 text-muted-foreground" /> },
-    { title: "Pending Withdrawals", value: "1", icon: <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" /> },
-];
-
+// This will become a real data component
 export default function AdminDashboardPage() {
+    
+    // In a real app, these values would come from Firestore queries.
+    // For now, using placeholders.
+    const stats = [
+        { title: "Total Users", value: "...", icon: <Users className="h-4 w-4 text-muted-foreground" /> },
+        { title: "Active Trades", value: "...", icon: <ArrowLeftRight className="h-4 w-4 text-muted-foreground" /> },
+        { title: "Open Disputes", value: "...", icon: <ShieldAlert className="h-4 w-4 text-muted-foreground" /> },
+        { title: "24h Volume", value: "$...", icon: <DollarSign className="h-4 w-4 text-muted-foreground" /> },
+        { title: "Pending Deposits", value: "...", icon: <ArrowDownToLine className="h-4 w-4 text-muted-foreground" /> },
+        { title: "Pending Withdrawals", value: "...", icon: <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" /> },
+    ];
+
   return (
     <>
       <div className="flex items-center">
