@@ -198,4 +198,3 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
     });
   });
 }
-    

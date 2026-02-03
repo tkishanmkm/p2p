@@ -148,4 +148,3 @@ function DepositPageContent() {
 export default function DepositPage() {
     return <DepositPageContent />
 }
-    

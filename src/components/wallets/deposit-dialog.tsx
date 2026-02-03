@@ -192,4 +192,3 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
     </Dialog>
   );
 }
-    

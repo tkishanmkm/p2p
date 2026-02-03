@@ -69,32 +69,6 @@ export default function WalletsPage() {
   const { data: withdrawals, isLoading: isWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
 
 
-  const existingWalletCryptos = wallets?.map(w => w.crypto) || [];
-  const availableCryptos = SUPPORTED_CRYPTOS.filter(c => !existingWalletCryptos.includes(c.name));
-
-  const handleCreateWallet = async (crypto: CryptoCurrency) => {
-    if (!user || !firestore) return;
-
-    try {
-      const batch = writeBatch(firestore);
-      const walletRef = doc(firestore, "users", user.uid, "wallets", crypto);
-      const newWallet: UserWallet = {
-        id: crypto,
-        userId: user.uid,
-        crypto: crypto,
-        balance: 0,
-        lockedBalance: 0,
-        updatedAt: new Date().toISOString(),
-      };
-      batch.set(walletRef, newWallet);
-      await batch.commit();
-      toast({ title: "Wallet Created", description: `Your ${crypto} wallet is ready.` });
-    } catch (error: any) {
-      console.error("Error creating wallet:", error);
-      toast({ variant: "destructive", title: "Error", description: "Could not create wallet." });
-    }
-  };
-
   const handleCancelWithdrawal = async (withdrawal: Withdrawal) => {
     if (!firestore || !user) return;
     if (!confirm("Are you sure you want to cancel this withdrawal request?")) return;
@@ -127,24 +101,9 @@ export default function WalletsPage() {
               <Button variant="outline" onClick={() => setIsWithdrawOpen(true)}>
                 <ArrowUpFromLine className="mr-2 h-4 w-4" /> Withdraw
               </Button>
-              <Button variant="outline" onClick={() => setIsDepositOpen(true)}>
+              <Button onClick={() => setIsDepositOpen(true)}>
                 <ArrowDownToLine className="mr-2 h-4 w-4" /> Deposit
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button disabled={availableCryptos.length === 0}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Wallet
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Select Crypto</DropdownMenuLabel>
-                  {availableCryptos.map(crypto => (
-                    <DropdownMenuItem key={crypto.name} onClick={() => handleCreateWallet(crypto.name)}>
-                      {crypto.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </CardHeader>
           <CardContent>
@@ -153,7 +112,7 @@ export default function WalletsPage() {
               <div className="text-center py-10 border-2 border-dashed rounded-lg">
                   <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-4 text-lg font-semibold">No Wallets Found</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Click "Add Wallet" to create your first wallet.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Click "Deposit" to create your first wallet.</p>
               </div>
             )}
             {!isWalletsLoading && wallets && wallets.length > 0 && (

@@ -31,4 +31,3 @@ export const LANGUAGES = [
 // In a real app, these would be in environment variables
 export const ADMIN_ID = 'Narayanharihari';
 export const ADMIN_PASS = 'XGY6ukm@5498';
-    
