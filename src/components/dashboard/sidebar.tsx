@@ -16,22 +16,21 @@ import {
   Wallet,
   ArrowLeftRight,
   PlusCircle,
-  MessageSquare,
   LifeBuoy,
   LogOut,
   Repeat,
-  ShieldAlert
+  Settings
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Separator } from "@/components/ui/separator";
+import { useFirebase } from "@/firebase";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/wallets", label: "Wallets", icon: Wallet },
-  { href: "/buy", label: "Buy Crypto", icon: Repeat, query: {type: 'buy'} },
-  { href: "/sell", label: "Sell Crypto", icon: Repeat, query: {type: 'sell'} },
+  { href: "/buy", label: "Buy Crypto", icon: Repeat },
+  { href: "/sell", label: "Sell Crypto", icon: Repeat },
   { href: "/ads/create", label: "Create Ad", icon: PlusCircle },
   { href: "/trades", label: "My Trades", icon: ArrowLeftRight },
   { href: "/support", label: "Support", icon: LifeBuoy },
@@ -39,7 +38,7 @@ const menuItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname();
-  const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar-1');
+  const { user } = useFirebase();
 
   return (
     <Sidebar>
@@ -66,18 +65,27 @@ export function DashboardSidebar() {
       <Separator />
       <SidebarFooter>
          <div className="flex items-center gap-3 p-2">
-          {userAvatar && (
             <Avatar className="h-10 w-10">
-              <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint}/>
-              <AvatarFallback>CK</AvatarFallback>
+              {user?.photoURL ? (
+                <AvatarImage src={user.photoURL} alt={user.displayName || "User Avatar"} />
+              ) : (
+                <AvatarFallback className="bg-white border text-muted-foreground">
+                  {user?.displayName?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              )}
             </Avatar>
-          )}
           <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
-            <p className="font-semibold truncate">CryptoKing</p>
-            <p className="text-xs text-muted-foreground truncate">john@example.com</p>
+            <p className="font-semibold truncate">{user?.displayName || "..."}</p>
           </div>
         </div>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <Link href="/settings">
+              <SidebarMenuButton icon={<Settings />} tooltip="Settings">
+                Settings
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton icon={<LogOut />} tooltip="Logout">
               Logout
@@ -88,3 +96,5 @@ export function DashboardSidebar() {
     </Sidebar>
   );
 }
+
+    

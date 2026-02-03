@@ -1,6 +1,7 @@
-import { Bell, Search } from "lucide-react";
+"use client";
+
+import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,11 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Link from "next/link";
+import { useFirebase } from "@/firebase";
 
 export function DashboardHeader() {
-  const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar-1');
+  const { user } = useFirebase();
   
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
@@ -32,20 +33,24 @@ export function DashboardHeader() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="icon" className="rounded-full">
-            {userAvatar && (
-                <Avatar className="h-8 w-8">
-                    <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint} />
-                    <AvatarFallback>CK</AvatarFallback>
-                </Avatar>
-            )}
+            <Avatar className="h-8 w-8">
+              {user?.photoURL ? (
+                <AvatarImage src={user.photoURL} alt={user.displayName || "User Avatar"} />
+              ) : (
+                <AvatarFallback className="bg-white border text-muted-foreground">
+                  {user?.displayName?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              )}
+            </Avatar>
             <span className="sr-only">Toggle user menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel>{user?.displayName || "My Account"}</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Profile</DropdownMenuItem>
-          <DropdownMenuItem>Settings</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/settings">Settings</Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/support">Support</Link>
           </DropdownMenuItem>
@@ -56,3 +61,5 @@ export function DashboardHeader() {
     </header>
   );
 }
+
+    

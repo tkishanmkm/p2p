@@ -24,6 +24,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
+import { useFirebase, initiateEmailSignIn } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   userId: z.string().min(1, { message: "User ID is required." }),
@@ -35,6 +39,10 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const router = useRouter();
+  const { auth } = useFirebase();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -44,11 +52,25 @@ export default function LoginPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    // In a real app, you'd handle authentication here.
-    // On success, redirect to the dashboard.
-    router.push("/dashboard");
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth) {
+      toast({ variant: "destructive", title: "Error", description: "Authentication service not ready."});
+      return;
+    }
+    setIsLoading(true);
+
+    try {
+      const dummyEmail = `${values.userId}@tradeflow.app`;
+      // We don't await this, but we'll listen for the result
+      await initiateEmailSignIn(auth, dummyEmail, values.password);
+      toast({ title: "Logging In...", description: "Please wait while we log you in." });
+      // The onAuthStateChanged listener in the provider will handle the redirect
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Login Failed", description: "Invalid credentials or user does not exist." });
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -120,8 +142,9 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">
-                Log In
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading ? "Logging in..." : "Log In"}
               </Button>
             </form>
           </Form>
@@ -136,3 +159,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    

@@ -15,11 +15,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, Plus, Minus, BookOpen, ShieldCheck, LifeBuoy, FileText } from "lucide-react";
+import { Minus, Plus, BookOpen, ShieldCheck, LifeBuoy, FileText } from "lucide-react";
 import Link from "next/link";
 import { mockP2PAds, mockUsers, mockFeedbacks } from "@/lib/mock-data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Progress } from "@/components/ui/progress";
 import { BtcLogo, EthLogo, UsdtLogo, LtcLogo } from "@/components/icons";
 import type { CryptoCurrency } from "@/lib/types";
@@ -48,7 +47,6 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?:
 
 export default function DashboardPage() {
     const user = mockUsers[0];
-    const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar-1');
 
   return (
     <>
@@ -207,3 +205,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    

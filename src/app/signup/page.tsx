@@ -24,11 +24,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
+import { useEffect, useState } from "react";
+import { useFirebase, initiateEmailSignUp } from "@/firebase";
+import { onAuthStateChanged, updateProfile } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
+import { doc, setDoc } from "firebase/firestore";
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -44,6 +49,10 @@ const formSchema = z.object({
 
 export default function SignupPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const { auth, firestore } = useFirebase();
+  const [isSigningUp, setIsSigningUp] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,11 +63,59 @@ export default function SignupPage() {
     },
   });
 
+  useEffect(() => {
+    if (!auth || !firestore) return;
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && isSigningUp) {
+        setIsSigningUp(false);
+        const values = form.getValues();
+        
+        try {
+          // 1. Update auth user profile
+          await updateProfile(user, { displayName: values.userId });
+
+          // 2. Create firestore document
+          const userDocRef = doc(firestore, "users", user.uid);
+          const newUserDoc = {
+              id: user.uid,
+              userId: values.userId,
+              fullName: values.fullName,
+              dob: values.dob.toISOString().split('T')[0], // YYYY-MM-DD
+              isBanned: false,
+              isOnHold: false,
+              tradeVolume: "0",
+              completedTrades: 0,
+              usernameChanged: false,
+              createdAt: new Date().toISOString(),
+              lastLoginIp: "0.0.0.0", // Placeholder
+              feedbackScore: 100,
+              accountAge: "0 days",
+              photoURL: ""
+          };
+          await setDoc(userDocRef, newUserDoc);
+
+          toast({ title: "Account Created", description: "Redirecting to your dashboard..." });
+          router.push('/dashboard');
+
+        } catch (error: any) {
+          console.error("Error creating user profile:", error);
+          toast({ variant: "destructive", title: "Signup Error", description: "Could not save user profile." });
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth, firestore, isSigningUp, form, router, toast]);
+
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    // In a real app, you'd handle registration here.
-    // On success, redirect to the dashboard.
-    router.push("/dashboard");
+    if (!auth) {
+      toast({ variant: "destructive", title: "Error", description: "Authentication service not ready."});
+      return;
+    }
+    setIsSigningUp(true);
+    const dummyEmail = `${values.userId}@tradeflow.app`;
+    initiateEmailSignUp(auth, dummyEmail, values.password);
   }
 
   return (
@@ -181,8 +238,9 @@ export default function SignupPage() {
                 <Link href="#" className="underline">Terms of Service</Link> and{" "}
                 <Link href="#" className="underline">Privacy Policy</Link>.
               </div>
-              <Button type="submit" className="w-full">
-                Create Account
+              <Button type="submit" className="w-full" disabled={isSigningUp}>
+                {isSigningUp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSigningUp ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
           </Form>
@@ -197,3 +255,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    

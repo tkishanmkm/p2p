@@ -7,7 +7,7 @@ export type User = {
   oldUserId?: string;
   fullName: string; // Encrypted
   dob: string; // Encrypted, DATE
-  email?: string;
+  photoURL?: string;
   isBanned: boolean;
   isOnHold: boolean;
   tradeVolume: string; // DECIMAL
@@ -153,3 +153,5 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
+
+    

@@ -9,7 +9,6 @@ export const mockUsers: User[] = [
     userId: 'CryptoKing',
     fullName: 'John Doe',
     dob: '1990-01-15',
-    email: 'john@example.com',
     isBanned: false,
     isOnHold: false,
     tradeVolume: '125000.50',
@@ -25,7 +24,6 @@ export const mockUsers: User[] = [
     userId: 'SatoshiQueen',
     fullName: 'Jane Smith',
     dob: '1995-05-20',
-    email: 'jane@example.com',
     isBanned: false,
     isOnHold: false,
     tradeVolume: '78000.00',
@@ -42,7 +40,6 @@ export const mockUsers: User[] = [
     userId: 'LTC-Lover',
     fullName: 'Sam Wilson',
     dob: '1988-11-30',
-    email: 'sam@example.com',
     isBanned: true,
     isOnHold: false,
     tradeVolume: '500.00',
@@ -115,7 +112,7 @@ export const mockP2PAds: P2PAd[] = [
     fixedRate: 8000,
     minAmount: 5000,
     maxAmount: 50000,
-    terms: 'Fast trades in INR. UPI preferred. No negotiations.',
+    terms: 'Fast trades in INR. No negotiations.',
     active: true,
     createdAt: sub(now, { days: 1 }).toISOString(),
     user: { userId: 'CryptoKing', feedbackScore: 98, completedTrades: 150 },
@@ -242,3 +239,5 @@ export const mockFeedbacks: Feedback[] = [
         fromUsername: 'LTC-Lover',
     }
 ];
+
+    
