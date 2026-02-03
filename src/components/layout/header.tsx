@@ -12,8 +12,9 @@ import { LANGUAGES } from "@/lib/constants";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navLinks = [
-  { href: "/buy", label: "Trade" },
-  { href: "/wallets", label: "Wallet" },
+  { href: "/buy", label: "Buy Crypto" },
+  { href: "/sell", label: "Sell Crypto" },
+  { href: "/ads/create", label: "Create Ad" },
   { href: "/support", label: "Support" },
 ];
 
@@ -54,19 +55,19 @@ export function Header() {
           </Sheet>
         </div>
 
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-start">
-          <nav className="hidden md:flex items-center gap-8 text-sm">
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+          <nav className="hidden md:flex items-center gap-6 text-sm">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="font-medium text-foreground/70 transition-colors hover:text-foreground"
+                className="font-medium text-foreground/60 transition-colors hover:text-foreground/80"
               >
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="flex flex-1 items-center justify-end gap-2">
+          <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -80,8 +81,8 @@ export function Header() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="ghost" asChild>
-              <Link href="/login">Log in</Link>
+            <Button variant="secondary" asChild>
+              <Link href="/login">Log In</Link>
             </Button>
             <Button asChild>
               <Link href="/signup">Join us</Link>
