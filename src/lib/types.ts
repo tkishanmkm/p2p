@@ -107,6 +107,7 @@ export type Trade = {
   fiatCurrency: string;
   fiatAmount: number;
   price: number; // Price per crypto
+  paymentMethod: string;
   status: TradeStatus;
   claimedByBuyer: boolean;
   paymentReceiptUrl?: string;

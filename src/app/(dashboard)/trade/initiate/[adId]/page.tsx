@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function ActiveTradePrompt({ trade }: { trade: Trade }) {
   const router = useRouter();
@@ -95,6 +96,7 @@ export default function InitiateTradePage() {
 
   const [fiatAmount, setFiatAmount] = useState("");
   const [cryptoAmount, setCryptoAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -123,7 +125,12 @@ export default function InitiateTradePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (error || !fiatAmount || !ad || !user) return;
+    if (error || !fiatAmount || !ad || !user || !paymentMethod) {
+        if (!paymentMethod) {
+            setError("Please select a payment method.");
+        }
+        return;
+    };
     setIsSubmitting(true);
 
     try {
@@ -132,7 +139,8 @@ export default function InitiateTradePage() {
         user.uid,
         ad,
         parseFloat(cryptoAmount),
-        parseFloat(fiatAmount)
+        parseFloat(fiatAmount),
+        paymentMethod
       );
       toast({ title: "Trade Initiated!", description: "You are being redirected to the trade page." });
       router.push(`/trade/${tradeId}`);
@@ -178,7 +186,7 @@ export default function InitiateTradePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
               <div>
                 <Label>You Pay ({ad.fiatCurrency})</Label>
                 <Input
@@ -193,6 +201,21 @@ export default function InitiateTradePage() {
                 <Input type="text" value={cryptoAmount} readOnly disabled />
               </div>
             </div>
+            
+            <div>
+                <Label>Payment Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {ad.paymentMethods.map(pm => (
+                            <SelectItem key={pm} value={pm}>{pm}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            
             {error && <p className="text-sm text-destructive">{error}</p>}
             
             <Alert>
@@ -201,14 +224,14 @@ export default function InitiateTradePage() {
                 <AlertDescription>
                     <ul className="list-disc pl-5 space-y-1 mt-2">
                         <li>Seller: {ad.user.userId}</li>
-                        <li>Payment Method: {ad.paymentMethods.join(', ')}</li>
+                        <li>Available Methods: {ad.paymentMethods.join(', ')}</li>
                         <li>Price: {ad.rateType === 'fixed' ? `${ad.fixedRate} ${ad.fiatCurrency}` : `Market rate`}</li>
                         <li>Seller's Terms: {ad.terms}</li>
                     </ul>
                 </AlertDescription>
             </Alert>
 
-            <Button type="submit" className="w-full" size="lg" disabled={!!error || !fiatAmount || isSubmitting}>
+            <Button type="submit" className="w-full" size="lg" disabled={!!error || !fiatAmount || !paymentMethod || isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? 'Starting Trade...' : 'Buy Now'}
             </Button>

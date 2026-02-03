@@ -36,6 +36,7 @@ export async function initiateTrade(
   ad: P2PAd,
   cryptoAmount: number,
   fiatAmount: number,
+  paymentMethod: string
 ): Promise<string> {
     if (ad.userId === buyerId) {
         throw new Error("You cannot trade with yourself.");
@@ -82,6 +83,7 @@ export async function initiateTrade(
         amount: cryptoAmount,
         fiatCurrency: ad.fiatCurrency,
         fiatAmount: fiatAmount,
+        paymentMethod: paymentMethod,
         price: fiatAmount / cryptoAmount,
         status: 'active',
         claimedByBuyer: false,

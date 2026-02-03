@@ -52,9 +52,10 @@ export function TradeDetails({ trade, sellerTerms }: TradeDetailsProps) {
         </div>
 
         <div className="space-y-2">
-            <h4 className="font-semibold">Participants</h4>
+            <h4 className="font-semibold">Participants & Payment</h4>
             <DetailRow label="Buyer" value={trade.buyer.userId} isLink href={`/users/${trade.buyer.userId}`} />
             <DetailRow label="Seller" value={trade.seller.userId} isLink href={`/users/${trade.seller.userId}`} />
+            <DetailRow label="Payment Method" value={trade.paymentMethod} />
         </div>
         
         <div className="space-y-2">
