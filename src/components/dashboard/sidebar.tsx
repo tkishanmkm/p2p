@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  SidebarProvider,
   Sidebar,
   SidebarHeader,
   SidebarContent,
@@ -43,51 +42,49 @@ export function DashboardSidebar() {
   const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar-1');
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <Logo />
-        </SidebarHeader>
-        <SidebarContent className="p-2">
-          <SidebarMenu>
-            {menuItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <Link href={item.href}>
-                  <SidebarMenuButton
-                    isActive={pathname === item.href}
-                    icon={<item.icon />}
-                    tooltip={item.label}
-                  >
-                    {item.label}
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarContent>
-        <Separator />
-        <SidebarFooter>
-           <div className="flex items-center gap-3 p-2">
-            {userAvatar && (
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint}/>
-                <AvatarFallback>CK</AvatarFallback>
-              </Avatar>
-            )}
-            <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
-              <p className="font-semibold truncate">CryptoKing</p>
-              <p className="text-xs text-muted-foreground truncate">john@example.com</p>
-            </div>
-          </div>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton icon={<LogOut />} tooltip="Logout">
-                Logout
-              </SidebarMenuButton>
+    <Sidebar>
+      <SidebarHeader>
+        <Logo />
+      </SidebarHeader>
+      <SidebarContent className="p-2">
+        <SidebarMenu>
+          {menuItems.map((item) => (
+            <SidebarMenuItem key={item.label}>
+              <Link href={item.href}>
+                <SidebarMenuButton
+                  isActive={pathname === item.href}
+                  icon={<item.icon />}
+                  tooltip={item.label}
+                >
+                  {item.label}
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-    </SidebarProvider>
+          ))}
+        </SidebarMenu>
+      </SidebarContent>
+      <Separator />
+      <SidebarFooter>
+         <div className="flex items-center gap-3 p-2">
+          {userAvatar && (
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint}/>
+              <AvatarFallback>CK</AvatarFallback>
+            </Avatar>
+          )}
+          <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
+            <p className="font-semibold truncate">CryptoKing</p>
+            <p className="text-xs text-muted-foreground truncate">john@example.com</p>
+          </div>
+        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton icon={<LogOut />} tooltip="Logout">
+              Logout
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 }

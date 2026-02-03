@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  SidebarProvider,
   Sidebar,
   SidebarHeader,
   SidebarContent,
@@ -48,50 +47,48 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <Logo />
-          <Badge variant="destructive">ADMIN</Badge>
-        </SidebarHeader>
-        <SidebarContent className="p-2">
-          <SidebarMenu>
-            {menuItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <Link href={item.href}>
-                  <SidebarMenuButton
-                    isActive={pathname === item.href}
-                    icon={<item.icon />}
-                    tooltip={item.label}
-                  >
-                    <span className="flex-grow">{item.label}</span>
-                    {item.badge && <Badge variant="destructive" className="ml-auto">{item.badge}</Badge>}
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarContent>
-        <Separator />
-        <SidebarFooter>
-           <div className="flex items-center gap-3 p-2">
-            <Avatar className="h-10 w-10">
-                <AvatarFallback>AD</AvatarFallback>
-            </Avatar>
-            <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
-              <p className="font-semibold truncate">NARAYAN</p>
-              <p className="text-xs text-muted-foreground truncate">Super Administrator</p>
-            </div>
-          </div>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton icon={<LogOut />} tooltip="Logout">
-                Logout
-              </SidebarMenuButton>
+    <Sidebar>
+      <SidebarHeader>
+        <Logo />
+        <Badge variant="destructive">ADMIN</Badge>
+      </SidebarHeader>
+      <SidebarContent className="p-2">
+        <SidebarMenu>
+          {menuItems.map((item) => (
+            <SidebarMenuItem key={item.label}>
+              <Link href={item.href}>
+                <SidebarMenuButton
+                  isActive={pathname === item.href}
+                  icon={<item.icon />}
+                  tooltip={item.label}
+                >
+                  <span className="flex-grow">{item.label}</span>
+                  {item.badge && <Badge variant="destructive" className="ml-auto">{item.badge}</Badge>}
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-    </SidebarProvider>
+          ))}
+        </SidebarMenu>
+      </SidebarContent>
+      <Separator />
+      <SidebarFooter>
+         <div className="flex items-center gap-3 p-2">
+          <Avatar className="h-10 w-10">
+              <AvatarFallback>AD</AvatarFallback>
+          </Avatar>
+          <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
+            <p className="font-semibold truncate">NARAYAN</p>
+            <p className="text-xs text-muted-foreground truncate">Super Administrator</p>
+          </div>
+        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton icon={<LogOut />} tooltip="Logout">
+              Logout
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
