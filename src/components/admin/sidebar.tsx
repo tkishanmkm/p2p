@@ -15,15 +15,13 @@ import {
   LayoutDashboard,
   Users,
   ArrowLeftRight,
-  PlusCircle,
-  MessageSquare,
   LifeBuoy,
   LogOut,
-  Repeat,
   ShieldAlert,
   Wallet,
   Settings,
-  FileText
+  FileText,
+  Brush
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -39,7 +37,7 @@ const menuItems = [
   { href: "#", label: "Ads", icon: FileText },
   { href: "/adminnarayan/support", label: "Support", icon: LifeBuoy, badge: 2 },
   { href: "#", label: "Disputes", icon: ShieldAlert, badge: 1 },
-  { href: "#", label: "Wallet Settings", icon: Settings },
+  { href: "/adminnarayan/appearance", label: "Appearance", icon: Brush },
   { href: "#", label: "Security Logs", icon: FileText },
 ];
 
