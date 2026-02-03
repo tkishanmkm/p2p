@@ -25,7 +25,6 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
-import { ADMIN_ID, ADMIN_PASS } from "@/lib/constants";
 
 const formSchema = z.object({
   adminId: z.string().min(1, { message: "Admin ID is required." }),
@@ -48,7 +47,11 @@ export default function AdminLoginPage() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (values.adminId === ADMIN_ID && values.password === ADMIN_PASS) {
+    // Hardcoding credentials to ensure correct values are used for verification.
+    const correctAdminId = 'Narayanharihari';
+    const correctAdminPass = 'XGY6ukm@5498';
+
+    if (values.adminId === correctAdminId && values.password === correctAdminPass) {
       toast({
         title: "Login Successful",
         description: "Redirecting to admin dashboard...",
