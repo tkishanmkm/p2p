@@ -1,8 +1,7 @@
-// This is a new file
 "use client";
 
 import { useState } from "react";
-import { useFirebase, useCollection } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collectionGroup, query, where, orderBy } from "firebase/firestore";
 import {
   Card,
@@ -59,14 +58,15 @@ export default function AdminWithdrawalsPage() {
   const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
   const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
 
-  const withdrawalsRef = firestore ? collectionGroup(firestore, "withdrawals") : null;
-  const withdrawalsQuery = withdrawalsRef
-    ? query(
-        withdrawalsRef,
-        showAll ? orderBy("createdAt", "desc") : where("status", "==", "pending"),
-        orderBy("createdAt", "desc")
-      )
-    : null;
+  const withdrawalsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const withdrawalsRef = collectionGroup(firestore, "withdrawals");
+    if (showAll) {
+        return query(withdrawalsRef, orderBy("createdAt", "desc"));
+    } else {
+        return query(withdrawalsRef, where("status", "==", "pending"), orderBy("createdAt", "desc"));
+    }
+  }, [firestore, showAll]);
 
   const { data: withdrawals, isLoading } = useCollection<Withdrawal>(withdrawalsQuery);
 

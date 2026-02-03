@@ -1,6 +1,6 @@
 "use client";
 
-import { useFirebase, useCollection } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import {
   Card,
@@ -29,8 +29,10 @@ export default function AdminUsersPage() {
   const { firestore, user: adminUser } = useFirebase();
   const { toast } = useToast();
 
-  const usersRef = firestore ? collection(firestore, "users") : null;
-  const usersQuery = usersRef ? query(usersRef, orderBy("createdAt", "desc")) : null;
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "users"), orderBy("createdAt", "desc"));
+  }, [firestore]);
 
   const { data: users, isLoading } = useCollection<User>(usersQuery);
 

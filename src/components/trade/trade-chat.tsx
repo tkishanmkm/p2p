@@ -19,7 +19,7 @@ import { Send, Paperclip, Info, Loader2, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TradeChatMessage, Trade } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useFirebase, useCollection } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { addReceiptToTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
 import { collection, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
@@ -36,8 +36,11 @@ export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
-  const messagesRef = firestore ? query(collection(firestore, 'trades', trade.id, 'messages'), orderBy('createdAt', 'asc')) : null;
-  const { data: messages, isLoading: areMessagesLoading } = useCollection<TradeChatMessage>(messagesRef);
+  const messagesQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'trades', trade.id, 'messages'), orderBy('createdAt', 'asc')) : null,
+    [firestore, trade.id]
+  );
+  const { data: messages, isLoading: areMessagesLoading } = useCollection<TradeChatMessage>(messagesQuery);
 
   const [newMessage, setNewMessage] = useState("");
   const [showUsernames, setShowUsernames] = useState(false);

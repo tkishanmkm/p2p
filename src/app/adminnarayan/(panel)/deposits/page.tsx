@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useFirebase, useCollection } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collectionGroup, query, where, orderBy, doc, updateDoc } from "firebase/firestore";
 import {
   Card,
@@ -57,14 +57,16 @@ export default function AdminDepositsPage() {
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
 
-  const depositsRef = firestore ? collectionGroup(firestore, "deposits") : null;
-  const depositsQuery = depositsRef 
-    ? query(
-        depositsRef, 
-        showAll ? orderBy("createdAt", "desc") : where("status", "==", "pending"),
-        orderBy("createdAt", "desc")
-      ) 
-    : null;
+  const depositsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const depositsRef = collectionGroup(firestore, "deposits");
+    
+    if (showAll) {
+      return query(depositsRef, orderBy("createdAt", "desc"));
+    } else {
+      return query(depositsRef, where("status", "==", "pending"), orderBy("createdAt", "desc"));
+    }
+  }, [firestore, showAll]);
 
   const { data: deposits, isLoading } = useCollection<Deposit>(depositsQuery);
 

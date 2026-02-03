@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useFirebase, useCollection } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -57,15 +57,13 @@ export default function WalletsPage() {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
 
-  const walletsCollectionRef = user ? collection(firestore, "users", user.uid, "wallets") : null;
+  const walletsCollectionRef = useMemoFirebase(() => user ? collection(firestore, "users", user.uid, "wallets") : null, [firestore, user]);
   const { data: wallets, isLoading: isWalletsLoading } = useCollection<UserWallet>(walletsCollectionRef);
   
-  const depositsCollectionRef = user ? collection(firestore, "users", user.uid, "deposits") : null;
-  const depositsQuery = depositsCollectionRef ? query(depositsCollectionRef, orderBy("createdAt", "desc")) : null;
+  const depositsQuery = useMemoFirebase(() => user ? query(collection(firestore, "users", user.uid, "deposits"), orderBy("createdAt", "desc")) : null, [firestore, user]);
   const { data: deposits, isLoading: isDepositsLoading } = useCollection<Deposit>(depositsQuery);
   
-  const withdrawalsCollectionRef = user ? collection(firestore, "users", user.uid, "withdrawals") : null;
-  const withdrawalsQuery = withdrawalsCollectionRef ? query(withdrawalsCollectionRef, orderBy("createdAt", "desc")) : null;
+  const withdrawalsQuery = useMemoFirebase(() => user ? query(collection(firestore, "users", user.uid, "withdrawals"), orderBy("createdAt", "desc")) : null, [firestore, user]);
   const { data: withdrawals, isLoading: isWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
 
 

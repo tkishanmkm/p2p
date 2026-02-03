@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useDoc, useFirebase, useCollection } from "@/firebase";
+import { useDoc, useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection, query, where, limit } from "firebase/firestore";
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow, claimFundsForTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
@@ -37,7 +37,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const tradeRef = firestore && tradeId ? doc(firestore, "trades", tradeId) : null;
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
   
-  const disputeQuery = firestore && tradeId ? query(collection(firestore, `trades/${tradeId}/disputes`), where('status', '==', 'resolved'), limit(1)) : null;
+  const disputeQuery = useMemoFirebase(() => firestore && tradeId ? query(collection(firestore, `trades/${tradeId}/disputes`), where('status', '==', 'resolved'), limit(1)) : null, [firestore, tradeId]);
   const { data: resolvedDisputes } = useCollection<Dispute>(disputeQuery);
   const resolvedDispute = resolvedDisputes?.[0];
 

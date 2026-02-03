@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useFirebase, useCollection } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, setDoc, deleteDoc } from "firebase/firestore";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
@@ -66,8 +66,8 @@ export default function WalletSettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [availableChains, setAvailableChains] = useState<string[]>([]);
 
-  const addressesRef = firestore ? collection(firestore, "crypto_deposit_addresses") : null;
-  const { data: addresses, isLoading: areAddressesLoading } = useCollection<CryptoDepositAddress>(addressesRef);
+  const addressesQuery = useMemoFirebase(() => firestore ? collection(firestore, "crypto_deposit_addresses") : null, [firestore]);
+  const { data: addresses, isLoading: areAddressesLoading } = useCollection<CryptoDepositAddress>(addressesQuery);
 
   const form = useForm<AddressFormValues>({
     resolver: zodResolver(addressSchema),

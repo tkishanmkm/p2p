@@ -1,8 +1,7 @@
-// This is a new file
 "use client";
 
 import { useState } from "react";
-import { useFirebase, useCollection } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collectionGroup, query, where, orderBy, getDoc, doc } from "firebase/firestore";
 import {
   Card,
@@ -59,14 +58,16 @@ export default function AdminDisputesPage() {
   const [awardTo, setAwardTo] = useState<'buyer' | 'seller' | null>(null);
   const [isResolveAlertOpen, setIsResolveAlertOpen] = useState(false);
 
-  const disputesRef = firestore ? collectionGroup(firestore, "disputes") : null;
-  const disputesQuery = disputesRef 
-    ? query(
-        disputesRef, 
-        showAll ? orderBy("createdAt", "desc") : where("status", "==", "open"),
-        orderBy("createdAt", "desc")
-      ) 
-    : null;
+  const disputesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const disputesRef = collectionGroup(firestore, "disputes");
+
+    if (showAll) {
+        return query(disputesRef, orderBy("createdAt", "desc"));
+    } else {
+        return query(disputesRef, where("status", "==", "open"), orderBy("createdAt", "desc"));
+    }
+  }, [firestore, showAll]);
 
   const { data: disputes, isLoading } = useCollection<Dispute>(disputesQuery);
 
