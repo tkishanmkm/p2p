@@ -194,7 +194,7 @@ export function DashboardHeader() {
                     </AvatarFallback>
                     )}
                 </Avatar>
-                 <div className="text-left hidden md:block">
+                 <div className="text-left hidden sm:block">
                     {user?.displayName ? <p className="font-semibold text-sm">{user.displayName}</p> : <Skeleton className="h-5 w-20" />}
                     <p className="text-xs text-muted-foreground">${totalWalletValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                 </div>

@@ -3,15 +3,15 @@
 
 import { DashboardHeader } from "@/components/dashboard/header";
 
-export default function DashboardLayout({
+export default function FullPageLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen w-full">
+    <div className="flex flex-col min-h-screen w-full bg-background">
       <DashboardHeader />
-      <main className="flex flex-1 flex-col gap-4 p-2 sm:p-4 lg:p-6 bg-secondary/20">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8">
         {children}
       </main>
     </div>

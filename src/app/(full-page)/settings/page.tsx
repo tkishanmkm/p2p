@@ -1,3 +1,4 @@
+
 import { ProfileSettings } from "@/components/settings/profile-settings";
 import { ChangeUsernameForm } from "@/components/settings/change-username-form";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
@@ -12,7 +13,7 @@ import { User, Lock, Image } from "lucide-react";
 export default function SettingsPage() {
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex items-center mb-6">
         <h1 className="text-lg font-semibold md:text-2xl">Settings</h1>
       </div>
       <div className="flex-1 rounded-lg max-w-3xl mx-auto">
