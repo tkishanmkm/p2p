@@ -7,17 +7,27 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Trade } from "@/lib/types";
+import Link from "next/link";
+import { Button } from "../ui/button";
 
 interface TradeDetailsProps {
   trade: Trade;
   sellerTerms?: string; // Made optional as we might not have it right away
 }
 
-function DetailRow({ label, value, valueClass }: { label: string, value: string | React.ReactNode, valueClass?: string }) {
+function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { label: string, value: string | React.ReactNode, valueClass?: string, isLink?: boolean, href?: string }) {
+  const valueContent = isLink ? (
+    <Button variant="link" asChild className="p-0 h-auto font-medium">
+        <Link href={href}>{value}</Link>
+    </Button>
+  ) : (
+    <p className={`font-medium text-right ${valueClass}`}>{value}</p>
+  );
+  
   return (
     <div className="flex justify-between items-center text-sm">
       <p className="text-muted-foreground">{label}</p>
-      <p className={`font-medium text-right ${valueClass}`}>{value}</p>
+      {valueContent}
     </div>
   )
 }
@@ -43,8 +53,8 @@ export function TradeDetails({ trade, sellerTerms }: TradeDetailsProps) {
 
         <div className="space-y-2">
             <h4 className="font-semibold">Participants</h4>
-            <DetailRow label="Buyer" value={trade.buyer.userId} />
-            <DetailRow label="Seller" value={trade.seller.userId} />
+            <DetailRow label="Buyer" value={trade.buyer.userId} isLink href={`/users/${trade.buyer.userId}`} />
+            <DetailRow label="Seller" value={trade.seller.userId} isLink href={`/users/${trade.seller.userId}`} />
         </div>
         
         <div className="space-y-2">

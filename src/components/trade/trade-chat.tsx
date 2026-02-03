@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -140,14 +141,18 @@ export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
             {messages?.map((msg) => {
               const isCurrentUser = msg.senderId === currentUserId;
               
-              let senderName = isCurrentUser ? 'You' : trade.buyerId === msg.senderId ? trade.buyer.userId : trade.seller.userId;
-              if (showUsernames && !isCurrentUser) {
-                senderName = msg.senderUsername;
-              }
+              let senderName: string | React.ReactNode = isCurrentUser ? 'You' : (showUsernames ? msg.senderUsername : (trade.buyerId === msg.senderId ? trade.buyer.userId : trade.seller.userId));
 
               if (msg.isModerator) {
                 senderName = "Moderator";
               }
+              
+              const senderAvatar = (
+                 <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://picsum.photos/seed/${msg.senderId}/100/100`} />
+                    <AvatarFallback>{msg.senderUsername.substring(0, 2)}</AvatarFallback>
+                 </Avatar>
+              );
 
               return (
                 <div
@@ -157,11 +162,15 @@ export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
                     isCurrentUser ? "justify-end" : "justify-start"
                   )}
                 >
-                  {!isCurrentUser && (
-                    <Avatar className="h-8 w-8">
-                       <AvatarImage src={`https://picsum.photos/seed/${msg.senderId}/100/100`} />
-                       <AvatarFallback>{senderName.substring(0, 2)}</AvatarFallback>
-                    </Avatar>
+                  {!isCurrentUser && !msg.isModerator && (
+                    <Link href={`/users/${msg.senderUsername}`} className="self-end">
+                      {senderAvatar}
+                    </Link>
+                  )}
+                   {!isCurrentUser && msg.isModerator && (
+                      <div className="self-end">
+                        {senderAvatar}
+                      </div>
                   )}
                   <div
                     className={cn(
@@ -173,7 +182,11 @@ export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
                   >
                     <div className="flex items-center gap-2">
                         {msg.isModerator && <Shield className="h-4 w-4 text-amber-600"/>}
-                        <p className="font-bold">{senderName}</p>
+                        <p className="font-bold">
+                            {!isCurrentUser && !msg.isModerator ? (
+                                <Link href={`/users/${msg.senderUsername}`} className="hover:underline">{senderName}</Link>
+                            ) : senderName}
+                        </p>
                     </div>
                     {msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}
                      {msg.mediaUrl && msg.mediaType === 'image' && (

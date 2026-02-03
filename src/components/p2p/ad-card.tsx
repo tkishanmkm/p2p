@@ -22,7 +22,7 @@ export function AdCard({ ad }: AdCardProps) {
       <CardContent className="p-4">
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-center">
           {/* User Info */}
-          <div className="sm:col-span-1 flex items-center gap-3">
+          <Link href={`/users/${ad.user.userId}`} className="sm:col-span-1 flex items-center gap-3 hover:bg-muted/50 rounded-md p-2 -m-2 transition-colors">
             {userAvatar && (
               <Avatar>
                 <AvatarImage src={ad.user.photoURL || userAvatar.imageUrl} alt={ad.user.userId} data-ai-hint={userAvatar.imageHint} />
@@ -34,7 +34,7 @@ export function AdCard({ ad }: AdCardProps) {
               <p className="text-xs text-muted-foreground">{ad.user.completedTrades} trades</p>
               <p className="text-xs text-muted-foreground">{ad.user.feedbackScore}% positive</p>
             </div>
-          </div>
+          </Link>
           
           {/* Price */}
           <div className="sm:col-span-1">
@@ -77,5 +77,3 @@ export function AdCard({ ad }: AdCardProps) {
     </Card>
   );
 }
-
-    
