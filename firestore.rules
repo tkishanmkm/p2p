@@ -56,8 +56,10 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree and enforces self-creation.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
+      // Allow public read for profile pages. `list` is required for querying by username.
+      // This allows user enumeration, which is a trade-off for this feature.
+      // Sensitive data in user documents (e.g. fullName, dob) should be encrypted.
+      allow read: if true;
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if (isOwner(userId) || isAdmin()) && resource.data.id == userId;
       allow delete: if (isOwner(userId) || isAdmin());
@@ -248,5 +250,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
