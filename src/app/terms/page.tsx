@@ -5,7 +5,7 @@ export default function TermsPage() {
         <p className="text-muted-foreground">Last updated: {new Date().toLocaleDateString()}</p>
   
         <h2>1. Introduction</h2>
-        <p>Welcome to TradeFlow! These Terms of Service ("Terms") govern your use of our peer-to-peer cryptocurrency trading platform. By accessing or using our Services, you agree to be bound by these Terms.</p>
+        <p>Welcome to TradeFlow! These Terms of Service ("Terms") govern your use of our peer-to-peer coin trading platform. By accessing or using our Services, you agree to be bound by these Terms.</p>
   
         <h2>2. Eligibility</h2>
         <p>You must be at least 18 years old and have the legal capacity to enter into binding contracts to use our Services. You agree to comply with all applicable laws and regulations in your jurisdiction.</p>
@@ -26,9 +26,9 @@ export default function TermsPage() {
   
         <h2 id="seller-terms">6. Terms for Sellers</h2>
         <ul>
-          <li><strong>Creating an Ad:</strong> You are responsible for the accuracy of your ad, including payment methods, price, and terms. You must have the full amount of cryptocurrency available in your TradeFlow wallet before creating a sell ad.</li>
-          <li><strong>Confirming Payment:</strong> You must diligently check your payment account to confirm you have received the full payment from the buyer before releasing the crypto. Do not rely solely on the buyer's proof of payment.</li>
-          <li><strong>Releasing Cryptocurrency:</strong> Once you have confirmed receipt of payment, you must release the cryptocurrency from escrow promptly. Failure to do so after receiving payment will result in a dispute where the crypto will be awarded to the buyer, and your account may be penalized.</li>
+          <li><strong>Creating an Ad:</strong> You are responsible for the accuracy of your ad, including payment methods, price, and terms. You must have the full amount of coin available in your TradeFlow wallet before creating a sell ad.</li>
+          <li><strong>Confirming Payment:</strong> You must diligently check your payment account to confirm you have received the full payment from the buyer before releasing the coin. Do not rely solely on the buyer's proof of payment.</li>
+          <li><strong>Releasing Cryptocurrency:</strong> Once you have confirmed receipt of payment, you must release the coin from escrow promptly. Failure to do so after receiving payment will result in a dispute where the coin will be awarded to the buyer, and your account may be penalized.</li>
           <li><strong>Communication:</strong> Respond to your trade partner in a timely manner.</li>
         </ul>
   
@@ -42,7 +42,7 @@ export default function TermsPage() {
         <p>We may terminate or suspend your account at our discretion for any reason, including violation of these Terms. </p>
   
         <h2>10. Disclaimers</h2>
-        <p>Cryptocurrency trading involves significant risk. Our Services are provided "as is" without any warranties. We are not liable for any losses you may incur from trading.</p>
+        <p>Coin trading involves significant risk. Our Services are provided "as is" without any warranties. We are not liable for any losses you may incur from trading.</p>
       </div>
     );
   }

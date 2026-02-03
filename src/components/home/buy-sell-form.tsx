@@ -91,7 +91,7 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 pt-6">
         <div>
-            <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">All crypto</Label>
+            <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">All coins</Label>
             <Select value={crypto} onValueChange={(v) => setCrypto(v as CryptoCurrency)}>
                 <SelectTrigger className="bg-background h-12 text-base">
                     <SelectValue>

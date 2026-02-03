@@ -54,7 +54,7 @@ const adTags = [
 
 const adFormSchema = z.object({
   adType: z.enum(["buy", "sell"]),
-  crypto: z.string().min(1, "Please select a cryptocurrency."),
+  crypto: z.string().min(1, "Please select a coin."),
   fiatCurrency: z.string().min(1, "Please select a fiat currency."),
   paymentMethods: z.array(z.string()).min(1, "Select at least one payment method."),
   rateType: z.enum(["market", "fixed"]),
@@ -161,7 +161,7 @@ export function CreateAdForm() {
       <CardHeader>
         <CardTitle>Create a P2P Advertisement</CardTitle>
         <CardDescription>
-          Set up your ad to buy or sell crypto. It will be visible to other users.
+          Set up your ad to buy or sell coins. It will be visible to other users.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -196,10 +196,10 @@ export function CreateAdForm() {
                 name="crypto"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cryptocurrency</FormLabel>
+                    <FormLabel>Coin</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Select a crypto" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select a coin" /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {cryptoOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
@@ -308,7 +308,7 @@ export function CreateAdForm() {
                 name="fixedRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fixed Price per Crypto</FormLabel>
+                    <FormLabel>Fixed Price per Coin</FormLabel>
                     <Input 
                       type="number" 
                       step="any" 

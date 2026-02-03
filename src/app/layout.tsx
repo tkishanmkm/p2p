@@ -6,8 +6,8 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { PriceProvider } from '@/context/price-context';
 
 export const metadata: Metadata = {
-  title: 'TradeFlow - Secure P2P Crypto Trading',
-  description: 'A full-featured, production-quality Peer-to-Peer (P2P) cryptocurrency trading platform with an escrow system.',
+  title: 'TradeFlow - Secure P2P Coin Trading',
+  description: 'A full-featured, production-quality Peer-to-Peer (P2P) coin trading platform with an escrow system.',
 };
 
 export default function RootLayout({

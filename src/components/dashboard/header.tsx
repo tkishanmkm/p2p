@@ -41,8 +41,8 @@ import { usePrices } from "@/context/price-context";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/wallets", label: "Wallets", icon: Wallet },
-  { href: "/buy", label: "Buy Crypto", icon: ArrowDownToLine },
-  { href: "/sell", label: "Sell Crypto", icon: ArrowUpFromLine },
+  { href: "/buy", label: "Buy Coin", icon: ArrowDownToLine },
+  { href: "/sell", label: "Sell Coin", icon: ArrowUpFromLine },
   { href: "/ads/create", label: "Create Ad", icon: PlusCircle },
   { href: "/my-ads", label: "My Ads", icon: FileText },
   { href: "/trades", label: "My Trades", icon: ArrowLeftRight },

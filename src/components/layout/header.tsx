@@ -14,8 +14,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { ModeToggle } from "../mode-toggle";
 
 const mobileNavLinks = [
-  { href: "/buy", label: "Buy Crypto" },
-  { href: "/sell", label: "Sell Crypto" },
+  { href: "/buy", label: "Buy Coin" },
+  { href: "/sell", label: "Sell Coin" },
   { href: "/wallets", label: "Wallet" },
   { href: "/support", label: "Support" },
 ];
@@ -76,13 +76,13 @@ export function Header() {
                     <DropdownMenuItem asChild>
                         <Link href="/buy">
                             <ArrowDownToLine />
-                            Buy Crypto
+                            Buy Coin
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                         <Link href="/sell">
                             <ArrowUpFromLine />
-                            Sell Crypto
+                            Sell Coin
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

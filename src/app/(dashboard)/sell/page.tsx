@@ -36,7 +36,7 @@ function SellPageContent() {
   return (
     <>
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl">Sell Crypto</h1>
+        <h1 className="text-lg font-semibold md:text-2xl">Sell Coin</h1>
       </div>
       <Card>
         <CardHeader>
@@ -54,7 +54,7 @@ function SellPageContent() {
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="flex-1 sm:flex-initial">
                         <ListFilter className="mr-2 h-4 w-4" />
-                        Crypto
+                        Coin
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -102,7 +102,7 @@ function SellPageContent() {
               <div className="text-center py-10 border-2 border-dashed rounded-lg">
                   <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-4 text-lg font-semibold">No Ads Available</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">There are currently no ads to sell crypto to. Check back later or create a 'sell' ad yourself!</p>
+                  <p className="mt-1 text-sm text-muted-foreground">There are currently no ads to sell coins to. Check back later or create a 'sell' ad yourself!</p>
               </div>
           )}
         </CardContent>

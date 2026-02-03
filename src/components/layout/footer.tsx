@@ -47,7 +47,7 @@ export function Footer() {
           <div className="lg:col-span-2">
             <Logo />
             <p className="mt-4 text-sm text-muted-foreground max-w-xs">
-              Secure and easy P2P cryptocurrency trading with an escrow system you can trust.
+              Secure and easy P2P coin trading with an escrow system you can trust.
             </p>
           </div>
           {sections.map((section) => (

@@ -34,10 +34,10 @@ export default function Home() {
             <div className="container mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-10 lg:gap-16 items-center">
                 <div className="text-center md:text-left">
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-tight">
-                        Buy and sell crypto
+                        Buy and sell coins
                     </h1>
                      <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto md:mx-0">
-                        Peer-to-peer lets you trade crypto directly with other people. Our escrow and dispute moderation keep every trade protected.
+                        Peer-to-peer lets you trade coins directly with other people. Our escrow and dispute moderation keep every trade protected.
                     </p>
                     <div className="mt-8 max-w-md mx-auto md:mx-0">
                       <HomeSignupForm />
@@ -99,7 +99,7 @@ export default function Home() {
                   </CardHeader>
                   <CardContent>
                       <p className="text-muted-foreground">
-                          Browse buy or sell ads from other users. Filter by cryptocurrency, payment method, and amount to find the perfect match.
+                          Browse buy or sell ads from other users. Filter by coin, payment method, and amount to find the perfect match.
                       </p>
                   </CardContent>
               </Card>
@@ -114,7 +114,7 @@ export default function Home() {
                   </CardHeader>
                   <CardContent>
                       <p className="text-muted-foreground">
-                          Initiate a trade and communicate with your partner via our secure chat. The seller's crypto is locked in escrow for safety.
+                          Initiate a trade and communicate with your partner via our secure chat. The seller's coin is locked in escrow for safety.
                       </p>
                   </CardContent>
               </Card>
@@ -129,7 +129,7 @@ export default function Home() {
                   </CardHeader>
                   <CardContent>
                       <p className="text-muted-foreground">
-                          Once the buyer pays and the seller confirms, the crypto is instantly released from escrow into the buyer's wallet.
+                          Once the buyer pays and the seller confirms, the coin is instantly released from escrow into the buyer's wallet.
                       </p>
                   </CardContent>
               </Card>
@@ -205,7 +205,7 @@ export default function Home() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-muted-foreground">
-                            When a trade starts, the seller's cryptocurrency is automatically transferred into a secure, temporary holding vault (escrow). The funds are only released to the buyer once the seller has confirmed they've received the payment. This prevents sellers from running off with the payment without sending the crypto, and protects buyers from fraudulent sellers.
+                            When a trade starts, the seller's coin is automatically transferred into a secure, temporary holding vault (escrow). The funds are only released to the buyer once the seller has confirmed they've received the payment. This prevents sellers from running off with the payment without sending the coin, and protects buyers from fraudulent sellers.
                         </p>
                     </CardContent>
                 </Card>
@@ -220,7 +220,7 @@ export default function Home() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-muted-foreground">
-                            In the rare event of a disagreement, our dedicated support team is here to help. Either party can initiate a dispute. Our moderators will carefully review the trade details, chat logs, and payment evidence to make a fair and impartial decision, ensuring the crypto is awarded to the rightful party.
+                            In the rare event of a disagreement, our dedicated support team is here to help. Either party can initiate a dispute. Our moderators will carefully review the trade details, chat logs, and payment evidence to make a fair and impartial decision, ensuring the coin is awarded to the rightful party.
                         </p>
                     </CardContent>
                 </Card>
@@ -232,7 +232,7 @@ export default function Home() {
         <section id="supported-crypto" className="py-16 md:py-24 lg:py-32 bg-secondary/30">
             <div className="container mx-auto px-4 md:px-6">
               <div className="text-center max-w-3xl mx-auto">
-                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Supported Cryptocurrencies</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Supported Coins</h2>
                   <p className="mt-4 text-lg text-muted-foreground">
                       We support a growing list of popular digital assets, with more being added regularly.
                   </p>
