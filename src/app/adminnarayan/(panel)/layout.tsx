@@ -2,12 +2,33 @@
 
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { useAdminStatus } from "@/hooks/use-admin-status";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function AdminPanelLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { isAdmin, isLoading } = useAdminStatus();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAdmin) {
+      router.push("/adminnarayan/login");
+    }
+  }, [isAdmin, isLoading, router]);
+
+  if (isLoading || !isAdmin) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
