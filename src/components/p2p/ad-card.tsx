@@ -12,10 +12,9 @@ interface AdCardProps {
 
 export function AdCard({ ad }: AdCardProps) {
   const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-2');
-  const cryptoIcon = PlaceHolderImages.find(img => img.id === ad.crypto.toLowerCase());
   
   const priceLabel = ad.rateType === 'fixed'
-    ? `${ad.fixedRate?.toLocaleString()} ${ad.fiat}`
+    ? `${ad.fixedRate?.toLocaleString()} ${ad.fiatCurrency}`
     : `Market ${ad.ratePercent}%`;
 
   return (
@@ -48,7 +47,7 @@ export function AdCard({ ad }: AdCardProps) {
             <div className="flex gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Limit</p>
-                <p className="font-medium">{ad.minAmount.toLocaleString()} - {ad.maxAmount.toLocaleString()} {ad.fiat}</p>
+                <p className="font-medium">{ad.minAmount.toLocaleString()} - {ad.maxAmount.toLocaleString()} {ad.fiatCurrency}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Available</p>
@@ -65,7 +64,7 @@ export function AdCard({ ad }: AdCardProps) {
           {/* Action Button */}
           <div className="sm:col-span-1 sm:text-right">
             <Button asChild className="w-full sm:w-auto">
-              <Link href="/trade/1">
+              <Link href={`/trade/initiate/${ad.id}`}>
                 {ad.adType === 'sell' ? `Buy ${ad.crypto}` : `Sell ${ad.crypto}`}
               </Link>
             </Button>

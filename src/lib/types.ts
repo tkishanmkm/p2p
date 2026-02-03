@@ -20,11 +20,11 @@ export type User = {
 };
 
 export type UserWallet = {
-  id: string;
+  id: string; // crypto ticker e.g. 'BTC'
   userId: string;
   crypto: CryptoCurrency;
-  balance: string; // DECIMAL
-  lockedBalance: string; // DECIMAL
+  balance: number;
+  lockedBalance: number;
   updatedAt: string; // TIMESTAMP
 };
 
@@ -59,13 +59,13 @@ export type P2PAd = {
   userId: string;
   adType: 'buy' | 'sell';
   crypto: CryptoCurrency;
-  fiat: string;
+  fiatCurrency: string;
   paymentMethods: string[];
   rateType: 'fixed' | 'market';
-  ratePercent?: number; // DECIMAL
-  fixedRate?: number; // DECIMAL
-  minAmount: number; // DECIMAL
-  maxAmount: number; // DECIMAL
+  ratePercent?: number;
+  fixedRate?: number;
+  minAmount: number;
+  maxAmount: number;
   terms: string;
   active: boolean;
   createdAt: string; // TIMESTAMP
@@ -77,14 +77,16 @@ export type TradeStatus = 'active' | 'paid' | 'released' | 'expired' | 'disputed
 export type Trade = {
   id: string;
   tradeId: string; // Public
+  adId: string;
   buyerId: string;
   sellerId: string;
-  adId: string;
   crypto: CryptoCurrency;
-  amount: string; // Crypto amount
-  fiatAmount: string; // Fiat amount
-  price: string; // Price per crypto
+  amount: number; // Crypto amount
+  fiatCurrency: string;
+  fiatAmount: number;
+  price: number; // Price per crypto
   status: TradeStatus;
+  claimedByBuyer: boolean;
   expiresAt: string; // TIMESTAMP
   paidAt?: string; // TIMESTAMP
   releasedAt?: string; // TIMESTAMP

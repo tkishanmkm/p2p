@@ -10,7 +10,7 @@ import type { Trade } from "@/lib/types";
 
 interface TradeDetailsProps {
   trade: Trade;
-  sellerTerms: string;
+  sellerTerms?: string; // Made optional as we might not have it right away
 }
 
 function DetailRow({ label, value, valueClass }: { label: string, value: string | React.ReactNode, valueClass?: string }) {
@@ -37,8 +37,8 @@ export function TradeDetails({ trade, sellerTerms }: TradeDetailsProps) {
       <CardContent className="space-y-4">
         <div className="space-y-2 rounded-md border p-4">
             <DetailRow label="You are selling" value={`${trade.amount} ${trade.crypto}`} />
-            <DetailRow label="Price" value={`1 ${trade.crypto} = ${parseFloat(trade.price).toLocaleString()} ${trade.fiatAmount.split(' ')[1]}`} />
-            <DetailRow label="To receive" value={trade.fiatAmount} valueClass="text-lg font-bold text-green-600" />
+            <DetailRow label="Price" value={`1 ${trade.crypto} = ${trade.price.toLocaleString()} ${trade.fiatCurrency}`} />
+            <DetailRow label="To receive" value={`${trade.fiatAmount} ${trade.fiatCurrency}`} valueClass="text-lg font-bold text-green-600" />
         </div>
 
         <div className="space-y-2">
@@ -55,12 +55,12 @@ export function TradeDetails({ trade, sellerTerms }: TradeDetailsProps) {
             <DetailRow label="Expires At" value={new Date(trade.expiresAt).toLocaleString()} valueClass="text-destructive" />
         </div>
 
-         <div className="space-y-2">
+         {sellerTerms && <div className="space-y-2">
             <h4 className="font-semibold">Seller's Terms</h4>
             <div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground">
                 <p>{sellerTerms}</p>
             </div>
-        </div>
+        </div>}
 
       </CardContent>
     </Card>
