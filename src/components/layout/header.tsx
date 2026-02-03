@@ -12,17 +12,16 @@ import { LANGUAGES } from "@/lib/constants";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navLinks = [
-  { href: "/buy", label: "Buy Crypto" },
-  { href: "/sell", label: "Sell Crypto" },
-  { href: "/ads/create", label: "Create Ad" },
+  { href: "/buy", label: "Trade" },
+  { href: "/wallets", label: "Wallet" },
   { href: "/support", label: "Support" },
 ];
 
 export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
-        <div className="mr-4 hidden md:flex">
+      <div className="container flex h-16 items-center">
+        <div className="mr-8 hidden md:flex">
           <Link href="/">
             <Logo />
           </Link>
@@ -55,19 +54,19 @@ export function Header() {
           </Sheet>
         </div>
 
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <nav className="hidden md:flex items-center gap-6 text-sm">
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-start">
+          <nav className="hidden md:flex items-center gap-8 text-sm">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="font-medium text-foreground/60 transition-colors hover:text-foreground/80"
+                className="font-medium text-foreground/70 transition-colors hover:text-foreground"
               >
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-1 items-center justify-end gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -81,11 +80,11 @@ export function Header() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="secondary" asChild>
-              <Link href="/login">Log In</Link>
+            <Button variant="ghost" asChild>
+              <Link href="/login">Log in</Link>
             </Button>
             <Button asChild>
-              <Link href="/signup">Sign Up</Link>
+              <Link href="/signup">Join us</Link>
             </Button>
           </div>
         </div>
