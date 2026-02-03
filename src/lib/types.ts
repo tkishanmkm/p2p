@@ -78,6 +78,7 @@ export type P2PAd = {
   minAmount: number;
   maxAmount: number;
   terms: string;
+  tags?: string[];
   active: boolean;
   createdAt: string; // TIMESTAMP
   user: Pick<User, 'userId' | 'feedbackScore' | 'completedTrades'>;
@@ -117,8 +118,6 @@ export type TradeChatMessage = {
   mediaType?: 'image' | 'video';
   isModerator: boolean;
   createdAt: string; // TIMESTAMP
-  isHarmful?: boolean;
-  harmfulReasoning?: string;
 };
 
 export type Dispute = {
@@ -168,4 +167,5 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
+    
     

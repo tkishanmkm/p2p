@@ -25,7 +25,7 @@ export function AdCard({ ad }: AdCardProps) {
           <div className="sm:col-span-1 flex items-center gap-3">
             {userAvatar && (
               <Avatar>
-                <AvatarImage src={userAvatar.imageUrl} alt={ad.user.userId} data-ai-hint={userAvatar.imageHint} />
+                <AvatarImage src={ad.user.photoURL || userAvatar.imageUrl} alt={ad.user.userId} data-ai-hint={userAvatar.imageHint} />
                 <AvatarFallback>{ad.user.userId.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
             )}
@@ -58,6 +58,9 @@ export function AdCard({ ad }: AdCardProps) {
                 {ad.paymentMethods.slice(0, 3).map(pm => (
                     <Badge key={pm} variant="secondary">{pm}</Badge>
                 ))}
+                 {ad.tags?.map(tag => (
+                    <Badge key={tag} variant="outline">{tag}</Badge>
+                ))}
              </div>
           </div>
 
@@ -74,3 +77,5 @@ export function AdCard({ ad }: AdCardProps) {
     </Card>
   );
 }
+
+    

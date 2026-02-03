@@ -36,13 +36,20 @@ import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { paymentMethods } from "@/lib/payment-methods";
 import { useToast } from "@/hooks/use-toast";
-import { Switch } from "@/components/ui/switch";
 import { useFirebase, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
 import type { User, P2PAd, CryptoCurrency } from "@/lib/types";
 import { createP2PAd } from "@/lib/ads";
 import { useRouter } from "next/navigation";
-import { Label } from "../ui/label";
+import { Badge } from "../ui/badge";
+import { Checkbox } from "../ui/checkbox";
+
+const adTags = [
+  { id: "no-third-party", label: "No third party" },
+  { id: "no-receipt-required", label: "No receipt required" },
+  { id: "no-verification", label: "No verification" },
+  { id: "invoice-accepted", label: "Invoice accepted" },
+];
 
 const adFormSchema = z.object({
   adType: z.enum(["buy", "sell"]),
@@ -50,11 +57,12 @@ const adFormSchema = z.object({
   fiatCurrency: z.string().min(1, "Please select a fiat currency."),
   paymentMethods: z.array(z.string()).min(1, "Select at least one payment method."),
   rateType: z.enum(["market", "fixed"]),
-  ratePercent: z.coerce.number().optional(),
+  ratePercent: z.coerce.number().min(-50, "Value must be >= -50").max(50, "Value must be <= 50").optional(),
   fixedRate: z.coerce.number().optional(),
   minAmount: z.coerce.number().min(1, "Minimum amount is required."),
   maxAmount: z.coerce.number().min(1, "Maximum amount is required."),
   terms: z.string().min(10, "Terms must be at least 10 characters.").max(500, "Terms cannot exceed 500 characters."),
+  tags: z.array(z.string()).optional(),
 }).refine(data => {
     if (data.rateType === 'market') {
         return data.ratePercent !== undefined && data.ratePercent !== null;
@@ -95,6 +103,7 @@ export function CreateAdForm() {
       paymentMethods: [],
       rateType: "market",
       ratePercent: 1.5,
+      tags: [],
     },
   });
 
@@ -122,6 +131,7 @@ export function CreateAdForm() {
         minAmount: data.minAmount,
         maxAmount: data.maxAmount,
         terms: data.terms,
+        tags: data.tags,
         active: true,
     };
     
@@ -130,10 +140,11 @@ export function CreateAdForm() {
             id: user.uid,
             userId: userData.userId,
             feedbackScore: userData.feedbackScore,
-            completedTrades: userData.completedTrades
+            completedTrades: userData.completedTrades,
+            photoURL: userData.photoURL
         });
         toast({ title: "Ad Created", description: "Your ad has been successfully posted." });
-        router.push(data.adType === 'sell' ? '/sell' : '/buy');
+        router.push(data.adType === 'sell' ? '/buy' : '/sell');
     } catch (error) {
         console.error(error);
         toast({ variant: "destructive", title: "Failed to create ad", description: "An error occurred." });
@@ -269,7 +280,7 @@ export function CreateAdForm() {
                       <Input type="number" step="0.01" placeholder="1.5" {...field} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
-                    <FormDescription>Percentage above or below market rate. Use negative for below.</FormDescription>
+                    <FormDescription>Percentage from -50% to +50%.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -333,6 +344,56 @@ export function CreateAdForm() {
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="tags"
+              render={() => (
+                <FormItem>
+                  <div className="mb-4">
+                    <FormLabel>Ad Tags</FormLabel>
+                    <FormDescription>Select tags that apply to your ad.</FormDescription>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                  {adTags.map((item) => (
+                    <FormField
+                      key={item.id}
+                      control={form.control}
+                      name="tags"
+                      render={({ field }) => {
+                        return (
+                          <FormItem
+                            key={item.id}
+                            className="flex flex-row items-start space-x-3 space-y-0"
+                          >
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(item.label)}
+                                onCheckedChange={(checked) => {
+                                  return checked
+                                    ? field.onChange([...(field.value || []), item.label])
+                                    : field.onChange(
+                                        field.value?.filter(
+                                          (value) => value !== item.label
+                                        )
+                                      )
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              {item.label}
+                            </FormLabel>
+                          </FormItem>
+                        )
+                      }}
+                    />
+                  ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
 
             <Button type="submit" size="lg" className="w-full md:w-auto">Create Ad</Button>
           </form>
@@ -341,3 +402,5 @@ export function CreateAdForm() {
     </Card>
   );
 }
+
+    
