@@ -195,14 +195,14 @@ service cloud.firestore {
     }
     
     /**
-     * @description Stores admin-set deposit addresses. Readable by any signed-in user, writable only by admins.
+     * @description Stores admin-set deposit addresses. Readable by any user, writable only by admins.
      * @path /crypto_deposit_addresses/{addressId}
-     * @allow (read) Any authenticated user can read the addresses to make a deposit.
+     * @allow (read) Any user can read the addresses to make a deposit.
      * @deny (write) Only admins can add or update deposit addresses.
      * @principle Provides public read access for necessary data while restricting modifications to administrators.
      */
     match /crypto_deposit_addresses/{addressId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
     
