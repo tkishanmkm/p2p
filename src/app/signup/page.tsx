@@ -33,7 +33,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useFirebase, initiateEmailSignUp } from "@/firebase";
 import { onAuthStateChanged, updateProfile } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -110,14 +110,35 @@ function SignupFormComponent() {
     return () => unsubscribe();
   }, [auth, firestore, isSigningUp, form, router, toast]);
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth || !firestore) {
       toast({ variant: "destructive", title: "Error", description: "Authentication service not ready."});
       return;
     }
     setIsSigningUp(true);
-    const dummyEmail = `${values.userId}@tradeflow.app`;
-    initiateEmailSignUp(auth, dummyEmail, values.password);
+
+    try {
+      // Check for userId uniqueness
+      const usersRef = collection(firestore, "users");
+      const q = query(usersRef, where("userId", "==", values.userId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+          form.setError("userId", {
+              type: "manual",
+              message: "This User ID is not available. Please choose another one.",
+          });
+          setIsSigningUp(false);
+          return;
+      }
+
+      const dummyEmail = `${values.userId}@tradeflow.app`;
+      initiateEmailSignUp(auth, dummyEmail, values.password);
+    } catch (error) {
+        console.error("Error during sign up:", error);
+        toast({ variant: "destructive", title: "Signup Failed", description: "An unexpected error occurred. Please try again." });
+        setIsSigningUp(false);
+    }
   }
 
   return (
