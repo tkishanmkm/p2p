@@ -1,14 +1,4 @@
-import { SupportForm } from "@/components/support/support-form";
-
-export default function SupportPage() {
-    return (
-        <>
-            <div className="flex items-center">
-                <h1 className="text-lg font-semibold md:text-2xl">Support Center</h1>
-            </div>
-            <div className="flex-1 rounded-lg">
-                <SupportForm />
-            </div>
-        </>
-    );
-}
+// This file has been overwritten to resolve a build conflict.
+// The active support page is located at src/app/(legal)/support/page.tsx.
+// This duplicate file at src/app/(dashboard)/support/page.tsx caused a routing error.
+// By removing the default export, we prevent Next.js from treating it as a page.
