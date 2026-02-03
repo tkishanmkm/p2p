@@ -1,4 +1,3 @@
-// This is a new file
 'use client';
 import { useState, useEffect } from 'react';
 import { useFirebase } from '@/firebase';
@@ -7,23 +6,25 @@ import { doc, getDoc } from 'firebase/firestore';
 export function useAdminStatus() {
   const { user, firestore, isUserLoading } = useFirebase();
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
   useEffect(() => {
+    // Reset on user change or when auth is loading again
+    setIsAdmin(false);
+    setIsCheckingAdmin(true);
+
     if (isUserLoading) {
-      // Don't do anything until we know if a user is logged in or not.
+      // Wait for firebase auth to settle before doing anything.
       return;
     }
 
     if (!user || !firestore) {
-      // If there's no user after the initial load, they are not an admin.
-      setIsAdmin(false);
-      setIsLoading(false);
+      // No user, so not an admin. We are done checking.
+      setIsCheckingAdmin(false);
       return;
     }
 
     const checkAdminStatus = async () => {
-      setIsLoading(true);
       const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
       try {
         const docSnap = await getDoc(adminRoleRef);
@@ -32,12 +33,15 @@ export function useAdminStatus() {
         console.error("Error checking admin status:", error);
         setIsAdmin(false);
       } finally {
-        setIsLoading(false);
+        setIsCheckingAdmin(false);
       }
     };
 
     checkAdminStatus();
   }, [user, firestore, isUserLoading]);
+
+  // The overall loading state is true if firebase auth is loading OR we are checking the admin role.
+  const isLoading = isUserLoading || isCheckingAdmin;
 
   return { isAdmin, isLoading };
 }
