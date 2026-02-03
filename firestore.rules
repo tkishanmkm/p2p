@@ -248,13 +248,16 @@ service cloud.firestore {
      * @description Manages admin roles. Document existence at `/roles_admin/{uid}` grants admin privileges.
      * @path /roles_admin/{uid}
      * @allow (create) Allows the initial admin user to create their own role document upon first login.
-     * @deny (read, update, delete) All other client access is forbidden.
+     * @deny (update, delete) All other client access is forbidden.
      * @principle Secures critical authentication data. This collection must only be managed via the Firebase Console or a trusted server, with the exception of the initial admin creation.
      */
     match /roles_admin/{uid} {
       allow create: if isOwner(uid) && isInitialAdmin();
-      allow read: if isAdmin();
+      allow get: if isOwner(uid); // Allows a user to check their own admin status.
+      allow list: if isAdmin(); // Allows admins to list other admins.
       allow update, delete: if false;
     }
   }
 }
+
+    
