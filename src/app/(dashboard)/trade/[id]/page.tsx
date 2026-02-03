@@ -1,10 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { TradeDetails } from "@/components/trade/trade-details";
 import { TradeChat } from "@/components/trade/trade-chat";
 import { TradeStatusStepper } from "@/components/trade/trade-status";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ShieldCheck, Flag } from "lucide-react";
+import { AlertCircle, ShieldCheck, Flag, ArrowLeftRight } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,11 +19,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDoc, useFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
-import { useEffect } from "react";
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow, claimFundsForTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Trade } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
@@ -30,6 +31,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const { data: trade, isLoading, error } = useDoc<Trade>(
     firestore && tradeId ? doc(firestore, "trades", tradeId) : null
   );
+  const [isDetailsLeft, setIsDetailsLeft] = useState(true);
 
   const currentUserRole = user?.uid === trade?.buyerId ? "buy" : "sell";
 
@@ -86,22 +88,21 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     }
   }
+  
+  const toggleView = () => setIsDetailsLeft(prev => !prev);
 
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold md:text-2xl">Trade {trade.tradeId}</h1>
+        <Button variant="outline" size="sm" onClick={toggleView} className="hidden lg:flex">
+            <ArrowLeftRight className="mr-2 h-4 w-4" />
+            Switch View
+        </Button>
       </div>
       <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 grid gap-4">
-          <div className="p-6 bg-background rounded-lg border">
-            <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
-          </div>
-          <div className="h-[60vh] lg:h-auto">
-            <TradeChat currentUserId={user?.uid || ""} />
-          </div>
-        </div>
-        <div className="lg:col-span-1 grid gap-4 auto-rows-min">
+        
+        <div className={cn("lg:col-span-1 grid gap-4 auto-rows-min", { "lg:order-last": !isDetailsLeft })}>
           <TradeDetails trade={trade} />
           <div className="space-y-2">
             {currentUserRole === "buy" && trade.status === "active" && (
@@ -169,6 +170,15 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className={cn("lg:col-span-2 grid gap-4", { "lg:order-first": !isDetailsLeft })}>
+            <div className="p-6 bg-background rounded-lg border">
+                <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
+            </div>
+            <div className="h-[60vh] lg:h-auto">
+                <TradeChat currentUserId={user?.uid || ""} />
+            </div>
         </div>
       </div>
     </>
