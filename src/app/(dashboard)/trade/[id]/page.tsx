@@ -5,7 +5,7 @@ import { TradeDetails } from "@/components/trade/trade-details";
 import { TradeChat } from "@/components/trade/trade-chat";
 import { TradeStatusStepper } from "@/components/trade/trade-status";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ShieldCheck, Flag, ArrowLeftRight } from "lucide-react";
+import { AlertCircle, ShieldCheck, Flag, ArrowLeftRight, Award } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,21 +17,27 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useDoc, useFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useDoc, useFirebase, useCollection } from "@/firebase";
+import { doc, collection, query, where, limit } from "firebase/firestore";
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow, claimFundsForTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Trade } from "@/lib/types";
+import type { Trade, Dispute } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
-  const { data: trade, isLoading, error } = useDoc<Trade>(
-    firestore && tradeId ? doc(firestore, "trades", tradeId) : null
-  );
   const [isDetailsLeft, setIsDetailsLeft] = useState(true);
+
+  const tradeRef = firestore && tradeId ? doc(firestore, "trades", tradeId) : null;
+  const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
+  
+  const disputeQuery = firestore && tradeId ? query(collection(firestore, `trades/${tradeId}/disputes`), where('status', '==', 'resolved'), limit(1)) : null;
+  const { data: resolvedDisputes } = useCollection<Dispute>(disputeQuery);
+  const resolvedDispute = resolvedDisputes?.[0];
+
 
   const currentUserRole = user?.uid === trade?.buyerId ? "buy" : "sell";
 
@@ -48,7 +54,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
           toast({ variant: "destructive", title: "Claiming Failed", description: e.message });
         });
     }
-  }, [trade, currentUserRole, firestore, user, toast]);
+  }, [trade, currentUserRole, firestore, user?.uid, toast]);
 
   if (isLoading) {
     return <Skeleton className="w-full h-96" />;
@@ -82,7 +88,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   const handleCancelTrade = async () => {
      try {
-      await cancelTrade(firestore, trade.id, trade.sellerId, trade.crypto, trade.amount);
+      await cancelTrade(firestore, trade.id);
       toast({ title: "Trade Cancelled", description: "The funds have been returned to the seller." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
@@ -90,6 +96,8 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   }
   
   const toggleView = () => setIsDetailsLeft(prev => !prev);
+  
+  const isTradeClosed = ['released', 'cancelled', 'expired'].includes(trade.status);
 
   return (
     <>
@@ -169,6 +177,15 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 <strong>Warning:</strong> If the other party asks you to cancel the trade for any reason, it may be an attempt to scam.
               </p>
             </div>
+             {resolvedDispute && (
+                <Alert className="border-green-500 text-green-700">
+                    <Award className="h-4 w-4" />
+                    <AlertTitle>Dispute Resolved</AlertTitle>
+                    <AlertDescription>
+                        A moderator has awarded this trade to the <span className="font-bold">{resolvedDispute.winnerId === trade.buyerId ? 'Buyer' : 'Seller'}</span>.
+                    </AlertDescription>
+                </Alert>
+            )}
           </div>
         </div>
 
@@ -177,7 +194,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
             </div>
             <div className="h-[60vh] lg:h-auto">
-                <TradeChat currentUserId={user?.uid || ""} />
+                <TradeChat currentUserId={user?.uid || ""} trade={trade} />
             </div>
         </div>
       </div>

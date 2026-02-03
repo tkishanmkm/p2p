@@ -11,7 +11,7 @@
  * - Administrator roles are managed via document existence in the `/roles_admin/{uid}` collection, providing a simple and performant way to check for administrative privileges.
  *
  * Key Security Decisions:
- * - User Enumeration Blocked: Listing documents in the top-level `/users` collection is disallowed to protect user privacy.
+ * - User Enumeration Blocked: Listing documents in the top-level `/users` collection is disallowed to protect user privacy (except for admins).
  * - Admin-Only Collections: The `/admin_logs` and `/roles_admin` collections are locked down, with writes to `/admin_logs` restricted to admins and all client access to `/roles_admin` forbidden.
  * - Trade Immutability: Deleting a trade document is disallowed to preserve a historical record. Trades should be cancelled or completed by updating their status field.
  * - Public Data is Read-Only: Collections like `/payment_methods` are publicly readable but cannot be modified by clients, ensuring data integrity.
@@ -57,7 +57,7 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if (isOwner(userId) || isAdmin()) && resource.data.id == userId;
       allow delete: if (isOwner(userId) || isAdmin());
@@ -186,6 +186,16 @@ service cloud.firestore {
      * @principle Enables admin-level oversight for a specific subcollection type.
      */
     match /{path=**}/withdrawals/{withdrawalId} {
+        allow list: if isAdmin();
+    }
+    
+    /**
+     * @description Collection group for disputes. Allows admins to query all disputes across all users.
+     * @path /{path=**}/disputes/{disputeId}
+     * @allow (list) An admin listing all disputes on the platform.
+     * @principle Enables admin-level oversight for a specific subcollection type.
+     */
+    match /{path=**}/disputes/{disputeId} {
         allow list: if isAdmin();
     }
 

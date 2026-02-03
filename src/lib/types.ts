@@ -98,6 +98,7 @@ export type Trade = {
   price: number; // Price per crypto
   status: TradeStatus;
   claimedByBuyer: boolean;
+  paymentReceiptUrl?: string;
   expiresAt: string; // TIMESTAMP
   paidAt?: string; // TIMESTAMP
   releasedAt?: string; // TIMESTAMP
@@ -126,9 +127,12 @@ export type Dispute = {
   openedBy: string;
   reason: string;
   status: 'open' | 'resolved' | 'cancelled';
-  adminId?: string;
+  resolvedBy?: string;
+  winnerId?: string;
   resolutionNote?: string;
   createdAt: string; // TIMESTAMP
+  // Denormalized for easier querying in admin panel
+  trade?: Trade;
 };
 
 export type Feedback = {

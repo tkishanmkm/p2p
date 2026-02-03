@@ -6,8 +6,9 @@ import {
   writeBatch,
   serverTimestamp,
   Firestore,
+  updateDoc,
 } from "firebase/firestore";
-import type { Deposit, UserWallet, Withdrawal } from "./types";
+import type { Deposit, Dispute, Trade, UserWallet, Withdrawal } from "./types";
 
 /**
  * Approves a deposit and updates the user's wallet balance in a single transaction.
@@ -148,5 +149,53 @@ export async function declineWithdrawal(
             adminId: adminId,
         });
     });
+}
+
+export async function setUserBanStatus(db: Firestore, userId: string, isBanned: boolean) {
+  const userRef = doc(db, "users", userId);
+  await updateDoc(userRef, { isBanned });
+}
+
+export async function setUserHoldStatus(db: Firestore, userId: string, isOnHold: boolean) {
+  const userRef = doc(db, "users", userId);
+  await updateDoc(userRef, { isOnHold });
+}
+
+export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispute, winnerId: string, adminId: string) {
+  const tradeRef = doc(db, "trades", trade.id);
+  const disputeRef = doc(db, "trades", trade.id, "disputes", dispute.id);
+  const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
+
+  return runTransaction(db, async (transaction) => {
+    const sellerWalletDoc = await transaction.get(sellerWalletRef);
+    if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
+    const sellerWallet = sellerWalletDoc.data() as UserWallet;
+
+    if (winnerId === trade.sellerId) {
+      // Return funds to seller
+      if (sellerWallet.lockedBalance < trade.amount) throw new Error("Insufficient locked funds to return.");
+      transaction.update(sellerWalletRef, {
+        balance: sellerWallet.balance + trade.amount,
+        lockedBalance: sellerWallet.lockedBalance - trade.amount,
+      });
+      transaction.update(tradeRef, { status: "cancelled" });
+    } else { // Winner is buyer
+      // Release funds (same as normal release, just from dispute context)
+      // The buyer will claim it via the `claimFundsForTrade` function automatically
+      if (sellerWallet.lockedBalance < trade.amount) throw new Error("Insufficient locked funds to release.");
+      transaction.update(sellerWalletRef, {
+        lockedBalance: sellerWallet.lockedBalance - trade.amount
+      });
+      transaction.update(tradeRef, { status: "released" });
+    }
+
+    // Update the dispute document
+    transaction.update(disputeRef, {
+      status: "resolved",
+      winnerId: winnerId,
+      resolvedBy: adminId,
+      resolutionNote: `Dispute awarded to ${winnerId === trade.buyerId ? 'buyer' : 'seller'} by moderator.`,
+    });
+  });
 }
     

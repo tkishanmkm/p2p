@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -38,19 +37,40 @@ import { currencies } from "@/lib/currencies";
 import { paymentMethods } from "@/lib/payment-methods";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
+import { useFirebase, useDoc } from "@/firebase";
+import { doc } from "firebase/firestore";
+import type { User, P2PAd, CryptoCurrency } from "@/lib/types";
+import { createP2PAd } from "@/lib/ads";
+import { useRouter } from "next/navigation";
+import { Label } from "../ui/label";
 
 const adFormSchema = z.object({
   adType: z.enum(["buy", "sell"]),
   crypto: z.string().min(1, "Please select a cryptocurrency."),
-  fiat: z.string().min(1, "Please select a fiat currency."),
-  paymentMethod: z.string().min(1, "Please select or enter a payment method."),
-  isCustomPayment: z.boolean(),
+  fiatCurrency: z.string().min(1, "Please select a fiat currency."),
+  paymentMethods: z.array(z.string()).min(1, "Select at least one payment method."),
   rateType: z.enum(["market", "fixed"]),
-  ratePercent: z.number().optional(),
-  fixedRate: z.number().optional(),
-  minAmount: z.number().min(1, "Minimum amount is required."),
-  maxAmount: z.number().min(1, "Maximum amount is required."),
+  ratePercent: z.coerce.number().optional(),
+  fixedRate: z.coerce.number().optional(),
+  minAmount: z.coerce.number().min(1, "Minimum amount is required."),
+  maxAmount: z.coerce.number().min(1, "Maximum amount is required."),
   terms: z.string().min(10, "Terms must be at least 10 characters.").max(500, "Terms cannot exceed 500 characters."),
+}).refine(data => {
+    if (data.rateType === 'market') {
+        return data.ratePercent !== undefined && data.ratePercent !== null;
+    }
+    return true;
+}, {
+    message: "Market rate adjustment is required.",
+    path: ["ratePercent"],
+}).refine(data => {
+    if (data.rateType === 'fixed') {
+        return data.fixedRate !== undefined && data.fixedRate !== null && data.fixedRate > 0;
+    }
+    return true;
+}, {
+    message: "Fixed rate is required and must be positive.",
+    path: ["fixedRate"],
 }).refine(data => data.maxAmount >= data.minAmount, {
     message: "Max amount must be greater than or equal to min amount.",
     path: ["maxAmount"],
@@ -60,29 +80,64 @@ type AdFormValues = z.infer<typeof adFormSchema>;
 
 export function CreateAdForm() {
   const { toast } = useToast();
+  const router = useRouter();
+  const { firestore, user } = useFirebase();
+
+  const userRef = user ? doc(firestore, "users", user.uid) : null;
+  const { data: userData } = useDoc<User>(userRef);
 
   const form = useForm<AdFormValues>({
     resolver: zodResolver(adFormSchema),
     defaultValues: {
       adType: "sell",
-      crypto: "btc",
-      fiat: "usd",
-      isCustomPayment: false,
+      crypto: "BTC",
+      fiatCurrency: "USD",
+      paymentMethods: [],
       rateType: "market",
       ratePercent: 1.5,
     },
   });
 
   const watchRateType = form.watch("rateType");
-  const watchIsCustomPayment = form.watch("isCustomPayment");
+  const watchPaymentMethods = form.watch("paymentMethods");
 
-  const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name.toLowerCase(), label: c.name }));
-  const fiatOptions = currencies.map((c) => ({ value: c.toLowerCase(), label: c }));
-  const paymentMethodOptions = paymentMethods.map((pm) => ({ value: pm.toLowerCase().replace(/\s/g, '_'), label: pm }));
+  const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
+  const fiatOptions = currencies.map((c) => ({ value: c, label: c }));
+  const paymentMethodOptions = paymentMethods.map((pm) => ({ value: pm, label: pm }));
 
-  function onSubmit(data: AdFormValues) {
-    console.log(data);
-    toast({ title: "Ad Created", description: "Your ad has been successfully created." });
+  async function onSubmit(data: AdFormValues) {
+    if (!firestore || !user || !userData) {
+        toast({ variant: "destructive", title: "Error", description: "You must be logged in to create an ad." });
+        return;
+    }
+
+    const adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId'> = {
+        adType: data.adType,
+        crypto: data.crypto as CryptoCurrency,
+        fiatCurrency: data.fiatCurrency,
+        paymentMethods: data.paymentMethods,
+        rateType: data.rateType,
+        ratePercent: data.rateType === 'market' ? data.ratePercent : undefined,
+        fixedRate: data.rateType === 'fixed' ? data.fixedRate : undefined,
+        minAmount: data.minAmount,
+        maxAmount: data.maxAmount,
+        terms: data.terms,
+        active: true,
+    };
+    
+    try {
+        await createP2PAd(firestore, adData, {
+            id: user.uid,
+            userId: userData.userId,
+            feedbackScore: userData.feedbackScore,
+            completedTrades: userData.completedTrades
+        });
+        toast({ title: "Ad Created", description: "Your ad has been successfully posted." });
+        router.push(data.adType === 'sell' ? '/sell' : '/buy');
+    } catch (error) {
+        console.error(error);
+        toast({ variant: "destructive", title: "Failed to create ad", description: "An error occurred." });
+    }
   }
 
   return (
@@ -140,7 +195,7 @@ export function CreateAdForm() {
               />
               <FormField
                 control={form.control}
-                name="fiat"
+                name="fiatCurrency"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>With Fiat</FormLabel>
@@ -152,40 +207,25 @@ export function CreateAdForm() {
             </div>
 
             <FormField
-                control={form.control}
-                name="isCustomPayment"
-                render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                            <FormLabel>Payment Method</FormLabel>
-                            <FormDescription>Use a standard or custom payment method.</FormDescription>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Label htmlFor="custom-payment-switch">Custom</Label>
-                            <FormControl>
-                                <Switch
-                                    id="custom-payment-switch"
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                />
-                            </FormControl>
-                        </div>
-                    </FormItem>
-                )}
-            />
-
-            <FormField
               control={form.control}
-              name="paymentMethod"
+              name="paymentMethods"
               render={({ field }) => (
                 <FormItem>
-                  <FormControl>
-                    {watchIsCustomPayment ? (
-                        <Input placeholder="e.g., My Local Bank" {...field} />
-                    ) : (
-                        <Combobox options={paymentMethodOptions} value={field.value} onChange={field.onChange} placeholder="Select payment method" />
-                    )}
-                  </FormControl>
+                  <FormLabel>Payment Methods</FormLabel>
+                   <Combobox options={paymentMethodOptions} value={watchPaymentMethods.join(', ')} onChange={(val) => form.setValue('paymentMethods', [...watchPaymentMethods, val])} placeholder="Select payment methods" />
+                  <FormDescription>You can select multiple payment methods.</FormDescription>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {watchPaymentMethods.map((pm, index) => (
+                      <Badge key={index} variant="secondary">
+                        {pm}
+                        <button type="button" onClick={() => {
+                            const updatedPms = [...watchPaymentMethods];
+                            updatedPms.splice(index, 1);
+                            form.setValue('paymentMethods', updatedPms);
+                        }} className="ml-2 rounded-full hover:bg-destructive/50 p-0.5">&times;</button>
+                      </Badge>
+                    ))}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -226,7 +266,7 @@ export function CreateAdForm() {
                   <FormItem>
                     <FormLabel>Market Rate Adjustment</FormLabel>
                     <div className="relative">
-                      <Input type="number" step="0.01" placeholder="1.5" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                      <Input type="number" step="0.01" placeholder="1.5" {...field} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
                     <FormDescription>Percentage above or below market rate. Use negative for below.</FormDescription>
@@ -241,7 +281,7 @@ export function CreateAdForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fixed Price per Crypto</FormLabel>
-                    <Input type="number" step="any" placeholder="65000.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                    <Input type="number" step="any" placeholder="65000.00" {...field} />
                     <FormDescription>The fixed price in your selected fiat currency.</FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -256,7 +296,7 @@ export function CreateAdForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Minimum Trade Amount</FormLabel>
-                    <Input type="number" placeholder="100" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                    <Input type="number" placeholder="100" {...field} />
                     <FormDescription>In your selected fiat currency.</FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -268,7 +308,7 @@ export function CreateAdForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Maximum Trade Amount</FormLabel>
-                    <Input type="number" placeholder="5000" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                    <Input type="number" placeholder="5000" {...field} />
                     <FormDescription>In your selected fiat currency.</FormDescription>
                     <FormMessage />
                   </FormItem>

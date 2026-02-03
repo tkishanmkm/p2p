@@ -408,6 +408,11 @@
             "type": "boolean",
             "description": "Indicates if the buyer has claimed the released funds."
         },
+        "paymentReceiptUrl": {
+            "type": "string",
+            "description": "URL of the uploaded payment receipt from the buyer.",
+            "format": "uri"
+        },
         "expiresAt": {
           "type": "string",
           "description": "Timestamp when the trade expires.",
@@ -525,9 +530,13 @@
           "type": "string",
           "description": "Status of the dispute (open, resolved, cancelled)."
         },
-        "adminId": {
+        "resolvedBy": {
           "type": "string",
           "description": "Reference to Admin. (Relationship: Admin 1:N Dispute) ID of the admin who resolved the dispute."
+        },
+        "winnerId": {
+            "type": "string",
+            "description": "ID of the user who won the dispute."
         },
         "resolutionNote": {
           "type": "string",
@@ -545,8 +554,6 @@
         "openedBy",
         "reason",
         "status",
-        "adminId",
-        "resolutionNote",
         "createdAt"
       ]
     },

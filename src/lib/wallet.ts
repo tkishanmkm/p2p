@@ -1,0 +1,306 @@
+// This is a new file
+'use client';
+import {
+  Firestore,
+  doc,
+  runTransaction,
+  collection,
+  writeBatch,
+  serverTimestamp,
+  addDoc,
+  updateDoc,
+} from 'firebase/firestore';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User } from './types';
+import { add } from 'date-fns';
+
+// A simple utility for generating short, random IDs
+function generateTradeId() {
+  const prefix = "T-";
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return prefix + result;
+}
+
+/**
+ * Initiates a trade by locking the seller's funds and creating the trade document.
+ * This function should be called by the buyer.
+ */
+export async function initiateTrade(
+  db: Firestore,
+  buyerId: string,
+  ad: P2PAd,
+  cryptoAmount: number,
+  fiatAmount: number,
+): Promise<string> {
+    if (ad.userId === buyerId) {
+        throw new Error("You cannot trade with yourself.");
+    }
+
+  const sellerWalletRef = doc(db, 'users', ad.userId, 'wallets', ad.crypto);
+  const newTradeRef = doc(collection(db, 'trades'));
+
+  try {
+    const newTradeId = await runTransaction(db, async (transaction) => {
+      const sellerWalletDoc = await transaction.get(sellerWalletRef);
+
+      if (!sellerWalletDoc.exists()) {
+        throw new Error("Seller's wallet does not exist.");
+      }
+
+      const sellerWallet = sellerWalletDoc.data() as UserWallet;
+      if (sellerWallet.balance < cryptoAmount) {
+        throw new Error('Seller has insufficient funds.');
+      }
+
+      // Lock seller's funds
+      const newSellerBalance = sellerWallet.balance - cryptoAmount;
+      const newSellerLockedBalance = sellerWallet.lockedBalance + cryptoAmount;
+      transaction.update(sellerWalletRef, {
+        balance: newSellerBalance,
+        lockedBalance: newSellerLockedBalance,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Create the new trade document
+      const newTrade: Omit<Trade, 'id'> = {
+        tradeId: generateTradeId(),
+        adId: ad.id,
+        buyerId: buyerId,
+        sellerId: ad.userId,
+        crypto: ad.crypto,
+        amount: cryptoAmount,
+        fiatCurrency: ad.fiatCurrency,
+        fiatAmount: fiatAmount,
+        price: fiatAmount / cryptoAmount,
+        status: 'active',
+        claimedByBuyer: false,
+        createdAt: new Date().toISOString(),
+        expiresAt: add(new Date(), { minutes: 30 }).toISOString(),
+        // Denormalize for easy access in UI
+        buyer: { userId: 'temp-buyer-id' }, // This will be updated with the real user ID later
+        seller: { userId: ad.user.userId }
+      };
+
+      transaction.set(newTradeRef, newTrade);
+      return newTradeRef.id;
+    });
+    return newTradeId;
+  } catch (error) {
+    console.error('Transaction failed: ', error);
+    throw error;
+  }
+}
+
+/**
+ * Updates a trade's status to 'paid'. Called by the buyer.
+ */
+export async function markTradeAsPaid(db: Firestore, tradeId: string) {
+  const tradeRef = doc(db, 'trades', tradeId);
+  await updateDoc(tradeRef, {
+      status: 'paid',
+      paidAt: serverTimestamp()
+  });
+}
+
+export async function addReceiptToTrade(db: Firestore, tradeId: string, receiptUrl: string) {
+    const tradeRef = doc(db, 'trades', tradeId);
+    await updateDoc(tradeRef, {
+        paymentReceiptUrl: receiptUrl
+    });
+}
+
+
+/**
+ * Seller releases funds. This moves funds from locked to available for the buyer to claim.
+ */
+export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
+  const tradeRef = doc(db, 'trades', tradeId);
+  
+  await runTransaction(db, async (transaction) => {
+    const tradeDoc = await transaction.get(tradeRef);
+    if (!tradeDoc.exists()) throw new Error("Trade not found.");
+    
+    const trade = tradeDoc.data() as Trade;
+    if (trade.status !== 'paid') throw new Error("Trade has not been marked as paid by the buyer.");
+
+    const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', trade.crypto);
+    const sellerWalletDoc = await transaction.get(sellerWalletRef);
+    if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
+
+    const sellerWallet = sellerWalletDoc.data() as UserWallet;
+    if (sellerWallet.lockedBalance < trade.amount) {
+        throw new Error("Seller has insufficient locked funds. Critical error.");
+    }
+    
+    // Decrement seller's locked balance
+    transaction.update(sellerWalletRef, {
+        lockedBalance: sellerWallet.lockedBalance - trade.amount,
+        updatedAt: serverTimestamp(),
+    });
+
+    // Update trade status to released
+    transaction.update(tradeRef, {
+      status: 'released',
+      releasedAt: serverTimestamp()
+    });
+  });
+}
+
+/**
+ * Buyer claims the released funds.
+ */
+export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId: string) {
+    const tradeRef = doc(db, 'trades', tradeId);
+    const tradeSnap = await getDoc(tradeRef);
+    if (!tradeSnap.exists()) throw new Error("Trade not found.");
+    const trade = tradeSnap.data() as Trade;
+    
+    const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
+
+    await runTransaction(db, async (transaction) => {
+        // re-fetch inside transaction
+        const freshTradeDoc = await transaction.get(tradeRef);
+        const freshTrade = freshTradeDoc.data() as Trade;
+        
+        if (freshTrade.status !== 'released') throw new Error("Funds have not been released by the seller.");
+        if (freshTrade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
+        if (freshTrade.claimedByBuyer) throw new Error("Funds have already been claimed.");
+
+        const buyerWalletDoc = await transaction.get(buyerWalletRef);
+        let currentBalance = 0;
+        let currentLockedBalance = 0;
+
+        if (buyerWalletDoc.exists()) {
+            currentBalance = (buyerWalletDoc.data() as UserWallet).balance;
+            currentLockedBalance = (buyerWalletDoc.data() as UserWallet).lockedBalance;
+        }
+        
+        // Increment buyer's balance (or create wallet if not exists)
+        transaction.set(buyerWalletRef, {
+            balance: currentBalance + freshTrade.amount,
+            lockedBalance: currentLockedBalance,
+            crypto: freshTrade.crypto,
+            userId: buyerId,
+            id: freshTrade.crypto,
+            updatedAt: serverTimestamp(),
+        }, { merge: true });
+
+        // Mark trade as claimed
+        transaction.update(tradeRef, { claimedByBuyer: true });
+    });
+}
+
+
+/**
+ * Cancels an active trade and returns locked funds to the seller.
+ */
+export async function cancelTrade(db: Firestore, tradeId: string) {
+    const tradeRef = doc(db, 'trades', tradeId);
+
+    await runTransaction(db, async (transaction) => {
+        const tradeDoc = await transaction.get(tradeRef);
+        if (!tradeDoc.exists()) throw new Error("Trade does not exist.");
+        
+        const trade = tradeDoc.data() as Trade;
+        if (trade.status !== 'active') throw new Error("Only active trades can be cancelled.");
+        
+        const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', trade.crypto);
+        const sellerWalletDoc = await transaction.get(sellerWalletRef);
+        if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
+
+        const sellerWallet = sellerWalletDoc.data() as UserWallet;
+        if (sellerWallet.lockedBalance < trade.amount) {
+            throw new Error("Seller has insufficient locked funds to return. Critical error.");
+        }
+
+        // Return funds to seller's main balance
+        transaction.update(sellerWalletRef, {
+            balance: sellerWallet.balance + trade.amount,
+            lockedBalance: sellerWallet.lockedBalance - trade.amount,
+            updatedAt: serverTimestamp(),
+        });
+
+        // Mark trade as cancelled
+        transaction.update(tradeRef, { status: 'cancelled' });
+    });
+}
+
+/**
+ * Creates a withdrawal request and moves funds to locked balance.
+ */
+export async function requestWithdrawal(
+  db: Firestore,
+  user: User,
+  values: Omit<Withdrawal, 'id' | 'createdAt' | 'status' | 'userId' | 'userDisplayName'>
+): Promise<void> {
+  const walletRef = doc(db, "users", user.uid, "wallets", values.crypto);
+
+  await runTransaction(db, async (transaction) => {
+    const walletDoc = await transaction.get(walletRef);
+    if (!walletDoc.exists()) {
+      throw new Error("You do not have a wallet for this currency.");
+    }
+    const wallet = walletDoc.data() as UserWallet;
+    if (wallet.balance < values.amount) {
+      throw new Error("Insufficient available balance.");
+    }
+
+    // Move funds from available to locked
+    transaction.update(walletRef, {
+      balance: wallet.balance - values.amount,
+      lockedBalance: wallet.lockedBalance + values.amount,
+      updatedAt: serverTimestamp(),
+    });
+
+    // Create withdrawal request
+    const withdrawalRef = collection(db, "users", user.uid, "withdrawals");
+    const newWithdrawal: Omit<Withdrawal, 'id'> = {
+      userId: user.uid,
+      userDisplayName: user.displayName || 'Unknown',
+      crypto: values.crypto as CryptoCurrency,
+      chain: values.chain,
+      address: values.address,
+      amount: values.amount,
+      status: 'pending',
+      createdAt: new Date().toISOString(), // Placeholder
+    };
+     addDoc(withdrawalRef, {
+        ...newWithdrawal,
+        createdAt: serverTimestamp()
+    });
+  });
+}
+
+export async function cancelWithdrawal(db: Firestore, withdrawal: Withdrawal): Promise<void> {
+    const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
+    const walletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
+
+    await runTransaction(db, async (transaction) => {
+        const walletDoc = await transaction.get(walletRef);
+        if (!walletDoc.exists()) throw new Error("Wallet not found.");
+        
+        const wallet = walletDoc.data() as UserWallet;
+        if (wallet.lockedBalance < withdrawal.amount) {
+            throw new Error("Insufficient locked balance to return.");
+        }
+
+        // Return funds to available balance
+        transaction.update(walletRef, {
+            balance: wallet.balance + withdrawal.amount,
+            lockedBalance: wallet.lockedBalance - withdrawal.amount,
+            updatedAt: serverTimestamp(),
+        });
+
+        // Update withdrawal status
+        transaction.update(withdrawalRef, { status: 'cancelled' });
+    });
+}
+
+
+async function getDoc(docRef: any) {
+    const { getDoc } = await import("firebase/firestore");
+    return getDoc(docRef);
+}
