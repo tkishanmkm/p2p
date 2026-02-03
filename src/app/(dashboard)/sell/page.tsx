@@ -19,8 +19,10 @@ import { currencies } from "@/lib/currencies";
 import { countries } from "@/lib/countries";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { P2PAd } from "@/lib/types";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 
-export default function SellPage() {
+function SellPageContent() {
   const { firestore } = useFirebase();
   
   const buyAdsQuery = useMemoFirebase(() =>
@@ -107,4 +109,17 @@ export default function SellPage() {
       </Card>
     </>
   );
+}
+
+
+export default function SellPage() {
+    return (
+        <div className="flex flex-col min-h-screen">
+            <Header />
+            <main className="flex-grow container mx-auto px-4 md:px-6 py-8">
+                <SellPageContent />
+            </main>
+            <Footer />
+        </div>
+    );
 }

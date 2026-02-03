@@ -1,0 +1,105 @@
+// This is a new file
+"use client";
+
+import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import type { User } from "@/lib/types";
+import { format, formatDistanceToNow } from 'date-fns';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { DefaultAvatar } from "@/components/icons";
+import { User as UserIcon, Calendar, CheckCircle, Clock, DollarSign, Percent, UserCheck } from "lucide-react";
+import Image from "next/image";
+
+function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) {
+    return (
+        <div className="flex items-start gap-4">
+            <div className="text-muted-foreground mt-1">{icon}</div>
+            <div>
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <p className="font-medium">{value}</p>
+            </div>
+        </div>
+    );
+}
+
+export default function ProfilePage() {
+    const { user: authUser } = useFirebase();
+    
+    const userRef = useMemoFirebase(() => authUser ? doc(firestore, "users", authUser.uid) : null, [authUser]);
+    const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
+
+    if (isUserLoading) {
+        return (
+             <div className="space-y-6">
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-64 w-full" />
+            </div>
+        )
+    }
+
+    if (!user) {
+        return <div>User not found.</div>;
+    }
+
+    return (
+        <>
+            <div className="flex items-center mb-6">
+                <h1 className="text-lg font-semibold md:text-2xl">My Profile</h1>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-1 space-y-6">
+                    <Card>
+                        <CardContent className="pt-6 flex flex-col items-center text-center">
+                            <Avatar className="h-32 w-32 mb-4 border-4 border-secondary shadow-lg">
+                                {user.photoURL ? (
+                                    <Image src={user.photoURL} alt={user.userId} width={128} height={128} className="object-cover"/>
+                                ) : (
+                                    <AvatarFallback className="bg-transparent">
+                                        <DefaultAvatar />
+                                    </AvatarFallback>
+                                )}
+                            </Avatar>
+                            <h2 className="text-2xl font-bold">{user.userId}</h2>
+                            <p className="text-muted-foreground">{user.fullName}</p>
+                            <div className="flex gap-2 mt-4">
+                                {user.isBanned && <Badge variant="destructive">Banned</Badge>}
+                                {user.isOnHold && <Badge variant="secondary" className="bg-yellow-500 text-white">On Hold</Badge>}
+                                {!user.isBanned && !user.isOnHold && <Badge className="bg-green-500">Active</Badge>}
+                            </div>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Account Stats</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             <DetailItem icon={<DollarSign size={20} />} label="Total Trade Volume" value={`$${parseFloat(user.tradeVolume).toLocaleString()}`} />
+                             <DetailItem icon={<CheckCircle size={20} />} label="Completed Trades" value={user.completedTrades} />
+                             <DetailItem icon={<Percent size={20} />} label="Positive Feedback" value={`${user.feedbackScore}%`} />
+                             <DetailItem icon={<Clock size={20} />} label="Last Trade" value={user.lastTradeAt ? format(new Date(user.lastTradeAt), "PPpp") : 'No trades yet'} />
+                        </CardContent>
+                    </Card>
+                </div>
+                <div className="lg:col-span-2">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>User Information</CardTitle>
+                            <CardDescription>This information is private and not shared with other traders.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                           <DetailItem icon={<UserIcon size={20} />} label="Full Name" value={user.fullName} />
+                           <DetailItem icon={<UserCheck size={20} />} label="User ID" value={user.userId} />
+                           {user.oldUserId && <DetailItem icon={<UserIcon size={20} />} label="Previous User ID" value={user.oldUserId} />}
+                           <DetailItem icon={<Calendar size={20} />} label="Date of Birth" value={format(new Date(user.dob), "LLLL d, yyyy")} />
+                           <DetailItem icon={<Clock size={20} />} label="Member Since" value={`${format(new Date(user.createdAt), "PP")} (${formatDistanceToNow(new Date(user.createdAt))} ago)`} />
+                           <DetailItem icon={<DollarSign size={20} />} label="Preferred Currency" value={user.preferredCurrency || 'USD'} />
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </>
+    );
+}

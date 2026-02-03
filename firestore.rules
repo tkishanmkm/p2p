@@ -100,6 +100,16 @@ service cloud.firestore {
         allow create: if (isOwner(userId) || isAdmin()) && request.resource.data.userId == userId;
         allow update, delete: if (isOwner(userId) || isAdmin());
       }
+
+      /**
+       * @description Stores user notifications. Inherits ownership from the parent user document.
+       * @path /users/{userId}/notifications/{notificationId}
+       * @allow (read, write) The user can manage their own notifications.
+       * @principle Enforces strict data ownership for private notifications.
+       */
+      match /notifications/{notificationId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     /**

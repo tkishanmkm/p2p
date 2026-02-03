@@ -17,6 +17,8 @@ export type User = {
   lastLoginIp: string;
   feedbackScore: number; // Calculated from 0-100
   accountAge: string; // Calculated, e.g., "2 years"
+  preferredCurrency?: string;
+  lastTradeAt?: string;
 };
 
 export type UserWallet = {
@@ -161,6 +163,16 @@ export type SupportTicket = {
   status: 'Open' | 'In Progress' | 'Closed';
   createdAt: string;
 };
+
+export type Notification = {
+    id: string;
+    userId: string;
+    message: string;
+    link?: string;
+    isRead: boolean;
+    createdAt: string; // TIMESTAMP
+};
+
 
 export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 

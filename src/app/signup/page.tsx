@@ -92,7 +92,8 @@ function SignupFormComponent() {
               lastLoginIp: "0.0.0.0", // Placeholder
               feedbackScore: 100,
               accountAge: "0 days",
-              photoURL: ""
+              photoURL: "",
+              preferredCurrency: "USD"
           };
           await setDoc(userDocRef, newUserDoc);
 
