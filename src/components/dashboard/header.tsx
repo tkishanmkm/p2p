@@ -9,8 +9,9 @@ import {
   ArrowLeftRight,
   PlusCircle,
   LifeBuoy,
-  Repeat,
-  Menu
+  Menu,
+  ArrowDownToLine,
+  ArrowUpFromLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,8 +30,8 @@ import { Logo } from "@/components/logo";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/wallets", label: "Wallets", icon: Wallet },
-  { href: "/buy", label: "Buy", icon: Repeat },
-  { href: "/sell", label: "Sell", icon: Repeat },
+  { href: "/buy", label: "Buy Crypto", icon: ArrowDownToLine },
+  { href: "/sell", label: "Sell Crypto", icon: ArrowUpFromLine },
   { href: "/ads/create", label: "Create Ad", icon: PlusCircle },
   { href: "/trades", label: "My Trades", icon: ArrowLeftRight },
   { href: "/support", label: "Support", icon: LifeBuoy },
@@ -54,12 +55,13 @@ export function DashboardHeader() {
           <Link
             key={item.href}
             href={item.href}
-            className={`transition-colors ${
+            className={`flex items-center gap-2 transition-colors ${
               pathname === item.href
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
+            <item.icon className="h-4 w-4" />
             {item.label}
           </Link>
         ))}
@@ -89,12 +91,13 @@ export function DashboardHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`transition-colors ${
+                className={`flex items-center gap-4 text-base transition-colors ${
                   pathname === item.href
                     ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
+                <item.icon className="h-5 w-5" />
                 {item.label}
               </Link>
             ))}
