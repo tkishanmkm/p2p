@@ -1,4 +1,4 @@
-// This is a new file
+
 "use client";
 
 import { useState } from "react";
@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
-import { CryptoCurrency, SUPPORTED_CRYPTOS, UserWallet, Deposit, Withdrawal } from "@/lib/types";
+import { CryptoCurrency, UserWallet, Deposit, Withdrawal } from "@/lib/types";
+import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { Plus, Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -283,4 +284,3 @@ export default function WalletsPage() {
     </>
   );
 }
-    
