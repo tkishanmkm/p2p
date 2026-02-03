@@ -36,9 +36,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { paymentMethods } from "@/lib/payment-methods";
-import { generateAdCopy } from "@/ai/flows/generate-ad-copy";
 import { useToast } from "@/hooks/use-toast";
-import { Wand2, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 const adFormSchema = z.object({
@@ -62,7 +60,6 @@ type AdFormValues = z.infer<typeof adFormSchema>;
 
 export function CreateAdForm() {
   const { toast } = useToast();
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const form = useForm<AdFormValues>({
     resolver: zodResolver(adFormSchema),
@@ -82,26 +79,6 @@ export function CreateAdForm() {
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name.toLowerCase(), label: c.name }));
   const fiatOptions = currencies.map((c) => ({ value: c.toLowerCase(), label: c }));
   const paymentMethodOptions = paymentMethods.map((pm) => ({ value: pm.toLowerCase().replace(/\s/g, '_'), label: pm }));
-
-  async function handleGenerateTerms() {
-    setIsGenerating(true);
-    const { crypto, paymentMethod, rateType, fixedRate, ratePercent } = form.getValues();
-    try {
-        const result = await generateAdCopy({
-            crypto,
-            paymentMethod,
-            pricingDetails: rateType === 'fixed' ? `fixed at ${fixedRate}` : `market rate at ${ratePercent}%`,
-            termsRequested: 'friendly but professional'
-        });
-        form.setValue("terms", result.termsAndConditions, { shouldValidate: true });
-        toast({ title: "AI Generated Terms", description: "Terms and conditions have been populated." });
-    } catch (error) {
-        console.error("AI Error:", error);
-        toast({ variant: "destructive", title: "AI Error", description: "Could not generate terms." });
-    } finally {
-        setIsGenerating(false);
-    }
-  }
 
   function onSubmit(data: AdFormValues) {
     console.log(data);
@@ -304,23 +281,7 @@ export function CreateAdForm() {
               name="terms"
               render={({ field }) => (
                 <FormItem>
-                    <div className="flex items-center justify-between">
-                        <FormLabel>Terms & Conditions</FormLabel>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleGenerateTerms}
-                            disabled={isGenerating}
-                        >
-                            {isGenerating ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Wand2 className="mr-2 h-4 w-4" />
-                            )}
-                            Generate with AI
-                        </Button>
-                    </div>
+                  <FormLabel>Terms & Conditions</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="e.g., Payment must be made from an account with your name. No third-party payments..."

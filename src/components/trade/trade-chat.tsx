@@ -13,11 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Paperclip, ShieldAlert, Info } from "lucide-react";
+import { Send, Paperclip, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TradeChatMessage, User } from "@/lib/types";
 import { mockTradeChatMessages, mockUsers } from "@/lib/mock-data";
-import { analyzeSentiment } from "@/ai/flows/trade-chat-sentiment-analysis";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TradeChatProps {
@@ -46,14 +45,6 @@ export function TradeChat({ currentUserId }: TradeChatProps) {
       createdAt: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, tempMessage]);
-
-    try {
-        const sentiment = await analyzeSentiment({ message: messageToSend });
-        const finalMessage = { ...tempMessage, isHarmful: sentiment.isHarmful, harmfulReasoning: sentiment.reasoning };
-        setMessages((prev) => prev.map(m => m.id === tempMessage.id ? finalMessage : m));
-    } catch(error) {
-        console.error("Sentiment analysis failed:", error);
-    }
   };
 
   return (
@@ -110,19 +101,6 @@ export function TradeChat({ currentUserId }: TradeChatProps) {
                         : "bg-muted"
                     )}
                   >
-                    {msg.isHarmful && (
-                         <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger>
-                                    <ShieldAlert className="h-5 w-5 text-red-500 flex-shrink-0" />
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs">
-                                    <p className="font-bold">Potential Harmful Content Detected</p>
-                                    <p className="text-xs">{msg.harmfulReasoning}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    )}
                     <div>
                         <p className="font-bold mb-1">{senderName}</p>
                         <p className="whitespace-pre-wrap">{msg.message}</p>

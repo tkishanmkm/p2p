@@ -176,17 +176,6 @@ export const mockTradeChatMessages: TradeChatMessage[] = [
         message: 'Payment received. Releasing now. Thanks for the trade!',
         isModerator: false,
         createdAt: sub(now, { minutes: 10 }).toISOString(),
-    },
-    {
-        id: 'msg-5',
-        tradeId: 'trade-1',
-        senderId: 'user-2',
-        senderUsername: 'SatoshiQueen',
-        message: 'I am going to report you if you don\'t release my funds right now you scammer!',
-        isModerator: false,
-        createdAt: sub(now, { minutes: 5 }).toISOString(),
-        isHarmful: true,
-        harmfulReasoning: "The message contains abusive language ('scammer') and a threat to report, which is considered aggressive and potentially harmful in a trade context.",
     }
 ];
 
@@ -239,5 +228,3 @@ export const mockFeedbacks: Feedback[] = [
         fromUsername: 'LTC-Lover',
     }
 ];
-
-    

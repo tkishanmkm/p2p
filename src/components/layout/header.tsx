@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LANGUAGES } from "@/lib/constants";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
+import { ModeToggle } from "../mode-toggle";
 
 const mobileNavLinks = [
   { href: "/buy", label: "Buy Crypto" },
@@ -106,7 +107,8 @@ export function Header() {
                 Support
               </Link>
           </nav>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <ModeToggle />
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
