@@ -55,11 +55,12 @@ export type CryptoDepositAddress = {
 export type Withdrawal = {
   id: string;
   userId: string;
+  userDisplayName: string;
   crypto: CryptoCurrency;
   chain: string;
   address: string;
-  amount: string; // DECIMAL
-  status: 'pending' | 'approved' | 'declined';
+  amount: number;
+  status: 'pending' | 'approved' | 'declined' | 'cancelled';
   adminId?: string;
   createdAt: string; // TIMESTAMP
 };

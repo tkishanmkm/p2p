@@ -7,7 +7,7 @@ import {
   serverTimestamp,
   Firestore,
 } from "firebase/firestore";
-import type { Deposit, UserWallet, CryptoCurrency } from "./types";
+import type { Deposit, UserWallet, Withdrawal } from "./types";
 
 /**
  * Approves a deposit and updates the user's wallet balance in a single transaction.
@@ -38,7 +38,7 @@ export async function approveDeposit(
         crypto: deposit.crypto,
         balance: newBalance,
         lockedBalance: 0,
-        updatedAt: new Date().toISOString(), // This will be replaced by serverTimestamp on write
+        updatedAt: new Date().toISOString(), // This will be replaced by server timestamp on write
       };
       transaction.set(userWalletRef, newWallet);
     }
@@ -65,5 +65,88 @@ export async function declineDeposit(
       adminId: "admin_placeholder",
     })
     .commit();
+}
+
+/**
+ * Approves a withdrawal request. This finalizes the withdrawal.
+ */
+export async function approveWithdrawal(
+  db: Firestore,
+  withdrawal: Withdrawal,
+  adminId: string
+): Promise<void> {
+  const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
+  const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
+
+  await runTransaction(db, async (transaction) => {
+    const withdrawalDoc = await transaction.get(withdrawalRef);
+    if (!withdrawalDoc.exists() || withdrawalDoc.data().status !== 'pending') {
+      throw new Error("Withdrawal is not pending or does not exist.");
+    }
+    
+    const walletDoc = await transaction.get(userWalletRef);
+    if (!walletDoc.exists()) {
+      throw new Error("User wallet not found. Critical error.");
+    }
+    
+    const wallet = walletDoc.data() as UserWallet;
+    if (wallet.lockedBalance < withdrawal.amount) {
+      throw new Error("Insufficient locked balance. Critical error.");
+    }
+
+    // Deduct from locked balance
+    transaction.update(userWalletRef, {
+      lockedBalance: wallet.lockedBalance - withdrawal.amount,
+      updatedAt: serverTimestamp(),
+    });
+
+    // Mark withdrawal as approved
+    transaction.update(withdrawalRef, {
+      status: "approved",
+      adminId: adminId,
+    });
+  });
+}
+
+/**
+ * Declines a withdrawal request and returns funds to the user's available balance.
+ */
+export async function declineWithdrawal(
+  db: Firestore,
+  withdrawal: Withdrawal,
+  adminId: string
+): Promise<void> {
+    const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
+    const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
+
+    await runTransaction(db, async (transaction) => {
+        const withdrawalDoc = await transaction.get(withdrawalRef);
+        if (!withdrawalDoc.exists() || withdrawalDoc.data().status !== 'pending') {
+            throw new Error("Withdrawal is not pending or does not exist.");
+        }
+
+        const walletDoc = await transaction.get(userWalletRef);
+        if (!walletDoc.exists()) {
+            throw new Error("User wallet not found. Critical error.");
+        }
+
+        const wallet = walletDoc.data() as UserWallet;
+        if (wallet.lockedBalance < withdrawal.amount) {
+            throw new Error("Insufficient locked balance to return. Critical error.");
+        }
+
+        // Return funds from locked to available balance
+        transaction.update(userWalletRef, {
+            balance: wallet.balance + withdrawal.amount,
+            lockedBalance: wallet.lockedBalance - withdrawal.amount,
+            updatedAt: serverTimestamp(),
+        });
+
+        // Mark withdrawal as declined
+        transaction.update(withdrawalRef, {
+            status: "declined",
+            adminId: adminId,
+        });
+    });
 }
     

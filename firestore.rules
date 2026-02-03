@@ -178,6 +178,16 @@ service cloud.firestore {
     match /{path=**}/deposits/{depositId} {
       allow list: if isAdmin();
     }
+    
+    /**
+     * @description Collection group for withdrawals. Allows admins to query all withdrawals across all users.
+     * @path /{path=**}/withdrawals/{withdrawalId}
+     * @allow (list) An admin listing all withdrawals on the platform.
+     * @principle Enables admin-level oversight for a specific subcollection type.
+     */
+    match /{path=**}/withdrawals/{withdrawalId} {
+        allow list: if isAdmin();
+    }
 
     /**
      * @description Stores admin-set deposit addresses. Readable by any signed-in user, writable only by admins.

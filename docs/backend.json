@@ -226,6 +226,10 @@
           "type": "string",
           "description": "Reference to User. (Relationship: User 1:N Withdrawal)"
         },
+        "userDisplayName": {
+          "type": "string",
+          "description": "Denormalized username of the user making the withdrawal."
+        },
         "crypto": {
           "type": "string",
           "description": "Cryptocurrency type withdrawn (e.g., BTC, ETH, USDT)."
@@ -244,7 +248,7 @@
         },
         "status": {
           "type": "string",
-          "description": "Status of the withdrawal (pending, approved, declined)."
+          "description": "Status of the withdrawal (pending, approved, declined, cancelled)."
         },
         "adminId": {
           "type": "string",
@@ -259,12 +263,12 @@
       "required": [
         "id",
         "userId",
+        "userDisplayName",
         "crypto",
         "chain",
         "address",
         "amount",
         "status",
-        "adminId",
         "createdAt"
       ]
     },

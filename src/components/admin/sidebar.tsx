@@ -25,6 +25,7 @@ import {
   FileText,
   Brush,
   ArrowDownToLine,
+  ArrowUpFromLine,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -36,7 +37,7 @@ const menuItems = [
   { href: "#", label: "Users", icon: Users },
   { href: "#", label: "Trades", icon: ArrowLeftRight },
   { href: "/adminnarayan/deposits", label: "Deposits", icon: ArrowDownToLine, badge: 3 },
-  { href: "#", label: "Withdrawals", icon: Wallet, badge: 1 },
+  { href: "/adminnarayan/withdrawals", label: "Withdrawals", icon: ArrowUpFromLine, badge: 1 },
   { href: "#", label: "Ads", icon: FileText },
   { href: "/adminnarayan/support", label: "Support", icon: LifeBuoy, badge: 2 },
   { href: "#", label: "Disputes", icon: ShieldAlert, badge: 1 },
