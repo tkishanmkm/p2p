@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, setDoc, deleteDoc } from "firebase/firestore";
 import * as z from "zod";
@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { CryptoDepositAddress, CryptoCurrency } from "@/lib/types";
 import { CHAINS, SUPPORTED_CRYPTOS } from "@/lib/constants";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   Card,
   CardContent,
@@ -47,14 +48,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
 
 const addressSchema = z.object({
   crypto: z.string().min(1),
   chain: z.string().min(1),
   address: z.string().min(1, "Address is required."),
-  qrCodeUrl: z.string().url("Must be a valid URL."),
+  qrCodeFile: z.instanceof(File, { message: "QR Code image is required." }),
 });
 
 type AddressFormValues = z.infer<typeof addressSchema>;
@@ -65,6 +67,8 @@ export default function WalletSettingsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [availableChains, setAvailableChains] = useState<string[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addressesQuery = useMemoFirebase(() => firestore ? collection(firestore, "crypto_deposit_addresses") : null, [firestore]);
   const { data: addresses, isLoading: areAddressesLoading } = useCollection<CryptoDepositAddress>(addressesQuery);
@@ -79,16 +83,44 @@ export default function WalletSettingsPage() {
     form.setValue("chain", "");
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        form.setValue('qrCodeFile', file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setPreviewUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    }
+  };
+
   const onSubmit = async (values: AddressFormValues) => {
     if (!firestore) return;
     setIsLoading(true);
     try {
       const id = `${values.crypto}-${values.chain}`;
+
+      // 1. Upload QR code image to storage
+      const storage = getStorage();
+      const qrCodeRef = ref(storage, `deposit_qrcodes/${id}`);
+      const uploadResult = await uploadBytes(qrCodeRef, values.qrCodeFile);
+      const qrCodeUrl = await getDownloadURL(uploadResult.ref);
+
+      // 2. Save address and URL to Firestore
       const addressRef = doc(firestore, "crypto_deposit_addresses", id);
-      await setDoc(addressRef, { id, ...values });
+      await setDoc(addressRef, {
+          id,
+          crypto: values.crypto,
+          chain: values.chain,
+          address: values.address,
+          qrCodeUrl: qrCodeUrl,
+      });
+      
       toast({ title: "Address Saved", description: "The deposit address has been updated." });
       setIsDialogOpen(false);
       form.reset();
+      setPreviewUrl(null);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
@@ -110,7 +142,13 @@ export default function WalletSettingsPage() {
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold md:text-2xl">Wallet Settings</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+            setIsDialogOpen(isOpen);
+            if (!isOpen) {
+                form.reset();
+                setPreviewUrl(null);
+            }
+        }}>
           <DialogTrigger asChild>
             <Button><Plus className="mr-2 h-4 w-4" /> Add Address</Button>
           </DialogTrigger>
@@ -140,7 +178,7 @@ export default function WalletSettingsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Chain</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={availableChains.length === 0}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={availableChains.length === 0}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select chain" /></SelectTrigger></FormControl>
                         <SelectContent>{availableChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                       </Select>
@@ -160,15 +198,30 @@ export default function WalletSettingsPage() {
                   )}
                 />
                 <FormField
-                  control={form.control}
-                  name="qrCodeUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>QR Code Image URL</FormLabel>
-                      <FormControl><Input placeholder="https://example.com/qr.png" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                    control={form.control}
+                    name="qrCodeFile"
+                    render={() => (
+                        <FormItem>
+                            <FormLabel>QR Code</FormLabel>
+                            <FormControl>
+                                <div className="flex items-center gap-4">
+                                    {previewUrl && <Image src={previewUrl} alt="QR Code Preview" width={80} height={80} className="rounded-md border p-1" />}
+                                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Upload Picture
+                                    </Button>
+                                    <Input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handleFileChange} 
+                                        className="hidden" 
+                                        accept="image/png, image/jpeg, image/jpg"
+                                    />
+                                </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
                 />
                 <Button type="submit" disabled={isLoading} className="w-full">
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
