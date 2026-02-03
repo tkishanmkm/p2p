@@ -29,8 +29,8 @@ import { useFirebase } from "@/firebase";
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/wallets", label: "Wallets", icon: Wallet },
-  { href: "/buy", label: "Buy Crypto", icon: Repeat },
-  { href: "/sell", label: "Sell Crypto", icon: Repeat },
+  { href: "/buy", label: "Buy Coin", icon: Repeat },
+  { href: "/sell", label: "Sell Coin", icon: Repeat },
   { href: "/ads/create", label: "Create Ad", icon: PlusCircle },
   { href: "/trades", label: "My Trades", icon: ArrowLeftRight },
   { href: "/support", label: "Support", icon: LifeBuoy },
@@ -96,5 +96,3 @@ export function DashboardSidebar() {
     </Sidebar>
   );
 }
-
-    

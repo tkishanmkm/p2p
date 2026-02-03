@@ -23,6 +23,7 @@ export function useAdminStatus() {
     }
 
     const checkAdminStatus = async () => {
+      setIsLoading(true);
       const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
       try {
         const docSnap = await getDoc(adminRoleRef);
