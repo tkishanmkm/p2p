@@ -168,6 +168,29 @@ service cloud.firestore {
         allow update, delete: if (isOwner(resource.data.fromUser) || isAdmin());
       }
     }
+    
+    /**
+     * @description Collection group for deposits. Allows admins to query all deposits across all users.
+     * @path /{path=**}/deposits/{depositId}
+     * @allow (list) An admin listing all deposits on the platform.
+     * @principle Enables admin-level oversight for a specific subcollection type.
+     */
+    match /{path=**}/deposits/{depositId} {
+      allow list: if isAdmin();
+    }
+
+    /**
+     * @description Stores admin-set deposit addresses. Readable by any signed-in user, writable only by admins.
+     * @path /crypto_deposit_addresses/{addressId}
+     * @allow (read) Any authenticated user can read the addresses to make a deposit.
+     * @deny (write) Only admins can add or update deposit addresses.
+     * @principle Provides public read access for necessary data while restricting modifications to administrators.
+     */
+    match /crypto_deposit_addresses/{addressId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
 
     /**
      * @description A read-only list of available payment methods for the platform.
@@ -206,3 +229,4 @@ service cloud.firestore {
     }
   }
 }
+    

@@ -31,16 +31,26 @@ export type UserWallet = {
 export type Deposit = {
   id: string;
   userId: string;
+  userDisplayName: string;
   crypto: CryptoCurrency;
   chain: string;
   txId?: string;
-  receipt?: string; // file path
-  amount: string; // DECIMAL
+  walletAddress: string;
+  qrCodeUrl: string;
+  amount: number;
   status: 'pending' | 'approved' | 'declined' | 'expired';
   timerEnd: string; // TIMESTAMP
   adminId?: string;
   createdAt: string; // TIMESTAMP
 };
+
+export type CryptoDepositAddress = {
+    id: string;
+    crypto: CryptoCurrency;
+    chain: string;
+    address: string;
+    qrCodeUrl: string;
+}
 
 export type Withdrawal = {
   id: string;
@@ -153,5 +163,4 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
-
     

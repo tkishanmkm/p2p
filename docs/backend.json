@@ -135,6 +135,10 @@
           "type": "string",
           "description": "Reference to User. (Relationship: User 1:N Deposit)"
         },
+        "userDisplayName": {
+          "type": "string",
+          "description": "Denormalized username of the user making the deposit."
+        },
         "crypto": {
           "type": "string",
           "description": "Cryptocurrency type deposited (e.g., BTC, ETH, USDT)."
@@ -147,9 +151,14 @@
           "type": "string",
           "description": "Transaction ID of the deposit on the blockchain (optional)."
         },
-        "receipt": {
+        "walletAddress": {
           "type": "string",
-          "description": "File path to the deposit receipt (optional)."
+          "description": "The crypto address the user needs to deposit to."
+        },
+        "qrCodeUrl": {
+          "type": "string",
+          "description": "The URL of the QR code for the deposit address.",
+          "format": "uri"
         },
         "amount": {
           "type": "number",
@@ -177,14 +186,30 @@
       "required": [
         "id",
         "userId",
+        "userDisplayName",
         "crypto",
         "chain",
         "amount",
         "status",
         "timerEnd",
-        "adminId",
+        "walletAddress",
+        "qrCodeUrl",
         "createdAt"
       ]
+    },
+    "CryptoDepositAddress": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CryptoDepositAddress",
+      "type": "object",
+      "description": "Stores the deposit address and QR code for a specific crypto and chain, managed by admins.",
+      "properties": {
+        "id": { "type": "string" },
+        "crypto": { "type": "string" },
+        "chain": { "type": "string" },
+        "address": { "type": "string" },
+        "qrCodeUrl": { "type": "string", "format": "uri" }
+      },
+      "required": ["id", "crypto", "chain", "address", "qrCodeUrl"]
     },
     "Withdrawal": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -266,9 +291,14 @@
           "type": "string",
           "description": "Cryptocurrency type being traded (e.g., BTC, ETH, USDT)."
         },
-        "paymentMethod": {
-          "type": "string",
-          "description": "Payment method accepted for the trade."
+        "fiatCurrency": {
+            "type": "string",
+            "description": "The fiat currency for the trade."
+        },
+        "paymentMethods": {
+          "type": "array",
+          "description": "Payment methods accepted for the trade.",
+          "items": { "type": "string" }
         },
         "rateType": {
           "type": "string",
@@ -309,7 +339,8 @@
         "userId",
         "adType",
         "crypto",
-        "paymentMethod",
+        "fiatCurrency",
+        "paymentMethods",
         "rateType",
         "minAmount",
         "maxAmount",
@@ -353,13 +384,25 @@
           "type": "number",
           "description": "Total amount of cryptocurrency in the trade."
         },
-        "lockedAmount": {
-          "type": "number",
-          "description": "Amount of cryptocurrency locked in escrow."
+        "fiatCurrency": {
+            "type": "string",
+            "description": "The fiat currency for the trade."
+        },
+        "fiatAmount": {
+            "type": "number",
+            "description": "The total fiat amount for the trade."
+        },
+        "price": {
+            "type": "number",
+            "description": "The price per crypto unit at the time of the trade."
         },
         "status": {
           "type": "string",
           "description": "Status of the trade (active, paid, released, expired, disputed, cancelled)."
+        },
+        "claimedByBuyer": {
+            "type": "boolean",
+            "description": "Indicates if the buyer has claimed the released funds."
         },
         "expiresAt": {
           "type": "string",
@@ -390,8 +433,11 @@
         "adId",
         "crypto",
         "amount",
-        "lockedAmount",
+        "fiatCurrency",
+        "fiatAmount",
+        "price",
         "status",
+        "claimedByBuyer",
         "expiresAt",
         "createdAt"
       ]
@@ -815,6 +861,20 @@
             {
               "name": "paymentMethodId",
               "description": "The unique identifier for the payment method."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/crypto_deposit_addresses/{addressId}",
+        "definition": {
+          "entityName": "CryptoDepositAddress",
+          "schema": { "$ref": "#/entities/CryptoDepositAddress" },
+          "description": "Stores admin-set deposit addresses for various cryptocurrencies and chains.",
+          "params": [
+            {
+              "name": "addressId",
+              "description": "A unique ID for the address, often a combination of crypto and chain."
             }
           ]
         }

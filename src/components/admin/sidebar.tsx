@@ -10,6 +10,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
@@ -21,7 +23,8 @@ import {
   Wallet,
   Settings,
   FileText,
-  Brush
+  Brush,
+  ArrowDownToLine,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -32,14 +35,18 @@ const menuItems = [
   { href: "/adminnarayan/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "#", label: "Users", icon: Users },
   { href: "#", label: "Trades", icon: ArrowLeftRight },
-  { href: "#", label: "Deposits", icon: Wallet, badge: 3 },
+  { href: "/adminnarayan/deposits", label: "Deposits", icon: ArrowDownToLine, badge: 3 },
   { href: "#", label: "Withdrawals", icon: Wallet, badge: 1 },
   { href: "#", label: "Ads", icon: FileText },
   { href: "/adminnarayan/support", label: "Support", icon: LifeBuoy, badge: 2 },
   { href: "#", label: "Disputes", icon: ShieldAlert, badge: 1 },
-  { href: "/adminnarayan/appearance", label: "Appearance", icon: Brush },
-  { href: "#", label: "Security Logs", icon: FileText },
 ];
+
+const settingsItems = [
+    { href: "/adminnarayan/appearance", label: "Appearance", icon: Brush },
+    { href: "/adminnarayan/settings/wallet", label: "Wallet Settings", icon: Wallet },
+    { href: "#", label: "Security Logs", icon: FileText },
+]
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -67,6 +74,27 @@ export function AdminSidebar() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
+        <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center">
+                <Settings className="mr-2" />
+                Settings
+            </SidebarGroupLabel>
+             <SidebarMenu>
+                {settingsItems.map((item) => (
+                    <SidebarMenuItem key={item.label}>
+                    <Link href={item.href}>
+                        <SidebarMenuButton
+                        isActive={pathname === item.href}
+                        icon={<item.icon />}
+                        tooltip={item.label}
+                        >
+                        <span className="flex-grow">{item.label}</span>
+                        </SidebarMenuButton>
+                    </Link>
+                    </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
       <Separator />
       <SidebarFooter>
@@ -90,3 +118,4 @@ export function AdminSidebar() {
     </Sidebar>
   );
 }
+    
