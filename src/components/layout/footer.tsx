@@ -28,7 +28,7 @@ export function Footer() {
       links: [
         { label: "Contact Us", href: "/support" },
         { label: "FAQ", href: "/faq" },
-        { label: "Dispute Resolution", href: "#" },
+        { label: "Dispute Resolution", href: "/adminnarayan/login" },
       ],
     },
   ];

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Globe, Menu, ChevronDown } from "lucide-react";
+import { Globe, Menu, ChevronDown, ArrowDownToLine, ArrowUpFromLine, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import {
@@ -72,9 +72,24 @@ export function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuGroup>
-                    <DropdownMenuItem asChild><Link href="/buy">Buy Crypto</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link href="/sell">Sell Crypto</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link href="/ads/create">Create Ad</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/buy">
+                            <ArrowDownToLine />
+                            Buy Crypto
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/sell">
+                            <ArrowUpFromLine />
+                            Sell Crypto
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/ads/create">
+                            <PlusCircle />
+                            Create Ad
+                        </Link>
+                    </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
