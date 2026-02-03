@@ -77,7 +77,7 @@ export function AdminSidebar() {
               <AvatarFallback>AD</AvatarFallback>
           </Avatar>
           <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
-            <p className="font-semibold truncate">NARAYAN</p>
+            <p className="font-semibold truncate">Narayanharihari</p>
             <p className="text-xs text-muted-foreground truncate">Super Administrator</p>
           </div>
         </div>
