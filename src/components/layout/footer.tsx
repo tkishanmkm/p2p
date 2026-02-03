@@ -18,8 +18,8 @@ export function Footer() {
     {
       title: "Legal",
       links: [
-        { label: "Terms of Service", href: "#" },
-        { label: "Privacy Policy", href: "#" },
+        { label: "Terms of Service", href: "/terms" },
+        { label: "Privacy Policy", href: "/policy" },
         { label: "AML Policy", href: "#" },
       ],
     },
@@ -27,7 +27,7 @@ export function Footer() {
       title: "Support",
       links: [
         { label: "Contact Us", href: "/support" },
-        { label: "FAQ", href: "#" },
+        { label: "FAQ", href: "/faq" },
         { label: "Dispute Resolution", href: "#" },
       ],
     },

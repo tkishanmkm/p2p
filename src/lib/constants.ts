@@ -3,10 +3,10 @@ import type { SupportedCrypto } from './types';
 export const APP_NAME = 'TradeFlow';
 
 export const SUPPORTED_CRYPTOS: SupportedCrypto[] = [
-  { name: 'USDT', icon: 'usdt' },
-  { name: 'BTC', icon: 'btc' },
-  { name: 'ETH', icon: 'eth' },
-  { name: 'LTC', icon: 'ltc' },
+  { name: 'USDT' },
+  { name: 'BTC' },
+  { name: 'ETH' },
+  { name: 'LTC' },
 ];
 
 export const LANGUAGES = [

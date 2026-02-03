@@ -6,6 +6,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { ShieldCheck, Users, Globe } from "lucide-react";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
+import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
+import { CryptoCurrency } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
+    const props = { className: cn("h-12 w-12", className) };
+    switch (crypto) {
+        case 'BTC':
+            return <BtcLogo {...props} />;
+        case 'ETH':
+            return <EthLogo {...props} />;
+        case 'LTC':
+            return <LtcLogo {...props} />;
+        case 'USDT':
+            return <UsdtLogo {...props} />;
+        default:
+            return null;
+    }
+}
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-image');
@@ -28,10 +47,6 @@ export default function Home() {
     },
   ];
 
-  const cryptoIcons = SUPPORTED_CRYPTOS.map(crypto => {
-    const img = PlaceHolderImages.find(p => p.id === crypto.icon);
-    return { ...crypto, imageUrl: img?.imageUrl, imageHint: img?.imageHint };
-  });
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -76,9 +91,9 @@ export default function Home() {
              <h2 className="text-3xl font-bold tracking-tight">Trade Your Favorite Cryptocurrencies</h2>
               <p className="mt-2 text-muted-foreground">We support a growing list of popular digital assets.</p>
               <div className="mt-8 flex justify-center items-center gap-6 md:gap-10 flex-wrap">
-                {cryptoIcons.map(crypto => (
+                {SUPPORTED_CRYPTOS.map(crypto => (
                     <div key={crypto.name} className="flex flex-col items-center gap-2 text-center">
-                        {crypto.imageUrl && <Image src={crypto.imageUrl} alt={`${crypto.name} icon`} data-ai-hint={crypto.imageHint} width={48} height={48} className="rounded-full" />}
+                        <CryptoLogo crypto={crypto.name} />
                         <span className="font-semibold">{crypto.name}</span>
                     </div>
                 ))}

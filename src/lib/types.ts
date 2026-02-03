@@ -150,5 +150,4 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 
 export type SupportedCrypto = {
   name: CryptoCurrency;
-  icon: string;
 };
