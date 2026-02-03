@@ -298,10 +298,13 @@ export function CreateAdForm() {
                   <FormItem>
                     <FormLabel>Market Rate Adjustment</FormLabel>
                     <div className="relative">
-                      <Input type="number" step="0.01" placeholder="e.g. 1.5 or -2.0" {...field} />
+                      <Input type="number" step="0.01" placeholder="e.g. 1.5" {...field} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
-                    <FormDescription>Enter a positive value to sell above market price, or a negative value to sell below. (Range: -50% to +50%)</FormDescription>
+                     <FormDescription>
+                        Your price will float with the market. {arePricesLoading ? 'Loading market price...' : `Current price is approx. ${currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchFiat, minimumFractionDigits: 2 })}.`} <br/>
+                        Set your adjustment percentage. E.g., '1.5' for 1.5% above market, or '-2' for 2% below.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -319,7 +322,7 @@ export function CreateAdForm() {
                       placeholder={arePricesLoading ? "Loading..." : `${currentMarketPrice.toLocaleString()}`} 
                       {...field} 
                     />
-                    <FormDescription>The fixed price in {watchFiat}. Current market price is approx. {currentMarketPrice.toLocaleString()} USD.</FormDescription>
+                    <FormDescription>The fixed price in {watchFiat}. Current market price is approx. {currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchFiat, minimumFractionDigits: 2 })}.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
