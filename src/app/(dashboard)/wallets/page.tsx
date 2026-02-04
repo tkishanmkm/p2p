@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
-import { collection, doc, writeBatch, query, orderBy, where } from "firebase/firestore";
+import { collection, doc, writeBatch, query, orderBy, where, getDocs } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -64,8 +64,36 @@ export default function WalletsPage() {
   const walletsCollectionRef = useMemoFirebase(() => authUser ? collection(firestore, "users", authUser.uid, "wallets") : null, [firestore, authUser]);
   const { data: wallets, isLoading: isWalletsLoading } = useCollection<UserWallet>(walletsCollectionRef);
   
-  const depositsQuery = useMemoFirebase(() => authUser ? query(collection(firestore, "deposits"), where("userId", "==", authUser.uid), orderBy("createdAt", "desc")) : null, [firestore, authUser]);
-  const { data: deposits, isLoading: isDepositsLoading } = useCollection<Deposit>(depositsQuery);
+  const [deposits, setDeposits] = useState<Deposit[] | null>(null);
+  const [isDepositsLoading, setIsDepositsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authUser || !firestore) {
+      setIsDepositsLoading(false);
+      return;
+    }
+
+    const fetchDeposits = async () => {
+      setIsDepositsLoading(true);
+      try {
+        const depositsRef = collection(firestore, "deposits");
+        const q = query(depositsRef, where("userId", "==", authUser.uid), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        setDeposits(querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit)));
+      } catch (error) {
+        console.error("Failed to fetch deposits:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not fetch your deposit history.",
+        });
+      } finally {
+        setIsDepositsLoading(false);
+      }
+    };
+
+    fetchDeposits();
+  }, [authUser, firestore, toast]);
   
   const withdrawalsQuery = useMemoFirebase(() => authUser ? query(collection(firestore, "users", authUser.uid, "withdrawals"), orderBy("createdAt", "desc")) : null, [firestore, authUser]);
   const { data: withdrawals, isLoading: isWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
