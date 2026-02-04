@@ -12,8 +12,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Admin status is determined by the existence of a document in the 'admins' collection.
-      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      // Check if the user is authenticated and if their UID exists in the 'admins' collection
+      // with the 'role' field set to 'admin'. This is a more robust check.
+      let docPath = /databases/$(database)/documents/admins/$(request.auth.uid);
+      return request.auth != null && exists(docPath) && get(docPath).data.role == 'admin';
     }
 
     function isTradeParticipant(tradeId) {
@@ -83,7 +85,7 @@ service cloud.firestore {
     // Support tickets can be created by users, but only read/updated by admins
     match /support_tickets/{ticketId} {
         allow create: if isSignedIn();
-        allow read, update: if isAdmin();
+        allow read, list, update: if isAdmin();
         allow delete: if false;
     }
     
