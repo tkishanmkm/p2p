@@ -15,7 +15,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 
 
 export function ProfileSettings() {
-    const { user, firestore } = useFirebase();
+    const { user, firestore, firebaseApp } = useFirebase();
     const { toast } = useToast();
     const [previewUrl, setPreviewUrl] = useState<string | null>(user?.photoURL || null);
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
@@ -39,7 +39,7 @@ export function ProfileSettings() {
     };
 
     const handleSave = async () => {
-        if (!fileToUpload || !user || !firestore) {
+        if (!fileToUpload || !user || !firestore || !firebaseApp) {
             toast({ variant: 'destructive', title: 'No file selected' });
             return;
         };
@@ -47,7 +47,7 @@ export function ProfileSettings() {
         setIsUploading(true);
         
         try {
-            const storage = getStorage();
+            const storage = getStorage(firebaseApp);
             const storageRef = ref(storage, `avatars/${user.uid}/${fileToUpload.name}`);
             
             // Upload file

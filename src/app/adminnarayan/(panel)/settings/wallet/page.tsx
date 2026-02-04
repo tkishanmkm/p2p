@@ -62,7 +62,7 @@ const addressSchema = z.object({
 type AddressFormValues = z.infer<typeof addressSchema>;
 
 export default function WalletSettingsPage() {
-  const { firestore } = useFirebase();
+  const { firestore, firebaseApp } = useFirebase();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -96,13 +96,13 @@ export default function WalletSettingsPage() {
   };
 
   const onSubmit = async (values: AddressFormValues) => {
-    if (!firestore) return;
+    if (!firestore || !firebaseApp) return;
     setIsLoading(true);
     try {
       const id = `${values.crypto}-${values.chain}`;
 
       // 1. Upload QR code image to storage
-      const storage = getStorage();
+      const storage = getStorage(firebaseApp);
       const qrCodeRef = ref(storage, `deposit_qrcodes/${id}`);
       const uploadResult = await uploadBytes(qrCodeRef, values.qrCodeFile);
       const qrCodeUrl = await getDownloadURL(uploadResult.ref);
