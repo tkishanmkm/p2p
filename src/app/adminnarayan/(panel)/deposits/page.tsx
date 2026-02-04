@@ -145,7 +145,7 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                 <TableRow>
                     <TableHead>Deposit ID</TableHead>
                     <TableHead>User</TableHead>
-                    <TableHead>Amount</TableHead>
+                    <TableHead>Crypto Amount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>TxID</TableHead>
                     <TableHead>Date</TableHead>
@@ -203,7 +203,9 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                         <AlertDialogTitle>Approve Deposit?</AlertDialogTitle>
                         <AlertDialogDescription asChild>
                             <div className="space-y-4 text-sm pt-2">
-                                <p>You are about to approve the following deposit. This will credit the user's wallet and cannot be undone.</p>
+                                <p>
+                                    You are about to approve a deposit of <strong className="text-foreground">{selectedDeposit?.amount} {selectedDeposit?.crypto}</strong> for user <strong className="text-foreground">{selectedDeposit?.userDisplayName}</strong>. This will credit their wallet with the specified number of crypto coins. This action cannot be undone.
+                                </p>
                                 <div className="p-4 border rounded-md space-y-3 bg-secondary/50 text-foreground">
                                     <div className="flex justify-between items-center">
                                         <span className="text-muted-foreground">Deposit ID:</span>
@@ -214,7 +216,7 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                                         <span className="font-semibold">{selectedDeposit?.userDisplayName}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-muted-foreground">Amount:</span>
+                                        <span className="text-muted-foreground">Crypto Amount:</span>
                                         <span className="font-semibold">{selectedDeposit?.amount} {selectedDeposit?.crypto}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
@@ -309,3 +311,5 @@ export default function AdminDepositsPage() {
         </>
     );
 }
+
+    
