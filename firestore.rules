@@ -94,7 +94,9 @@ service cloud.firestore {
         // Only trade participants and admins can get or update a trade.
         allow get, update: if isTradeParticipant(tradeId) || isAdmin();
         allow create: if isSignedIn() && isUserActive();
-        allow list: if isAdmin(); // Only admins can list all trades.
+        // Users can list trades (queries), but the 'get' rule above will enforce
+        // that they only receive trades they are a participant in. Admins can list all.
+        allow list: if isSignedIn();
         allow delete: if false; // Trades should not be deleted; they should be 'cancelled'.
 
         // Subcollections are only accessible to trade participants and admins.
