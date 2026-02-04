@@ -10,7 +10,7 @@ import { useCountdown } from "@/hooks/use-countdown";
 import type { Deposit } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, CheckCircle, Copy, Hourglass, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle, Copy, Hourglass, Loader2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
@@ -51,8 +51,10 @@ function DepositPageContent() {
     if (!depositRef) return;
     setIsSubmitting(true);
     try {
-        // We only update the txId. The status remains 'pending' for the admin to review.
-        await updateDoc(depositRef, { txId: values.txId || "" });
+        await updateDoc(depositRef, { 
+            txId: values.txId || "",
+            status: 'awaiting_confirmation'
+        });
         toast({ title: "Confirmation Received", description: "Your deposit is pending review by an administrator. You will be notified upon approval." });
     } catch (error: any) {
         toast({ variant: "destructive", title: "Error", description: "Could not save your confirmation." });
@@ -67,6 +69,20 @@ function DepositPageContent() {
 
   if (!deposit) {
     return <Card><CardHeader><CardTitle>Deposit Not Found</CardTitle></CardHeader></Card>;
+  }
+
+  if (deposit.status === 'awaiting_confirmation') {
+    return (
+        <Card className="max-w-2xl mx-auto">
+            <CardHeader className="text-center">
+                <div className="mx-auto w-fit p-3 rounded-full bg-secondary">
+                    <Clock className="h-10 w-10 text-primary" />
+                </div>
+                <CardTitle className="mt-4">Deposit Awaiting Confirmation</CardTitle>
+                <CardDescription>Your transfer has been noted. An administrator will review and approve your deposit shortly.</CardDescription>
+            </CardHeader>
+        </Card>
+    );
   }
   
   if (deposit.status !== 'pending') {

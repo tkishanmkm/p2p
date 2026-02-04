@@ -41,7 +41,7 @@ export type Deposit = {
   walletAddress: string;
   qrCodeUrl: string;
   amount: number;
-  status: 'pending' | 'approved' | 'declined' | 'expired';
+  status: 'pending' | 'awaiting_confirmation' | 'approved' | 'declined' | 'expired';
   timerEnd: string; // TIMESTAMP
   adminId?: string;
   createdAt: string; // TIMESTAMP
