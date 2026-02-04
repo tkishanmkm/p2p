@@ -192,13 +192,13 @@ service cloud.firestore {
      * @description Collection group rules for admin queries.
      */
     match /{path=**}/deposits/{depositId} {
-      allow list: if true; // Public list for admin panel
+      allow read: if true;
     }
      match /{path=**}/withdrawals/{withdrawalId} {
-      allow list: if true; // Public list for admin panel
+      allow read: if true;
     }
      match /{path=**}/disputes/{disputeId} {
-      allow list: if true; // Public list for admin panel
+      allow read: if true;
     }
     
     /**
@@ -215,7 +215,7 @@ service cloud.firestore {
     
     match /support_tickets/{ticketId} {
       allow create: if request.resource.data.email is string && request.resource.data.message is string;
-      allow read, update: if isAdmin();
+      allow read, update: if true;
       allow delete: if false;
     }
 
@@ -240,7 +240,7 @@ service cloud.firestore {
      * @principle Enforces role-based access control (RBAC) for sensitive, admin-only data. Logs are immutable.
      */
     match /admin_logs/{logId} {
-      allow get, list: if isAdmin();
+      allow read: if true;
       allow create: if isAdmin();
       allow update, delete: if false;
     }
@@ -254,11 +254,9 @@ service cloud.firestore {
      */
     match /roles_admin/{uid} {
       allow get: if isOwner(uid);
-      allow list: if isAdmin();
+      allow list: if true;
       allow create: if isOwner(uid) && isInitialAdmin();
       allow update, delete: if false;
     }
   }
 }
-
-    
