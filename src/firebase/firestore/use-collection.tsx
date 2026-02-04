@@ -69,6 +69,23 @@ export function useCollection<T = any>(
       return;
     }
 
+    // FIX: Add guard against root-level queries
+    const path: string | undefined =
+      memoizedTargetRefOrQuery.type === 'collection'
+        ? (memoizedTargetRefOrQuery as CollectionReference).path
+        : (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString();
+
+    // A root collection query will have an empty path string.
+    if (path === '') {
+        const rootQueryError = new Error("Firestore root collection queries are not allowed. Please specify a collection path.");
+        console.error("A component is attempting a root-level Firestore query, which is not permitted.", { query: memoizedTargetRefOrQuery });
+        setError(rootQueryError);
+        setData(null);
+        setIsLoading(false);
+        return; // Stop execution
+    }
+    // END FIX
+
     setIsLoading(true);
     setError(null);
 
@@ -86,14 +103,14 @@ export function useCollection<T = any>(
       },
       (error: FirestoreError) => {
         // This logic extracts the path from either a ref or a query
-        const path: string =
+        const queryPath: string =
           memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
-          path,
+          path: queryPath,
         })
 
         setError(contextualError)
