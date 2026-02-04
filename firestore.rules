@@ -211,8 +211,10 @@ service cloud.firestore {
      * @path /roles_admin/{uid}
      */
     match /roles_admin/{uid} {
-      // Allows the login flow's `setDoc` to work for new admins, and allows the `isAdmin()` function to read.
-      allow get, create: if isSignedIn();
+      // An authenticated user can get or create their OWN role document.
+      // This allows the isAdmin() function to work and the login flow to create the doc.
+      allow get, create: if isOwner(uid);
+      
       // Prohibit clients from listing all admins or modifying/deleting roles directly.
       allow list, update, delete: if false;
     }
