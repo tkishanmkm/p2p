@@ -732,10 +732,6 @@
         "userId": {
           "type": "string"
         },
-        "email": {
-          "type": "string",
-          "format": "email"
-        },
         "message": {
           "type": "string"
         },
@@ -748,7 +744,7 @@
           "format": "date-time"
         }
       },
-      "required": ["id", "userId", "email", "message", "status", "createdAt"]
+      "required": ["id", "userId", "message", "status", "createdAt"]
     },
     "AdminRole": {
       "title": "AdminRole",

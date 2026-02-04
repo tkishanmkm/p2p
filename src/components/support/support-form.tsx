@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useForm } from "react-hook-form"
@@ -24,8 +23,7 @@ import { createSupportTicket } from "@/lib/support"
 import { Loader2 } from "lucide-react"
 
 const supportFormSchema = z.object({
-  userId: z.string().optional(),
-  email: z.string().email("Invalid email address."),
+  userId: z.string().min(1, "Your User ID is required to submit a ticket."),
   message: z.string().min(20, "Message must be at least 20 characters long.").max(1000, "Message cannot exceed 1000 characters."),
 })
 
@@ -38,15 +36,13 @@ export function SupportForm() {
       resolver: zodResolver(supportFormSchema),
       defaultValues: {
         userId: "",
-        email: "",
         message: "",
       },
     })
 
     useEffect(() => {
-      if (user) {
-        form.setValue('userId', user.displayName || '');
-        form.setValue('email', user.email || '');
+      if (user?.displayName) {
+        form.setValue('userId', user.displayName);
       }
     }, [user, form]);
 
@@ -60,9 +56,12 @@ export function SupportForm() {
       await createSupportTicket(firestore, values);
       toast({
           title: "Support Ticket Submitted",
-          description: "Our team will get back to you shortly.",
+          description: "Our team will get back to you shortly via in-app notifications.",
       })
       form.reset()
+       if (user?.displayName) {
+        form.setValue('userId', user.displayName);
+      }
     } catch(error: any) {
        toast({ variant: "destructive", title: "Submission Failed", description: "Could not submit your ticket. Please try again." });
     } finally {
@@ -81,34 +80,19 @@ export function SupportForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="userId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Your User ID (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="YourUniqueUserID" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Your Email Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="you@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="userId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Your User ID</FormLabel>
+                  <FormControl>
+                    <Input placeholder="YourUniqueUserID" {...field} disabled={!!user} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="message"
@@ -123,7 +107,7 @@ export function SupportForm() {
                     />
                   </FormControl>
                   <FormDescription>
-                    Please provide any relevant information like Trade IDs, transaction details, etc.
+                    Please provide any relevant information like Trade IDs. Responses will be sent as in-app notifications.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

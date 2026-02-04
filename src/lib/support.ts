@@ -1,4 +1,3 @@
-
 'use client';
 import { Firestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { SupportTicket } from './types';

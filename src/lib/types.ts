@@ -166,7 +166,6 @@ export type AdminLog = {
 export type SupportTicket = {
   id: string;
   userId: string;
-  email: string;
   message: string;
   status: 'Open' | 'In Progress' | 'Closed';
   createdAt: string;
@@ -187,5 +186,3 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
-
-    
