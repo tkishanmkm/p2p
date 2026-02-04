@@ -41,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const statusColors: Record<Deposit['status'], string> = {
@@ -132,7 +132,7 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                         </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs truncate max-w-[100px]">{deposit.txId || 'N/A'}</TableCell>
-                    <TableCell>{new Date(deposit.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>{toDate(deposit.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                     <TableCell className="text-right">
                         {deposit.status === 'awaiting_confirmation' && (
                             <DropdownMenu>

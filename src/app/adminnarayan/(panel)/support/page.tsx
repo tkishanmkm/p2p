@@ -31,6 +31,7 @@ import {
 import type { SupportTicket } from "@/lib/types";
 import { updateSupportTicketStatus } from "@/lib/admin";
 import { useToast } from "@/hooks/use-toast";
+import { toDate } from "@/lib/utils";
 
 export default function AdminSupportPage() {
   const { firestore } = useFirebase();
@@ -92,7 +93,7 @@ export default function AdminSupportPage() {
                       {ticket.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(ticket.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>{toDate(ticket.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

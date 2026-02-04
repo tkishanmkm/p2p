@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { Trade } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -95,7 +95,7 @@ export default function AdminTradesPage() {
                       {trade.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(trade.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>{toDate(trade.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" asChild>
                         <Link href={`/trade/${trade.id}`}>View</Link>
@@ -117,5 +117,3 @@ export default function AdminTradesPage() {
     </>
   );
 }
-
-    

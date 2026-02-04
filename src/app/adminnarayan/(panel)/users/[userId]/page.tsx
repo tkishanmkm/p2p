@@ -15,7 +15,7 @@ import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar, CheckCircle, Clock, DollarSign, Percent, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | undefined }) {
@@ -72,7 +72,7 @@ export default function AdminUserDetailPage() {
   const { data: buyerTrades, isLoading: buyerTradesLoading } = useCollection<Trade>(tradesAsBuyerQuery);
   const { data: sellerTrades, isLoading: sellerTradesLoading } = useCollection<Trade>(tradesAsSellerQuery);
   
-  const allTrades = [...(buyerTrades || []), ...(sellerTrades || [])].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const allTrades = [...(buyerTrades || []), ...(sellerTrades || [])].sort((a,b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
   const isLoadingTrades = buyerTradesLoading || sellerTradesLoading;
   
   if (isUserLoading) {
@@ -82,6 +82,10 @@ export default function AdminUserDetailPage() {
   if (!user) {
     return <Card><CardHeader><CardTitle>User Not Found</CardTitle><CardDescription>The user with ID "{userId}" does not exist.</CardDescription></CardHeader></Card>;
   }
+
+  const dobDate = toDate(user.dob);
+  const createdDate = toDate(user.createdAt);
+  const lastTradeDate = toDate(user.lastTradeAt);
 
   return (
     <>
@@ -109,8 +113,8 @@ export default function AdminUserDetailPage() {
                         <DetailItem icon={<UserIcon size={20} />} label="Full Name" value={user.fullName} />
                         <DetailItem icon={<UserCheck size={20} />} label="User ID" value={user.userId} />
                         {user.oldUserId && <DetailItem icon={<UserIcon size={20} />} label="Previous User ID" value={user.oldUserId} />}
-                        <DetailItem icon={<Calendar size={20} />} label="Date of Birth" value={format(new Date(user.dob), "LLLL d, yyyy")} />
-                        <DetailItem icon={<Clock size={20} />} label="Member Since" value={`${format(new Date(user.createdAt), "PP")} (${formatDistanceToNow(new Date(user.createdAt))} ago)`} />
+                        <DetailItem icon={<Calendar size={20} />} label="Date of Birth" value={dobDate ? format(dobDate, "LLLL d, yyyy") : 'N/A'} />
+                        <DetailItem icon={<Clock size={20} />} label="Member Since" value={createdDate ? `${format(createdDate, "PP")} (${formatDistanceToNow(createdDate)} ago)` : 'N/A'} />
                         <DetailItem icon={<DollarSign size={20} />} label="Preferred Currency" value={user.preferredCurrency || 'USD'} />
                         <DetailItem icon={<KeyRound size={20} />} label="Security Question" value={user.securityQuestion} />
                         <DetailItem icon={<KeyRound size={20} />} label="Security Answer" value={user.securityAnswer} />
@@ -121,7 +125,7 @@ export default function AdminUserDetailPage() {
                         <DetailItem icon={<DollarSign size={20} />} label="Total Trade Volume" value={`$${parseFloat(user.tradeVolume).toLocaleString()}`} />
                         <DetailItem icon={<CheckCircle size={20} />} label="Completed Trades" value={user.completedTrades} />
                         <DetailItem icon={<Percent size={20} />} label="Positive Feedback" value={`${user.feedbackScore}%`} />
-                        <DetailItem icon={<Clock size={20} />} label="Last Trade" value={user.lastTradeAt ? format(new Date(user.lastTradeAt), "PPpp") : 'No trades yet'} />
+                        <DetailItem icon={<Clock size={20} />} label="Last Trade" value={lastTradeDate ? format(lastTradeDate, "PPpp") : 'No trades yet'} />
                     </div>
                 </SectionCard>
             </div>

@@ -27,8 +27,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePrices } from '@/context/price-context';
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, toDate } from '@/lib/utils';
 import { statusColors } from '@/lib/status-colors';
+import { format } from 'date-fns';
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
@@ -72,7 +73,7 @@ export default function DashboardPage() {
   const { data: activeBuyerTrades, isLoading: activeBuyerTradesLoading } = useCollection<Trade>(activeTradesAsBuyerQuery);
 
   const activeTradesAsSellerQuery = useMemoFirebase(() => authUser ? query(collection(firestore, 'trades'), where('sellerId', '==', authUser.uid), where('status', 'in', ['active', 'paid'])) : null, [firestore, authUser]);
-  const { data: activeSellerTrades, isLoading: activeSellerTradesLoading } = useCollection<Trade>(activeTradesAsSellerQuery);
+  const { data: activeSellerTrades, isLoading: activeSellerTradesLoading } = useCollection<Trade>(activeSellerTradesQuery);
 
   const [activeTrades, setActiveTrades] = useState<Trade[]>([]);
   const isLoadingActiveTrades = activeBuyerTradesLoading || activeSellerTradesLoading;
@@ -81,7 +82,7 @@ export default function DashboardPage() {
     if (activeBuyerTrades || activeSellerTrades) {
       const combined = [...(activeBuyerTrades || []), ...(activeSellerTrades || [])];
       const uniqueTrades = Array.from(new Map(combined.map(trade => [trade.id, trade])).values());
-      uniqueTrades.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      uniqueTrades.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
       setActiveTrades(uniqueTrades);
     }
   }, [activeBuyerTrades, activeSellerTrades]);

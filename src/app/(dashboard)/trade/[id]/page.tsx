@@ -24,7 +24,7 @@ import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow, claimFundsForTrad
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Trade, Dispute } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

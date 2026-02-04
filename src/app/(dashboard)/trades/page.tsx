@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { DollarSign, CheckCircle, Percent, ArrowLeftRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, toDate } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { statusColors } from '@/lib/status-colors';
 
@@ -62,7 +62,7 @@ export default function MyTradesPage() {
   useEffect(() => {
     const combined = [...(buyerTrades || []), ...(sellerTrades || [])];
     const uniqueTrades = Array.from(new Map(combined.map(trade => [trade.id, trade])).values());
-    uniqueTrades.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    uniqueTrades.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
     setAllTrades(uniqueTrades);
   }, [buyerTrades, sellerTrades]);
 
@@ -145,7 +145,7 @@ export default function MyTradesPage() {
                         {trade.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{new Date(trade.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>{toDate(trade.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/trade/${trade.id}`}><ArrowLeftRight className="mr-2 h-3 w-3"/>View</Link>

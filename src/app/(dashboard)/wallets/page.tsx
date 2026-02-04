@@ -22,7 +22,7 @@ import {
 import { DepositDialog } from "@/components/wallets/deposit-dialog";
 import { WithdrawDialog } from "@/components/wallets/withdraw-dialog";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
 import { cancelWithdrawal } from "@/lib/wallet";
 
 
@@ -38,6 +38,7 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?:
 
 const depositStatusColors: Record<Deposit['status'], string> = {
   pending: "bg-yellow-100 text-yellow-800",
+  awaiting_confirmation: "bg-yellow-100 text-yellow-800",
   approved: "bg-green-100 text-green-800",
   declined: "bg-red-100 text-red-800",
   expired: "bg-gray-100 text-gray-800",
@@ -175,12 +176,12 @@ export default function WalletsPage() {
                         <TableBody>
                             {deposits.map(deposit => (
                                 <TableRow key={deposit.id}>
-                                    <TableCell className="text-muted-foreground">{new Date(deposit.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-muted-foreground">{toDate(deposit.createdAt)?.toLocaleString() ?? 'Invalid Date'}</TableCell>
                                     <TableCell className="font-medium">{deposit.crypto}</TableCell>
                                     <TableCell>{deposit.amount.toFixed(8)}</TableCell>
                                     <TableCell>{deposit.chain}</TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className={cn("capitalize", depositStatusColors[deposit.status])}>{deposit.status}</Badge>
+                                        <Badge variant="outline" className={cn("capitalize", depositStatusColors[deposit.status])}>{deposit.status.replace(/_/g, ' ')}</Badge>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -219,7 +220,7 @@ export default function WalletsPage() {
                         <TableBody>
                             {withdrawals.map(w => (
                                 <TableRow key={w.id}>
-                                    <TableCell className="text-muted-foreground">{new Date(w.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-muted-foreground">{toDate(w.createdAt)?.toLocaleString() ?? 'Invalid Date'}</TableCell>
                                     <TableCell className="font-medium">{w.crypto}</TableCell>
                                     <TableCell>{w.amount.toFixed(8)}</TableCell>
                                     <TableCell className="font-mono text-xs max-w-[150px] truncate">{w.address}</TableCell>

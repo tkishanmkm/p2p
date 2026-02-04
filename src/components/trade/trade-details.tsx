@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Trade } from "@/lib/types";
 import Link from "next/link";
 import { Button } from "../ui/button";
+import { toDate } from "@/lib/utils";
 
 interface TradeDetailsProps {
   trade: Trade;
@@ -60,10 +61,10 @@ export function TradeDetails({ trade, sellerTerms }: TradeDetailsProps) {
         
         <div className="space-y-2">
             <h4 className="font-semibold">Timestamps</h4>
-            <DetailRow label="Created At" value={new Date(trade.createdAt).toLocaleString()} />
-            {trade.paidAt && <DetailRow label="Paid At" value={new Date(trade.paidAt).toLocaleString()} />}
-            {trade.releasedAt && <DetailRow label="Released At" value={new Date(trade.releasedAt).toLocaleString()} />}
-            <DetailRow label="Expires At" value={new Date(trade.expiresAt).toLocaleString()} valueClass="text-destructive" />
+            <DetailRow label="Created At" value={toDate(trade.createdAt)?.toLocaleString() ?? 'N/A'} />
+            {trade.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}
+            {trade.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}
+            <DetailRow label="Expires At" value={toDate(trade.expiresAt)?.toLocaleString() ?? 'N/A'} valueClass="text-destructive" />
         </div>
 
          {sellerTerms && <div className="space-y-2">

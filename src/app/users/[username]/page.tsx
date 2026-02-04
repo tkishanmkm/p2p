@@ -13,8 +13,10 @@ import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, CheckCircle, Clock, DollarSign, Percent, FileText } from 'lucide-react';
+import { toDate } from '@/lib/utils';
 
 function UserStats({ user }: { user: User }) {
+  const lastTradeDate = toDate(user.lastTradeAt);
   return (
     <Card>
       <CardHeader>
@@ -46,7 +48,7 @@ function UserStats({ user }: { user: User }) {
           <Clock className="h-6 w-6 text-muted-foreground" />
           <div>
             <p className="text-sm text-muted-foreground">Last Trade</p>
-            <p className="font-semibold">{user.lastTradeAt ? formatDistanceToNow(new Date(user.lastTradeAt)) + ' ago' : 'N/A'}</p>
+            <p className="font-semibold">{lastTradeDate ? formatDistanceToNow(lastTradeDate) + ' ago' : 'N/A'}</p>
           </div>
         </div>
       </CardContent>
@@ -93,6 +95,7 @@ export default function PublicProfilePage() {
       </Card>
     );
   }
+  const createdDate = toDate(user.createdAt);
 
   return (
     <>
@@ -117,7 +120,7 @@ export default function PublicProfilePage() {
                     </div>
                     <p className="text-sm text-muted-foreground mt-4 flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        Joined {formatDistanceToNow(new Date(user.createdAt))} ago
+                        Joined {createdDate ? formatDistanceToNow(createdDate) + ' ago' : 'N/A'}
                     </p>
                 </CardContent>
             </Card>

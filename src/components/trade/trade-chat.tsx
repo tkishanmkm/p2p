@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Paperclip, Info, Loader2, Shield, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, toDate } from '@/lib/utils';
 import type { TradeChatMessage, Trade } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
@@ -258,9 +258,7 @@ export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
                     )}
 
                     <p className="text-xs mt-1 opacity-70 text-right w-full">
-                      {msg.createdAt
-                        ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        : 'sending...'}
+                      {toDate(msg.createdAt)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'sending...'}
                     </p>
                   </div>
                 </div>

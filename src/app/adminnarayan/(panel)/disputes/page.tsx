@@ -41,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
 
 const statusColors: Record<Dispute['status'], string> = {
@@ -137,7 +137,7 @@ export default function AdminDisputesPage() {
                       {dispute.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(dispute.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>{toDate(dispute.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     {dispute.status === 'open' && (
                         <DropdownMenu>

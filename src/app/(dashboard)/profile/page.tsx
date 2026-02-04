@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { DefaultAvatar } from "@/components/icons";
 import { User as UserIcon, Calendar, CheckCircle, Clock, DollarSign, Percent, UserCheck } from "lucide-react";
 import Image from "next/image";
+import { toDate } from "@/lib/utils";
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) {
     return (
@@ -42,6 +43,10 @@ export default function ProfilePage() {
     if (!user) {
         return <div>User not found.</div>;
     }
+
+    const lastTradeDate = toDate(user.lastTradeAt);
+    const dobDate = toDate(user.dob);
+    const createdDate = toDate(user.createdAt);
 
     return (
         <>
@@ -78,7 +83,7 @@ export default function ProfilePage() {
                              <DetailItem icon={<DollarSign size={20} />} label="Total Trade Volume" value={`$${parseFloat(user.tradeVolume).toLocaleString()}`} />
                              <DetailItem icon={<CheckCircle size={20} />} label="Completed Trades" value={user.completedTrades} />
                              <DetailItem icon={<Percent size={20} />} label="Positive Feedback" value={`${user.feedbackScore}%`} />
-                             <DetailItem icon={<Clock size={20} />} label="Last Trade" value={user.lastTradeAt ? format(new Date(user.lastTradeAt), "PPpp") : 'No trades yet'} />
+                             <DetailItem icon={<Clock size={20} />} label="Last Trade" value={lastTradeDate ? format(lastTradeDate, "PPpp") : 'No trades yet'} />
                         </CardContent>
                     </Card>
                 </div>
@@ -92,8 +97,8 @@ export default function ProfilePage() {
                            <DetailItem icon={<UserIcon size={20} />} label="Full Name" value={user.fullName} />
                            <DetailItem icon={<UserCheck size={20} />} label="User ID" value={user.userId} />
                            {user.oldUserId && <DetailItem icon={<UserIcon size={20} />} label="Previous User ID" value={user.oldUserId} />}
-                           <DetailItem icon={<Calendar size={20} />} label="Date of Birth" value={format(new Date(user.dob), "LLLL d, yyyy")} />
-                           <DetailItem icon={<Clock size={20} />} label="Member Since" value={`${format(new Date(user.createdAt), "PP")} (${formatDistanceToNow(new Date(user.createdAt))} ago)`} />
+                           <DetailItem icon={<Calendar size={20} />} label="Date of Birth" value={dobDate ? format(dobDate, "LLLL d, yyyy") : 'N/A'} />
+                           <DetailItem icon={<Clock size={20} />} label="Member Since" value={createdDate ? `${format(createdDate, "PP")} (${formatDistanceToNow(createdDate)} ago)` : 'N/A'} />
                            <DetailItem icon={<DollarSign size={20} />} label="Preferred Currency" value={user.preferredCurrency || 'USD'} />
                         </CardContent>
                     </Card>

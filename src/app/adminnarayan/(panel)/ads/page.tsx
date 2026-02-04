@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { P2PAd } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
 
 export default function AdminAdsPage() {
@@ -95,7 +95,7 @@ export default function AdminAdsPage() {
                       {ad.active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(ad.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>{toDate(ad.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                 </TableRow>
               ))}
               {!isLoading && !ads?.length && (
@@ -112,5 +112,3 @@ export default function AdminAdsPage() {
     </>
   );
 }
-
-    
