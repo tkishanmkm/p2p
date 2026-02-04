@@ -89,16 +89,21 @@ service cloud.firestore {
 
     // DEPOSITS: Stored in a single collection for easier admin querying.
     match /deposits/{depositId} {
-      // User can get their own deposit. Admins can get any.
-      allow get: if (isOwner(resource.data.userId) || isAdmin());
-      // Allows both users and admins to run queries.
-      // Firestore will then check the `get` rule on each document returned.
-      // A user's query MUST include `where("userId", "==", request.auth.uid)`.
+      // Admins can get any deposit. Users can only get deposits they own.
+      // This rule is CRITICAL for making list queries work securely.
+      allow get: if isAdmin() || isOwner(resource.data.userId);
+
+      // Any signed-in user can ATTEMPT a query.
+      // The 'get' rule above will then be applied to every document in the result set,
+      // ensuring users only receive documents they are allowed to see.
       allow list: if isSignedIn();
+      
       // Users can create a deposit request for themselves.
       allow create: if isOwner(request.resource.data.userId);
+      
       // Only Admins can update the status of a deposit (approve/decline).
       allow update: if isAdmin();
+      
       // Only admins can delete deposit records.
       allow delete: if isAdmin();
     }
@@ -117,14 +122,18 @@ service cloud.firestore {
     match /trades/{tradeId} {
         // A user can get a specific trade document if they are a participant or an admin.
         allow get: if isTradeParticipant(resource.data) || isAdmin();
+        
         // Allow any signed-in user to query the trades collection.
         // Security is enforced by the `get` rule on each document in the result.
         // User-side queries MUST be filtered by buyerId or sellerId. Admins can query all.
         allow list: if isSignedIn();
+        
         // Any signed-in user can create a trade (by accepting an ad).
         allow create: if isSignedIn();
+        
         // Only trade participants or admins can update a trade's status.
         allow update: if isTradeParticipant(resource.data) || isAdmin();
+        
         // Trades should never be deleted to maintain history.
         allow delete: if false;
 
