@@ -1,6 +1,15 @@
+'use client';
 import { cn } from "@/lib/utils";
+import { useBranding } from '@/context/branding-context';
+import Image from 'next/image';
 
 export function EthLogo({ className }: { className?: string }) {
+  const { branding } = useBranding();
+
+  if (branding?.ethLogo) {
+    return <Image src={branding.ethLogo} alt="ETH Logo" width={32} height={32} className={cn("h-8 w-8", className)} />;
+  }
+
   return (
     <svg
       className={cn("h-8 w-8", className)}

@@ -40,6 +40,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- Config Collection ---
+    // Readable by all, writable only by admins for appearance settings.
+    match /_config/{docId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+
     // --- Admins Collection ---
     // Admins can read their own role document to verify their status.
     // They can also create their own role document upon first-time login.
