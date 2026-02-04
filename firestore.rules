@@ -103,8 +103,17 @@ service cloud.firestore {
       // Users can create a deposit request for themselves.
       allow create: if isOwner(request.resource.data.userId);
       
-      // Only Admins can update the status of a deposit (approve/decline).
-      allow update: if isAdmin();
+      // Admins can update. Users can update ONLY to confirm their transfer.
+      allow update: if isAdmin() || (
+        isOwner(resource.data.userId) &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status == 'awaiting_confirmation' &&
+        request.resource.data.txId != null &&
+        request.resource.data.amount == resource.data.amount &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.crypto == resource.data.crypto &&
+        request.resource.data.chain == resource.data.chain
+      );
       
       // Only admins can delete deposit records.
       allow delete: if isAdmin();
