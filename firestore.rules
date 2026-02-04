@@ -24,10 +24,10 @@ service cloud.firestore {
     // --- Specific Collection Rules ---
 
     // Admins collection: Admins can create their own role doc upon first login.
-    // No one can list all admins. Only an admin can read their own role doc.
+    // They can also read their own doc to verify their status.
     match /admins/{adminId} {
-        allow get: if isOwner(adminId) && isAdmin(); // An admin can check their own status
-        allow create: if isOwner(adminId); // Allow a user to create their own admin document during login flow
+        allow get: if isOwner(adminId);
+        allow create: if isOwner(adminId);
         allow list, update, delete: if false;
     }
 
@@ -115,10 +115,5 @@ service cloud.firestore {
         allow list, get: if isAdmin();
     }
     
-    // Explicitly deny access to any path not defined above.
-    // This is the default behavior, but it's good practice to be explicit.
-    match /{document=**} {
-      allow read, write: if false;
-    }
   }
 }
