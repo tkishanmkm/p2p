@@ -27,8 +27,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, updateProfile, type User as AuthUser } from "firebase/auth";
+import { doc, setDoc, getDoc, serverTimestamp, type Firestore } from "firebase/firestore";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -39,6 +39,43 @@ const formSchema = z.object({
     message: "Please confirm you are not a robot.",
   }),
 });
+
+// Helper function to create the admin's profile in the /users collection if it doesn't exist.
+async function ensureAdminProfileExists(db: Firestore, user: AuthUser, adminId: string) {
+    const userDocRef = doc(db, 'users', user.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (!userDocSnap.exists()) {
+        await setDoc(userDocRef, {
+            id: user.uid,
+            userId: adminId,
+            fullName: `${adminId} (Admin)`,
+            dob: "1970-01-01", // Placeholder DOB
+            isBanned: false,
+            isOnHold: false,
+            tradeVolume: "0",
+            completedTrades: 0,
+            usernameChanged: true, // Prevent admin from changing username via user settings
+            createdAt: serverTimestamp(),
+            feedbackScore: 100,
+            positiveFeedback: 0,
+            negativeFeedback: 0,
+            avgPaymentTime: 0,
+            avgReleaseTime: 0,
+            accountAge: "0 days",
+            photoURL: "",
+            preferredCurrency: "USD",
+            securityQuestion: "Admin account default",
+            securityAnswer: "admin",
+        });
+        
+        // Also update the auth profile's displayName if it doesn't match
+        if (user.displayName !== adminId) {
+           await updateProfile(user, { displayName: adminId });
+        }
+    }
+}
+
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -67,14 +104,17 @@ export default function AdminLoginPage() {
     try {
         await setPersistence(auth, browserLocalPersistence);
         const userCredential = await signInWithEmailAndPassword(auth, adminEmail, values.password);
+        const { user } = userCredential;
 
-        // Always check for and create the admin role document if it's missing.
-        // This makes the login process robust.
-        const adminRoleRef = doc(firestore, 'admins', userCredential.user.uid);
+        // Ensure the admin has a role document in /admins
+        const adminRoleRef = doc(firestore, 'admins', user.uid);
         const adminRoleSnap = await getDoc(adminRoleRef);
         if (!adminRoleSnap.exists()) {
             await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
         }
+        
+        // Ensure the admin has a user profile document in /users
+        await ensureAdminProfileExists(firestore, user, values.adminId);
         
         toast({
             title: "Login Successful",
@@ -83,15 +123,18 @@ export default function AdminLoginPage() {
         router.push("/adminnarayan/dashboard");
 
     } catch (error: any) {
-        // If sign-in fails, it might be a first-time login for this admin.
         if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
             try {
-                // Attempt to create the user account for the admin.
+                // If sign-in fails, attempt to create the admin account as a first-time setup.
                 const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
+                const { user: newUser } = newUserCredential;
                 
                 // Immediately create the admin role document for the new user.
-                const adminRoleRef = doc(firestore, 'admins', newUserCredential.user.uid);
+                const adminRoleRef = doc(firestore, 'admins', newUser.uid);
                 await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
+                
+                // Also create the user profile document in /users
+                await ensureAdminProfileExists(firestore, newUser, values.adminId);
 
                 toast({
                     title: "Admin Account Created",
@@ -107,7 +150,6 @@ export default function AdminLoginPage() {
                 });
             }
         } else {
-            // Handle other login errors (e.g., network issues)
             toast({
               variant: "destructive",
               title: "Login Failed",
