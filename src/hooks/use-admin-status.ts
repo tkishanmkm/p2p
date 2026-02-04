@@ -29,8 +29,12 @@ export function useAdminStatus() {
       const adminRoleRef = doc(firestore, 'admins', user.uid);
       try {
         const docSnap = await getDoc(adminRoleRef);
-        // The user is an admin if the document with their UID exists in the admins collection.
-        setIsAdmin(docSnap.exists());
+        // The user is an admin if the document exists AND the role is 'admin'.
+        if (docSnap.exists() && docSnap.data().role === 'admin') {
+            setIsAdmin(true);
+        } else {
+            setIsAdmin(false);
+        }
       } catch (error) {
         // If the check fails for any reason (e.g., permissions, network),
         // default to not being an admin for security.

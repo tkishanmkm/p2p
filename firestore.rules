@@ -14,16 +14,21 @@ service cloud.firestore {
 
     function isAdmin() {
       // Robust admin check: User must have a document in the 'admins' collection
-      // with a 'role' field set to 'admin'.
-      return isSignedIn() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+      // with a 'role' field set to 'admin'. This is more secure than just checking for existence.
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
     }
     
     function isUserActive() {
+      // A user is active if they are not banned or on hold.
+      // This is used to restrict actions like creating ads or starting trades.
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return userDoc.isBanned == false && userDoc.isOnHold == false;
     }
     
     function isTradeParticipant(tradeId) {
+      // Checks if the requesting user is either the buyer or the seller in a trade.
       let trade = get(/databases/$(database)/documents/trades/$(tradeId)).data;
       return trade.buyerId == request.auth.uid || trade.sellerId == request.auth.uid;
     }
@@ -57,11 +62,12 @@ service cloud.firestore {
         allow read, write: if isOwner(userId) || isAdmin();
       }
       match /deposits/{depositId} {
-        allow read, update, delete: if isOwner(userId) || isAdmin();
+        // A user must be active to create a deposit request.
         allow create: if isOwner(userId) && isUserActive();
+        allow read, update, delete: if isOwner(userId) || isAdmin();
       }
        match /withdrawals/{withdrawalId} {
-        // Withdrawals are allowed even if banned/on hold
+        // Withdrawals are allowed even if banned/on hold, so no isUserActive() check.
         allow read, write: if isOwner(userId) || isAdmin();
       }
        match /notifications/{notificationId} {
@@ -109,7 +115,7 @@ service cloud.firestore {
         allow write: if false;
     }
     match /crypto_deposit_addresses/{addressId} {
-        allow get: if true; // Publicly readable for deposits.
+        allow get: if isSignedIn(); // Logged-in users can read for deposits.
         allow write: if isAdmin(); // Only admins can set these.
     }
 
