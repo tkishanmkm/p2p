@@ -2,9 +2,9 @@
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { useState } from 'react';
-import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, query, where, limit, doc, orderBy } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, query, where, getDocs, doc, orderBy } from 'firebase/firestore';
 import type { User, P2PAd, Trade, UserWallet, Deposit, Withdrawal } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,26 +60,90 @@ export default function AdminUserDetailPage() {
   );
   const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
   
-  // Data queries
-  const adsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, "p2p_ads"), where("userId", "==", userId)) : null), [firestore, userId, isAdmin]);
-  const walletsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? collection(firestore, `users/${userId}/wallets`) : null), [firestore, userId, isAdmin]);
-  const depositsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, "deposits"), where("userId", "==", userId), orderBy('createdAt', 'desc')) : null), [firestore, userId, isAdmin]);
-  const withdrawalsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, `users/${userId}/withdrawals`), orderBy('createdAt', 'desc')) : null), [firestore, userId, isAdmin]);
+  // Data states
+  const [ads, setAds] = useState<P2PAd[] | null>(null);
+  const [wallets, setWallets] = useState<UserWallet[] | null>(null);
+  const [deposits, setDeposits] = useState<Deposit[] | null>(null);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null);
+  const [allTrades, setAllTrades] = useState<Trade[] | null>(null);
   
-  const tradesAsBuyerQuery = useMemoFirebase(() => firestore && userId && isAdmin ? query(collection(firestore, 'trades'), where('buyerId', '==', userId), orderBy('createdAt', 'desc')) : null, [firestore, userId, isAdmin]);
-  const tradesAsSellerQuery = useMemoFirebase(() => firestore && userId && isAdmin ? query(collection(firestore, 'trades'), where('sellerId', '==', userId), orderBy('createdAt', 'desc')) : null, [firestore, userId, isAdmin]);
+  // Loading states
+  const [areAdsLoading, setAreAdsLoading] = useState(true);
+  const [areWalletsLoading, setAreWalletsLoading] = useState(true);
+  const [areDepositsLoading, setAreDepositsLoading] = useState(true);
+  const [areWithdrawalsLoading, setAreWithdrawalsLoading] = useState(true);
+  const [isLoadingTrades, setIsLoadingTrades] = useState(true);
 
-  // Data hooks
-  const { data: ads, isLoading: areAdsLoading } = useCollection<P2PAd>(adsQuery);
-  const { data: wallets, isLoading: areWalletsLoading } = useCollection<UserWallet>(walletsQuery);
-  const { data: deposits, isLoading: areDepositsLoading } = useCollection<Deposit>(depositsQuery);
-  const { data: withdrawals, isLoading: areWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
-  const { data: buyerTrades, isLoading: buyerTradesLoading } = useCollection<Trade>(tradesAsBuyerQuery);
-  const { data: sellerTrades, isLoading: sellerTradesLoading } = useCollection<Trade>(tradesAsSellerQuery);
+  useEffect(() => {
+    if (!isAdmin || !firestore || !userId) {
+      if (!isAdminLoading) { // Only set loading to false if we are sure the user is not an admin
+          setAreAdsLoading(false);
+          setAreWalletsLoading(false);
+          setAreDepositsLoading(false);
+          setAreWithdrawalsLoading(false);
+          setIsLoadingTrades(false);
+      }
+      return;
+    };
+
+    const fetchAllData = async () => {
+      // Ads
+      try {
+        const adsQuery = query(collection(firestore, "p2p_ads"), where("userId", "==", userId));
+        const adsSnapshot = await getDocs(adsQuery);
+        setAds(adsSnapshot.docs.map(d => ({...d.data(), id: d.id } as P2PAd)));
+      } catch (e) { console.error("Failed to fetch ads", e); setAds([]); }
+      finally { setAreAdsLoading(false); }
+
+      // Wallets
+      try {
+        const walletsQuery = query(collection(firestore, `users/${userId}/wallets`));
+        const walletsSnapshot = await getDocs(walletsQuery);
+        setWallets(walletsSnapshot.docs.map(d => ({...d.data(), id: d.id } as UserWallet)));
+      } catch (e) { console.error("Failed to fetch wallets", e); setWallets([]); }
+      finally { setAreWalletsLoading(false); }
+      
+      // Deposits
+      try {
+        const depositsQuery = query(collection(firestore, "deposits"), where("userId", "==", userId), orderBy('createdAt', 'desc'));
+        const depositsSnapshot = await getDocs(depositsQuery);
+        setDeposits(depositsSnapshot.docs.map(d => ({...d.data(), id: d.id } as Deposit)));
+      } catch (e) { console.error("Failed to fetch deposits", e); setDeposits([]); }
+      finally { setAreDepositsLoading(false); }
+      
+      // Withdrawals
+      try {
+        const withdrawalsQuery = query(collection(firestore, `users/${userId}/withdrawals`), orderBy('createdAt', 'desc'));
+        const withdrawalsSnapshot = await getDocs(withdrawalsQuery);
+        setWithdrawals(withdrawalsSnapshot.docs.map(d => ({...d.data(), id: d.id } as Withdrawal)));
+      } catch (e) { console.error("Failed to fetch withdrawals", e); setWithdrawals([]); }
+      finally { setAreWithdrawalsLoading(false); }
+
+      // Trades
+      try {
+        const tradesAsBuyerQuery = query(collection(firestore, 'trades'), where('buyerId', '==', userId), orderBy('createdAt', 'desc'));
+        const tradesAsSellerQuery = query(collection(firestore, 'trades'), where('sellerId', '==', userId), orderBy('createdAt', 'desc'));
+        
+        const [buyerSnapshot, sellerSnapshot] = await Promise.all([
+          getDocs(tradesAsBuyerQuery),
+          getDocs(tradesAsSellerQuery)
+        ]);
+
+        const buyerTrades = buyerSnapshot.docs.map(d => ({...d.data(), id: d.id} as Trade));
+        const sellerTrades = sellerSnapshot.docs.map(d => ({...d.data(), id: d.id} as Trade));
+        
+        const combined = [...buyerTrades, ...sellerTrades];
+        const uniqueTrades = Array.from(new Map(combined.map(trade => [trade.id, trade])).values());
+        uniqueTrades.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+        setAllTrades(uniqueTrades);
+      } catch (e) { console.error("Failed to fetch trades", e); setAllTrades([]); }
+      finally { setIsLoadingTrades(false); }
+    };
+
+    fetchAllData();
+  }, [firestore, userId, isAdmin, isAdminLoading]);
   
-  const allTrades = [...(buyerTrades || []), ...(sellerTrades || [])].sort((a,b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
   const isLoading = isUserLoading || isAdminLoading;
-  const isLoadingTrades = buyerTradesLoading || sellerTradesLoading || isAdminLoading;
   
   if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-48 w-full" /><Skeleton className="h-96 w-full" /></div>;
@@ -202,7 +266,7 @@ export default function AdminUserDetailPage() {
                          <Table>
                              <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>Role</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
                              <TableBody>
-                                 {allTrades.length ? allTrades.map(t => (
+                                 {allTrades?.length ? allTrades.map(t => (
                                      <TableRow key={t.id}>
                                          <TableCell className="font-mono text-xs">{t.tradeId}</TableCell>
                                          <TableCell><Badge variant={t.buyerId === userId ? 'default' : 'secondary'}>{t.buyerId === userId ? 'Buyer' : 'Seller'}</Badge></TableCell>
