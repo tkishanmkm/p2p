@@ -1,33 +1,8 @@
-/**
- * Core Philosophy:
- * This ruleset enforces a security model based on user ownership, shared access for collaborators, and role-based access for administrators.
- * The primary goal is to ensure that users can only access and manage their own data, while allowing for controlled interaction in shared contexts like P2P trades.
- * Administrators have privileged access for moderation and system management. The default posture is to deny all access unless explicitly granted.
- *
- * Data Structure:
- * - User-specific data (profiles, wallets, deposits, withdrawals) is strictly segregated under the path `/users/{userId}`. This structure leverages path-based security to enforce ownership.
- * - Publicly readable data includes P2P advertisements (`/p2p_ads`) and available payment methods (`/payment_methods`) to allow browsing by any user.
- * - Shared data, such as trades, resides in the top-level `/trades/{tradeId}` collection. Access is granted to the specific participants (`buyerId`, `sellerId`) of that trade. Subcollections for chat, disputes, and feedback inherit access from their parent trade document.
- * - Administrator roles are managed via document existence in the `/roles_admin/{uid}` collection, providing a simple and performant way to check for administrative privileges.
- *
- * Key Security Decisions:
- * - User Enumeration Blocked: Listing documents in the top-level `/users` collection is disallowed to protect user privacy (except for admins).
- * - Admin-Only Collections: The `/admin_logs` collection is locked down, with writes restricted to admins and all client access to `/roles_admin` forbidden except for the specific actions needed for the login flow.
- * - Trade Immutability: Deleting a trade document is disallowed to preserve a historical record. Trades should be cancelled or completed by updating their status field.
- * - Public Data is Read-Only: Collections like `/payment_methods` are publicly readable but cannot be modified by clients, ensuring data integrity.
- *
- * Denormalization for Authorization:
- * - P2P Ads (`/p2p_ads/{adId}`): Each ad document contains a `userId` field. This allows write-access rules to check for ownership directly on the document without performing a costly `get()` on another collection.
- * - Trades (`/trades/{tradeId}`): Each trade document contains `buyerId` and `sellerId` fields. This is critical for granting read/write access to the two participating users and is used to secure the document and all its subcollections (`messages`, `disputes`, `feedback`).
- *
- * Structural Segregation:
- * The data model effectively separates private, shared, and public data into different collections. Private user data is nested under `/users/{userId}`, shared trade data is under `/trades/{tradeId}`, and public ad data is in `/p2p_ads`. This clear separation simplifies rule logic and enhances security by ensuring that all documents within a given collection path share a common access control policy.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // Helper Functions
     function isSignedIn() {
       return request.auth != null;
     }
@@ -36,187 +11,114 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // Checks if the user has an admin role document.
     function isAdmin() {
-      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      // Admin status is determined by the existence of a document in the 'admins' collection.
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
-    
-    // Checks if the user is a participant (buyer or seller) in a trade.
-    // This requires one document read.
+
     function isTradeParticipant(tradeId) {
       let trade = get(/databases/$(database)/documents/trades/$(tradeId)).data;
       return trade.buyerId == request.auth.uid || trade.sellerId == request.auth.uid;
     }
 
-    /**
-     * @description Stores user profiles. Access is restricted to the document owner or an administrator.
-     * @path /users/{userId}
-     */
+    // --- Specific Collection Rules ---
+
+    // Admins collection: Admins can create their own role doc upon first login.
+    // No one can list all admins. Only an admin can read their own role doc.
+    match /admins/{adminId} {
+        allow get: if isOwner(adminId) && isAdmin(); // An admin can check their own status
+        allow create: if isOwner(adminId); // Allow a user to create their own admin document during login flow
+        allow list, update, delete: if false;
+    }
+
+    // Users can read/write their own data. Admins have broader read access.
     match /users/{userId} {
-      // Allow public get for profile pages, but only admins can list all users.
-      allow get: if true;
-      allow list: if isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if (isOwner(userId) || isAdmin());
-      allow delete: if (isOwner(userId) || isAdmin());
+      allow get: if true; // Public profiles are readable by anyone
+      allow list: if isAdmin(); // Only admins can list all users
+      allow create: if isOwner(userId); // A user can create their own profile
+      allow update: if isOwner(userId) || isAdmin(); // A user can update their own profile, or an admin can
+      allow delete: if isAdmin(); // Only admins can delete users
 
-      /**
-       * @description Stores user's crypto wallets. Inherits ownership from the parent user document.
-       * @path /users/{userId}/wallets/{walletId}
-       */
+      // Subcollections are private to the user or admins
       match /wallets/{walletId} {
-        allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if (isOwner(userId) || isAdmin()) && request.resource.data.userId == userId;
-        allow update, delete: if (isOwner(userId) || isAdmin());
+        allow read, write: if isOwner(userId) || isAdmin();
       }
-
-      /**
-       * @description Stores user's deposit history. Inherits ownership from the parent user document.
-       * @path /users/{userId}/deposits/{depositId}
-       */
       match /deposits/{depositId} {
-        allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if (isOwner(userId) || isAdmin()) && request.resource.data.userId == userId;
-        allow update, delete: if (isOwner(userId) || isAdmin());
+        allow read, write: if isOwner(userId) || isAdmin();
       }
-
-      /**
-       * @description Stores user's withdrawal history. Inherits ownership from the parent user document.
-       * @path /users/{userId}/withdrawals/{withdrawalId}
-       */
-      match /withdrawals/{withdrawalId} {
-        allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if (isOwner(userId) || isAdmin()) && request.resource.data.userId == userId;
-        allow update, delete: if (isOwner(userId) || isAdmin());
+       match /withdrawals/{withdrawalId} {
+        allow read, write: if isOwner(userId) || isAdmin();
       }
-
-      /**
-       * @description Stores user notifications. Inherits ownership from the parent user document.
-       * @path /users/{userId}/notifications/{notificationId}
-       */
-      match /notifications/{notificationId} {
+       match /notifications/{notificationId} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    /**
-     * @description P2P advertisements. These are public to read but can only be written by the owner.
-     * @path /p2p_ads/{adId}
-     */
+    // Ads are public, but only owners/admins can modify.
     match /p2p_ads/{adId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if (isOwner(resource.data.userId) || isAdmin());
-      allow delete: if false; // Soft delete by setting active=false
+        allow get, list: if true;
+        allow create: if isSignedIn();
+        allow update: if isOwner(resource.data.userId) || isAdmin();
+        allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
-    /**
-     * @description Represents a trade between two users. Access is limited to the buyer, seller, and admins.
-     * @path /trades/{tradeId}
-     */
+    // Trades are only accessible to participants and admins.
     match /trades/{tradeId} {
-      allow get: if isTradeParticipant(tradeId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.buyerId == request.auth.uid || request.resource.data.sellerId == request.auth.uid);
-      allow update: if (isTradeParticipant(tradeId) || isAdmin());
-      allow delete: if false;
+        allow get, update: if isTradeParticipant(tradeId) || isAdmin();
+        allow list: if isAdmin(); // Only admins can list all trades
+        allow create: if isSignedIn();
+        allow delete: if false; // Trades should not be deleted, only 'cancelled'
 
-      /**
-       * @description Chat messages within a trade. Access is granted to trade participants only.
-       * @path /trades/{tradeId}/messages/{messageId}
-       */
-      match /messages/{messageId} {
-        allow get, list: if isTradeParticipant(tradeId) || isAdmin();
-        allow create: if (isTradeParticipant(tradeId) || isAdmin()) && 
-                         request.resource.data.senderId == request.auth.uid &&
-                         (request.resource.data.isModerator == true ? isAdmin() : true);
-        allow update, delete: if (isOwner(resource.data.senderId) || isAdmin());
-      }
+        match /messages/{messageId} {
+            allow read, write: if isTradeParticipant(tradeId) || isAdmin();
+        }
+        match /disputes/{disputeId} {
+            allow read, write: if isTradeParticipant(tradeId) || isAdmin();
+        }
+        match /feedback/{feedbackId} {
+            allow read, write: if isTradeParticipant(tradeId) || isAdmin();
+        }
+    }
 
-      /**
-       * @description Disputes filed for a trade. Access is granted to trade participants and admins.
-       * @path /trades/{tradeId}/disputes/{disputeId}
-       */
-      match /disputes/{disputeId} {
-        allow get, list: if isTradeParticipant(tradeId) || isAdmin();
-        allow create: if (isTradeParticipant(tradeId) || isAdmin()) && request.resource.data.openedBy == request.auth.uid;
-        allow update, delete: if (isTradeParticipant(tradeId) || isAdmin());
-      }
-
-      /**
-       * @description Feedback left by trade participants. Access is granted to trade participants.
-       * @path /trades/{tradeId}/feedback/{feedbackId}
-       */
-      match /feedback/{feedbackId} {
-        allow get, list: if isTradeParticipant(tradeId) || isAdmin();
-        allow create: if (isTradeParticipant(tradeId) || isAdmin()) && request.resource.data.fromUser == request.auth.uid;
-        allow update, delete: if (isOwner(resource.data.fromUser) || isAdmin());
-      }
-    }
-    
-    /**
-     * @description Collection group rules for admin queries.
-     */
-    match /{path=**}/deposits/{depositId} {
-      allow read: if isAdmin();
-    }
-     match /{path=**}/withdrawals/{withdrawalId} {
-      allow read: if isAdmin();
-    }
-     match /{path=**}/disputes/{disputeId} {
-      allow read: if isAdmin();
-    }
-    
-    /**
-     * @description Stores admin-set deposit addresses. Readable by any user, writable only by admins.
-     * @path /crypto_deposit_addresses/{addressId}
-     */
-    match /crypto_deposit_addresses/{addressId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    /**
-     * @description Support tickets can be created by anyone, but only managed by admins.
-     * @path /support_tickets/{ticketId}
-     */
+    // Support tickets can be created by users, but only read/updated by admins
     match /support_tickets/{ticketId} {
-      allow create: if request.resource.data.email is string && request.resource.data.message is string;
-      allow read, update: if isAdmin();
-      allow delete: if false;
+        allow create: if isSignedIn();
+        allow read, update: if isAdmin();
+        allow delete: if false;
     }
-
-
-    /**
-     * @description A read-only list of available payment methods for the platform.
-     * @path /payment_methods/{paymentMethodId}
-     */
+    
+    // Globally readable configuration data
     match /payment_methods/{paymentMethodId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+        allow get, list: if true;
+        allow write: if false;
     }
 
-    /**
-     * @description Logs of actions performed by administrators. Writable only by admins.
-     * @path /admin_logs/{logId}
-     */
+    match /crypto_deposit_addresses/{addressId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+
+    // Admin-only collections
     match /admin_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin();
-      allow update, delete: if false;
+        allow read, write: if isAdmin();
     }
 
-    /**
-     * @description Manages admin roles. Document existence at `/roles_admin/{uid}` grants admin privileges.
-     * @path /roles_admin/{uid}
-     */
-    match /roles_admin/{uid} {
-      // An authenticated user can get or create their OWN role document.
-      // This allows the isAdmin() function to work and the login flow to create the doc.
-      allow get, create: if isOwner(uid);
-      
-      // Prohibit clients from listing all admins or modifying/deleting roles directly.
-      allow list, update, delete: if false;
+    // --- Collection Group Rules for Admin Panel ---
+    // These are required for admin panel dashboard queries to work.
+    match /{path=**}/deposits/{depositId} {
+        allow list, get: if isAdmin();
+    }
+    match /{path=**}/withdrawals/{withdrawalId} {
+        allow list, get: if isAdmin();
+    }
+    match /{path=**}/disputes/{disputeId} {
+        allow list, get: if isAdmin();
+    }
+    
+    // Explicitly deny access to any path not defined above.
+    // This is the default behavior, but it's good practice to be explicit.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

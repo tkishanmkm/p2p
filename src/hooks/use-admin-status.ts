@@ -26,10 +26,10 @@ export function useAdminStatus() {
     // At this point, auth is resolved and we have a user.
     // We must now check their role in the database.
     const checkAdminStatus = async () => {
-      const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
+      const adminRoleRef = doc(firestore, 'admins', user.uid);
       try {
         const docSnap = await getDoc(adminRoleRef);
-        // The user is an admin if the document with their UID exists in the roles_admin collection.
+        // The user is an admin if the document with their UID exists in the admins collection.
         setIsAdmin(docSnap.exists());
       } catch (error) {
         // If the check fails for any reason (e.g., permissions, network),

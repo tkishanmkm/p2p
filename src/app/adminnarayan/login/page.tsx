@@ -70,7 +70,7 @@ export default function AdminLoginPage() {
 
         // Always check for and create the admin role document if it's missing.
         // This makes the login process robust.
-        const adminRoleRef = doc(firestore, 'roles_admin', userCredential.user.uid);
+        const adminRoleRef = doc(firestore, 'admins', userCredential.user.uid);
         const adminRoleSnap = await getDoc(adminRoleRef);
         if (!adminRoleSnap.exists()) {
             await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
@@ -90,7 +90,7 @@ export default function AdminLoginPage() {
                 const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
                 
                 // Immediately create the admin role document for the new user.
-                const adminRoleRef = doc(firestore, 'roles_admin', newUserCredential.user.uid);
+                const adminRoleRef = doc(firestore, 'admins', newUserCredential.user.uid);
                 await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
 
                 toast({
