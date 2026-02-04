@@ -21,7 +21,7 @@ service cloud.firestore {
     }
     
     // Checks if a user is an active participant (buyer or seller) in a trade.
-    // This is more efficient than the old version as it uses `resource.data`
+    // This is more efficient than a version using get() as it uses `resource.data`
     // which is available in `get` and `update` contexts.
     function isTradeParticipant(tradeData) {
       return tradeData.buyerId == request.auth.uid || tradeData.sellerId == request.auth.uid;
@@ -79,7 +79,7 @@ service cloud.firestore {
       match /withdrawals/{withdrawalId} {
         // Users can create/read their own withdrawals. Admins can manage all.
         allow read, create, update: if isOwner(userId) || isAdmin();
-        // Prevent accidental deletion.
+        // Prevent accidental deletion by users. Only Admins can delete.
         allow delete: if isAdmin();
       }
       match /notifications/{notificationId} {
@@ -93,7 +93,7 @@ service cloud.firestore {
     match /deposits/{depositId} {
       // Users can get their own deposit. Admins can get any.
       allow get: if isOwner(resource.data.userId) || isAdmin();
-      // This allows both users and admins to run queries.
+      // Allows both users and admins to run queries.
       // Firestore will then check the `get` rule on each document returned.
       // A user's query MUST include `where("userId", "==", request.auth.uid)`.
       allow list: if isSignedIn();
@@ -130,6 +130,7 @@ service cloud.firestore {
         allow delete: if false;
 
         // Trade subcollections are only accessible to participants and admins.
+        // A get() call is required here to check the parent trade document's participants.
         match /messages/{messageId} {
             allow read, write: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(tradeId)).data) || isAdmin();
         }
@@ -147,11 +148,12 @@ service cloud.firestore {
         allow create: if isSignedIn();
         // Only admins can view, manage, and update tickets.
         allow read, list, update: if isAdmin();
+        // Support tickets should be archived, not deleted.
         allow delete: if false;
     }
     
     // --- Collection Group Rules for Admin Panel ---
-    // These allow admins to query across all users' subcollections.
+    // These allow admins to query across all users' subcollections for platform-wide reports.
     match /{path=**}/withdrawals/{withdrawalId} {
         allow list, get: if isAdmin();
     }
