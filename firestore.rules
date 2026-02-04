@@ -28,7 +28,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for reusable logic
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
@@ -62,8 +62,9 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree and enforces self-creation.
      */
     match /users/{userId} {
-      // Allow public read for profile pages and admin listing.
-      allow read: if true;
+      // Allow public get for profile pages, but only admins can list all users.
+      allow get: if true;
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if (isOwner(userId) || isAdmin());
       allow delete: if (isOwner(userId) || isAdmin());
@@ -192,13 +193,13 @@ service cloud.firestore {
      * @description Collection group rules for admin queries.
      */
     match /{path=**}/deposits/{depositId} {
-      allow read: if true;
+      allow read: if isAdmin();
     }
      match /{path=**}/withdrawals/{withdrawalId} {
-      allow read: if true;
+      allow read: if isAdmin();
     }
      match /{path=**}/disputes/{disputeId} {
-      allow read: if true;
+      allow read: if isAdmin();
     }
     
     /**
@@ -215,7 +216,7 @@ service cloud.firestore {
     
     match /support_tickets/{ticketId} {
       allow create: if request.resource.data.email is string && request.resource.data.message is string;
-      allow read, update: if true;
+      allow read, update: if isAdmin();
       allow delete: if false;
     }
 
@@ -240,7 +241,7 @@ service cloud.firestore {
      * @principle Enforces role-based access control (RBAC) for sensitive, admin-only data. Logs are immutable.
      */
     match /admin_logs/{logId} {
-      allow read: if true;
+      allow read: if isAdmin();
       allow create: if isAdmin();
       allow update, delete: if false;
     }
@@ -254,7 +255,7 @@ service cloud.firestore {
      */
     match /roles_admin/{uid} {
       allow get: if isOwner(uid);
-      allow list: if true;
+      allow list: if isAdmin();
       allow create: if isOwner(uid) && isInitialAdmin();
       allow update, delete: if false;
     }
