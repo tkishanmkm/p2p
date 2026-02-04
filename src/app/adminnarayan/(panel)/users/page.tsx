@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -101,14 +102,12 @@ export default function AdminUsersPage() {
               <TableRow>
                 <TableHead>User ID</TableHead>
                 <TableHead>Full Name</TableHead>
-                <TableHead>Sec. Question</TableHead>
-                <TableHead>Sec. Answer</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={6}>Loading users...</TableCell></TableRow>}
+              {isLoading && <TableRow><TableCell colSpan={4}>Loading users...</TableCell></TableRow>}
               {!isLoading && users?.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
@@ -120,8 +119,6 @@ export default function AdminUsersPage() {
                     </Button>
                   </TableCell>
                   <TableCell>{user.fullName}</TableCell>
-                  <TableCell className="text-xs max-w-xs truncate">{user.securityQuestion}</TableCell>
-                  <TableCell className="text-xs">{user.securityAnswer}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                         {user.isBanned && <Badge variant="destructive">Banned</Badge>}
@@ -162,7 +159,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !users?.length && <TableRow><TableCell colSpan={6} className="text-center">No users found.</TableCell></TableRow>}
+              {!isLoading && !users?.length && <TableRow><TableCell colSpan={4} className="text-center">No users found.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
