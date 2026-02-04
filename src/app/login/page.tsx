@@ -122,8 +122,11 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                         <FormLabel>Password</FormLabel>
+                        <Link href="/forgot-password" passHref legacyBehavior>
+                           <a className="text-sm font-medium text-accent hover:underline">Forgot password?</a>
+                        </Link>
                     </div>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
