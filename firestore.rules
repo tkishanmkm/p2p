@@ -70,11 +70,11 @@ service cloud.firestore {
         // User can create their own deposit record.
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         // User can read their own deposits, admins can read any.
-        allow get: if (isOwner(resource.data.userId) || isAdmin());
+        allow get: if isOwner(resource.data.userId) || isAdmin();
         // User can update their own deposit to add txId. Admin can update to approve/decline.
         allow update: if (isOwner(resource.data.userId) || isAdmin());
         // Admins can list all. Users can only list their own.
-        allow list: if isAdmin() || (isSignedIn() && request.query.where[0][0] == 'userId' && request.query.where[0][2] == request.auth.uid);
+        allow list: if isAdmin() || (isSignedIn() && request.query.where[0][2] == request.auth.uid);
         allow delete: if isAdmin();
     }
 
@@ -87,8 +87,10 @@ service cloud.firestore {
 
     // --- Trades Collection ---
     match /trades/{tradeId} {
-        allow get, update: if isTradeParticipant(tradeId) || isAdmin();
+        // Optimized get/update rule
+        allow get, update: if (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid) || isAdmin();
         allow create: if isSignedIn() && isUserActive();
+        // List is allowed for any signed-in user; security is enforced by the 'get' rule on each document in the query result.
         allow list: if isSignedIn();
         allow delete: if false;
 

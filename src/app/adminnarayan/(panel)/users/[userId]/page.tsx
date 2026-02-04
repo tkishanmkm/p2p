@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Calendar, CheckCircle, Clock, DollarSign, Percent, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
+import { useAdminStatus } from '@/hooks/use-admin-status';
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | undefined }) {
     if (!value) return null;
@@ -47,6 +48,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 export default function AdminUserDetailPage() {
   const params = useParams();
   const { firestore } = useFirebase();
+  const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const userId = Array.isArray(params.userId) ? params.userId[0] : params.userId;
 
   const userRef = useMemoFirebase(
@@ -56,13 +58,13 @@ export default function AdminUserDetailPage() {
   const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
   
   // Data queries
-  const adsQuery = useMemoFirebase(() => (firestore && userId ? query(collection(firestore, "p2p_ads"), where("userId", "==", userId)) : null), [firestore, userId]);
-  const walletsQuery = useMemoFirebase(() => (firestore && userId ? collection(firestore, `users/${userId}/wallets`) : null), [firestore, userId]);
-  const depositsQuery = useMemoFirebase(() => (firestore && userId ? query(collection(firestore, `users/${userId}/deposits`), orderBy('createdAt', 'desc')) : null), [firestore, userId]);
-  const withdrawalsQuery = useMemoFirebase(() => (firestore && userId ? query(collection(firestore, `users/${userId}/withdrawals`), orderBy('createdAt', 'desc')) : null), [firestore, userId]);
+  const adsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, "p2p_ads"), where("userId", "==", userId)) : null), [firestore, userId, isAdmin]);
+  const walletsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? collection(firestore, `users/${userId}/wallets`) : null), [firestore, userId, isAdmin]);
+  const depositsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, `users/${userId}/deposits`), orderBy('createdAt', 'desc')) : null), [firestore, userId, isAdmin]);
+  const withdrawalsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, `users/${userId}/withdrawals`), orderBy('createdAt', 'desc')) : null), [firestore, userId, isAdmin]);
   
-  const tradesAsBuyerQuery = useMemoFirebase(() => firestore && userId ? query(collection(firestore, 'trades'), where('buyerId', '==', userId), orderBy('createdAt', 'desc')) : null, [firestore, userId]);
-  const tradesAsSellerQuery = useMemoFirebase(() => firestore && userId ? query(collection(firestore, 'trades'), where('sellerId', '==', userId), orderBy('createdAt', 'desc')) : null, [firestore, userId]);
+  const tradesAsBuyerQuery = useMemoFirebase(() => firestore && userId && isAdmin ? query(collection(firestore, 'trades'), where('buyerId', '==', userId), orderBy('createdAt', 'desc')) : null, [firestore, userId, isAdmin]);
+  const tradesAsSellerQuery = useMemoFirebase(() => firestore && userId && isAdmin ? query(collection(firestore, 'trades'), where('sellerId', '==', userId), orderBy('createdAt', 'desc')) : null, [firestore, userId, isAdmin]);
 
   // Data hooks
   const { data: ads, isLoading: areAdsLoading } = useCollection<P2PAd>(adsQuery);
@@ -73,9 +75,10 @@ export default function AdminUserDetailPage() {
   const { data: sellerTrades, isLoading: sellerTradesLoading } = useCollection<Trade>(tradesAsSellerQuery);
   
   const allTrades = [...(buyerTrades || []), ...(sellerTrades || [])].sort((a,b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
-  const isLoadingTrades = buyerTradesLoading || sellerTradesLoading;
+  const isLoading = isUserLoading || isAdminLoading;
+  const isLoadingTrades = buyerTradesLoading || sellerTradesLoading || isAdminLoading;
   
-  if (isUserLoading) {
+  if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-48 w-full" /><Skeleton className="h-96 w-full" /></div>;
   }
 

@@ -23,6 +23,8 @@ import type { Trade } from "@/lib/types";
 import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useAdminStatus } from "@/hooks/use-admin-status";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors: Record<Trade['status'], string> = {
   active: "border-blue-500/50 text-blue-600 bg-blue-50",
@@ -35,13 +37,16 @@ const statusColors: Record<Trade['status'], string> = {
 
 export default function AdminTradesPage() {
   const { firestore } = useFirebase();
+  const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
 
   const tradesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    // Guard: Only create the query if the user is a confirmed admin.
+    if (!firestore || !isAdmin) return null;
     return query(collection(firestore, "trades"), orderBy("createdAt", "desc"));
-  }, [firestore]);
+  }, [firestore, isAdmin]);
 
-  const { data: trades, isLoading } = useCollection<Trade>(tradesQuery);
+  const { data: trades, isLoading: areTradesLoading } = useCollection<Trade>(tradesQuery);
+  const isLoading = isAdminLoading || areTradesLoading;
 
   return (
     <>
@@ -72,7 +77,7 @@ export default function AdminTradesPage() {
               {isLoading && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center">
-                    Loading trades...
+                    <Skeleton className="h-4 w-1/4 mx-auto" />
                   </TableCell>
                 </TableRow>
               )}
