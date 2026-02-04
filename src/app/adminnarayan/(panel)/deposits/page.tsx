@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collectionGroup, query, where, orderBy } from "firebase/firestore";
+import { collection, query, where, orderBy } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -61,7 +61,7 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
 
     const depositsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        const depositsRef = collectionGroup(firestore, "deposits");
+        const depositsRef = collection(firestore, "deposits");
         
         if (status) {
             return query(depositsRef, where("status", "==", status), orderBy("createdAt", "desc"));

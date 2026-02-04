@@ -87,8 +87,8 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
       }
       const depositAddressDoc = addressSnapshot.docs[0].data() as CryptoDepositAddress;
       
-      // 2. Create a new deposit document for the user
-      const depositsRef = collection(firestore, "users", user.uid, "deposits");
+      // 2. Create a new deposit document for the user in the top-level 'deposits' collection
+      const depositsRef = collection(firestore, "deposits");
       const newDepositData: Omit<Deposit, "id"> = {
         userId: user.uid,
         userDisplayName: user.displayName || 'Unknown',
@@ -99,7 +99,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
         qrCodeUrl: depositAddressDoc.qrCodeUrl,
         status: 'pending',
         timerEnd: add(new Date(), { minutes: 181 }).toISOString(),
-        createdAt: new Date().toISOString(), // Will be replaced by server timestamp
+        createdAt: new Date().toISOString(), // This will be replaced by server timestamp
       };
 
       const docRef = await addDoc(depositsRef, {

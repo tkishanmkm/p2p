@@ -3,8 +3,10 @@
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { useFirebase, useDoc } from "@/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, collectionGroup, query, where, getDocs } from "firebase/firestore";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useCountdown } from "@/hooks/use-countdown";
 import type { Deposit } from "@/lib/types";
@@ -13,9 +15,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, CheckCircle, Copy, Hourglass, Loader2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useState } from "react";
+
+const depositConfirmationSchema = z.object({
+  txId: z.string().min(10, { message: "Transaction Hash is required and must be at least 10 characters." }),
+});
+
+type DepositConfirmationFormValues = z.infer<typeof depositConfirmationSchema>;
+
 
 function CountdownDisplay({ targetDate }: { targetDate: string }) {
   const { hours, minutes, seconds, isFinished } = useCountdown(targetDate);
@@ -31,14 +40,15 @@ function CountdownDisplay({ targetDate }: { targetDate: string }) {
 function DepositPageContent() {
   const params = useParams();
   const { toast } = useToast();
-  const { firestore, user } = useFirebase();
+  const { firestore } = useFirebase();
   const depositId = Array.isArray(params.id) ? params.id[0] : params.id;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const depositRef = firestore && user ? doc(firestore, "users", user.uid, "deposits", depositId) : null;
+  const depositRef = firestore && depositId ? doc(firestore, "deposits", depositId) : null;
   const { data: deposit, isLoading } = useDoc<Deposit>(depositRef);
 
-  const form = useForm({
+  const form = useForm<DepositConfirmationFormValues>({
+    resolver: zodResolver(depositConfirmationSchema),
     defaultValues: { txId: "" },
   });
 
@@ -47,16 +57,34 @@ function DepositPageContent() {
     toast({ title: "Copied!", description: "Address copied to clipboard." });
   };
   
-  const onSubmit = async (values: { txId: string }) => {
-    if (!depositRef) return;
+  const onSubmit = async (values: DepositConfirmationFormValues) => {
+    if (!depositRef || !firestore) return;
     setIsSubmitting(true);
+
     try {
+        // Check for duplicate TxID across all deposits
+        const depositsRef = collectionGroup(firestore, 'deposits');
+        const q = query(depositsRef, where("txId", "==", values.txId));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            const existingDeposit = querySnapshot.docs[0].data() as Deposit;
+            toast({ 
+                variant: "destructive", 
+                title: "Duplicate Transaction", 
+                description: `This transaction hash is already recorded with status: ${existingDeposit.status}. Please enter a new transaction hash.` 
+            });
+            setIsSubmitting(false);
+            return;
+        }
+        
         await updateDoc(depositRef, { 
-            txId: values.txId || "",
+            txId: values.txId,
             status: 'awaiting_confirmation'
         });
         toast({ title: "Confirmation Received", description: "Your deposit is pending review by an administrator. You will be notified upon approval." });
     } catch (error: any) {
+        console.error("Error confirming deposit:", error);
         toast({ variant: "destructive", title: "Error", description: "Could not save your confirmation." });
     } finally {
         setIsSubmitting(false);
@@ -147,7 +175,10 @@ function DepositPageContent() {
                         name="txId"
                         render={({field}) => (
                             <FormItem>
-                                <Input {...field} placeholder="Enter Transaction Hash (Optional)" />
+                                <FormLabel>Transaction Hash / ID</FormLabel>
+                                <FormControl>
+                                    <Input {...field} placeholder="Enter the transaction hash from your wallet" />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}

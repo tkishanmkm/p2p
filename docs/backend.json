@@ -806,18 +806,14 @@
         }
       },
       {
-        "path": "/users/{userId}/deposits/{depositId}",
+        "path": "/deposits/{depositId}",
         "definition": {
           "entityName": "Deposit",
           "schema": {
             "$ref": "#/backend/entities/Deposit"
           },
-          "description": "Stores deposit requests initiated by the user. Access controlled by the parent 'users' document.",
+          "description": "Stores all user deposit requests in a single, top-level collection for easier admin querying.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
             {
               "name": "depositId",
               "description": "The unique identifier for the deposit."

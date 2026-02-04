@@ -18,7 +18,7 @@ export async function approveDeposit(
   db: Firestore,
   deposit: Deposit
 ): Promise<void> {
-  const depositRef = doc(db, "users", deposit.userId, "deposits", deposit.id);
+  const depositRef = doc(db, "deposits", deposit.id);
   const userWalletRef = doc(db, "users", deposit.userId, "wallets", deposit.crypto);
 
   await runTransaction(db, async (transaction) => {
@@ -60,13 +60,11 @@ export async function declineDeposit(
   db: Firestore,
   deposit: Deposit
 ): Promise<void> {
-  const depositRef = doc(db, "users", deposit.userId, "deposits", deposit.id);
-  await writeBatch(db)
-    .update(depositRef, {
+  const depositRef = doc(db, "deposits", deposit.id);
+  await updateDoc(depositRef, {
       status: "declined",
       adminId: "admin_placeholder",
-    })
-    .commit();
+  });
 }
 
 /**
