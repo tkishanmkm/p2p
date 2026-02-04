@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn, toDate } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAdminStatus } from "@/hooks/use-admin-status";
 
 const statusColors: Record<Deposit['status'], string> = {
   pending: "border-gray-500/50 text-gray-600 bg-gray-50",
@@ -54,13 +55,14 @@ const statusColors: Record<Deposit['status'], string> = {
 
 function DepositsTable({ status }: { status?: Deposit['status'] }) {
     const { firestore } = useFirebase();
+    const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
     const { toast } = useToast();
     const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
     const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
     const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
 
     const depositsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !isAdmin) return null;
         const depositsRef = collection(firestore, "deposits");
         
         if (status) {
@@ -68,9 +70,10 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
         } else {
             return query(depositsRef, orderBy("createdAt", "desc"));
         }
-    }, [firestore, status]);
+    }, [firestore, status, isAdmin]);
 
-    const { data: deposits, isLoading } = useCollection<Deposit>(depositsQuery);
+    const { data: deposits, isLoading: areDepositsLoading } = useCollection<Deposit>(depositsQuery);
+    const isLoading = isAdminLoading || areDepositsLoading;
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);

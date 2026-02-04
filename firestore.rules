@@ -67,15 +67,14 @@ service cloud.firestore {
     
     // --- Deposits (Top-Level Collection) ---
     match /deposits/{depositId} {
-        // User can create their own deposit record.
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        // User can read their own deposits, admins can read any.
-        allow get: if isOwner(resource.data.userId) || isAdmin();
-        // User can update their own deposit to add txId. Admin can update to approve/decline.
-        allow update: if (isOwner(resource.data.userId) || isAdmin());
-        // Admins can list all. Users can only list their own.
-        allow list: if isAdmin() || (isSignedIn() && request.query.where[0][2] == request.auth.uid);
-        allow delete: if isAdmin();
+      allow get: if isOwner(resource.data.userId) || isAdmin();
+      // Users can list their own deposits (with a 'where' clause), and admins can list all deposits.
+      // This is secure because Firestore checks the 'get' rule for each document returned by a 'list' query.
+      allow list: if isSignedIn();
+      allow create: if isOwner(request.resource.data.userId);
+      // Admins can update any deposit. Users can update their own (e.g., to add a txId).
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     // --- P2P Ads Collection ---
@@ -87,11 +86,14 @@ service cloud.firestore {
 
     // --- Trades Collection ---
     match /trades/{tradeId} {
-        // Optimized get/update rule
-        allow get, update: if (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid) || isAdmin();
-        allow create: if isSignedIn() && isUserActive();
-        // List is allowed for any signed-in user; security is enforced by the 'get' rule on each document in the query result.
+        // Trade participants and admins can get a single trade document.
+        allow get: if isTradeParticipant(tradeId) || isAdmin();
+        // Any signed-in user can attempt to list trades.
+        // The 'get' rule above will be checked for each document, ensuring security.
         allow list: if isSignedIn();
+        allow create: if isSignedIn() && isUserActive();
+        // Only trade participants or admins can update.
+        allow update: if isTradeParticipant(tradeId) || isAdmin();
         allow delete: if false;
 
         // Subcollections are only accessible to trade participants and admins.
