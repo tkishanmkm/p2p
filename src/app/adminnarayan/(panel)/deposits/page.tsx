@@ -45,6 +45,8 @@ import {
 import { cn, toDate } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminStatus } from "@/hooks/use-admin-status";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 const statusColors: Record<Deposit['status'], string> = {
   pending: "border-gray-500/50 text-gray-600 bg-gray-50",
@@ -55,12 +57,13 @@ const statusColors: Record<Deposit['status'], string> = {
 };
 
 function DepositsTable({ status }: { status?: Deposit['status'] }) {
-    const { firestore } = useFirebase();
+    const { firestore, user: adminUser } = useFirebase();
     const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
     const { toast } = useToast();
     const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
     const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
     const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
+    const [editableAmount, setEditableAmount] = useState('');
     
     const [deposits, setDeposits] = useState<Deposit[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -83,19 +86,12 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                 const depositsRef = collection(firestore, "deposits");
                 let q;
                 if (status) {
-                    // Filter by status first
-                    q = query(depositsRef, where("status", "==", status));
+                    q = query(depositsRef, where("status", "==", status), orderBy("createdAt", "desc"));
                 } else {
-                    // Order by date when showing all
                     q = query(depositsRef, orderBy("createdAt", "desc"));
                 }
                 const querySnapshot = await getDocs(q);
                 let depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
-
-                // If we filtered by status, we must sort on the client side
-                if (status) {
-                    depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
-                }
 
                 setDeposits(depositsData);
             } catch (error) {
@@ -121,9 +117,16 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
     };
 
     const handleApprove = async () => {
-        if (!firestore || !selectedDeposit) return;
+        if (!firestore || !selectedDeposit || !adminUser) return;
+        
+        const finalAmount = parseFloat(editableAmount);
+        if (isNaN(finalAmount) || finalAmount <= 0) {
+            toast({ variant: "destructive", title: "Invalid Amount", description: "Please enter a valid positive number." });
+            return;
+        }
+
         try {
-            await approveDeposit(firestore, selectedDeposit);
+            await approveDeposit(firestore, selectedDeposit, finalAmount, adminUser.uid);
             toast({ title: "Deposit Approved", description: `User ${selectedDeposit.userDisplayName}'s balance has been updated.` });
             setDeposits(deposits?.filter(d => d.id !== selectedDeposit.id) || null);
         } catch (e: any) {
@@ -134,9 +137,9 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
     };
 
     const handleDecline = async () => {
-        if (!firestore || !selectedDeposit) return;
+        if (!firestore || !selectedDeposit || !adminUser) return;
         try {
-            await declineDeposit(firestore, selectedDeposit);
+            await declineDeposit(firestore, selectedDeposit, adminUser.uid);
             toast({ title: "Deposit Declined" });
             setDeposits(deposits?.filter(d => d.id !== selectedDeposit.id) || null);
         } catch (e: any) {
@@ -189,7 +192,11 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => { setSelectedDeposit(deposit); setIsApproveAlertOpen(true); }}>
+                                <DropdownMenuItem onClick={() => { 
+                                    setSelectedDeposit(deposit); 
+                                    setEditableAmount(deposit.amount.toString());
+                                    setIsApproveAlertOpen(true); 
+                                    }}>
                                     <Check className="mr-2 h-4 w-4" /> Approve
                                 </DropdownMenuItem>
                                 <DropdownMenuItem className="text-destructive" onClick={() => { setSelectedDeposit(deposit); setIsDeclineAlertOpen(true); }}>
@@ -212,36 +219,40 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                         <AlertDialogDescription asChild>
                             <div className="space-y-4 text-sm pt-2">
                                 <p>
-                                    You are about to approve a deposit of <strong className="text-foreground">{selectedDeposit?.amount} {selectedDeposit?.crypto}</strong> for user <strong className="text-foreground">{selectedDeposit?.userDisplayName}</strong>. This will credit their wallet with the specified number of crypto coins. This action cannot be undone.
+                                    You are about to approve a deposit for user <strong className="text-foreground">{selectedDeposit?.userDisplayName}</strong>. This will credit their wallet. This action cannot be undone.
                                 </p>
                                 <div className="p-4 border rounded-md space-y-3 bg-secondary/50 text-foreground">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-muted-foreground">Deposit ID:</span>
-                                        <span className="font-mono text-xs bg-muted p-1 rounded max-w-[180px] truncate">{selectedDeposit?.id}</span>
-                                    </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-muted-foreground">User:</span>
                                         <span className="font-semibold">{selectedDeposit?.userDisplayName}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-muted-foreground">Crypto Amount:</span>
+                                        <span className="text-muted-foreground">Requested Amount:</span>
                                         <span className="font-semibold">{selectedDeposit?.amount} {selectedDeposit?.crypto}</span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-muted-foreground">Chain:</span>
-                                        <span className="font-semibold">{selectedDeposit?.chain}</span>
-                                    </div>
-                                    {selectedDeposit?.txId && (
-                                        <div className="flex justify-between items-center gap-2">
-                                            <span className="text-muted-foreground">TxID:</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-mono text-xs bg-muted p-1 rounded max-w-[180px] truncate">{selectedDeposit.txId}</span>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.txId!)}>
-                                                    <Copy className="h-3 w-3" />
-                                                </Button>
-                                            </div>
+                                     <div className="flex justify-between items-center gap-2">
+                                        <span className="text-muted-foreground">TxID:</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-mono text-xs bg-muted p-1 rounded max-w-[180px] truncate">{selectedDeposit?.txId || 'N/A'}</span>
+                                            {selectedDeposit?.txId && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.txId!)}>
+                                                <Copy className="h-3 w-3" />
+                                            </Button>}
                                         </div>
-                                    )}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="approved-amount">Approved Amount ({selectedDeposit?.crypto})</Label>
+                                    <Input 
+                                        id="approved-amount"
+                                        type="number"
+                                        step="any"
+                                        value={editableAmount}
+                                        onChange={(e) => setEditableAmount(e.target.value)}
+                                        className="bg-background"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        You can correct the amount here if the user sent a different amount than requested.
+                                    </p>
                                 </div>
                             </div>
                         </AlertDialogDescription>
@@ -319,5 +330,3 @@ export default function AdminDepositsPage() {
         </>
     );
 }
-
-    

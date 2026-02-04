@@ -206,7 +206,7 @@ export default function WalletsPage() {
                                 <TableRow key={deposit.id}>
                                     <TableCell className="text-muted-foreground">{toDate(deposit.createdAt)?.toLocaleString() ?? 'Invalid Date'}</TableCell>
                                     <TableCell className="font-medium">{deposit.crypto}</TableCell>
-                                    <TableCell>{deposit.amount.toFixed(8)}</TableCell>
+                                    <TableCell>{(deposit.finalAmount ?? deposit.amount).toFixed(8)}</TableCell>
                                     <TableCell>{deposit.chain}</TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className={cn("capitalize", depositStatusColors[deposit.status])}>{deposit.status.replace(/_/g, ' ')}</Badge>

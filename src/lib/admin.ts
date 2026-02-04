@@ -17,14 +17,16 @@ import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, S
  */
 export async function approveDeposit(
   db: Firestore,
-  deposit: Deposit
+  deposit: Deposit,
+  approvedAmount: number,
+  adminId: string
 ): Promise<void> {
   const depositRef = doc(db, "deposits", deposit.id);
   const userWalletRef = doc(db, "users", deposit.userId, "wallets", deposit.crypto);
 
   await runTransaction(db, async (transaction) => {
     const walletDoc = await transaction.get(userWalletRef);
-    let newBalance = deposit.amount;
+    let newBalance = approvedAmount;
 
     if (walletDoc.exists()) {
       const walletData = walletDoc.data() as UserWallet;
@@ -49,7 +51,8 @@ export async function approveDeposit(
     // Mark the deposit as approved
     transaction.update(depositRef, {
       status: "approved",
-      adminId: "admin_placeholder", // Replace with actual admin ID later
+      finalAmount: approvedAmount,
+      adminId: adminId,
     });
   });
 }
@@ -59,12 +62,13 @@ export async function approveDeposit(
  */
 export async function declineDeposit(
   db: Firestore,
-  deposit: Deposit
+  deposit: Deposit,
+  adminId: string,
 ): Promise<void> {
   const depositRef = doc(db, "deposits", deposit.id);
   await updateDoc(depositRef, {
       status: "declined",
-      adminId: "admin_placeholder",
+      adminId: adminId,
   });
 }
 
