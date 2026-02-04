@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 
 type LogoKey = keyof BrandingConfig;
 
@@ -96,7 +97,7 @@ export default function AdminAppearancePage() {
             type="file"
             ref={fileInputRefs[key]}
             className="hidden"
-            accept="image/*"
+            accept="image/png, image/jpeg, image/jpg"
             onChange={(e) => handleFileChange(e, key)}
           />
           <Button variant="outline" size="sm" onClick={() => fileInputRefs[key]?.current?.click()}>
