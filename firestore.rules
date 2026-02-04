@@ -124,7 +124,8 @@ service cloud.firestore {
     
     // --- Admin-Only Collections & Configuration ---
     match /crypto_deposit_addresses/{addressId} {
-        allow read, write: if isAdmin(); // Only admins can manage these.
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
     }
 
     match /admin_logs/{logId} {
