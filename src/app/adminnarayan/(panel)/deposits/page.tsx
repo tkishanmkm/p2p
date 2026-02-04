@@ -83,12 +83,20 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                 const depositsRef = collection(firestore, "deposits");
                 let q;
                 if (status) {
-                    q = query(depositsRef, where("status", "==", status), orderBy("createdAt", "desc"));
+                    // Filter by status first
+                    q = query(depositsRef, where("status", "==", status));
                 } else {
+                    // Order by date when showing all
                     q = query(depositsRef, orderBy("createdAt", "desc"));
                 }
                 const querySnapshot = await getDocs(q);
-                const depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
+                let depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
+
+                // If we filtered by status, we must sort on the client side
+                if (status) {
+                    depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+                }
+
                 setDeposits(depositsData);
             } catch (error) {
                 console.error("Failed to fetch deposits:", error);
