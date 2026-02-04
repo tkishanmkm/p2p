@@ -21,19 +21,18 @@ export default function FullPageLayout({
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading || !user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
+  // Render the layout shell immediately.
   return (
     <div className="flex flex-col min-h-screen w-full bg-background">
       <DashboardHeader />
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
-        {children}
+        {isUserLoading || !user ? (
+            <div className="flex h-64 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ) : (
+            children
+        )}
       </main>
     </div>
   );

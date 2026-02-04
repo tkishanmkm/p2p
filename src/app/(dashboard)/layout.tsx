@@ -1,4 +1,3 @@
-
 "use client";
 
 import { DashboardHeader } from "@/components/dashboard/header";
@@ -21,20 +20,19 @@ export default function DashboardLayout({
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading || !user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-
+  // Render the layout shell immediately, and only show a loader for the main content area
+  // while the user is being authenticated. This provides a better perceived performance.
   return (
     <div className="flex flex-col min-h-screen w-full">
       <DashboardHeader />
       <main className="flex flex-1 flex-col gap-4 p-2 sm:p-4 lg:p-6 bg-secondary/20">
-        {children}
+        {isUserLoading || !user ? (
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );
