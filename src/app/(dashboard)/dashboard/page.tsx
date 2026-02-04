@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -73,7 +74,7 @@ export default function DashboardPage() {
   const { data: activeBuyerTrades, isLoading: activeBuyerTradesLoading } = useCollection<Trade>(activeTradesAsBuyerQuery);
 
   const activeTradesAsSellerQuery = useMemoFirebase(() => authUser ? query(collection(firestore, 'trades'), where('sellerId', '==', authUser.uid), where('status', 'in', ['active', 'paid'])) : null, [firestore, authUser]);
-  const { data: activeSellerTrades, isLoading: activeSellerTradesLoading } = useCollection<Trade>(activeSellerTradesQuery);
+  const { data: activeSellerTrades, isLoading: activeSellerTradesLoading } = useCollection<Trade>(activeTradesAsSellerQuery);
 
   const [activeTrades, setActiveTrades] = useState<Trade[]>([]);
   const isLoadingActiveTrades = activeBuyerTradesLoading || activeSellerTradesLoading;
