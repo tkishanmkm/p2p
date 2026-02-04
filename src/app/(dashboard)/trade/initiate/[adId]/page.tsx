@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useDoc, useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection, query, where } from "firebase/firestore";
-import type { P2PAd, Trade } from "@/lib/types";
+import type { P2PAd, Trade, UserWallet } from "@/lib/types";
 import { initiateTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePrices } from "@/context/price-context";
 
 function ActiveTradePrompt({ trade }: { trade: Trade }) {
   const router = useRouter();
@@ -69,6 +70,7 @@ export default function InitiateTradePage() {
   const params = useParams();
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
+  const { prices } = usePrices();
   const adId = Array.isArray(params.adId) ? params.adId[0] : params.adId;
 
   const adRef = firestore && adId ? doc(firestore, "p2p_ads", adId) : null;
@@ -89,35 +91,77 @@ export default function InitiateTradePage() {
       : null
   ), [tradesRef, user, adId]);
   const { data: activeSellerTrades, isLoading: isLoadingSeller } = useCollection<Trade>(activeTradeAsSellerQuery);
+  
+  const sellerWalletRef = useMemoFirebase(() => 
+    (firestore && ad && ad.adType === 'sell') ? doc(firestore, 'users', ad.userId, 'wallets', ad.crypto) : null,
+    [firestore, ad]
+  );
+  const { data: sellerWallet, isLoading: isSellerWalletLoading } = useDoc<UserWallet>(sellerWalletRef);
 
   const activeTrade = activeBuyerTrades?.[0] || activeSellerTrades?.[0];
   const isLoadingActiveTrade = isLoadingBuyer || isLoadingSeller;
-
 
   const [fiatAmount, setFiatAmount] = useState("");
   const [cryptoAmount, setCryptoAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [effectiveMaxAmount, setEffectiveMaxAmount] = useState<number | null>(null);
+  const [balanceInfo, setBalanceInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (ad && prices[ad.crypto]) {
+        let maxAmount = ad.maxAmount;
+        if (ad.adType === 'sell' && !isSellerWalletLoading) {
+             const marketPrice = prices[ad.crypto];
+             const adPrice = ad.rateType === 'fixed' 
+                ? ad.fixedRate! 
+                : marketPrice * (1 + (ad.ratePercent || 0) / 100);
+
+            if (sellerWallet && adPrice > 0) {
+                const maxFiatFromBalance = sellerWallet.balance * adPrice;
+                const realMax = Math.floor(Math.min(ad.maxAmount, maxFiatFromBalance));
+                
+                if (realMax < ad.maxAmount) {
+                    setBalanceInfo(`The maximum amount has been adjusted to ${realMax.toLocaleString()} ${ad.fiatCurrency} based on the seller's current balance.`);
+                }
+                maxAmount = realMax;
+
+            } else {
+                maxAmount = 0; // No wallet, no funds
+            }
+        }
+        setEffectiveMaxAmount(maxAmount);
+        if (maxAmount < ad.minAmount) {
+             setError("Seller has insufficient funds to cover the minimum trade amount.");
+        }
+    }
+  }, [ad, sellerWallet, isSellerWalletLoading, prices]);
+
 
   const handleFiatAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setFiatAmount(value);
+    validateAmount(parseFloat(value));
     if (ad && value) {
-      const price = ad.rateType === "fixed" ? ad.fixedRate! : 65000; // Replace with real market price
-      setCryptoAmount((parseFloat(value) / price).toFixed(8));
-      validateAmount(parseFloat(value));
+      const marketPrice = prices[ad.crypto] || 0;
+      const price = ad.rateType === "fixed" ? ad.fixedRate! : marketPrice * (1 + (ad.ratePercent || 0) / 100);
+      setCryptoAmount(price > 0 ? (parseFloat(value) / price).toFixed(8) : "0");
     } else {
       setCryptoAmount("");
     }
   };
 
   const validateAmount = (value: number) => {
-    if (!ad) return;
+    if (!ad || effectiveMaxAmount === null) return;
+    if (isNaN(value)) {
+        setError("");
+        return;
+    }
     if (value < ad.minAmount) {
       setError(`Amount must be at least ${ad.minAmount} ${ad.fiatCurrency}.`);
-    } else if (value > ad.maxAmount) {
-      setError(`Amount must be less than ${ad.maxAmount} ${ad.fiatCurrency}.`);
+    } else if (value > effectiveMaxAmount) {
+      setError(`Amount must be less than ${effectiveMaxAmount.toLocaleString()} ${ad.fiatCurrency} due to seller's balance.`);
     } else {
       setError("");
     }
@@ -150,8 +194,10 @@ export default function InitiateTradePage() {
       setIsSubmitting(false);
     }
   };
+  
+  const isLoading = isAdLoading || isLoadingActiveTrade || (ad?.adType === 'sell' && isSellerWalletLoading);
 
-  if (isAdLoading || isLoadingActiveTrade) {
+  if (isLoading) {
     return <div className="pt-10"><Skeleton className="h-96 w-full max-w-2xl mx-auto" /></div>;
   }
   
@@ -175,6 +221,8 @@ export default function InitiateTradePage() {
     );
   }
 
+  const isTradePossible = effectiveMaxAmount !== null && effectiveMaxAmount >= ad.minAmount;
+
   return (
     <div className="flex justify-center items-start pt-10">
       <Card className="w-full max-w-2xl">
@@ -193,7 +241,8 @@ export default function InitiateTradePage() {
                   type="number"
                   value={fiatAmount}
                   onChange={handleFiatAmountChange}
-                  placeholder={`${ad.minAmount} - ${ad.maxAmount}`}
+                  placeholder={effectiveMaxAmount !== null ? `${ad.minAmount} - ${Math.floor(effectiveMaxAmount).toLocaleString()}` : `${ad.minAmount} - ${ad.maxAmount}`}
+                  disabled={!isTradePossible}
                 />
               </div>
               <div>
@@ -204,7 +253,7 @@ export default function InitiateTradePage() {
             
             <div>
                 <Label>Payment Method</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod} disabled={!isTradePossible}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select a payment method" />
                     </SelectTrigger>
@@ -217,6 +266,14 @@ export default function InitiateTradePage() {
             </div>
             
             {error && <p className="text-sm text-destructive">{error}</p>}
+
+            {balanceInfo && (
+                <Alert variant="default">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Please Note</AlertTitle>
+                    <AlertDescription>{balanceInfo}</AlertDescription>
+                </Alert>
+            )}
             
             <Alert>
                 <AlertCircle className="h-4 w-4" />
@@ -231,7 +288,7 @@ export default function InitiateTradePage() {
                 </AlertDescription>
             </Alert>
 
-            <Button type="submit" className="w-full" size="lg" disabled={!!error || !fiatAmount || !paymentMethod || isSubmitting}>
+            <Button type="submit" className="w-full" size="lg" disabled={!!error || !fiatAmount || !paymentMethod || isSubmitting || !isTradePossible}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? 'Starting Trade...' : 'Buy Now'}
             </Button>

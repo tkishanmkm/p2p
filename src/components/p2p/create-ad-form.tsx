@@ -48,7 +48,7 @@ import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Wallet } from "lucide-react";
+import { Loader2, Wallet } from "lucide-react";
 
 const adTags = [
   { id: "no-third-party", label: "No third party" },
@@ -129,14 +129,16 @@ export function CreateAdForm() {
 
   useEffect(() => {
     setBalanceError(null);
-    if (watchedFields.adType !== 'sell' || !watchedFields.maxAmount || !wallets) return;
+    if (watchedFields.adType !== 'sell' || !watchedFields.maxAmount || !wallets || !watchedFields.crypto) {
+        return;
+    }
 
     const selectedWallet = wallets.find(w => w.crypto === watchedFields.crypto);
     const userBalance = selectedWallet?.balance ?? 0;
     
     const price = watchedFields.rateType === 'fixed' 
       ? watchedFields.fixedRate ?? 0
-      : currentMarketPrice * (1 + (watchedFields.ratePercent ?? 0) / 100);
+      : currentMarketPrice > 0 ? currentMarketPrice * (1 + (watchedFields.ratePercent ?? 0) / 100) : 0;
 
     if (price <= 0) {
       return; 
@@ -145,7 +147,7 @@ export function CreateAdForm() {
     const requiredCrypto = watchedFields.maxAmount / price;
     
     if (userBalance < requiredCrypto) {
-      setBalanceError(`Insufficient ${watchedFields.crypto} balance. You need at least ${requiredCrypto.toFixed(6)} ${watchedFields.crypto} to cover the maximum amount, but you only have ${userBalance.toFixed(6)}.`);
+      setBalanceError(`Insufficient ${watchedFields.crypto} balance. You need at least ${requiredCrypto.toFixed(6)} ${watchedFields.crypto} to cover the maximum amount, but you only have ${userBalance.toFixed(6)} available.`);
     }
 
   }, [watchedFields, wallets, currentMarketPrice]);
@@ -471,14 +473,17 @@ export function CreateAdForm() {
                 <AlertTitle>Insufficient Balance</AlertTitle>
                 <AlertDescription>
                   {balanceError}
-                  <Button asChild variant="link" className="p-0 h-auto ml-1">
+                  <Button asChild variant="link" className="p-0 h-auto ml-1" onClick={() => router.push('/wallets')}>
                     <Link href="/wallets">Fund your wallet</Link>
                   </Button>
                 </AlertDescription>
               </Alert>
             )}
 
-            <Button type="submit" size="lg" className="w-full md:w-auto" disabled={!!balanceError || form.formState.isSubmitting}>Create Ad</Button>
+            <Button type="submit" size="lg" className="w-full md:w-auto" disabled={!!balanceError || form.formState.isSubmitting}>
+              {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Ad
+            </Button>
           </form>
         </Form>
       </CardContent>

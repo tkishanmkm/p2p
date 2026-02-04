@@ -1,19 +1,33 @@
+
+'use client';
+
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { P2PAd } from "@/lib/types";
+import type { P2PAd, UserWallet } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { usePrices } from "@/context/price-context";
+import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AdCardProps {
   ad: P2PAd;
 }
 
 export function AdCard({ ad }: AdCardProps) {
+  const { firestore } = useFirebase();
   const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-2');
   const { prices } = usePrices();
+
+  // Fetch seller's wallet balance ONLY for sell ads.
+  const sellerWalletRef = useMemoFirebase(() => 
+    (firestore && ad.adType === 'sell') ? doc(firestore, 'users', ad.userId, 'wallets', ad.crypto) : null,
+    [firestore, ad]
+  );
+  const { data: sellerWallet, isLoading: isWalletLoading } = useDoc<UserWallet>(sellerWalletRef);
 
   const marketPrice = prices[ad.crypto] || 0;
   
@@ -22,10 +36,37 @@ export function AdCard({ ad }: AdCardProps) {
     : `Market ${ad.ratePercent}%`;
 
   const adPrice = ad.rateType === 'fixed' 
-    ? ad.fixedRate 
+    ? ad.fixedRate! 
     : marketPrice * (1 + (ad.ratePercent || 0) / 100);
 
-  const availableCrypto = adPrice && adPrice > 0 ? (ad.maxAmount / adPrice).toFixed(5) : 'N/A';
+  let effectiveMaxAmount = ad.maxAmount;
+  let availableCrypto: string | number = '...';
+  let tradeIsPossible = true;
+
+  if (ad.adType === 'sell') {
+    if (!isWalletLoading) {
+        if (sellerWallet && adPrice > 0) {
+            const maxFiatFromBalance = sellerWallet.balance * adPrice;
+            effectiveMaxAmount = Math.min(ad.maxAmount, maxFiatFromBalance);
+            availableCrypto = sellerWallet.balance.toFixed(5);
+            if (effectiveMaxAmount < ad.minAmount) {
+                tradeIsPossible = false;
+            }
+        } else { // Seller has no wallet or 0 balance
+            effectiveMaxAmount = 0;
+            availableCrypto = (0).toFixed(5);
+            tradeIsPossible = false;
+        }
+    }
+  } else { // This is a 'buy' ad, no balance check needed for the ad creator (the buyer).
+    if (adPrice > 0) {
+        availableCrypto = (ad.maxAmount / adPrice).toFixed(5);
+    } else {
+        availableCrypto = 'N/A';
+    }
+  }
+
+  const isLoading = ad.adType === 'sell' && isWalletLoading;
 
   return (
     <Card>
@@ -57,11 +98,15 @@ export function AdCard({ ad }: AdCardProps) {
             <div className="flex gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Limit</p>
-                <p className="font-medium">{ad.minAmount.toLocaleString()} - {ad.maxAmount.toLocaleString()} {ad.fiatCurrency}</p>
+                {isLoading ? <Skeleton className="h-5 w-32" /> : (
+                  <p className="font-medium">{ad.minAmount.toLocaleString()} - {Math.floor(effectiveMaxAmount).toLocaleString()} {ad.fiatCurrency}</p>
+                )}
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Available</p>
-                <p className="font-medium">{availableCrypto} {ad.crypto}</p>
+                {isLoading ? <Skeleton className="h-5 w-24" /> : (
+                    <p className="font-medium">{availableCrypto} {ad.crypto}</p>
+                )}
               </div>
             </div>
              <div className="mt-2 flex flex-wrap gap-1">
@@ -76,11 +121,12 @@ export function AdCard({ ad }: AdCardProps) {
 
           {/* Action Button */}
           <div className="sm:col-span-1 sm:text-right">
-            <Button asChild className="w-full sm:w-auto">
-              <Link href={`/trade/initiate/${ad.id}`}>
+            <Button asChild className="w-full sm:w-auto" disabled={!tradeIsPossible || isLoading}>
+              <Link href={tradeIsPossible ? `/trade/initiate/${ad.id}` : '#'}>
                 {ad.adType === 'sell' ? `Buy ${ad.crypto}` : `Sell ${ad.crypto}`}
               </Link>
             </Button>
+            {!tradeIsPossible && !isLoading && <p className="text-xs text-destructive text-center sm:text-right mt-1">Seller has insufficient funds.</p>}
           </div>
         </div>
       </CardContent>
