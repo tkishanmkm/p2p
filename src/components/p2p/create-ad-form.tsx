@@ -44,6 +44,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
+import { useEffect } from "react";
 
 const adTags = [
   { id: "no-third-party", label: "No third party" },
@@ -56,7 +57,7 @@ const adFormSchema = z.object({
   adType: z.enum(["buy", "sell"]),
   crypto: z.string().min(1, "Please select a coin."),
   fiatCurrency: z.string().min(1, "Please select a fiat currency."),
-  paymentMethods: z.array(z.string()).min(1, "Select at least one payment method."),
+  paymentMethods: z.array(z.string()).min(1, "Select at least one payment method.").max(5, "You can select up to 5 payment methods."),
   rateType: z.enum(["market", "fixed"]),
   ratePercent: z.coerce.number().min(-50, "Value must be >= -50").max(50, "Value must be <= 50").optional(),
   fixedRate: z.coerce.number().optional(),
@@ -104,7 +105,7 @@ export function CreateAdForm() {
       fiatCurrency: "USD",
       paymentMethods: [],
       rateType: "market",
-      ratePercent: 1.5,
+      ratePercent: 5,
       tags: [],
     },
   });
@@ -114,6 +115,12 @@ export function CreateAdForm() {
   const watchFiat = form.watch("fiatCurrency");
 
   const currentMarketPrice = prices[watchCrypto] || 0;
+
+  useEffect(() => {
+    if (watchRateType === 'fixed' && currentMarketPrice > 0) {
+        form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
+    }
+  }, [watchRateType, currentMarketPrice, form]);
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
   const fiatOptions = currencies.map((c) => ({ value: c, label: c }));
@@ -234,13 +241,21 @@ export function CreateAdForm() {
                         onChange={(val) => {
                             const current = field.value || [];
                             if (val && !current.includes(val)) {
-                                form.setValue('paymentMethods', [...current, val]);
+                                if (current.length < 5) {
+                                    form.setValue('paymentMethods', [...current, val]);
+                                } else {
+                                    toast({
+                                        variant: "destructive",
+                                        title: "Limit Reached",
+                                        description: "You can select up to 5 payment methods."
+                                    });
+                                }
                             }
                         }} 
                         placeholder="Add a payment method"
                         shouldCloseOnSelect={false}
                     />
-                  <FormDescription>You can select multiple payment methods.</FormDescription>
+                  <FormDescription>You can select up to 5 payment methods.</FormDescription>
                   <div className="flex flex-wrap gap-2 pt-2">
                     {field.value?.map((pm, index) => (
                       <Badge key={index} variant="secondary">
@@ -292,12 +307,12 @@ export function CreateAdForm() {
                   <FormItem>
                     <FormLabel>Market Rate Adjustment</FormLabel>
                     <div className="relative">
-                      <Input type="number" step="0.01" placeholder="e.g. 1.5" {...field} />
+                      <Input type="number" step="0.01" placeholder="e.g. 5" {...field} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
                      <FormDescription>
                         Your price will float with the market. {arePricesLoading ? 'Loading market price...' : `Current price is approx. ${currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchFiat, minimumFractionDigits: 2 })}.`} <br/>
-                        Set your adjustment percentage. E.g., '1.5' for 1.5% above market, or '-2' for 2% below.
+                        Set your adjustment percentage (from -50% to 50%). E.g., '1.5' for 1.5% above market.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

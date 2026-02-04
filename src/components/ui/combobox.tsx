@@ -52,7 +52,7 @@ export function Combobox({
           className={cn("w-full justify-between", !value && "text-muted-foreground", className)}
         >
           {value
-            ? options.find((option) => option.value.toLowerCase() === value.toLowerCase())?.label
+            ? options.find((option) => option.value === value)?.label
             : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -67,8 +67,8 @@ export function Combobox({
                 <CommandItem
                   key={option.value}
                   value={option.value}
-                  onSelect={() => {
-                    onChange(option.value)
+                  onSelect={(currentValue) => {
+                    onChange(currentValue)
                     if (shouldCloseOnSelect) {
                       setOpen(false)
                     }
@@ -77,7 +77,7 @@ export function Combobox({
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value?.toLowerCase() === option.value.toLowerCase() ? "opacity-100" : "opacity-0"
+                      value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
                   {option.label}
