@@ -15,9 +15,10 @@ service cloud.firestore {
     }
 
     // Checks if the user has an admin role document.
+    // Use get() for strong consistency to avoid race conditions on login.
     function isAdmin() {
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
     }
     
     // Checks if a user is an active participant (buyer or seller) in a trade.
