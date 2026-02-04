@@ -2,18 +2,21 @@
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
+import { useState } from 'react';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit, doc, orderBy } from 'firebase/firestore';
 import type { User, P2PAd, Trade, UserWallet, Deposit, Withdrawal } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { AdjustBalanceDialog } from '@/components/admin/adjust-balance-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, CheckCircle, Clock, DollarSign, Percent, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight } from 'lucide-react';
+import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, Percent, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
 import { useAdminStatus } from '@/hooks/use-admin-status';
@@ -48,6 +51,7 @@ export default function AdminUserDetailPage() {
   const params = useParams();
   const { firestore } = useFirebase();
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
+  const [isAdjustBalanceOpen, setIsAdjustBalanceOpen] = useState(false);
   const userId = Array.isArray(params.userId) ? params.userId[0] : params.userId;
 
   const userRef = useMemoFirebase(
@@ -91,8 +95,18 @@ export default function AdminUserDetailPage() {
 
   return (
     <>
-        <div className="flex items-center mb-6">
+        <AdjustBalanceDialog 
+            open={isAdjustBalanceOpen} 
+            onOpenChange={setIsAdjustBalanceOpen}
+            userId={user.id}
+            userDisplayName={user.userId}
+        />
+        <div className="flex items-center justify-between mb-6">
              <h1 className="text-lg font-semibold md:text-2xl">User Details</h1>
+             <Button onClick={() => setIsAdjustBalanceOpen(true)}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Manage Wallet Balance
+             </Button>
         </div>
         <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-1 space-y-6">

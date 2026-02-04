@@ -8,8 +8,9 @@ import {
   serverTimestamp,
   Firestore,
   updateDoc,
+  collection,
 } from "firebase/firestore";
-import type { Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket } from "./types";
+import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket } from "./types";
 
 /**
  * Approves a deposit and updates the user's wallet balance in a single transaction.
@@ -201,4 +202,67 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
 export async function updateSupportTicketStatus(db: Firestore, ticketId: string, status: SupportTicket['status']) {
   const ticketRef = doc(db, "support_tickets", ticketId);
   await updateDoc(ticketRef, { status });
+}
+
+/**
+ * Manually adjusts a user's wallet balance.
+ * Creates a wallet if it doesn't exist for an 'add' operation.
+ * Logs the action to the admin logs.
+ */
+export async function adjustUserWalletBalance(
+  db: Firestore,
+  adminId: string,
+  userId: string,
+  userDisplayName: string,
+  crypto: CryptoCurrency,
+  action: 'add' | 'subtract',
+  amount: number,
+  reason: string
+): Promise<void> {
+  if (amount <= 0) {
+    throw new Error("Amount must be a positive number.");
+  }
+
+  const userWalletRef = doc(db, "users", userId, "wallets", crypto);
+  const adminLogRef = doc(collection(db, "admin_logs"));
+
+  await runTransaction(db, async (transaction) => {
+    const walletDoc = await transaction.get(userWalletRef);
+    let currentBalance = 0;
+    let currentLockedBalance = 0;
+
+    if (walletDoc.exists()) {
+      const walletData = walletDoc.data() as UserWallet;
+      currentBalance = walletData.balance;
+      currentLockedBalance = walletData.lockedBalance;
+    }
+
+    let newBalance: number;
+    if (action === 'add') {
+      newBalance = currentBalance + amount;
+    } else { // subtract
+      newBalance = currentBalance - amount;
+      if (newBalance < 0) {
+        throw new Error("Cannot subtract more than the available balance.");
+      }
+    }
+
+    // Set or Update the wallet
+    transaction.set(userWalletRef, {
+      id: crypto,
+      userId: userId,
+      crypto: crypto,
+      balance: newBalance,
+      lockedBalance: currentLockedBalance, // Don't touch locked balance
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    // Create a log entry for this action
+    transaction.set(adminLogRef, {
+      adminId: adminId,
+      action: `Adjusted ${userDisplayName}'s ${crypto} balance. Action: ${action}, Amount: ${amount}. Reason: ${reason}`,
+      targetId: userId,
+      createdAt: serverTimestamp(),
+    });
+  });
 }
