@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -30,7 +31,6 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersiste
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { ADMIN_ID, ADMIN_PASS } from "@/lib/constants";
 
 const formSchema = z.object({
   adminId: z.string().min(1, { message: "Admin ID is required." }),
@@ -68,15 +68,12 @@ export default function AdminLoginPage() {
         await setPersistence(auth, browserLocalPersistence);
         const userCredential = await signInWithEmailAndPassword(auth, adminEmail, values.password);
 
-        // After ANY successful sign-in, check if this user SHOULD be an admin and if their role doc exists.
-        // This makes the process robust against interruptions.
-        if (values.adminId === ADMIN_ID) {
-            const adminRoleRef = doc(firestore, 'roles_admin', userCredential.user.uid);
-            const adminRoleSnap = await getDoc(adminRoleRef);
-            if (!adminRoleSnap.exists()) {
-                // The initial admin logged in, but their role doc is missing. Create it.
-                await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
-            }
+        // Always check for and create the admin role document if it's missing.
+        // This makes the login process robust.
+        const adminRoleRef = doc(firestore, 'roles_admin', userCredential.user.uid);
+        const adminRoleSnap = await getDoc(adminRoleRef);
+        if (!adminRoleSnap.exists()) {
+            await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
         }
         
         toast({
@@ -86,35 +83,27 @@ export default function AdminLoginPage() {
         router.push("/adminnarayan/dashboard");
 
     } catch (error: any) {
-        // If sign-in fails, we analyze the error.
+        // If sign-in fails, it might be a first-time login for this admin.
         if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-            // Check if credentials are for initial setup.
-            if (values.adminId === ADMIN_ID && values.password === ADMIN_PASS) {
-                // This might be the first-time login. Let's try creating the account.
-                try {
-                    const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
-                    
-                    const adminRoleRef = doc(firestore, 'roles_admin', newUserCredential.user.uid);
-                    await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
+            try {
+                // Attempt to create the user account for the admin.
+                const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
+                
+                // Immediately create the admin role document for the new user.
+                const adminRoleRef = doc(firestore, 'roles_admin', newUserCredential.user.uid);
+                await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
 
-                    toast({
-                        title: "Admin Account Created",
-                        description: "First-time setup successful. Logging you in...",
-                    });
-                    router.push("/adminnarayan/dashboard");
-                } catch (signUpError: any) {
-                    toast({
-                        variant: "destructive",
-                        title: "Admin Setup Failed",
-                        description: signUpError.message,
-                    });
-                }
-            } else {
-                // Standard wrong credentials for non-initial admin.
+                toast({
+                    title: "Admin Account Created",
+                    description: "First-time setup successful. Logging you in...",
+                });
+                router.push("/adminnarayan/dashboard");
+
+            } catch (signUpError: any) {
                 toast({
                     variant: "destructive",
-                    title: "Login Failed",
-                    description: "Invalid Admin ID or Password.",
+                    title: "Admin Setup Failed",
+                    description: signUpError.message,
                 });
             }
         } else {
