@@ -16,6 +16,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -34,6 +35,8 @@ import { useFirebase } from "@/firebase";
 import { onAuthStateChanged, updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SECURITY_QUESTIONS } from "@/lib/constants";
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -42,6 +45,8 @@ const formSchema = z.object({
   }),
   userId: z.string().min(3, { message: "User ID must be at least 3 characters." }).regex(/^[a-zA-Z0-9_]+$/, "User ID can only contain letters, numbers, and underscores."),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
+  securityQuestion: z.string().min(1, "Please select a security question."),
+  securityAnswer: z.string().min(2, { message: "Answer must be at least 2 characters." }),
   captcha: z.boolean().refine((val) => val === true, {
     message: "Please confirm you are not a robot.",
   }),
@@ -60,6 +65,8 @@ function SignupFormComponent() {
       fullName: "",
       userId: searchParams.get("userId") || "",
       password: "",
+      securityQuestion: "",
+      securityAnswer: "",
       captcha: false,
     },
   });
@@ -92,7 +99,9 @@ function SignupFormComponent() {
               feedbackScore: 100,
               accountAge: "0 days",
               photoURL: "",
-              preferredCurrency: "USD"
+              preferredCurrency: "USD",
+              securityQuestion: values.securityQuestion,
+              securityAnswer: values.securityAnswer, // In a real app, this should be hashed
           };
           await setDoc(userDocRef, newUserDoc);
 
@@ -242,6 +251,41 @@ function SignupFormComponent() {
                   </FormItem>
                 )}
               />
+               <FormField
+                control={form.control}
+                name="securityQuestion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Security Question</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a security question" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {SECURITY_QUESTIONS.map((q, i) => (
+                                <SelectItem key={i} value={q}>{q}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="securityAnswer"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Security Answer</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your answer" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="captcha"
@@ -292,3 +336,5 @@ export default function SignupPage() {
     </Suspense>
   )
 }
+
+    

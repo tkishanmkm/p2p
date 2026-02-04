@@ -14,13 +14,12 @@ export type User = {
   completedTrades: number; // INT
   usernameChanged: boolean;
   createdAt: string; // TIMESTAMP
-  lastLoginIp: string;
   feedbackScore: number; // Calculated from 0-100
   accountAge: string; // Calculated, e.g., "2 years"
   preferredCurrency?: string;
   lastTradeAt?: string;
   securityQuestion?: string;
-  securityAnswer?: string; // Should be encrypted in a real app
+  securityAnswer?: string;
 };
 
 export type UserWallet = {
@@ -188,3 +187,5 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
+
+    
