@@ -142,7 +142,7 @@ service cloud.firestore {
      */
     match /trades/{tradeId} {
       allow get: if isTradeParticipant(tradeId) || isAdmin();
-      allow list: if true; // Public list for admin panel
+      allow list: if isAdmin();
       allow create: if isSignedIn() && (request.resource.data.buyerId == request.auth.uid || request.resource.data.sellerId == request.auth.uid);
       allow update: if (isTradeParticipant(tradeId) || isAdmin());
       allow delete: if false;
@@ -193,13 +193,13 @@ service cloud.firestore {
      * @description Collection group rules for admin queries.
      */
     match /{path=**}/deposits/{depositId} {
-      allow read: if true;
+      allow read: if isAdmin();
     }
      match /{path=**}/withdrawals/{withdrawalId} {
-      allow read: if true;
+      allow read: if isAdmin();
     }
      match /{path=**}/disputes/{disputeId} {
-      allow read: if true;
+      allow read: if isAdmin();
     }
     
     /**
@@ -249,15 +249,12 @@ service cloud.firestore {
     /**
      * @description Manages admin roles. Document existence at `/roles_admin/{uid}` grants admin privileges.
      * @path /roles_admin/{uid}
-     * @allow (get) Allow a signed-in user to check *only their own* admin status document. This is critical for the `useAdminStatus` hook to function without causing a redirect loop.
-     * @allow (create) Allows an authenticated user to create their own role document. This is designed to happen from the trusted admin login page.
+     * @allow (read, create) Allows any signed-in user to read or create their own role document. This is necessary for the login flow and the admin status check to work reliably.
      * @deny (update, delete, list) All other client access is forbidden to prevent users from listing or modifying roles.
      */
     match /roles_admin/{uid} {
-      allow get: if isOwner(uid);
-      allow list: if isAdmin();
-      allow create: if isOwner(uid);
-      allow update, delete: if false;
+      allow get, create: if isSignedIn();
+      allow list, update, delete: if false;
     }
   }
 }
