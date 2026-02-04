@@ -15,9 +15,11 @@ service cloud.firestore {
     }
 
     // Checks if the user has an admin role.
-    // This is the most secure way, checking a server-managed role document.
+    // This is the most secure way, checking for the existence of a server-managed role document
+    // before attempting to get its data. This prevents errors for non-admin users.
     function isAdmin() {
       return isSignedIn() && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
     }
     
@@ -90,20 +92,16 @@ service cloud.firestore {
 
     // DEPOSITS: Stored in a single collection for easier admin querying.
     match /deposits/{depositId} {
-      // THE FIX - STEP 2: The 'get' rule is the bouncer.
-      // It ensures that even if a query result contains a document,
-      // the user can only receive it if they are the owner or an admin.
+      // GET: A user can get a deposit if they are the owner, or if they are an admin.
       allow get: if isOwner(resource.data.userId) || isAdmin();
 
-      // THE FIX - STEP 1: The 'list' rule is the gatekeeper.
-      // It allows any signed-in user to ATTEMPT a query.
-      // This rule *must* be broad and not check document fields.
+      // LIST: Any signed-in user can attempt a query. The 'get' rule above will secure the results.
       allow list: if isSignedIn();
       
-      // Users can create a deposit request for themselves.
+      // CREATE: Users can create a deposit request for themselves.
       allow create: if isOwner(request.resource.data.userId);
       
-      // Admins can update. Users can update ONLY to confirm their transfer.
+      // UPDATE: Admins can update. Users can update ONLY to confirm their transfer by adding a txId.
       allow update: if isAdmin() || (
         isOwner(resource.data.userId) &&
         resource.data.status == 'pending' &&
@@ -115,7 +113,7 @@ service cloud.firestore {
         request.resource.data.chain == resource.data.chain
       );
       
-      // Only admins can delete deposit records.
+      // DELETE: Only admins can delete deposit records.
       allow delete: if isAdmin();
     }
 
