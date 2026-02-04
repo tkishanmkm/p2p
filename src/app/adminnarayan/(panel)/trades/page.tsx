@@ -1,8 +1,8 @@
-// This is a new file
+
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -25,6 +25,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect } from "react";
 
 const statusColors: Record<Trade['status'], string> = {
   active: "border-blue-500/50 text-blue-600 bg-blue-50",
@@ -38,15 +39,42 @@ const statusColors: Record<Trade['status'], string> = {
 export default function AdminTradesPage() {
   const { firestore } = useFirebase();
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
+  const [trades, setTrades] = useState<Trade[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const tradesQuery = useMemoFirebase(() => {
-    // Guard: Only create the query if the user is a confirmed admin.
-    if (!firestore || !isAdmin) return null;
-    return query(collection(firestore, "trades"), orderBy("createdAt", "desc"));
-  }, [firestore, isAdmin]);
+  useEffect(() => {
+    // Wait until admin status is confirmed
+    if (isAdminLoading) {
+      setIsLoading(true);
+      return;
+    }
+    // If not an admin, do nothing
+    if (!isAdmin || !firestore) {
+      setIsLoading(false);
+      return;
+    }
+    
+    // Fetch trades once admin status is confirmed
+    const fetchTrades = async () => {
+      setIsLoading(true);
+      try {
+        const tradesRef = collection(firestore, "trades");
+        const q = query(tradesRef, orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const tradesData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trade));
+        setTrades(tradesData);
+      } catch (error) {
+        console.error("Failed to fetch trades for admin:", error);
+        setTrades([]); // Set to empty array on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const { data: trades, isLoading: areTradesLoading } = useCollection<Trade>(tradesQuery);
-  const isLoading = isAdminLoading || areTradesLoading;
+    fetchTrades();
+
+  }, [firestore, isAdmin, isAdminLoading]);
+
 
   return (
     <>
@@ -122,3 +150,4 @@ export default function AdminTradesPage() {
     </>
   );
 }
+
