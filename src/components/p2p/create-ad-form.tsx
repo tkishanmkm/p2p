@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -36,15 +37,18 @@ import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { paymentMethods } from "@/lib/payment-methods";
 import { useToast } from "@/hooks/use-toast";
-import { useFirebase, useDoc } from "@/firebase";
-import { doc } from "firebase/firestore";
-import type { User, P2PAd, CryptoCurrency } from "@/lib/types";
+import { useFirebase, useDoc, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, collection } from "firebase/firestore";
+import type { User, P2PAd, CryptoCurrency, UserWallet } from "@/lib/types";
 import { createP2PAd } from "@/lib/ads";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Wallet } from "lucide-react";
 
 const adTags = [
   { id: "no-third-party", label: "No third party" },
@@ -93,9 +97,13 @@ export function CreateAdForm() {
   const router = useRouter();
   const { firestore, user } = useFirebase();
   const { prices, isLoading: arePricesLoading } = usePrices();
+  const [balanceError, setBalanceError] = useState<string | null>(null);
 
   const userRef = user ? doc(firestore, "users", user.uid) : null;
   const { data: userData } = useDoc<User>(userRef);
+
+  const walletsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'wallets') : null, [user, firestore]);
+  const { data: wallets } = useCollection<UserWallet>(walletsRef);
 
   const form = useForm<AdFormValues>({
     resolver: zodResolver(adFormSchema),
@@ -110,17 +118,38 @@ export function CreateAdForm() {
     },
   });
 
-  const watchRateType = form.watch("rateType");
-  const watchCrypto = form.watch("crypto") as CryptoCurrency;
-  const watchFiat = form.watch("fiatCurrency");
-
-  const currentMarketPrice = prices[watchCrypto] || 0;
+  const watchedFields = form.watch();
+  const currentMarketPrice = prices[watchedFields.crypto as CryptoCurrency] || 0;
 
   useEffect(() => {
-    if (watchRateType === 'fixed' && currentMarketPrice > 0) {
+    if (watchedFields.rateType === 'fixed' && currentMarketPrice > 0) {
         form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
     }
-  }, [watchRateType, currentMarketPrice, form]);
+  }, [watchedFields.rateType, currentMarketPrice, form]);
+
+  useEffect(() => {
+    setBalanceError(null);
+    if (watchedFields.adType !== 'sell' || !watchedFields.maxAmount || !wallets) return;
+
+    const selectedWallet = wallets.find(w => w.crypto === watchedFields.crypto);
+    const userBalance = selectedWallet?.balance ?? 0;
+    
+    const price = watchedFields.rateType === 'fixed' 
+      ? watchedFields.fixedRate ?? 0
+      : currentMarketPrice * (1 + (watchedFields.ratePercent ?? 0) / 100);
+
+    if (price <= 0) {
+      return; 
+    }
+    
+    const requiredCrypto = watchedFields.maxAmount / price;
+    
+    if (userBalance < requiredCrypto) {
+      setBalanceError(`Insufficient ${watchedFields.crypto} balance. You need at least ${requiredCrypto.toFixed(6)} ${watchedFields.crypto} to cover the maximum amount, but you only have ${userBalance.toFixed(6)}.`);
+    }
+
+  }, [watchedFields, wallets, currentMarketPrice]);
+
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
   const fiatOptions = currencies.map((c) => ({ value: c, label: c }));
@@ -129,6 +158,10 @@ export function CreateAdForm() {
   async function onSubmit(data: AdFormValues) {
     if (!firestore || !user || !userData) {
         toast({ variant: "destructive", title: "Error", description: "You must be logged in to create an ad." });
+        return;
+    }
+    if (balanceError) {
+        toast({ variant: "destructive", title: "Cannot Create Ad", description: "Please resolve the balance issue first." });
         return;
     }
 
@@ -237,7 +270,7 @@ export function CreateAdForm() {
                   <FormLabel>Payment Methods</FormLabel>
                    <Combobox 
                         options={paymentMethodOptions}
-                        value="" // Not used for multi-select, display is handled by badges
+                        value="" 
                         onChange={(val) => {
                             const current = field.value || [];
                             if (val && !current.includes(val)) {
@@ -299,7 +332,7 @@ export function CreateAdForm() {
               )}
             />
 
-            {watchRateType === "market" ? (
+            {watchedFields.rateType === "market" ? (
               <FormField
                 control={form.control}
                 name="ratePercent"
@@ -311,7 +344,7 @@ export function CreateAdForm() {
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
                      <FormDescription>
-                        Your price will float with the market. {arePricesLoading ? 'Loading market price...' : `Current price is approx. ${currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchFiat, minimumFractionDigits: 2 })}.`} <br/>
+                        Your price will float with the market. {arePricesLoading ? 'Loading market price...' : `Current price is approx. ${currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchedFields.fiatCurrency, minimumFractionDigits: 2 })}.`} <br/>
                         Set your adjustment percentage (from -50% to 50%). E.g., '1.5' for 1.5% above market.
                     </FormDescription>
                     <FormMessage />
@@ -331,7 +364,7 @@ export function CreateAdForm() {
                       placeholder={arePricesLoading ? "Loading..." : `${currentMarketPrice.toLocaleString()}`} 
                       {...field} 
                     />
-                    <FormDescription>The fixed price in {watchFiat}. Current market price is approx. {currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchFiat, minimumFractionDigits: 2 })}.</FormDescription>
+                    <FormDescription>The fixed price in {watchedFields.fiatCurrency}. Current market price is approx. {currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchedFields.fiatCurrency, minimumFractionDigits: 2 })}.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -431,9 +464,21 @@ export function CreateAdForm() {
                 </FormItem>
               )}
             />
+            
+            {balanceError && (
+              <Alert variant="destructive">
+                <Wallet className="h-4 w-4" />
+                <AlertTitle>Insufficient Balance</AlertTitle>
+                <AlertDescription>
+                  {balanceError}
+                  <Button asChild variant="link" className="p-0 h-auto ml-1">
+                    <Link href="/wallets">Fund your wallet</Link>
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
 
-
-            <Button type="submit" size="lg" className="w-full md:w-auto">Create Ad</Button>
+            <Button type="submit" size="lg" className="w-full md:w-auto" disabled={!!balanceError || form.formState.isSubmitting}>Create Ad</Button>
           </form>
         </Form>
       </CardContent>

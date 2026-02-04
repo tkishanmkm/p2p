@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
   LayoutDashboard,
@@ -15,6 +15,7 @@ import {
   ArrowUpFromLine,
   Mail,
   FileText,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,8 @@ import type { UserWallet, Notification } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
 import { cn } from "@/lib/utils";
 import { usePrices } from "@/context/price-context";
+import { signOut } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -50,8 +53,10 @@ const navItems = [
 ];
 
 export function DashboardHeader() {
-  const { user, firestore } = useFirebase();
+  const { user, firestore, auth } = useFirebase();
   const pathname = usePathname();
+  const router = useRouter();
+  const { toast } = useToast();
   const { prices } = usePrices();
 
   const walletsRef = useMemoFirebase(() => user ? collection(firestore, "users", user.uid, "wallets") : null, [firestore, user]);
@@ -72,6 +77,17 @@ export function DashboardHeader() {
     const notifRef = doc(firestore, "users", user.uid, "notifications", notificationId);
     await updateDoc(notifRef, { isRead: true });
   }
+
+  const handleLogout = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      router.push('/login');
+    } catch (error) {
+      toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred during logout." });
+    }
+  };
   
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
@@ -202,12 +218,13 @@ export function DashboardHeader() {
               <Link href="/support">Support</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>
   );
 }
-
-    

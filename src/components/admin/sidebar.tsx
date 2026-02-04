@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sidebar,
   SidebarHeader,
@@ -35,6 +35,8 @@ import { Badge } from "@/components/ui/badge";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { query, where, collection, collectionGroup } from "firebase/firestore";
 import type { Deposit, Withdrawal, Dispute, SupportTicket } from "@/lib/types";
+import { signOut } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
 
 const settingsItems = [
     { href: "/adminnarayan/appearance", label: "Appearance", icon: Brush },
@@ -44,7 +46,9 @@ const settingsItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const { firestore } = useFirebase();
+  const { firestore, auth } = useFirebase();
+  const router = useRouter();
+  const { toast } = useToast();
   
   const pendingDepositsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'deposits'), where('status', '==', 'pending')) : null, [firestore]);
   const { data: pendingDeposits } = useCollection<Deposit>(pendingDepositsQuery);
@@ -69,6 +73,17 @@ export function AdminSidebar() {
     { href: "/adminnarayan/disputes", label: "Disputes", icon: ShieldAlert, badge: openDisputes?.length || 0 },
   ];
 
+  const handleLogout = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      router.push('/adminnarayan/login');
+    } catch (error) {
+      toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred during logout." });
+    }
+  };
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -86,7 +101,7 @@ export function AdminSidebar() {
                   tooltip={item.label}
                 >
                   <span className="flex-grow">{item.label}</span>
-                  {item.badge > 0 && <Badge variant="destructive" className="ml-auto">{item.badge}</Badge>}
+                  {item.badge != null && item.badge > 0 && <Badge variant="destructive" className="ml-auto">{item.badge}</Badge>}
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -127,7 +142,7 @@ export function AdminSidebar() {
         </div>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton icon={<LogOut />} tooltip="Logout">
+            <SidebarMenuButton icon={<LogOut />} tooltip="Logout" onClick={handleLogout}>
               Logout
             </SidebarMenuButton>
           </SidebarMenuItem>
