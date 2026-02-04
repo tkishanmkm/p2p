@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Globe, Menu, ChevronDown, ArrowDownToLine, ArrowUpFromLine, PlusCircle } from "lucide-react";
+import { Globe, Menu, ChevronDown, ArrowDownToLine, ArrowUpFromLine, PlusCircle, BookOpen, FileText, Shield, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import {
@@ -17,7 +17,7 @@ const mobileNavLinks = [
   { href: "/buy", label: "Buy Coin" },
   { href: "/sell", label: "Sell Coin" },
   { href: "/wallets", label: "Wallet" },
-  { href: "/support", label: "Support" },
+  { href: "/contact", label: "Support" },
 ];
 
 export function Header() {
@@ -100,8 +100,44 @@ export function Header() {
               >
                 Wallet
               </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="font-medium text-foreground/80 transition-colors hover:text-foreground px-0">
+                  Resources
+                  <ChevronDown className="relative top-[1px] ml-1 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link href="/faq">
+                      <HelpCircle />
+                      FAQ
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/guides">
+                      <BookOpen />
+                      Trading Guides
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/terms">
+                      <FileText />
+                      Terms of Service
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/policy">
+                      <Shield />
+                      Privacy Policy
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
              <Link
-                href="/support"
+                href="/contact"
                 className="font-medium text-foreground/80 transition-colors hover:text-foreground"
               >
                 Support

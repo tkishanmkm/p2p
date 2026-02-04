@@ -49,7 +49,7 @@ const navItems = [
   { href: "/ads/create", label: "Create Ad", icon: PlusCircle },
   { href: "/my-ads", label: "My Ads", icon: FileText },
   { href: "/trades", label: "My Trades", icon: ArrowLeftRight },
-  { href: "/support", label: "Support", icon: LifeBuoy },
+  { href: "/contact", label: "Support", icon: LifeBuoy },
 ];
 
 export function DashboardHeader() {
@@ -215,7 +215,7 @@ export function DashboardHeader() {
               <Link href="/settings">Settings</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/support">Support</Link>
+              <Link href="/contact">Support</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive">

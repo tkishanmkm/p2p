@@ -27,9 +27,9 @@ export function Footer() {
     {
       title: "Support",
       links: [
-        { label: "Contact Us", href: "/support" },
+        { label: "Contact Us", href: "/contact" },
         { label: "FAQ", href: "/faq" },
-        { label: "Dispute Resolution", href: "/support" },
+        { label: "Dispute Resolution", href: "/contact" },
       ],
     },
   ];
