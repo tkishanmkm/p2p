@@ -114,12 +114,12 @@ service cloud.firestore {
         allow get, list: if true;
         allow write: if false;
     }
+    
+    // --- Admin-Only Collections & Configuration ---
     match /crypto_deposit_addresses/{addressId} {
-        allow get: if isSignedIn(); // Logged-in users can read for deposits.
-        allow write: if isAdmin(); // Only admins can set these.
+        allow read, write: if isAdmin(); // Only admins can manage these.
     }
 
-    // --- Admin-Only Collections ---
     match /admin_logs/{logId} {
         allow read, write: if isAdmin();
     }
