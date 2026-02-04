@@ -52,13 +52,19 @@ export function Combobox({
           className={cn("w-full justify-between", !value && "text-muted-foreground", className)}
         >
           {value
-            ? options.find((option) => option.value === value)?.label
+            ? options.find((option) => option.value.toLowerCase() === value.toLowerCase())?.label
             : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command>
+        <Command
+            filter={(value, search) => {
+                const option = options.find(option => option.value === value);
+                if (option?.label.toLowerCase().includes(search.toLowerCase())) return 1;
+                return 0;
+            }}
+        >
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
@@ -70,7 +76,7 @@ export function Combobox({
                   onSelect={() => {
                     onChange(option.value === value ? "" : option.value)
                     if (shouldCloseOnSelect) {
-                      setOpen(false)
+                        setOpen(false)
                     }
                   }}
                 >
