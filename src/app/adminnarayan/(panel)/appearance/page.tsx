@@ -32,6 +32,7 @@ export default function AdminAppearancePage() {
 
   const fileInputRefs: { [K in LogoKey]?: React.RefObject<HTMLInputElement> } = {
     appLogo: useRef<HTMLInputElement>(null),
+    appLogoMobile: useRef<HTMLInputElement>(null),
     btcLogo: useRef<HTMLInputElement>(null),
     ethLogo: useRef<HTMLInputElement>(null),
     ltcLogo: useRef<HTMLInputElement>(null),
@@ -64,7 +65,8 @@ export default function AdminAppearancePage() {
   };
 
   const logoSections: { key: LogoKey; title: string; CurrentLogo: React.ComponentType<{ className?: string }> }[] = [
-    { key: 'appLogo', title: 'App Logo', CurrentLogo: Logo },
+    { key: 'appLogo', title: 'App Logo (Desktop)', CurrentLogo: Logo },
+    { key: 'appLogoMobile', title: 'App Logo (Mobile)', CurrentLogo: Logo },
     { key: 'btcLogo', title: 'Bitcoin (BTC)', CurrentLogo: BtcLogo },
     { key: 'ethLogo', title: 'Ethereum (ETH)', CurrentLogo: EthLogo },
     { key: 'ltcLogo', title: 'Litecoin (LTC)', CurrentLogo: LtcLogo },
@@ -80,12 +82,12 @@ export default function AdminAppearancePage() {
             <Image
               src={currentLogoSrc}
               alt={`${title} Logo`}
-              width={key === 'appLogo' ? 120 : 40}
+              width={key.includes('appLogo') ? 120 : 40}
               height={40}
-              className={cn(key !== 'appLogo' && 'h-10 w-10', 'object-contain')}
+              className={cn(!key.includes('appLogo') && 'h-10 w-10', 'object-contain')}
             />
           ) : (
-            <CurrentLogo className={cn(key === 'appLogo' ? 'text-3xl' : 'h-10 w-10')} />
+            <CurrentLogo className={cn(key.includes('appLogo') ? 'text-3xl' : 'h-10 w-10')} />
           )}
           <div>
             <p className="font-semibold">{title}</p>

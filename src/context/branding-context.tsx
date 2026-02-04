@@ -7,6 +7,7 @@ import { useFirebase } from '@/firebase';
 
 export interface BrandingConfig {
   appLogo?: string;
+  appLogoMobile?: string;
   btcLogo?: string;
   ethLogo?: string;
   ltcLogo?: string;

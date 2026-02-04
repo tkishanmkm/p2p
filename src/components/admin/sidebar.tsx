@@ -27,6 +27,7 @@ import {
   Brush,
   ArrowDownToLine,
   ArrowUpFromLine,
+  Database,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -41,6 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 const settingsItems = [
     { href: "/adminnarayan/appearance", label: "Appearance", icon: Brush },
     { href: "/adminnarayan/settings/wallet", label: "Wallet Settings", icon: Wallet },
+    { href: "/adminnarayan/settings/data", label: "Data Management", icon: Database },
     { href: "#", label: "Security Logs", icon: FileText },
 ]
 
