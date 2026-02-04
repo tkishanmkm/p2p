@@ -27,7 +27,7 @@ import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ADMIN_ID, ADMIN_PASS } from "@/lib/constants";
@@ -65,76 +65,68 @@ export default function AdminLoginPage() {
     const adminEmail = `${values.adminId}@tradeflow.app`;
 
     try {
-      await setPersistence(auth, browserLocalPersistence);
-      // First, try to sign in. This handles existing users.
-      await signInWithEmailAndPassword(auth, adminEmail, values.password);
-      
-      toast({
-        title: "Login Successful",
-        description: "Redirecting to admin dashboard...",
-      });
-      router.push("/adminnarayan/dashboard");
+        await setPersistence(auth, browserLocalPersistence);
+        const userCredential = await signInWithEmailAndPassword(auth, adminEmail, values.password);
+
+        // After ANY successful sign-in, check if this user SHOULD be an admin and if their role doc exists.
+        // This makes the process robust against interruptions.
+        if (values.adminId === ADMIN_ID) {
+            const adminRoleRef = doc(firestore, 'roles_admin', userCredential.user.uid);
+            const adminRoleSnap = await getDoc(adminRoleRef);
+            if (!adminRoleSnap.exists()) {
+                // The initial admin logged in, but their role doc is missing. Create it.
+                await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
+            }
+        }
+        
+        toast({
+            title: "Login Successful",
+            description: "Redirecting to admin dashboard...",
+        });
+        router.push("/adminnarayan/dashboard");
 
     } catch (error: any) {
-      // If sign-in fails, we analyze the error.
-      // The new SDKs often use 'auth/invalid-credential' for both not-found and wrong-password.
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        
-        // Let's check if the credentials are the ones for initial setup.
-        if (values.adminId === ADMIN_ID && values.password === ADMIN_PASS) {
-            // This might be the first-time login. Let's try creating the account.
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
-                
-                // IMPORTANT: Create the admin role document in Firestore to grant admin privileges
-                const adminRoleRef = doc(firestore, 'roles_admin', userCredential.user.uid);
-                await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
+        // If sign-in fails, we analyze the error.
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+            // Check if credentials are for initial setup.
+            if (values.adminId === ADMIN_ID && values.password === ADMIN_PASS) {
+                // This might be the first-time login. Let's try creating the account.
+                try {
+                    const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
+                    
+                    const adminRoleRef = doc(firestore, 'roles_admin', newUserCredential.user.uid);
+                    await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
 
-                toast({
-                    title: "Admin Account Created",
-                    description: "First-time setup successful. Logging you in...",
-                });
-                router.push("/adminnarayan/dashboard");
-            } catch (signUpError: any) {
-                // If creating the user fails because the email is already in use,
-                // it means the user exists but the password was wrong in the initial signIn attempt.
-                if (signUpError.code === 'auth/email-already-in-use') {
                     toast({
-                        variant: "destructive",
-                        title: "Login Failed",
-                        description: "Invalid Admin ID or Password.",
+                        title: "Admin Account Created",
+                        description: "First-time setup successful. Logging you in...",
                     });
-                } else {
-                    // Another error occurred during sign-up
+                    router.push("/adminnarayan/dashboard");
+                } catch (signUpError: any) {
                     toast({
                         variant: "destructive",
                         title: "Admin Setup Failed",
-                        description: "Could not create the admin user account. " + signUpError.message,
+                        description: signUpError.message,
                     });
                 }
+            } else {
+                // Standard wrong credentials for non-initial admin.
+                toast({
+                    variant: "destructive",
+                    title: "Login Failed",
+                    description: "Invalid Admin ID or Password.",
+                });
             }
         } else {
-            // Credentials don't match the initial setup ones, so it's a standard wrong password.
-             toast({
-                variant: "destructive",
-                title: "Login Failed",
-                description: "Invalid Admin ID or Password.",
+            // Handle other login errors (e.g., network issues)
+            toast({
+              variant: "destructive",
+              title: "Login Failed",
+              description: error.message || "An unknown error occurred.",
             });
         }
-      } else {
-        // Handle other login errors (e.g., network issues)
-        let description = "An unknown error occurred.";
-        if (error.code === 'auth/too-many-requests') {
-          description = "Too many failed login attempts. Please try again later.";
-        }
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description,
-        });
-      }
     } finally {
-      setIsLoggingIn(false);
+        setIsLoggingIn(false);
     }
   }
 
