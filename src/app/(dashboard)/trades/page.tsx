@@ -1,4 +1,3 @@
-
 // This is a new file
 'use client';
 
@@ -25,7 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { DollarSign, CheckCircle, Percent, ArrowLeftRight } from 'lucide-react';
+import { DollarSign, CheckCircle, Percent, ArrowLeftRight, Download } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { statusColors } from '@/lib/status-colors';
@@ -60,16 +59,41 @@ export default function MyTradesPage() {
   const isLoadingTrades = buyerTradesLoading || sellerTradesLoading;
 
   useEffect(() => {
-    const combined = [...(buyerTrades || []), ...(sellerTrades || [])];
-    const uniqueTrades = Array.from(new Map(combined.map(trade => [trade.id, trade])).values());
-    uniqueTrades.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
-    setAllTrades(uniqueTrades);
+    if (buyerTrades || sellerTrades) {
+      const combined = [...(buyerTrades || []), ...(sellerTrades || [])];
+      const uniqueTrades = Array.from(new Map(combined.map(trade => [trade.id, trade])).values());
+      uniqueTrades.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+      setAllTrades(uniqueTrades);
+    }
   }, [buyerTrades, sellerTrades]);
+
+  const handleDownloadCSV = () => {
+    if (!allTrades.length) return;
+    const headers = "Crypto,Amount,Date (GMT),Buyer,Seller,Status\n";
+    const csvContent = allTrades.map(t => {
+        const date = toDate(t.createdAt)?.toUTCString() ?? 'N/A';
+        return `${t.crypto},${t.amount},"${date}",${t.buyer.userId},${t.seller.userId},${t.status}`;
+    }).join('\n');
+    
+    const blob = new Blob([headers + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'trade_history.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   return (
     <>
-      <div className="flex items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-semibold md:text-2xl">My Trades & Statistics</h1>
+        <Button onClick={handleDownloadCSV} variant="outline" disabled={!allTrades.length}>
+            <Download className="mr-2 h-4 w-4" />
+            Download CSV
+        </Button>
       </div>
 
        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3 mb-8">
