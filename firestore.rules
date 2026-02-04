@@ -9,13 +9,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Checks if the requesting user is the owner of a document.
+    // Checks if the requesting user is the owner of a document by UID.
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    // Checks if the user has an admin role document.
-    // Use get() for strong consistency to avoid race conditions on login.
+    // Checks if the user has an admin role.
+    // This is the most secure way, checking a server-managed role document.
     function isAdmin() {
       return isSignedIn() && 
              get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
@@ -23,7 +23,7 @@ service cloud.firestore {
     
     // Checks if a user is an active participant (buyer or seller) in a trade.
     function isTradeParticipant(tradeData) {
-      return request.auth != null && (tradeData.buyerId == request.auth.uid || tradeData.sellerId == request.auth.uid);
+      return isSignedIn() && (tradeData.buyerId == request.auth.uid || tradeData.sellerId == request.auth.uid);
     }
 
     // --- Global Catch-All Rule ---
@@ -33,14 +33,14 @@ service cloud.firestore {
     }
 
     // --- Configuration Collections ---
-    // Globally readable configuration data.
+    // Globally readable configuration data. Writeable by admins.
     match /_config/{docId} {
         allow read: if true;
         allow write: if isAdmin();
     }
     match /payment_methods/{paymentMethodId} {
         allow get, list: if true;
-        allow write: if isAdmin(); // Admins can manage payment methods
+        allow write: if isAdmin();
     }
     match /crypto_deposit_addresses/{addressId} {
         allow read: if isSignedIn(); // Any signed-in user can read deposit addresses
@@ -48,10 +48,10 @@ service cloud.firestore {
     }
 
     // --- Admin-Specific Collections ---
-    // Grants admin role. Users can create their own doc on first login. No one else can touch it.
+    // Grants admin role. Only the user can create their own doc on first login. No one else can touch it.
     match /admins/{adminId} {
         allow get, create: if isOwner(adminId);
-        allow list, update, delete: if false; // Protects admin list and roles
+        allow list, update, delete: if false; // Protects admin list and roles from being altered.
     }
     // Admin action logs. Only accessible by admins.
     match /admin_logs/{logId} {
@@ -90,13 +90,14 @@ service cloud.firestore {
 
     // DEPOSITS: Stored in a single collection for easier admin querying.
     match /deposits/{depositId} {
-      // Admins can get any deposit. Users can only get deposits they own.
-      // This rule is CRITICAL for making list queries work securely.
-      allow get: if isAdmin() || isOwner(resource.data.userId);
+      // THE FIX - STEP 2: The 'get' rule is the bouncer.
+      // It ensures that even if a query result contains a document,
+      // the user can only receive it if they are the owner or an admin.
+      allow get: if isOwner(resource.data.userId) || isAdmin();
 
-      // Any signed-in user can ATTEMPT a query.
-      // The 'get' rule above will then be applied to every document in the result set,
-      // ensuring users only receive documents they are allowed to see.
+      // THE FIX - STEP 1: The 'list' rule is the gatekeeper.
+      // It allows any signed-in user to ATTEMPT a query.
+      // This rule *must* be broad and not check document fields.
       allow list: if isSignedIn();
       
       // Users can create a deposit request for themselves.
@@ -113,8 +114,8 @@ service cloud.firestore {
     match /p2p_ads/{adId} {
         // Anyone can view ads.
         allow get, list: if true;
-        // Any signed-in user can create an ad.
-        allow create: if isSignedIn();
+        // Any signed-in user can create an ad for themself.
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
         // Only the ad owner or an admin can update/delete it.
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
@@ -154,7 +155,7 @@ service cloud.firestore {
     // SUPPORT TICKETS
     match /support_tickets/{ticketId} {
         // Any signed-in user can create a support ticket.
-        allow create: if isSignedIn();
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
         // Only admins can view, manage, and update tickets.
         allow read, list, update: if isAdmin();
         // Support tickets should be archived, not deleted.

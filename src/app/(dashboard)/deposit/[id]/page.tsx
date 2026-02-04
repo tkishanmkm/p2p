@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { useFirebase, useDoc } from "@/firebase";
-import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -62,22 +62,7 @@ function DepositPageContent() {
     setIsSubmitting(true);
 
     try {
-        // Check for duplicate TxID across all deposits in the top-level collection
-        const depositsRef = collection(firestore, 'deposits');
-        const q = query(depositsRef, where("txId", "==", values.txId));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            const existingDeposit = querySnapshot.docs[0].data() as Deposit;
-            toast({ 
-                variant: "destructive", 
-                title: "Duplicate Transaction", 
-                description: `This transaction hash is already recorded with status: ${existingDeposit.status}. Please enter a new transaction hash.` 
-            });
-            setIsSubmitting(false);
-            return;
-        }
-        
+        // This insecure query was removed. Duplicate TxID checks should be handled by admins.
         await updateDoc(depositRef, { 
             txId: values.txId,
             status: 'awaiting_confirmation'
