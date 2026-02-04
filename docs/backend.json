@@ -54,6 +54,26 @@
           "type": "number",
           "description": "Number of completed trades by the user (auto-calculated)."
         },
+        "feedbackScore": {
+            "type": "number",
+            "description": "The user's positive feedback score as a percentage."
+        },
+        "positiveFeedback": {
+            "type": "number",
+            "description": "Total count of positive feedback received."
+        },
+        "negativeFeedback": {
+            "type": "number",
+            "description": "Total count of negative feedback received."
+        },
+        "avgPaymentTime": {
+            "type": "number",
+            "description": "Average time in minutes for the user to mark trades as paid."
+        },
+        "avgReleaseTime": {
+            "type": "number",
+            "description": "Average time in minutes for the user to release crypto after payment."
+        },
         "usernameChanged": {
           "type": "boolean",
           "description": "Indicates if the user has changed their username (max once)."

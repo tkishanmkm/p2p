@@ -97,6 +97,10 @@ function SignupFormComponent() {
               usernameChanged: false,
               createdAt: new Date().toISOString(),
               feedbackScore: 100,
+              positiveFeedback: 0,
+              negativeFeedback: 0,
+              avgPaymentTime: 0,
+              avgReleaseTime: 0,
               accountAge: "0 days",
               photoURL: "",
               preferredCurrency: "USD",
@@ -336,5 +340,3 @@ export default function SignupPage() {
     </Suspense>
   )
 }
-
-    

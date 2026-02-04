@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, CheckCircle, Clock, DollarSign, Percent, FileText } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, DollarSign, ThumbsUp, ThumbsDown, FileText } from 'lucide-react';
 import { toDate } from '@/lib/utils';
 
 function UserStats({ user }: { user: User }) {
@@ -38,13 +38,34 @@ function UserStats({ user }: { user: User }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Percent className="h-6 w-6 text-muted-foreground" />
+          <ThumbsUp className="h-6 w-6 text-muted-foreground" />
           <div>
-            <p className="text-sm text-muted-foreground">Positive Feedback</p>
-            <p className="font-semibold">{user.feedbackScore}%</p>
+            <p className="text-sm text-muted-foreground">Positive</p>
+            <p className="font-semibold">{user.positiveFeedback || 0}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <ThumbsDown className="h-6 w-6 text-muted-foreground" />
+          <div>
+            <p className="text-sm text-muted-foreground">Negative</p>
+            <p className="font-semibold">{user.negativeFeedback || 0}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Clock className="h-6 w-6 text-muted-foreground" />
+          <div>
+            <p className="text-sm text-muted-foreground">Avg. Payment Time</p>
+            <p className="font-semibold">{user.avgPaymentTime || 0} min</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Clock className="h-6 w-6 text-muted-foreground" />
+          <div>
+            <p className="text-sm text-muted-foreground">Avg. Release Time</p>
+            <p className="font-semibold">{user.avgReleaseTime || 0} min</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 col-span-2">
           <Clock className="h-6 w-6 text-muted-foreground" />
           <div>
             <p className="text-sm text-muted-foreground">Last Trade</p>

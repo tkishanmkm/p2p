@@ -15,6 +15,10 @@ export type User = {
   usernameChanged: boolean;
   createdAt: string; // TIMESTAMP
   feedbackScore: number; // Calculated from 0-100
+  positiveFeedback: number;
+  negativeFeedback: number;
+  avgPaymentTime: number; // In minutes
+  avgReleaseTime: number; // In minutes
   accountAge: string; // Calculated, e.g., "2 years"
   preferredCurrency?: string;
   lastTradeAt?: string;

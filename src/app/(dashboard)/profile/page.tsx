@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DefaultAvatar } from "@/components/icons";
-import { User as UserIcon, Calendar, CheckCircle, Clock, DollarSign, Percent, UserCheck } from "lucide-react";
+import { User as UserIcon, Calendar, CheckCircle, Clock, DollarSign, UserCheck, ThumbsUp, ThumbsDown } from "lucide-react";
 import Image from "next/image";
 import { toDate } from "@/lib/utils";
 
@@ -82,7 +82,10 @@ export default function ProfilePage() {
                         <CardContent className="space-y-4">
                              <DetailItem icon={<DollarSign size={20} />} label="Total Trade Volume" value={`$${parseFloat(user.tradeVolume).toLocaleString()}`} />
                              <DetailItem icon={<CheckCircle size={20} />} label="Completed Trades" value={user.completedTrades} />
-                             <DetailItem icon={<Percent size={20} />} label="Positive Feedback" value={`${user.feedbackScore}%`} />
+                             <DetailItem icon={<ThumbsUp size={20} />} label="Positive Feedback" value={user.positiveFeedback || 0} />
+                             <DetailItem icon={<ThumbsDown size={20} />} label="Negative Feedback" value={user.negativeFeedback || 0} />
+                             <DetailItem icon={<Clock size={20} />} label="Avg. Payment Time" value={`${user.avgPaymentTime || 0} min`} />
+                             <DetailItem icon={<Clock size={20} />} label="Avg. Release Time" value={`${user.avgReleaseTime || 0} min`} />
                              <DetailItem icon={<Clock size={20} />} label="Last Trade" value={lastTradeDate ? format(lastTradeDate, "PPpp") : 'No trades yet'} />
                         </CardContent>
                     </Card>
