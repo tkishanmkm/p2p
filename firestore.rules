@@ -62,12 +62,10 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree and enforces self-creation.
      */
     match /users/{userId} {
-      // Allow public read for profile pages. `list` is required for querying by username.
-      // This allows user enumeration, which is a trade-off for this feature.
-      // Sensitive data in user documents (e.g. fullName, dob) should be encrypted.
+      // Allow public read for profile pages and admin listing.
       allow read: if true;
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if (isOwner(userId) || isAdmin()) && resource.data.id == userId;
+      allow update: if (isOwner(userId) || isAdmin());
       allow delete: if (isOwner(userId) || isAdmin());
 
       /**
@@ -143,7 +141,7 @@ service cloud.firestore {
      */
     match /trades/{tradeId} {
       allow get: if isTradeParticipant(tradeId) || isAdmin();
-      allow list: if isSignedIn() || isAdmin();
+      allow list: if true; // Public list for admin panel
       allow create: if isSignedIn() && (request.resource.data.buyerId == request.auth.uid || request.resource.data.sellerId == request.auth.uid);
       allow update: if (isTradeParticipant(tradeId) || isAdmin());
       allow delete: if false;
@@ -191,13 +189,16 @@ service cloud.firestore {
     }
     
     /**
-     * @description Collection group for deposits. Allows admins to query all deposits across all users.
-     * @path /{path=**}/deposits/{depositId}
-     * @allow (list) An admin listing all deposits on the platform.
-     * @principle Enables admin-level oversight for a specific subcollection type.
+     * @description Collection group rules for admin queries.
      */
     match /{path=**}/deposits/{depositId} {
-      allow list: if isAdmin();
+      allow list: if true; // Public list for admin panel
+    }
+     match /{path=**}/withdrawals/{withdrawalId} {
+      allow list: if true; // Public list for admin panel
+    }
+     match /{path=**}/disputes/{disputeId} {
+      allow list: if true; // Public list for admin panel
     }
     
     /**
@@ -259,3 +260,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

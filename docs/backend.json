@@ -68,11 +68,6 @@
           "description": "Timestamp of when the user's last trade was completed.",
           "format": "date-time"
         },
-        "lastLoginIp": {
-          "type": "string",
-          "description": "IP address of the user's last login.",
-          "format": "ipv4"
-        },
         "securityQuestion": {
           "type": "string",
           "description": "A security question chosen by the user for account recovery."
@@ -92,8 +87,7 @@
         "tradeVolume",
         "completedTrades",
         "usernameChanged",
-        "createdAt",
-        "lastLoginIp"
+        "createdAt"
       ]
     },
     "UserWallet": {
@@ -1033,3 +1027,5 @@
     "reasoning": "The Firestore structure is designed to be secure, scalable, and easily debuggable, adhering to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). Authorization Independence is achieved through denormalization, where authorization-relevant data is copied into subcollections to avoid using `get()` calls in security rules. Structural Segregation is employed to ensure that all documents in a collection share the same security requirements, simplifying rules and improving security posture.\n\n*   **Users Collection:** `/users/{userId}` stores user profiles. This is private user data, accessible only to the user themselves. The `userId` is used as the document ID, enforcing path-based ownership.\n*   **User Wallets Subcollection:** `/users/{userId}/wallets/{walletId}` stores wallet information for each user. The wallet documents inherit access control from the parent `users` document, as the wallets are owned by the user. Denormalization is NOT required here because of the path-based ownership.\n*   **Deposits Subcollection:** `/users/{userId}/deposits/{depositId}` stores deposit requests initiated by the user. Similar to wallets, access is controlled by the parent `users` document, ensuring only the user and admins can access the deposit information.\n*   **Withdrawals Subcollection:** `/users/{userId}/withdrawals/{withdrawalId}` stores withdrawal requests made by the user. The same path-based ownership applies.\n*   **Notifications Subcollection:** `/users/{userId}/notifications/{notificationId}` stores user-specific notifications. Access is strictly limited to the owning user.\n*   **P2P Ads Collection:** `/p2p_ads/{adId}` stores P2P ad listings. The `userId` of the ad creator is denormalized into each document to allow for simple security rules based on ownership without needing to read from the `users` collection. This supports QAPs by enabling secure `list` operations based on ownership or other ad attributes.\n*   **Trades Collection:** `/trades/{tradeId}` stores trade information. The `buyerId` and `sellerId` are denormalized into each document, so that security rules can easily check if the requesting user is either the buyer or the seller. This is critical for Authorization Independence. `adId` also exists on each document for data reasons.\n*   **Trade Chat Subcollection:** `/trades/{tradeId}/messages/{messageId}` stores chat messages for each trade. Access is controlled by checking if the user is either the buyer or seller of the parent `trades` document. The subcollection enforces that only trade participants can access the chat.\n*   **Disputes Subcollection:** `/trades/{tradeId}/disputes/{disputeId}` stores dispute information for trades. Access is restricted to the involved parties and admins. Similar to `trade_chats`, the `tradeId` enforces a hierarchical access pattern.\n*   **Feedback Subcollection:** `/trades/{tradeId}/feedback/{feedbackId}` stores feedback for trades. The parent `tradeId` ensures that feedback is only associated with valid trades, and access is limited to the trade participants.\n*   **Admin Logs Collection:** `/admin_logs/{logId}` stores logs of admin actions. Only admins have access to this collection. Access to this collection is granted based on the existence of a document with the admin's UID in the `/roles_admin/{uid}` collection.\n*   **Support Tickets Collection:** `/support_tickets/{ticketId}` stores user support requests. Writable by any signed-in user, but only readable and manageable by admins.\n*   **Payment Methods Collection:** `/payment_methods/{paymentMethodId}` stores a list of acceptable payment methods for the platform.\n*   **Admin Roles Collection:** `/roles_admin/{uid}` stores documents indicating admin status. The existence of a document at this location grants admin privileges.  This approach (Existence over Content) simplifies security rules and improves performance.\n\nThis structure facilitates simple and robust security rules by leveraging path-based ownership where applicable, and denormalizing authorization data where necessary to eliminate `get()` calls.  The explicit structure and naming conventions enhance debuggability and maintainability."
   }
 }
+
+    
