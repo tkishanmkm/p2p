@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import {
@@ -24,6 +25,7 @@ import type { User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { setUserBanStatus, setUserHoldStatus } from "@/lib/admin";
 import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
 
 export default function AdminUsersPage() {
   const { firestore, user: adminUser } = useFirebase();
@@ -72,8 +74,8 @@ export default function AdminUsersPage() {
               <TableRow>
                 <TableHead>User ID</TableHead>
                 <TableHead>Full Name</TableHead>
-                <TableHead>DOB</TableHead>
-                <TableHead>Created At</TableHead>
+                <TableHead>Sec. Question</TableHead>
+                <TableHead>Sec. Answer</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -83,12 +85,16 @@ export default function AdminUsersPage() {
               {!isLoading && users?.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
-                    <div>{user.userId}</div>
-                    {user.oldUserId && <div className="text-xs text-muted-foreground">(was {user.oldUserId})</div>}
+                     <Button variant="link" asChild className="p-0 h-auto">
+                        <Link href={`/adminnarayan/users/${user.id}`}>
+                            <div>{user.userId}</div>
+                            {user.oldUserId && <div className="text-xs text-muted-foreground">(was {user.oldUserId})</div>}
+                        </Link>
+                    </Button>
                   </TableCell>
                   <TableCell>{user.fullName}</TableCell>
-                  <TableCell>{user.dob}</TableCell>
-                  <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-xs max-w-xs truncate">{user.securityQuestion}</TableCell>
+                  <TableCell className="text-xs">{user.securityAnswer}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                         {user.isBanned && <Badge variant="destructive">Banned</Badge>}

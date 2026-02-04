@@ -87,7 +87,9 @@
         "tradeVolume",
         "completedTrades",
         "usernameChanged",
-        "createdAt"
+        "createdAt",
+        "securityQuestion",
+        "securityAnswer"
       ]
     },
     "UserWallet": {

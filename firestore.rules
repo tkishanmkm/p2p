@@ -18,6 +18,11 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
     }
     
+    function isUserActive() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userDoc.isBanned == false && userDoc.isOnHold == false;
+    }
+    
     function isTradeParticipant(tradeId) {
       let trade = get(/databases/$(database)/documents/trades/$(tradeId)).data;
       return trade.buyerId == request.auth.uid || trade.sellerId == request.auth.uid;
@@ -41,7 +46,7 @@ service cloud.firestore {
 
     // --- Users Collection ---
     match /users/{userId} {
-      allow get: if true; // Public profiles are readable by anyone.
+      allow get: if isOwner(userId) || isAdmin(); 
       allow list: if isAdmin(); // Only admins can list all users.
       allow create: if isOwner(userId); // A user can create their own profile document.
       allow update: if isOwner(userId) || isAdmin(); // A user can update their own profile, or an admin can.
@@ -52,9 +57,11 @@ service cloud.firestore {
         allow read, write: if isOwner(userId) || isAdmin();
       }
       match /deposits/{depositId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read, update, delete: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isUserActive();
       }
        match /withdrawals/{withdrawalId} {
+        // Withdrawals are allowed even if banned/on hold
         allow read, write: if isOwner(userId) || isAdmin();
       }
        match /notifications/{notificationId} {
@@ -65,7 +72,7 @@ service cloud.firestore {
     // --- P2P Ads Collection ---
     match /p2p_ads/{adId} {
         allow get, list: if true; // Ads are public to everyone.
-        allow create: if isSignedIn(); // Any authenticated user can create an ad.
+        allow create: if isSignedIn() && isUserActive();
         allow update, delete: if isOwner(resource.data.userId) || isAdmin(); // Only the ad owner or an admin can modify/delete.
     }
 
@@ -73,7 +80,7 @@ service cloud.firestore {
     match /trades/{tradeId} {
         // Only trade participants and admins can get or update a trade.
         allow get, update: if isTradeParticipant(tradeId) || isAdmin();
-        allow create: if isSignedIn(); // Any authenticated user can start a trade.
+        allow create: if isSignedIn() && isUserActive();
         allow list: if isAdmin(); // Only admins can list all trades.
         allow delete: if false; // Trades should not be deleted; they should be 'cancelled'.
 

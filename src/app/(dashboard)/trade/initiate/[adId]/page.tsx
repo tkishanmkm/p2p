@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useDoc, useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection, query, where } from "firebase/firestore";
-import type { P2PAd, Trade, UserWallet } from "@/lib/types";
+import type { P2PAd, Trade, UserWallet, User } from "@/lib/types";
 import { initiateTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePrices } from "@/context/price-context";
+import { AccountStatusAlert } from "@/components/p2p/account-status-alert";
 
 function ActiveTradePrompt({ trade }: { trade: Trade }) {
   const router = useRouter();
@@ -69,9 +70,12 @@ export default function InitiateTradePage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const { firestore, user } = useFirebase();
+  const { firestore, user: authUser } = useFirebase();
   const { prices } = usePrices();
   const adId = Array.isArray(params.adId) ? params.adId[0] : params.adId;
+
+  const userRef = useMemoFirebase(() => (authUser ? doc(firestore, "users", authUser.uid) : null), [firestore, authUser]);
+  const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
 
   const adRef = firestore && adId ? doc(firestore, "p2p_ads", adId) : null;
   const { data: ad, isLoading: isAdLoading } = useDoc<P2PAd>(adRef);
@@ -79,17 +83,17 @@ export default function InitiateTradePage() {
   const tradesRef = useMemoFirebase(() => (firestore ? collection(firestore, "trades") : null), [firestore]);
 
   const activeTradeAsBuyerQuery = useMemoFirebase(() => (
-    tradesRef && user && adId
-      ? query(tradesRef, where("adId", "==", adId), where("buyerId", "==", user.uid), where("status", "in", ["active", "paid"]))
+    tradesRef && authUser && adId
+      ? query(tradesRef, where("adId", "==", adId), where("buyerId", "==", authUser.uid), where("status", "in", ["active", "paid"]))
       : null
-  ), [tradesRef, user, adId]);
+  ), [tradesRef, authUser, adId]);
   const { data: activeBuyerTrades, isLoading: isLoadingBuyer } = useCollection<Trade>(activeTradeAsBuyerQuery);
   
   const activeTradeAsSellerQuery = useMemoFirebase(() => (
-    tradesRef && user && adId
-      ? query(tradesRef, where("adId", "==", adId), where("sellerId", "==", user.uid), where("status", "in", ["active", "paid"]))
+    tradesRef && authUser && adId
+      ? query(tradesRef, where("adId", "==", adId), where("sellerId", "==", authUser.uid), where("status", "in", ["active", "paid"]))
       : null
-  ), [tradesRef, user, adId]);
+  ), [tradesRef, authUser, adId]);
   const { data: activeSellerTrades, isLoading: isLoadingSeller } = useCollection<Trade>(activeTradeAsSellerQuery);
   
   const sellerWalletRef = useMemoFirebase(() => 
@@ -180,7 +184,7 @@ export default function InitiateTradePage() {
     try {
       const tradeId = await initiateTrade(
         firestore,
-        user.uid,
+        authUser!.uid,
         ad,
         parseFloat(cryptoAmount),
         parseFloat(fiatAmount),
@@ -195,7 +199,7 @@ export default function InitiateTradePage() {
     }
   };
   
-  const isLoading = isAdLoading || isLoadingActiveTrade || (ad?.adType === 'sell' && isSellerWalletLoading);
+  const isLoading = isUserLoading || isAdLoading || isLoadingActiveTrade || (ad?.adType === 'sell' && isSellerWalletLoading);
 
   if (isLoading) {
     return <div className="pt-10"><Skeleton className="h-96 w-full max-w-2xl mx-auto" /></div>;
@@ -209,7 +213,7 @@ export default function InitiateTradePage() {
     return <div>Ad not found.</div>;
   }
   
-  if (ad.userId === user?.uid) {
+  if (ad.userId === authUser?.uid) {
     return (
         <div className="pt-10">
         <Alert variant="destructive" className="max-w-2xl mx-auto">
@@ -218,6 +222,21 @@ export default function InitiateTradePage() {
             <AlertDescription>You cannot trade with yourself.</AlertDescription>
         </Alert>
         </div>
+    );
+  }
+
+  if (user && (user.isBanned || user.isOnHold)) {
+    return (
+      <div className="flex justify-center items-start pt-10">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle>Action Not Allowed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AccountStatusAlert user={user} />
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 

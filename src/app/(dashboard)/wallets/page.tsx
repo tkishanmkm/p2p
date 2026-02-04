@@ -2,13 +2,13 @@
 "use client";
 
 import { useState } from "react";
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
-import { CryptoCurrency, UserWallet, Deposit, Withdrawal } from "@/lib/types";
+import { CryptoCurrency, User, UserWallet, Deposit, Withdrawal } from "@/lib/types";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { Plus, Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -52,23 +52,26 @@ const withdrawalStatusColors: Record<Withdrawal['status'], string> = {
 
 
 export default function WalletsPage() {
-  const { firestore, user } = useFirebase();
+  const { firestore, user: authUser } = useFirebase();
   const { toast } = useToast();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
 
-  const walletsCollectionRef = useMemoFirebase(() => user ? collection(firestore, "users", user.uid, "wallets") : null, [firestore, user]);
+  const userRef = useMemoFirebase(() => (authUser ? doc(firestore, 'users', authUser.uid) : null), [firestore, authUser]);
+  const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
+
+  const walletsCollectionRef = useMemoFirebase(() => authUser ? collection(firestore, "users", authUser.uid, "wallets") : null, [firestore, authUser]);
   const { data: wallets, isLoading: isWalletsLoading } = useCollection<UserWallet>(walletsCollectionRef);
   
-  const depositsQuery = useMemoFirebase(() => user ? query(collection(firestore, "users", user.uid, "deposits"), orderBy("createdAt", "desc")) : null, [firestore, user]);
+  const depositsQuery = useMemoFirebase(() => authUser ? query(collection(firestore, "users", authUser.uid, "deposits"), orderBy("createdAt", "desc")) : null, [firestore, authUser]);
   const { data: deposits, isLoading: isDepositsLoading } = useCollection<Deposit>(depositsQuery);
   
-  const withdrawalsQuery = useMemoFirebase(() => user ? query(collection(firestore, "users", user.uid, "withdrawals"), orderBy("createdAt", "desc")) : null, [firestore, user]);
+  const withdrawalsQuery = useMemoFirebase(() => authUser ? query(collection(firestore, "users", authUser.uid, "withdrawals"), orderBy("createdAt", "desc")) : null, [firestore, authUser]);
   const { data: withdrawals, isLoading: isWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
 
 
   const handleCancelWithdrawal = async (withdrawal: Withdrawal) => {
-    if (!firestore || !user) return;
+    if (!firestore || !authUser) return;
     if (!confirm("Are you sure you want to cancel this withdrawal request?")) return;
     try {
       await cancelWithdrawal(firestore, withdrawal);
@@ -78,6 +81,7 @@ export default function WalletsPage() {
     }
   };
 
+  const isDepositDisabled = isUserLoading || !!user?.isBanned || !!user?.isOnHold;
 
   return (
     <>
@@ -99,7 +103,7 @@ export default function WalletsPage() {
               <Button variant="outline" onClick={() => setIsWithdrawOpen(true)}>
                 <ArrowUpFromLine className="mr-2 h-4 w-4" /> Withdraw
               </Button>
-              <Button onClick={() => setIsDepositOpen(true)}>
+              <Button onClick={() => setIsDepositOpen(true)} disabled={isDepositDisabled}>
                 <ArrowDownToLine className="mr-2 h-4 w-4" /> Deposit
               </Button>
             </div>
