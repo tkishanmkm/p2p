@@ -122,7 +122,12 @@ export default function WalletSettingsPage() {
       form.reset();
       setPreviewUrl(null);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      console.error("Failed to save address:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: error.message || "Could not save address. Check console for details." 
+      });
     } finally {
       setIsLoading(false);
     }
