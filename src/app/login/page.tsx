@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 const formSchema = z.object({
   userId: z.string().min(1, { message: "User ID is required." }),
@@ -40,7 +41,7 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const router = useRouter();
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -54,7 +55,7 @@ export default function LoginPage() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth) {
+    if (!auth || !firestore) {
       toast({ variant: "destructive", title: "Error", description: "Authentication service not ready."});
       return;
     }
@@ -63,9 +64,20 @@ export default function LoginPage() {
     try {
       await setPersistence(auth, browserLocalPersistence);
       const dummyEmail = `${values.userId}@tradeflow.app`;
-      await signInWithEmailAndPassword(auth, dummyEmail, values.password);
-      toast({ title: "Logging In...", description: "Please wait while we log you in." });
-      router.push('/buy');
+      const userCredential = await signInWithEmailAndPassword(auth, dummyEmail, values.password);
+
+      // Check if the user is an admin
+      const adminDocRef = doc(firestore, "admins", userCredential.user.uid);
+      const adminDocSnap = await getDoc(adminDocRef);
+
+      if (adminDocSnap.exists() && adminDocSnap.data().role === 'admin') {
+        toast({ title: "Admin Login Successful", description: "Redirecting to admin dashboard..." });
+        router.push('/adminnarayan/dashboard');
+      } else {
+        toast({ title: "Logging In...", description: "Please wait while we log you in." });
+        router.push('/buy');
+      }
+
     } catch (error: any) {
       let description = "An unknown error occurred. Please try again.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
@@ -160,5 +172,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
