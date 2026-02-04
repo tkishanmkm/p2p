@@ -1,8 +1,9 @@
+
 "use client";
 
-import { useState } from "react";
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy } from "firebase/firestore";
+import { useState, useEffect } from "react";
+import { useFirebase } from "@/firebase";
+import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -60,20 +61,51 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
     const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
     const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
     const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
+    
+    const [deposits, setDeposits] = useState<Deposit[] | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const depositsQuery = useMemoFirebase(() => {
-        if (!firestore || !isAdmin) return null;
-        const depositsRef = collection(firestore, "deposits");
-        
-        if (status) {
-            return query(depositsRef, where("status", "==", status), orderBy("createdAt", "desc"));
-        } else {
-            return query(depositsRef, orderBy("createdAt", "desc"));
+    useEffect(() => {
+        if (isAdminLoading) {
+            setIsLoading(true);
+            return;
         }
-    }, [firestore, status, isAdmin]);
 
-    const { data: deposits, isLoading: areDepositsLoading } = useCollection<Deposit>(depositsQuery);
-    const isLoading = isAdminLoading || areDepositsLoading;
+        if (!isAdmin || !firestore) {
+            setIsLoading(false);
+            setDeposits([]);
+            return;
+        }
+
+        const fetchDeposits = async () => {
+            setIsLoading(true);
+            try {
+                const depositsRef = collection(firestore, "deposits");
+                let q;
+                if (status) {
+                    q = query(depositsRef, where("status", "==", status), orderBy("createdAt", "desc"));
+                } else {
+                    q = query(depositsRef, orderBy("createdAt", "desc"));
+                }
+                const querySnapshot = await getDocs(q);
+                const depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
+                setDeposits(depositsData);
+            } catch (error) {
+                console.error("Failed to fetch deposits:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error fetching deposits",
+                    description: (error as Error).message,
+                });
+                setDeposits([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchDeposits();
+    }, [firestore, status, isAdmin, isAdminLoading, toast]);
+
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -85,6 +117,7 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
         try {
             await approveDeposit(firestore, selectedDeposit);
             toast({ title: "Deposit Approved", description: `User ${selectedDeposit.userDisplayName}'s balance has been updated.` });
+            setDeposits(deposits?.filter(d => d.id !== selectedDeposit.id) || null);
         } catch (e: any) {
             toast({ variant: "destructive", title: "Approval Failed", description: e.message });
         }
@@ -97,6 +130,7 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
         try {
             await declineDeposit(firestore, selectedDeposit);
             toast({ title: "Deposit Declined" });
+            setDeposits(deposits?.filter(d => d.id !== selectedDeposit.id) || null);
         } catch (e: any) {
             toast({ variant: "destructive", title: "Decline Failed", description: e.message });
         }
