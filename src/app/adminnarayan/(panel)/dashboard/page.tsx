@@ -8,35 +8,79 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Users, ArrowLeftRight, ShieldAlert, DollarSign, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup, query, where } from "firebase/firestore";
-import type { User, Trade, Dispute, Deposit, Withdrawal } from "@/lib/types";
+import { useFirebase } from "@/firebase";
+import { collection, collectionGroup, query, where, getDocs } from "firebase/firestore";
+import { useAdminStatus } from "@/hooks/use-admin-status";
+import { useState, useEffect } from "react";
 
-// This will become a real data component
 export default function AdminDashboardPage() {
     const { firestore } = useFirebase();
+    const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
 
-    // Queries for stats
-    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-    const activeTradesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'trades'), where('status', 'in', ['active', 'paid'])) : null, [firestore]);
-    const openDisputesQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'disputes'), where('status', '==', 'open')) : null, [firestore]);
-    const pendingDepositsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'deposits'), where('status', '==', 'pending')) : null, [firestore]);
-    const pendingWithdrawalsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'withdrawals'), where('status', '==', 'pending')) : null, [firestore]);
-    
-    // Fetch data
-    const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
-    const { data: activeTrades, isLoading: tradesLoading } = useCollection<Trade>(activeTradesQuery);
-    const { data: openDisputes, isLoading: disputesLoading } = useCollection<Dispute>(openDisputesQuery);
-    const { data: pendingDeposits, isLoading: depositsLoading } = useCollection<Deposit>(pendingDepositsQuery);
-    const { data: pendingWithdrawals, isLoading: withdrawalsLoading } = useCollection<Withdrawal>(pendingWithdrawalsQuery);
+    const [stats, setStats] = useState({
+        users: 0,
+        activeTrades: 0,
+        openDisputes: 0,
+        pendingDeposits: 0,
+        pendingWithdrawals: 0,
+    });
+    const [isLoading, setIsLoading] = useState(true);
 
-    const stats = [
-        { title: "Total Users", value: usersLoading ? "..." : users?.length ?? 0, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
-        { title: "Active Trades", value: tradesLoading ? "..." : activeTrades?.length ?? 0, icon: <ArrowLeftRight className="h-4 w-4 text-muted-foreground" /> },
-        { title: "Open Disputes", value: disputesLoading ? "..." : openDisputes?.length ?? 0, icon: <ShieldAlert className="h-4 w-4 text-muted-foreground" /> },
+    useEffect(() => {
+        if (isAdminLoading) return;
+        if (!isAdmin || !firestore) {
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchStats = async () => {
+            setIsLoading(true);
+            try {
+                const usersQuery = query(collection(firestore, 'users'));
+                const activeTradesQuery = query(collection(firestore, 'trades'), where('status', 'in', ['active', 'paid']));
+                const openDisputesQuery = query(collectionGroup(firestore, 'disputes'), where('status', '==', 'open'));
+                const pendingDepositsQuery = query(collection(firestore, 'deposits'), where('status', '==', 'awaiting_confirmation'));
+                const pendingWithdrawalsQuery = query(collectionGroup(firestore, 'withdrawals'), where('status', '==', 'pending'));
+
+                const [
+                    usersSnapshot,
+                    activeTradesSnapshot,
+                    openDisputesSnapshot,
+                    pendingDepositsSnapshot,
+                    pendingWithdrawalsSnapshot
+                ] = await Promise.all([
+                    getDocs(usersQuery),
+                    getDocs(activeTradesQuery),
+                    getDocs(openDisputesQuery),
+                    getDocs(pendingDepositsQuery),
+                    getDocs(pendingWithdrawalsQuery)
+                ]);
+
+                setStats({
+                    users: usersSnapshot.size,
+                    activeTrades: activeTradesSnapshot.size,
+                    openDisputes: openDisputesSnapshot.size,
+                    pendingDeposits: pendingDepositsSnapshot.size,
+                    pendingWithdrawals: pendingWithdrawalsSnapshot.size,
+                });
+
+            } catch (error) {
+                console.error("Failed to fetch admin dashboard stats:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, [isAdmin, isAdminLoading, firestore]);
+
+    const statCards = [
+        { title: "Total Users", value: isLoading ? "..." : stats.users, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
+        { title: "Active Trades", value: isLoading ? "..." : stats.activeTrades, icon: <ArrowLeftRight className="h-4 w-4 text-muted-foreground" /> },
+        { title: "Open Disputes", value: isLoading ? "..." : stats.openDisputes, icon: <ShieldAlert className="h-4 w-4 text-muted-foreground" /> },
         { title: "24h Volume", value: "$...", icon: <DollarSign className="h-4 w-4 text-muted-foreground" />, description: "Calculation not implemented" },
-        { title: "Pending Deposits", value: depositsLoading ? "..." : pendingDeposits?.length ?? 0, icon: <ArrowDownToLine className="h-4 w-4 text-muted-foreground" /> },
-        { title: "Pending Withdrawals", value: withdrawalsLoading ? "..." : pendingWithdrawals?.length ?? 0, icon: <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" /> },
+        { title: "Pending Deposits", value: isLoading ? "..." : stats.pendingDeposits, icon: <ArrowDownToLine className="h-4 w-4 text-muted-foreground" /> },
+        { title: "Pending Withdrawals", value: isLoading ? "..." : stats.pendingWithdrawals, icon: <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" /> },
     ];
 
   return (
@@ -45,7 +89,7 @@ export default function AdminDashboardPage() {
         <h1 className="text-lg font-semibold md:text-2xl">Admin Dashboard</h1>
       </div>
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
-        {stats.map((stat, index) => (
+        {statCards.map((stat, index) => (
             <Card key={index}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
@@ -73,5 +117,3 @@ export default function AdminDashboardPage() {
     </>
   );
 }
-
-    

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { useState, useRef, useEffect } from "react";
+import { useFirebase } from "@/firebase";
+import { collection, doc, setDoc, deleteDoc, getDocs, query } from "firebase/firestore";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,6 +50,7 @@ import {
 import { Loader2, Plus, Trash2, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
+import { useAdminStatus } from "@/hooks/use-admin-status";
 
 const addressSchema = z.object({
   crypto: z.string().min(1),
@@ -63,14 +64,40 @@ type AddressFormValues = z.infer<typeof addressSchema>;
 export default function WalletSettingsPage() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
+  const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [availableChains, setAvailableChains] = useState<string[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const addressesQuery = useMemoFirebase(() => firestore ? collection(firestore, "crypto_deposit_addresses") : null, [firestore]);
-  const { data: addresses, isLoading: areAddressesLoading } = useCollection<CryptoDepositAddress>(addressesQuery);
+  const [addresses, setAddresses] = useState<CryptoDepositAddress[] | null>(null);
+  const [areAddressesLoading, setAreAddressesLoading] = useState(true);
+
+  const fetchAddresses = async () => {
+    if (!firestore) return;
+    setAreAddressesLoading(true);
+    try {
+      const addressesRef = collection(firestore, "crypto_deposit_addresses");
+      const q = query(addressesRef);
+      const snapshot = await getDocs(q);
+      setAddresses(snapshot.docs.map(doc => doc.data() as CryptoDepositAddress));
+    } catch (error) {
+      console.error("Error fetching deposit addresses:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not fetch addresses." });
+    } finally {
+      setAreAddressesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdminLoading) return;
+    if (isAdmin) {
+      fetchAddresses();
+    } else {
+      setAreAddressesLoading(false);
+    }
+  }, [isAdmin, isAdminLoading, firestore]);
 
   const form = useForm<AddressFormValues>({
     resolver: zodResolver(addressSchema),
@@ -104,7 +131,6 @@ export default function WalletSettingsPage() {
     try {
       const id = `${values.crypto}-${values.chain}`;
 
-      // Save the address and the base64 data URI to Firestore
       const addressRef = doc(firestore, "crypto_deposit_addresses", id);
       await setDoc(addressRef, {
           id,
@@ -115,6 +141,7 @@ export default function WalletSettingsPage() {
       });
       
       toast({ title: "Address Saved", description: "The deposit address has been updated." });
+      await fetchAddresses(); // Re-fetch addresses after adding a new one
       setIsDialogOpen(false);
       form.reset();
       setPreviewUrl(null);
@@ -135,6 +162,7 @@ export default function WalletSettingsPage() {
     try {
       await deleteDoc(doc(firestore, "crypto_deposit_addresses", id));
       toast({ title: "Address Deleted" });
+      await fetchAddresses(); // Re-fetch addresses after deleting
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: "Could not delete address." });
     }

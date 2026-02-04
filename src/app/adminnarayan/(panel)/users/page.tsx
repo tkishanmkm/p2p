@@ -1,8 +1,8 @@
 "use client";
 
 import Link from 'next/link';
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { useFirebase } from "@/firebase";
+import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -26,23 +26,48 @@ import { useToast } from "@/hooks/use-toast";
 import { setUserBanStatus, setUserHoldStatus } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
+import { useAdminStatus } from '@/hooks/use-admin-status';
+import { useState, useEffect } from 'react';
 
 export default function AdminUsersPage() {
   const { firestore, user: adminUser } = useFirebase();
   const { toast } = useToast();
+  const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
+  const [users, setUsers] = useState<User[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const usersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, "users"), orderBy("createdAt", "desc"));
-  }, [firestore]);
+  useEffect(() => {
+    if (isAdminLoading) return;
+    if (!isAdmin || !firestore) {
+        setIsLoading(false);
+        return;
+    }
 
-  const { data: users, isLoading } = useCollection<User>(usersQuery);
+    const fetchUsers = async () => {
+        setIsLoading(true);
+        try {
+            const usersRef = collection(firestore, "users");
+            const q = query(usersRef, orderBy("createdAt", "desc"));
+            const snapshot = await getDocs(q);
+            setUsers(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not fetch users." });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchUsers();
+  }, [isAdmin, isAdminLoading, firestore, toast]);
 
   const handleBanToggle = async (user: User, isBanned: boolean) => {
     if (!firestore || !adminUser) return;
     try {
       await setUserBanStatus(firestore, user.id, isBanned);
       toast({ title: "User Updated", description: `${user.userId} has been ${isBanned ? 'banned' : 'unbanned'}.` });
+      // Optimistically update UI
+      setUsers(currentUsers => currentUsers?.map(u => u.id === user.id ? {...u, isBanned} : u) || null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Update Failed", description: e.message });
     }
@@ -53,6 +78,8 @@ export default function AdminUsersPage() {
     try {
       await setUserHoldStatus(firestore, user.id, isOnHold);
       toast({ title: "User Updated", description: `Account for ${user.userId} has been put ${isOnHold ? 'on hold' : 'off hold'}.` });
+       // Optimistically update UI
+      setUsers(currentUsers => currentUsers?.map(u => u.id === user.id ? {...u, isOnHold} : u) || null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Update Failed", description: e.message });
     }

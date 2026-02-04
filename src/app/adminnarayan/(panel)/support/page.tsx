@@ -1,7 +1,7 @@
 "use client";
 
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { useFirebase } from "@/firebase";
+import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -31,26 +31,52 @@ import type { SupportTicket } from "@/lib/types";
 import { updateSupportTicketStatus } from "@/lib/admin";
 import { useToast } from "@/hooks/use-toast";
 import { toDate } from "@/lib/utils";
+import { useAdminStatus } from "@/hooks/use-admin-status";
+import { useState, useEffect } from "react";
 
 export default function AdminSupportPage() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
-  const ticketsQuery = useMemoFirebase(
-      () => firestore ? query(collection(firestore, "support_tickets"), orderBy("createdAt", "desc")) : null,
-      [firestore]
-  );
-  const { data: tickets, isLoading } = useCollection<SupportTicket>(ticketsQuery);
+  const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
+  const [tickets, setTickets] = useState<SupportTicket[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (isAdminLoading) return;
+    if (!isAdmin || !firestore) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchTickets = async () => {
+      setIsLoading(true);
+      try {
+        const ticketsRef = collection(firestore, "support_tickets");
+        const q = query(ticketsRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        setTickets(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SupportTicket)));
+      } catch (error) {
+        console.error("Error fetching support tickets:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not fetch support tickets." });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTickets();
+  }, [isAdmin, isAdminLoading, firestore, toast]);
 
   const handleStatusChange = async (ticketId: string, status: SupportTicket['status']) => {
     if (!firestore) return;
     try {
         await updateSupportTicketStatus(firestore, ticketId, status);
         toast({ title: 'Ticket Updated', description: `Status set to ${status}` });
+        // Optimistically update UI
+        setTickets(currentTickets => currentTickets?.map(t => t.id === ticketId ? {...t, status} : t) || null);
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
     }
   };
-
 
   return (
     <>

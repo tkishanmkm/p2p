@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collectionGroup, query, where, orderBy } from "firebase/firestore";
+import { useState, useEffect } from "react";
+import { useFirebase } from "@/firebase";
+import { collectionGroup, query, where, orderBy, getDocs } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -41,7 +41,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
+import { useAdminStatus } from "@/hooks/use-admin-status";
 
 const statusColors: Record<Withdrawal['status'], string> = {
   pending: "border-yellow-500/50 text-yellow-600 bg-yellow-50",
@@ -53,28 +54,55 @@ const statusColors: Record<Withdrawal['status'], string> = {
 export default function AdminWithdrawalsPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
+  const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [showAll, setShowAll] = useState(false);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
   const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
   const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const withdrawalsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    const withdrawalsRef = collectionGroup(firestore, "withdrawals");
-    if (showAll) {
-        return query(withdrawalsRef, orderBy("createdAt", "desc"));
-    } else {
-        return query(withdrawalsRef, where("status", "==", "pending"), orderBy("createdAt", "desc"));
+  useEffect(() => {
+    if (isAdminLoading) return;
+    if (!isAdmin || !firestore) {
+      setIsLoading(false);
+      return;
     }
-  }, [firestore, showAll]);
 
-  const { data: withdrawals, isLoading } = useCollection<Withdrawal>(withdrawalsQuery);
+    const fetchWithdrawals = async () => {
+      setIsLoading(true);
+      try {
+        const withdrawalsRef = collectionGroup(firestore, "withdrawals");
+        let q;
+        if (showAll) {
+          q = query(withdrawalsRef, orderBy("createdAt", "desc"));
+        } else {
+          q = query(withdrawalsRef, where("status", "==", "pending"), orderBy("createdAt", "desc"));
+        }
+        const snapshot = await getDocs(q);
+        setWithdrawals(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Withdrawal)));
+      } catch (error) {
+        console.error("Error fetching withdrawals:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not fetch withdrawals." });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWithdrawals();
+  }, [isAdmin, isAdminLoading, firestore, showAll, toast]);
 
   const handleApprove = async () => {
     if (!firestore || !selectedWithdrawal || !user) return;
     try {
       await approveWithdrawal(firestore, selectedWithdrawal, user.uid);
       toast({ title: "Withdrawal Approved", description: `User ${selectedWithdrawal.userDisplayName}'s locked balance has been debited.` });
+      // Optimistically update UI
+      if (!showAll) {
+        setWithdrawals(withdrawals => withdrawals?.filter(w => w.id !== selectedWithdrawal.id) || null);
+      } else {
+        setWithdrawals(withdrawals => withdrawals?.map(w => w.id === selectedWithdrawal.id ? {...w, status: 'approved'} : w) || null);
+      }
     } catch (e: any) {
       toast({ variant: "destructive", title: "Approval Failed", description: e.message });
     }
@@ -87,6 +115,12 @@ export default function AdminWithdrawalsPage() {
     try {
       await declineWithdrawal(firestore, selectedWithdrawal, user.uid);
       toast({ title: "Withdrawal Declined", description: `Funds have been returned to user ${selectedWithdrawal.userDisplayName}.` });
+      // Optimistically update UI
+       if (!showAll) {
+        setWithdrawals(withdrawals => withdrawals?.filter(w => w.id !== selectedWithdrawal.id) || null);
+      } else {
+        setWithdrawals(withdrawals => withdrawals?.map(w => w.id === selectedWithdrawal.id ? {...w, status: 'declined'} : w) || null);
+      }
     } catch (e: any) {
       toast({ variant: "destructive", title: "Decline Failed", description: e.message });
     }
@@ -131,7 +165,7 @@ export default function AdminWithdrawalsPage() {
                       {w.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(w.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>{toDate(w.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     {w.status === 'pending' && (
                         <DropdownMenu>

@@ -1,8 +1,7 @@
-// This is a new file
 "use client";
 
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { useFirebase } from "@/firebase";
+import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -22,16 +21,41 @@ import { Badge } from "@/components/ui/badge";
 import type { P2PAd } from "@/lib/types";
 import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
+import { useAdminStatus } from "@/hooks/use-admin-status";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminAdsPage() {
   const { firestore } = useFirebase();
+  const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
+  const [ads, setAds] = useState<P2PAd[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
-  const adsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, "p2p_ads"), orderBy("createdAt", "desc"));
-  }, [firestore]);
+  useEffect(() => {
+    if (isAdminLoading) return;
+    if (!isAdmin || !firestore) {
+      setIsLoading(false);
+      return;
+    }
 
-  const { data: ads, isLoading } = useCollection<P2PAd>(adsQuery);
+    const fetchAds = async () => {
+      setIsLoading(true);
+      try {
+        const adsRef = collection(firestore, "p2p_ads");
+        const q = query(adsRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        setAds(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as P2PAd)));
+      } catch (error) {
+        console.error("Error fetching ads:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not fetch ads." });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAds();
+  }, [isAdmin, isAdminLoading, firestore, toast]);
 
   return (
     <>

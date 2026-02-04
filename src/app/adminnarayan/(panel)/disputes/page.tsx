@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collectionGroup, query, where, orderBy, getDoc, doc } from "firebase/firestore";
+import { useState, useEffect } from "react";
+import { useFirebase } from "@/firebase";
+import { collectionGroup, query, where, orderBy, getDoc, doc, getDocs } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
+import { useAdminStatus } from "@/hooks/use-admin-status";
 
 const statusColors: Record<Dispute['status'], string> = {
   open: "border-red-500/50 text-red-600 bg-red-50",
@@ -53,23 +54,43 @@ const statusColors: Record<Dispute['status'], string> = {
 export default function AdminDisputesPage() {
   const { firestore, user: adminUser } = useFirebase();
   const { toast } = useToast();
+  const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [showAll, setShowAll] = useState(false);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [awardTo, setAwardTo] = useState<'buyer' | 'seller' | null>(null);
   const [isResolveAlertOpen, setIsResolveAlertOpen] = useState(false);
+  const [disputes, setDisputes] = useState<Dispute[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const disputesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    const disputesRef = collectionGroup(firestore, "disputes");
-
-    if (showAll) {
-        return query(disputesRef, orderBy("createdAt", "desc"));
-    } else {
-        return query(disputesRef, where("status", "==", "open"), orderBy("createdAt", "desc"));
+  useEffect(() => {
+    if (isAdminLoading) return;
+    if (!isAdmin || !firestore) {
+      setIsLoading(false);
+      return;
     }
-  }, [firestore, showAll]);
 
-  const { data: disputes, isLoading } = useCollection<Dispute>(disputesQuery);
+    const fetchDisputes = async () => {
+      setIsLoading(true);
+      try {
+        const disputesRef = collectionGroup(firestore, "disputes");
+        let q;
+        if (showAll) {
+          q = query(disputesRef, orderBy("createdAt", "desc"));
+        } else {
+          q = query(disputesRef, where("status", "==", "open"), orderBy("createdAt", "desc"));
+        }
+        const snapshot = await getDocs(q);
+        setDisputes(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dispute)));
+      } catch (error) {
+        console.error("Error fetching disputes:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not fetch disputes." });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDisputes();
+  }, [isAdmin, isAdminLoading, firestore, showAll, toast]);
 
   const handleResolve = async () => {
     if (!firestore || !selectedDispute || !awardTo || !adminUser) return;
@@ -88,6 +109,12 @@ export default function AdminDisputesPage() {
     try {
       await resolveDispute(firestore, trade, selectedDispute, winnerId, adminUser.uid);
       toast({ title: "Dispute Resolved", description: `Trade awarded to the ${awardTo}.` });
+      // Optimistically remove from list if not showing all
+      if (!showAll) {
+        setDisputes(disputes => disputes?.filter(d => d.id !== selectedDispute.id) || null);
+      } else {
+         setDisputes(disputes => disputes?.map(d => d.id === selectedDispute.id ? {...d, status: 'resolved'} : d) || null);
+      }
     } catch (e: any) {
       toast({ variant: "destructive", title: "Resolution Failed", description: e.message });
     }
