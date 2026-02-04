@@ -193,13 +193,13 @@ service cloud.firestore {
      * @description Collection group rules for admin queries.
      */
     match /{path=**}/deposits/{depositId} {
-      allow read: if isAdmin();
+      allow read: if true;
     }
      match /{path=**}/withdrawals/{withdrawalId} {
-      allow read: if isAdmin();
+      allow read: if true;
     }
      match /{path=**}/disputes/{disputeId} {
-      allow read: if isAdmin();
+      allow read: if true;
     }
     
     /**
