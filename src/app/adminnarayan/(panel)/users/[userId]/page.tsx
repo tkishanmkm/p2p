@@ -60,7 +60,7 @@ export default function AdminUserDetailPage() {
   // Data queries
   const adsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, "p2p_ads"), where("userId", "==", userId)) : null), [firestore, userId, isAdmin]);
   const walletsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? collection(firestore, `users/${userId}/wallets`) : null), [firestore, userId, isAdmin]);
-  const depositsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, `users/${userId}/deposits`), orderBy('createdAt', 'desc')) : null), [firestore, userId, isAdmin]);
+  const depositsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, "deposits"), where("userId", "==", userId), orderBy('createdAt', 'desc')) : null), [firestore, userId, isAdmin]);
   const withdrawalsQuery = useMemoFirebase(() => (firestore && userId && isAdmin ? query(collection(firestore, `users/${userId}/withdrawals`), orderBy('createdAt', 'desc')) : null), [firestore, userId, isAdmin]);
   
   const tradesAsBuyerQuery = useMemoFirebase(() => firestore && userId && isAdmin ? query(collection(firestore, 'trades'), where('buyerId', '==', userId), orderBy('createdAt', 'desc')) : null, [firestore, userId, isAdmin]);
@@ -139,6 +139,40 @@ export default function AdminUserDetailPage() {
                             <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Available</TableHead><TableHead>Locked</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {wallets?.length ? wallets.map(w => <TableRow key={w.id}><TableCell>{w.crypto}</TableCell><TableCell>{w.balance.toFixed(8)}</TableCell><TableCell>{w.lockedBalance.toFixed(8)}</TableCell></TableRow>) : <TableRow><TableCell colSpan={3} className="text-center">No wallets</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    )}
+                </SectionCard>
+                <SectionCard title="Deposit History">
+                    {areDepositsLoading ? <Skeleton className="h-24 w-full" /> : (
+                        <Table>
+                            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {deposits?.length ? deposits.map(d => (
+                                    <TableRow key={d.id}>
+                                        <TableCell className="font-mono text-xs max-w-[100px] truncate">{d.id}</TableCell>
+                                        <TableCell>{d.amount} {d.crypto}</TableCell>
+                                        <TableCell><Badge variant="outline" className="capitalize">{d.status.replace(/_/g, ' ')}</Badge></TableCell>
+                                        <TableCell>{toDate(d.createdAt)?.toLocaleString()}</TableCell>
+                                    </TableRow>
+                                )) : <TableRow><TableCell colSpan={4} className="text-center">No deposits</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    )}
+                </SectionCard>
+                <SectionCard title="Withdrawal History">
+                    {areWithdrawalsLoading ? <Skeleton className="h-24 w-full" /> : (
+                        <Table>
+                            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {withdrawals?.length ? withdrawals.map(w => (
+                                    <TableRow key={w.id}>
+                                        <TableCell className="font-mono text-xs max-w-[100px] truncate">{w.id}</TableCell>
+                                        <TableCell>{w.amount} {w.crypto}</TableCell>
+                                        <TableCell><Badge variant="outline" className="capitalize">{w.status}</Badge></TableCell>
+                                        <TableCell>{toDate(w.createdAt)?.toLocaleString()}</TableCell>
+                                    </TableRow>
+                                )) : <TableRow><TableCell colSpan={4} className="text-center">No withdrawals</TableCell></TableRow>}
                             </TableBody>
                         </Table>
                     )}
