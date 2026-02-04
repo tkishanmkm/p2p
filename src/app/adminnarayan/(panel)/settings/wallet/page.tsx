@@ -8,7 +8,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { CryptoDepositAddress, CryptoCurrency } from "@/lib/types";
 import { CHAINS, SUPPORTED_CRYPTOS } from "@/lib/constants";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   Card,
   CardContent,
@@ -56,13 +55,13 @@ const addressSchema = z.object({
   crypto: z.string().min(1),
   chain: z.string().min(1),
   address: z.string().min(1, "Address is required."),
-  qrCodeFile: z.instanceof(File, { message: "QR Code image is required." }),
+  qrCodeUrl: z.string().min(1, "QR Code image is required."),
 });
 
 type AddressFormValues = z.infer<typeof addressSchema>;
 
 export default function WalletSettingsPage() {
-  const { firestore, firebaseApp } = useFirebase();
+  const { firestore } = useFirebase();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -75,6 +74,9 @@ export default function WalletSettingsPage() {
 
   const form = useForm<AddressFormValues>({
     resolver: zodResolver(addressSchema),
+    defaultValues: {
+      qrCodeUrl: "",
+    }
   });
 
   const handleCryptoChange = (value: CryptoCurrency) => {
@@ -86,35 +88,30 @@ export default function WalletSettingsPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-        form.setValue('qrCodeFile', file);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setPreviewUrl(reader.result as string);
-        };
-        reader.readAsDataURL(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        setPreviewUrl(dataUrl);
+        form.setValue("qrCodeUrl", dataUrl);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const onSubmit = async (values: AddressFormValues) => {
-    if (!firestore || !firebaseApp) return;
+    if (!firestore) return;
     setIsLoading(true);
     try {
       const id = `${values.crypto}-${values.chain}`;
 
-      // 1. Upload QR code image to storage
-      const storage = getStorage(firebaseApp);
-      const qrCodeRef = ref(storage, `deposit_qrcodes/${id}`);
-      const uploadResult = await uploadBytes(qrCodeRef, values.qrCodeFile);
-      const qrCodeUrl = await getDownloadURL(uploadResult.ref);
-
-      // 2. Save address and URL to Firestore
+      // Save the address and the base64 data URI to Firestore
       const addressRef = doc(firestore, "crypto_deposit_addresses", id);
       await setDoc(addressRef, {
           id,
           crypto: values.crypto,
           chain: values.chain,
           address: values.address,
-          qrCodeUrl: qrCodeUrl,
+          qrCodeUrl: values.qrCodeUrl,
       });
       
       toast({ title: "Address Saved", description: "The deposit address has been updated." });
@@ -204,7 +201,7 @@ export default function WalletSettingsPage() {
                 />
                 <FormField
                     control={form.control}
-                    name="qrCodeFile"
+                    name="qrCodeUrl"
                     render={() => (
                         <FormItem>
                             <FormLabel>QR Code</FormLabel>
