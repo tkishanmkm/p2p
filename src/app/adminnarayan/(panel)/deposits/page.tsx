@@ -118,6 +118,7 @@ export default function AdminDepositsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Deposit ID</TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
@@ -127,9 +128,14 @@ export default function AdminDepositsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow>}
+              {isLoading && <TableRow><TableCell colSpan={7}>Loading...</TableCell></TableRow>}
               {!isLoading && deposits?.map((deposit) => (
                 <TableRow key={deposit.id}>
+                  <TableCell className="font-mono text-xs max-w-[100px] truncate">
+                      <Button variant="link" className="p-0 h-auto" onClick={() => copyToClipboard(deposit.id)}>
+                        {deposit.id}
+                      </Button>
+                  </TableCell>
                   <TableCell className="font-medium">{deposit.userDisplayName}</TableCell>
                   <TableCell>{deposit.amount} {deposit.crypto}</TableCell>
                   <TableCell>
@@ -162,7 +168,7 @@ export default function AdminDepositsPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !deposits?.length && <TableRow><TableCell colSpan={6} className="text-center">No deposits found.</TableCell></TableRow>}
+              {!isLoading && !deposits?.length && <TableRow><TableCell colSpan={7} className="text-center">No deposits found.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
@@ -176,6 +182,10 @@ export default function AdminDepositsPage() {
                     <div className="space-y-4 text-sm pt-2">
                         <p>You are about to approve the following deposit. This will credit the user's wallet and cannot be undone.</p>
                         <div className="p-4 border rounded-md space-y-3 bg-secondary/50 text-foreground">
+                             <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">Deposit ID:</span>
+                                <span className="font-mono text-xs bg-muted p-1 rounded max-w-[180px] truncate">{selectedDeposit?.id}</span>
+                            </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-muted-foreground">User:</span>
                                 <span className="font-semibold">{selectedDeposit?.userDisplayName}</span>

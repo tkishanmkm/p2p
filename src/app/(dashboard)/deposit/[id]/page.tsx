@@ -10,11 +10,12 @@ import { useCountdown } from "@/hooks/use-countdown";
 import type { Deposit } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, CheckCircle, Copy, Hourglass } from "lucide-react";
+import { AlertCircle, CheckCircle, Copy, Hourglass, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useState } from "react";
 
 function CountdownDisplay({ targetDate }: { targetDate: string }) {
   const { hours, minutes, seconds, isFinished } = useCountdown(targetDate);
@@ -30,10 +31,11 @@ function CountdownDisplay({ targetDate }: { targetDate: string }) {
 function DepositPageContent() {
   const params = useParams();
   const { toast } = useToast();
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
   const depositId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const depositRef = firestore && depositId ? doc(firestore, "users", useFirebase().user!.uid, "deposits", depositId) : null;
+  const depositRef = firestore && user ? doc(firestore, "users", user.uid, "deposits", depositId) : null;
   const { data: deposit, isLoading } = useDoc<Deposit>(depositRef);
 
   const form = useForm({
@@ -46,12 +48,16 @@ function DepositPageContent() {
   };
   
   const onSubmit = async (values: { txId: string }) => {
-    if (!depositRef || !values.txId) return;
+    if (!depositRef) return;
+    setIsSubmitting(true);
     try {
-        await updateDoc(depositRef, { txId: values.txId });
-        toast({ title: "Transaction ID Saved", description: "Your deposit is being processed." });
+        // We only update the txId. The status remains 'pending' for the admin to review.
+        await updateDoc(depositRef, { txId: values.txId || "" });
+        toast({ title: "Confirmation Received", description: "Your deposit is pending review by an administrator. You will be notified upon approval." });
     } catch (error: any) {
-        toast({ variant: "destructive", title: "Error", description: "Could not save Transaction ID." });
+        toast({ variant: "destructive", title: "Error", description: "Could not save your confirmation." });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -130,7 +136,8 @@ function DepositPageContent() {
                             </FormItem>
                         )}
                     />
-                    <Button type="submit" className="w-full">
+                    <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         I Have Made The Transfer
                     </Button>
                 </form>
