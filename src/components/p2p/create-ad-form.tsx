@@ -47,8 +47,9 @@ import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Wallet } from "lucide-react";
+import { Loader2, Wallet, Edit } from "lucide-react";
 import { Combobox } from "../ui/combobox";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const adTags = [
   { id: "no-third-party", label: "No third party" },
@@ -111,6 +112,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [customPaymentMethod, setCustomPaymentMethod] = useState('');
   const [currencySearchTerm, setCurrencySearchTerm] = useState("");
+  const [isCurrencySheetOpen, setIsCurrencySheetOpen] = useState(false);
 
   const adCreatorId = ad?.userId || user?.uid;
 
@@ -323,42 +325,67 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
               <FormField
                 control={form.control}
                 name="fiatCurrency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>With Fiat</FormLabel>
-                    <Input 
-                      placeholder="Search currency by name or code..."
-                      value={currencySearchTerm}
-                      onChange={(e) => setCurrencySearchTerm(e.target.value)}
-                      className="mb-2"
-                    />
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="space-y-1"
-                      >
-                        <ScrollArea className="h-60 w-full rounded-md border">
-                          <div className="p-4">
-                            {filteredCurrencies.length > 0 ? filteredCurrencies.map((currency) => (
-                              <FormItem key={currency.code} className="flex items-center space-x-3 space-y-0 p-2 rounded-md hover:bg-muted/50">
-                                <FormControl>
-                                  <RadioGroupItem value={currency.code} id={`fiat-${currency.code}`} />
-                                </FormControl>
-                                <FormLabel htmlFor={`fiat-${currency.code}`} className="font-normal w-full cursor-pointer">
-                                  {currency.name} ({currency.code})
-                                </FormLabel>
-                              </FormItem>
-                            )) : (
-                              <p className="text-center text-sm text-muted-foreground py-4">No currencies found.</p>
-                            )}
-                          </div>
-                        </ScrollArea>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                    const selectedCurrency = currencies.find(c => c.code === field.value);
+                    return (
+                    <FormItem>
+                        <FormLabel>With Fiat</FormLabel>
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-secondary/50">
+                            <div>
+                                <p className="font-semibold text-lg">{selectedCurrency?.name || 'Select a currency'}</p>
+                                <p className="text-muted-foreground">{selectedCurrency?.code || ''}</p>
+                            </div>
+                            <div>
+                                <Sheet open={isCurrencySheetOpen} onOpenChange={setIsCurrencySheetOpen}>
+                                    <SheetTrigger asChild>
+                                        <Button type="button" variant="outline">
+                                            <Edit className="mr-2 h-4 w-4" /> Change
+                                        </Button>
+                                    </SheetTrigger>
+                                    <SheetContent className="flex flex-col">
+                                        <SheetHeader>
+                                            <SheetTitle>Change Fiat Currency</SheetTitle>
+                                            <SheetDescription>
+                                                Select the currency for your ad.
+                                            </SheetDescription>
+                                        </SheetHeader>
+                                        <div className="space-y-4 flex-grow">
+                                            <Input 
+                                            placeholder="Search currency..."
+                                            value={currencySearchTerm}
+                                            onChange={(e) => setCurrencySearchTerm(e.target.value)}
+                                            />
+                                            <RadioGroup
+                                                onValueChange={(value) => {
+                                                    field.onChange(value);
+                                                    setIsCurrencySheetOpen(false); // Close sheet on selection
+                                                }}
+                                                value={field.value}
+                                                className="space-y-1"
+                                            >
+                                                <ScrollArea className="h-[calc(100vh-12rem)] w-full rounded-md border">
+                                                    <div className="p-4">
+                                                        {filteredCurrencies.map((currency) => (
+                                                        <FormItem key={currency.code} className="flex items-center space-x-3 space-y-0 p-2 rounded-md hover:bg-muted/50">
+                                                            <FormControl>
+                                                            <RadioGroupItem value={currency.code} id={`sheet-fiat-${currency.code}`} />
+                                                            </FormControl>
+                                                            <FormLabel htmlFor={`sheet-fiat-${currency.code}`} className="font-normal w-full cursor-pointer">
+                                                            {currency.name} ({currency.code})
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                        ))}
+                                                    </div>
+                                                </ScrollArea>
+                                            </RadioGroup>
+                                        </div>
+                                    </SheetContent>
+                                </Sheet>
+                            </div>
+                        </div>
+                        <FormMessage />
+                    </FormItem>
+                )}}
               />
             </div>
             
