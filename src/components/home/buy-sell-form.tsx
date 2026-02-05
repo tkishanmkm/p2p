@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -147,7 +148,7 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
                       <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-64">
-                      {currencies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {currencies.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
                   </SelectContent>
               </Select>
             </div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
@@ -67,7 +68,7 @@ function SellPageContent() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
-                        {currencies.map(c => <DropdownMenuCheckboxItem key={c}>{c}</DropdownMenuCheckboxItem>)}
+                        {currencies.map(c => <DropdownMenuCheckboxItem key={c.code}>{c.name}</DropdownMenuCheckboxItem>)}
                     </DropdownMenuContent>
                 </DropdownMenu>
                  <DropdownMenu>
