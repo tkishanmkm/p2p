@@ -327,5 +327,4 @@ export default function AdminWithdrawalsPage() {
       </AlertDialog>
     </>
   );
-
-    
+}
