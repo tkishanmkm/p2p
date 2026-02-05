@@ -33,7 +33,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       completedTrades: user.completedTrades,
       photoURL: user.photoURL,
     },
-    createdAt: new Date().toISOString()
+    createdAt: serverTimestamp()
   };
 
   try {
@@ -41,12 +41,17 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     return docRef;
   } catch (error) {
     console.error("Error creating P2P Ad: ", error);
+    
+    // For error reporting, create a version with a client-side date to ensure it's serializable
+    const reportableData = { ...newAdData, createdAt: new Date().toISOString() };
+    delete (reportableData as any).ratePercent;
+    
     errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
           path: adsCollection.path,
           operation: 'create',
-          requestResourceData: newAdData,
+          requestResourceData: reportableData,
         })
       )
     throw error;
