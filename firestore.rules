@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -15,8 +16,6 @@ service cloud.firestore {
     }
 
     // Checks if the user has an admin role.
-    // This is the most secure way, checking for the existence of a server-managed role document
-    // before attempting to get its data. This prevents errors for non-admin users.
     function isAdmin() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
@@ -29,7 +28,6 @@ service cloud.firestore {
     }
 
     // --- Global Catch-All Rule ---
-    // Deny all reads and writes by default for any path not explicitly matched.
     match /{document=**} {
       allow read, write: if false;
     }
@@ -46,37 +44,27 @@ service cloud.firestore {
     }
 
     // --- Admin-Specific Collections ---
-    // Grants admin role. Only the user can create their own doc on first login. No one else can touch it.
     match /admins/{adminId} {
         allow get, create: if isOwner(adminId);
         allow list, update, delete: if false; // Protects admin list and roles from being altered.
     }
-    // Admin action logs. Only accessible by admins.
     match /admin_logs/{logId} {
         allow read, write: if isAdmin();
     }
 
     // --- User-Centric Collections ---
     match /users/{userId} {
-      // Admins can get any user. Users can only get their own profile.
       allow get: if isOwner(userId) || isAdmin(); 
-      // Only admins can list all users.
       allow list: if isAdmin();
-      // Users can create their own profile document upon signup.
       allow create: if isOwner(userId);
-      // Users can update their own profile, admins can update any.
       allow update: if isOwner(userId) || isAdmin();
-      // Only admins can delete users.
       allow delete: if isAdmin();
 
-      // User subcollections are private to the user, but manageable by admins.
       match /wallets/{walletId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
       match /withdrawals/{withdrawalId} {
-        // Users can create/read their own withdrawals. Admins can manage all.
         allow read, create, update: if isOwner(userId) || isAdmin();
-        // Prevent accidental deletion by users. Only Admins can delete.
         allow delete: if isAdmin();
       }
       match /notifications/{notificationId} {
@@ -86,18 +74,10 @@ service cloud.firestore {
     
     // --- Top-Level Data Collections ---
 
-    // DEPOSITS: Stored in a single collection for easier admin querying.
     match /deposits/{depositId} {
-      // GET: A user can get a deposit if they are the owner, or if they are an admin.
       allow get: if isOwner(resource.data.userId) || isAdmin();
-
-      // LIST: Any signed-in user can attempt a query. The 'get' rule above will secure the results.
       allow list: if isSignedIn();
-      
-      // CREATE: Users can create a deposit request for themselves.
       allow create: if isOwner(request.resource.data.userId);
-      
-      // UPDATE: Admins can update. Users can update ONLY to confirm their transfer by adding a txId.
       allow update: if isAdmin() || (
         isOwner(resource.data.userId) &&
         resource.data.status == 'pending' &&
@@ -108,42 +88,22 @@ service cloud.firestore {
         request.resource.data.crypto == resource.data.crypto &&
         request.resource.data.chain == resource.data.chain
       );
-      
-      // DELETE: Only admins can delete deposit records.
       allow delete: if isAdmin();
     }
 
-    // P2P ADS: Publicly readable ads.
     match /p2p_ads/{adId} {
-        // Anyone can view ads.
         allow get, list: if true;
-        // Any signed-in user can create an ad for themself.
-        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-        // Only the ad owner or an admin can update/delete it.
+        allow create: if request.auth.uid == request.resource.data.userId;
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
-    // TRADES: The core transaction documents.
     match /trades/{tradeId} {
-        // A user can get a specific trade document if they are a participant or an admin.
         allow get: if isTradeParticipant(resource.data) || isAdmin();
-        
-        // Allow any signed-in user to query the trades collection.
-        // Security is enforced by the `get` rule on each document in the result.
-        // User-side queries MUST be filtered by buyerId or sellerId. Admins can query all.
         allow list: if isSignedIn();
-        
-        // Any signed-in user can create a trade (by accepting an ad).
         allow create: if isSignedIn();
-        
-        // Only trade participants or admins can update a trade's status.
         allow update: if isTradeParticipant(resource.data) || isAdmin();
-        
-        // Trades should never be deleted to maintain history.
         allow delete: if false;
 
-        // Trade subcollections are only accessible to participants and admins.
-        // A get() call is required to check the parent trade document's participants.
         match /messages/{messageId} {
             allow read, write: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(tradeId)).data) || isAdmin();
         }
@@ -155,18 +115,13 @@ service cloud.firestore {
         }
     }
 
-    // SUPPORT TICKETS
     match /support_tickets/{ticketId} {
-        // Any signed-in user can create a support ticket.
         allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-        // Only admins can view, manage, and update tickets.
         allow read, list, update: if isAdmin();
-        // Support tickets should be archived, not deleted.
         allow delete: if false;
     }
     
     // --- Collection Group Rules for Admin Panel ---
-    // These allow admins to query across all users' subcollections for platform-wide reports.
     match /{path=**}/withdrawals/{withdrawalId} {
         allow list, get: if isAdmin();
     }

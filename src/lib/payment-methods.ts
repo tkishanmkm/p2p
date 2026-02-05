@@ -1,3 +1,4 @@
+
 export const giftCardPaymentMethods = [
     "Amazon (USA - USD)", "Amazon (India - INR)", "Amazon (UK - GBP)", "Amazon (Canada - CAD)", "Amazon (Australia - AUD)", "Amazon (Germany - EUR)", "Amazon (France - EUR)", "Amazon (Italy - EUR)", "Amazon (Spain - EUR)", "Amazon (Japan - JPY)", "Amazon (UAE - AED)", "Amazon (Saudi Arabia - SAR)", "Amazon (Singapore - SGD)", "Amazon (Brazil - BRL)", "Amazon (Mexico - MXN)",
     "Apple iTunes (USA - USD)", "Apple iTunes (UK - GBP)", "Apple iTunes (Canada - CAD)", "Apple iTunes (Australia - AUD)", "Apple iTunes (India - INR)", "Apple iTunes (Germany - EUR)", "Apple iTunes (France - EUR)", "Apple iTunes (Japan - JPY)", "Apple iTunes (UAE - AED)", "Apple iTunes (Saudi Arabia - SAR)",
