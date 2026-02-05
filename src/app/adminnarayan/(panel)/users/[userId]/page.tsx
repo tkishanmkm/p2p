@@ -17,7 +17,7 @@ import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, Percent, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight } from 'lucide-react';
+import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
 import { useAdminStatus } from '@/hooks/use-admin-status';
@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { adminUnblockUser } from '@/lib/admin';
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | undefined }) {
-    if (!value) return null;
+    if (!value && value !== 0) return null;
     return (
         <div className="flex items-start gap-4">
             <div className="text-muted-foreground mt-1">{icon}</div>
@@ -266,7 +266,8 @@ export default function AdminUserDetailPage() {
                     <div className="space-y-4">
                         <DetailItem icon={<DollarSign size={20} />} label="Total Trade Volume" value={`$${parseFloat(user.tradeVolume).toLocaleString()}`} />
                         <DetailItem icon={<CheckCircle size={20} />} label="Completed Trades" value={user.completedTrades} />
-                        <DetailItem icon={<Percent size={20} />} label="Positive Feedback" value={`${user.feedbackScore}%`} />
+                        <DetailItem icon={<ThumbsUp size={20} />} label="Positive Feedback" value={user.positiveFeedback || 0} />
+                        <DetailItem icon={<ThumbsDown size={20} />} label="Negative Feedback" value={user.negativeFeedback || 0} />
                         <DetailItem icon={<Clock size={20} />} label="Last Trade" value={lastTradeDate ? format(lastTradeDate, "PPpp") : 'No trades yet'} />
                     </div>
                 </SectionCard>
@@ -392,5 +393,3 @@ export default function AdminUserDetailPage() {
     </>
   );
 }
-
-    

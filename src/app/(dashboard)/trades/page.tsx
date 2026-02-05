@@ -24,7 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { DollarSign, CheckCircle, Percent, ArrowLeftRight, Download, Loader2 } from 'lucide-react';
+import { DollarSign, CheckCircle, ArrowLeftRight, Download, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { statusColors } from '@/lib/status-colors';
@@ -137,12 +137,19 @@ export default function MyTradesPage() {
         {isUserLoading ? <DashboardCardSkeleton /> : (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Feedback Score</CardTitle>
-              <Percent className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Feedback</CardTitle>
+                <div className="flex gap-1 text-muted-foreground">
+                    <ThumbsUp className="h-4 w-4" />
+                    <ThumbsDown className="h-4 w-4" />
+                </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{user?.feedbackScore || 100}%</div>
-              <Progress value={user?.feedbackScore || 100} className="h-2 mt-2" />
+              <div className="text-2xl font-bold flex items-center gap-2">
+                <span className="text-green-600">{user?.positiveFeedback || 0}</span>
+                <span>/</span>
+                <span className="text-red-600">{user?.negativeFeedback || 0}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Positive / Negative</p>
             </CardContent>
           </Card>
         )}

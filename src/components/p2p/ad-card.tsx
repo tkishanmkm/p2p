@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -12,6 +11,7 @@ import { usePrices } from "@/context/price-context";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Skeleton } from "../ui/skeleton";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 
 interface AdCardProps {
   ad: P2PAd;
@@ -50,7 +50,6 @@ export function AdCard({ ad }: AdCardProps) {
   // Use the live creator data if available, otherwise fall back to the denormalized data
   const displayUser = adCreator || ad.user;
   const displayPhoto = adCreator?.photoURL || ad.user.photoURL;
-  const displayFeedback = adCreator?.feedbackScore ?? ad.user.feedbackScore ?? 100;
   const displayTrades = adCreator?.completedTrades ?? ad.user.completedTrades ?? 0;
 
   if (ad.adType === 'sell') {
@@ -102,7 +101,16 @@ export function AdCard({ ad }: AdCardProps) {
                 <>
                   <p className="font-semibold">{displayUser.userId}</p>
                   <p className="text-xs text-muted-foreground">{displayTrades} trades</p>
-                  <p className="text-xs text-muted-foreground">{displayFeedback}% positive</p>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <div className="flex items-center gap-0.5 text-green-600">
+                        <ThumbsUp className="h-3 w-3" />
+                        <span>{adCreator?.positiveFeedback || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 text-red-600">
+                        <ThumbsDown className="h-3 w-3" />
+                        <span>{adCreator?.negativeFeedback || 0}</span>
+                    </div>
+                  </div>
                 </>
               )}
             </div>
