@@ -25,12 +25,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
-import { CalendarIcon, Loader2 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { useState, Suspense } from "react";
+import { Loader2 } from "lucide-react";
+import { useState, Suspense, useEffect } from "react";
 import { useFirebase } from "@/firebase";
 import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -70,6 +66,28 @@ function SignupFormComponent() {
       captcha: false,
     },
   });
+
+  const [day, setDay] = useState<string>();
+  const [month, setMonth] = useState<string>();
+  const [year, setYear] = useState<string>();
+
+  useEffect(() => {
+    const dob = form.getValues('dob');
+    if (dob) {
+        setDay(String(dob.getDate()));
+        setMonth(String(dob.getMonth() + 1));
+        setYear(String(dob.getFullYear()));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (day && month && year) {
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        if (!isNaN(date.getTime()) && date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month) - 1) {
+            form.setValue('dob', date, { shouldValidate: true });
+        }
+    }
+  }, [day, month, year, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!auth || !firestore) {
@@ -146,9 +164,15 @@ function SignupFormComponent() {
 
   const maxDate = new Date();
   maxDate.setFullYear(maxDate.getFullYear() - 18);
-  
-  const fromYear = 1924;
   const toYear = maxDate.getFullYear();
+  const fromYear = 1924;
+  
+  const years = Array.from({ length: toYear - fromYear + 1 }, (_, i) => String(toYear - i));
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    value: String(i + 1),
+    label: new Date(2000, i, 1).toLocaleString('default', { month: 'long' }),
+  }));
+  const days = Array.from({ length: 31 }, (_, i) => String(i + 1));
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary/50 p-4">
@@ -181,47 +205,39 @@ function SignupFormComponent() {
               <FormField
                 control={form.control}
                 name="dob"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Date of Birth</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          captionLayout="dropdown-buttons"
-                          fromYear={fromYear}
-                          toYear={toYear}
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) =>
-                            date > maxDate || date < new Date("1924-01-01")
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
+                render={() => (
+                    <FormItem>
+                        <FormLabel>Date of Birth</FormLabel>
+                        <div className="grid grid-cols-3 gap-2">
+                            <Select onValueChange={setMonth} value={month}>
+                                <FormControl>
+                                    <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select onValueChange={setDay} value={day}>
+                                <FormControl>
+                                    <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select onValueChange={setYear} value={year}>
+                                <FormControl>
+                                    <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <FormMessage />
+                    </FormItem>
                 )}
-              />
+                />
               <FormField
                 control={form.control}
                 name="userId"
