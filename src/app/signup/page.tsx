@@ -144,6 +144,12 @@ function SignupFormComponent() {
     }
   }
 
+  const maxDate = new Date();
+  maxDate.setFullYear(maxDate.getFullYear() - 18);
+  
+  const fromYear = 1924;
+  const toYear = maxDate.getFullYear();
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary/50 p-4">
       <Card className="w-full max-w-md">
@@ -200,10 +206,13 @@ function SignupFormComponent() {
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
+                          captionLayout="dropdown-buttons"
+                          fromYear={fromYear}
+                          toYear={toYear}
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={(date) =>
-                            date > new Date() || date < new Date("1900-01-01")
+                            date > maxDate || date < new Date("1924-01-01")
                           }
                           initialFocus
                         />
