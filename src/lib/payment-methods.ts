@@ -21,7 +21,7 @@ const giftCards = [
     "Mastercard Gift Card (USA - USD)", "Mastercard Gift Card (Europe - EUR)"
 ];
 
-export const paymentMethods = [
+const regularPaymentMethods = [
   "UPI India",
   "IMPS India",
   "NEFT India",
@@ -341,6 +341,8 @@ export const paymentMethods = [
   "ATM Deposit Transfer",
   "Community Bank Transfer",
   "Cooperative Bank Transfer",
-  "Credit Union Transfer",
-  ...giftCards
+  "Credit Union Transfer"
 ];
+
+export const paymentMethods = regularPaymentMethods;
+export const giftCardPaymentMethods = giftCards;

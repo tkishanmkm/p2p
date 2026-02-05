@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -74,7 +75,7 @@ export function Combobox({
                   key={option.value}
                   value={option.value}
                   onSelect={() => {
-                    onChange(option.value === value ? "" : option.value)
+                    onChange(option.value)
                     if (shouldCloseOnSelect) {
                         setOpen(false)
                     }
