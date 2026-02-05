@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -79,12 +80,17 @@ export default function AdminDisputesPage() {
         const disputesRef = collectionGroup(firestore, "disputes");
         let q;
         if (showAll) {
-          q = query(disputesRef, orderBy("createdAt", "desc"));
+          q = query(disputesRef);
         } else {
-          q = query(disputesRef, where("status", "==", "open"), orderBy("createdAt", "desc"));
+          q = query(disputesRef, where("status", "==", "open"));
         }
         const snapshot = await getDocs(q);
-        setDisputes(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dispute)));
+        let disputesData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dispute));
+        
+        // Sort on the client side
+        disputesData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+        
+        setDisputes(disputesData);
       } catch (error) {
         console.error("Error fetching disputes:", error);
         toast({ variant: "destructive", title: "Error", description: "Could not fetch disputes." });
