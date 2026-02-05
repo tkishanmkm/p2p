@@ -104,7 +104,7 @@ export default function AdminLoginPage() {
                     dob: "1970-01-01",
                     isBanned: false,
                     isOnHold: false,
-                    tradeVolume: "0",
+                    tradeVolume: 0,
                     completedTrades: 0,
                     usernameChanged: true, // Prevent admin from changing their ID
                     createdAt: serverTimestamp(),
@@ -113,7 +113,6 @@ export default function AdminLoginPage() {
                     negativeFeedback: 0,
                     avgPaymentTime: 0,
                     avgReleaseTime: 0,
-                    accountAge: "0 days",
                     photoURL: "",
                     preferredCurrency: "USD",
                     securityQuestion: "Admin account", // Not used for password recovery

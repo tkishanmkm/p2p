@@ -30,7 +30,7 @@ function UserStats({ user }: { user: User }) {
           <DollarSign className="h-6 w-6 text-muted-foreground" />
           <div>
             <p className="text-sm text-muted-foreground">Trade Volume</p>
-            <p className="font-semibold">${parseFloat(user.tradeVolume).toLocaleString()}</p>
+            <p className="font-semibold">${user.tradeVolume.toLocaleString()}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">

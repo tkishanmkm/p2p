@@ -125,7 +125,7 @@ function SignupFormComponent() {
           dob: dob.toISOString().split('T')[0], // YYYY-MM-DD
           isBanned: false,
           isOnHold: false,
-          tradeVolume: "0",
+          tradeVolume: 0,
           completedTrades: 0,
           usernameChanged: false,
           createdAt: serverTimestamp(),
@@ -134,7 +134,6 @@ function SignupFormComponent() {
           negativeFeedback: 0,
           avgPaymentTime: 0,
           avgReleaseTime: 0,
-          accountAge: "0 days",
           photoURL: "",
           preferredCurrency: "USD",
           securityQuestion: values.securityQuestion,

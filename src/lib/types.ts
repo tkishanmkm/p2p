@@ -10,7 +10,7 @@ export type User = {
   photoURL?: string;
   isBanned: boolean;
   isOnHold: boolean;
-  tradeVolume: string; // DECIMAL
+  tradeVolume: number; // DECIMAL
   completedTrades: number; // INT
   usernameChanged: boolean;
   createdAt: string; // TIMESTAMP
@@ -19,7 +19,6 @@ export type User = {
   negativeFeedback: number;
   avgPaymentTime: number; // In minutes
   avgReleaseTime: number; // In minutes
-  accountAge: string; // Calculated, e.g., "2 years"
   preferredCurrency?: string;
   lastTradeAt?: string;
   securityQuestion?: string;
