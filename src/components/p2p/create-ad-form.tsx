@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -40,7 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import type { User, P2PAd, CryptoCurrency, UserWallet } from "@/lib/types";
-import { createP2PAd } from "@/lib/ads";
+import { createP2PAd, updateAd } from "@/lib/ads";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "../ui/badge";
@@ -92,25 +91,37 @@ const adFormSchema = z.object({
 
 type AdFormValues = z.infer<typeof adFormSchema>;
 
-export function CreateAdForm() {
+interface CreateAdFormProps {
+    ad?: P2PAd;
+    isAdmin?: boolean;
+}
+
+export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { firestore, user } = useFirebase();
   const { prices, isLoading: arePricesLoading } = usePrices();
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [customPaymentMethod, setCustomPaymentMethod] = useState('');
-  const rateTypeRef = useRef<"market" | "fixed">("sell");
+  
+  // Keep a ref to the previous rate type to handle default value setting
+  const rateTypeRef = useRef<"market" | "fixed" | undefined>(ad?.rateType);
 
-  const userRef = user ? doc(firestore, "users", user.uid) : null;
+  const adCreatorId = ad?.userId || user?.uid;
+
+  const userRef = adCreatorId ? doc(firestore, "users", adCreatorId) : null;
   const { data: userData } = useDoc<User>(userRef);
 
-  const walletsRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'wallets') : null, [user, firestore]);
+  const walletsRef = useMemoFirebase(() => adCreatorId ? collection(firestore, 'users', adCreatorId, 'wallets') : null, [adCreatorId, firestore]);
   const { data: wallets } = useCollection<UserWallet>(walletsRef);
 
   const form = useForm<AdFormValues>({
     resolver: zodResolver(adFormSchema),
     shouldUnregister: false,
-    defaultValues: {
+    defaultValues: ad ? {
+        ...ad,
+        ratePercent: ad.ratePercent ?? 5,
+    } : {
       adType: "sell",
       crypto: "BTC",
       fiatCurrency: "USD",
@@ -120,7 +131,7 @@ export function CreateAdForm() {
       tags: [],
     },
   });
-
+  
   const watchedFields = form.watch();
   const currentMarketPrice = prices[watchedFields.crypto as CryptoCurrency] || 0;
 
@@ -145,9 +156,7 @@ export function CreateAdForm() {
       ? watchedFields.fixedRate ?? 0
       : currentMarketPrice > 0 ? currentMarketPrice * (1 + (watchedFields.ratePercent ?? 0) / 100) : 0;
 
-    if (price <= 0) {
-      return; 
-    }
+    if (price <= 0) return;
     
     const requiredCrypto = watchedFields.maxAmount / price;
     
@@ -179,14 +188,14 @@ export function CreateAdForm() {
 
   async function onSubmit(data: AdFormValues) {
     if (!firestore || !user || !userData) {
-        toast({ variant: "destructive", title: "Error", description: "You must be logged in to create an ad." });
+        toast({ variant: "destructive", title: "Error", description: "You must be logged in." });
         return;
     }
-    if (balanceError) {
+    if (balanceError && !isAdmin) {
         toast({ variant: "destructive", title: "Cannot Create Ad", description: "Please resolve the balance issue first." });
         return;
     }
-
+    
     const adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'> = {
         adType: data.adType,
         crypto: data.crypto as CryptoCurrency,
@@ -199,31 +208,37 @@ export function CreateAdForm() {
         maxAmount: data.maxAmount,
         terms: data.terms,
         tags: data.tags,
-        active: true,
+        active: ad?.active ?? true, // Preserve active status on edit, default to true on create
     };
     
     try {
-        await createP2PAd(firestore, adData, {
-            id: user.uid,
-            userId: userData.userId,
-            feedbackScore: userData.feedbackScore,
-            completedTrades: userData.completedTrades,
-            photoURL: userData.photoURL
-        });
-        toast({ title: "Ad Created", description: "Your ad has been successfully posted." });
-        router.push(data.adType === 'sell' ? '/buy' : '/sell');
+        if (ad) { // Editing existing ad
+            await updateAd(firestore, ad.id, adData);
+            toast({ title: "Ad Updated", description: "Your ad has been successfully updated." });
+            router.push(isAdmin ? '/adminnarayan/ads' : '/my-ads');
+        } else { // Creating new ad
+            await createP2PAd(firestore, adData, {
+                id: user.uid,
+                userId: userData.userId,
+                feedbackScore: userData.feedbackScore || 100,
+                completedTrades: userData.completedTrades || 0,
+                photoURL: userData.photoURL
+            });
+            toast({ title: "Ad Created", description: "Your ad has been successfully posted." });
+            router.push(data.adType === 'sell' ? '/buy' : '/sell');
+        }
     } catch (error) {
         console.error(error);
-        toast({ variant: "destructive", title: "Failed to create ad", description: "An error occurred." });
+        toast({ variant: "destructive", title: "Operation Failed", description: "An error occurred." });
     }
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create a P2P Advertisement</CardTitle>
+        <CardTitle>{ad ? 'Edit P2P Advertisement' : 'Create a P2P Advertisement'}</CardTitle>
         <CardDescription>
-          Set up your ad to buy or sell coins. It will be visible to other users.
+          {ad ? `Editing ad ${ad.publicAdId}.` : 'Set up your ad to buy or sell coins. It will be visible to other users.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -259,7 +274,7 @@ export function CreateAdForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Coin</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger><SelectValue placeholder="Select a coin" /></SelectTrigger>
                       </FormControl>
@@ -375,7 +390,7 @@ export function CreateAdForm() {
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                       className="flex flex-col md:flex-row gap-4"
                     >
                       <FormItem className="flex-1 flex items-center space-x-3 space-y-0 border p-4 rounded-md has-[:checked]:border-primary">
@@ -401,7 +416,7 @@ export function CreateAdForm() {
                   <FormItem>
                     <FormLabel>Market Rate Adjustment</FormLabel>
                     <div className="relative">
-                      <Input type="number" step="0.01" placeholder="e.g. 5" {...field} />
+                      <Input type="number" step="0.01" placeholder="e.g. 5" {...field} value={field.value ?? ''} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
                      <FormDescription>
@@ -423,7 +438,8 @@ export function CreateAdForm() {
                       type="number" 
                       step="any" 
                       placeholder={arePricesLoading ? "Loading..." : `${currentMarketPrice.toLocaleString()}`} 
-                      {...field} 
+                      {...field}
+                      value={field.value ?? ''}
                     />
                     <FormDescription>The fixed price in {watchedFields.fiatCurrency}. Current market price is approx. {currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchedFields.fiatCurrency, minimumFractionDigits: 2 })}.</FormDescription>
                     <FormMessage />
@@ -526,7 +542,7 @@ export function CreateAdForm() {
               )}
             />
             
-            {balanceError && (
+            {balanceError && !isAdmin && (
               <Alert variant="destructive">
                 <Wallet className="h-4 w-4" />
                 <AlertTitle>Insufficient Balance</AlertTitle>
@@ -539,9 +555,9 @@ export function CreateAdForm() {
               </Alert>
             )}
 
-            <Button type="submit" size="lg" className="w-full md:w-auto" disabled={!!balanceError || form.formState.isSubmitting}>
+            <Button type="submit" size="lg" className="w-full md:w-auto" disabled={(!!balanceError && !isAdmin) || form.formState.isSubmitting}>
               {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Ad
+              {ad ? 'Save Changes' : 'Create Ad'}
             </Button>
           </form>
         </Form>

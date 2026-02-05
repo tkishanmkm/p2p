@@ -32,7 +32,9 @@ import { useAdminStatus } from "@/hooks/use-admin-status";
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Edit, PlusCircle, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function AdminAdsPage() {
   const { firestore } = useFirebase();
@@ -41,6 +43,7 @@ export default function AdminAdsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const router = useRouter();
 
   const [selectedAd, setSelectedAd] = useState<P2PAd | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -91,12 +94,16 @@ export default function AdminAdsPage() {
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold md:text-2xl">P2P Ads Management</h1>
+         <Button onClick={() => router.push('/adminnarayan/ads/create')}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Ad
+        </Button>
       </div>
       <Card>
         <CardHeader>
           <CardTitle>All User Ads</CardTitle>
           <CardDescription>
-            View all ads on the platform, including active and inactive ones.
+            View all ads on the platform. Click a row to see details or edit.
           </CardDescription>
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -115,16 +122,15 @@ export default function AdminAdsPage() {
                 <TableHead>Ad ID</TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Asset</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Created At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center">
+                  <TableCell colSpan={6} className="text-center">
                     Loading ads...
                   </TableCell>
                 </TableRow>
@@ -133,7 +139,7 @@ export default function AdminAdsPage() {
                 <TableRow key={ad.id} onClick={() => handleRowClick(ad)} className="cursor-pointer">
                   <TableCell className="font-mono text-xs">{ad.publicAdId}</TableCell>
                    <TableCell>
-                     <Link href={`/users/${ad.user.userId}`} className="hover:underline font-medium">
+                     <Link href={`/users/${ad.user.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
                         {ad.user.userId}
                      </Link>
                    </TableCell>
@@ -142,7 +148,6 @@ export default function AdminAdsPage() {
                       {ad.adType}
                     </Badge>
                   </TableCell>
-                  <TableCell>{ad.crypto}/{ad.fiatCurrency}</TableCell>
                   <TableCell>
                     {ad.rateType === "fixed"
                       ? `${ad.fixedRate} ${ad.fiatCurrency}`
@@ -158,12 +163,19 @@ export default function AdminAdsPage() {
                       {ad.active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell>{toDate(ad.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                   <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/adminnarayan/ads/${ad.id}`);
+                        }}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                   </TableCell>
                 </TableRow>
               ))}
               {!isLoading && !filteredAds?.length && (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No ads found.
                   </TableCell>
                 </TableRow>

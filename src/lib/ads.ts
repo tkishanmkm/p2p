@@ -1,4 +1,3 @@
-// This is a new file
 'use client';
 import { Firestore, collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import type { P2PAd } from './types';
@@ -34,7 +33,6 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       completedTrades: user.completedTrades,
       photoURL: user.photoURL,
     },
-    active: true,
   };
 
   try {
@@ -57,6 +55,11 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
   }
 }
 
+export async function updateAd(db: Firestore, adId: string, adData: Partial<Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'>>) {
+    const adRef = doc(db, 'p2p_ads', adId);
+    await updateDoc(adRef, adData);
+}
+
 export async function updateAdStatus(db: Firestore, adId: string, active: boolean) {
     const adRef = doc(db, 'p2p_ads', adId);
     await updateDoc(adRef, { active });
@@ -67,5 +70,3 @@ export async function softDeleteAd(db: Firestore, adId: string) {
     const adRef = doc(db, 'p2p_ads', adId);
     await updateDoc(adRef, { active: false });
 }
-
-    

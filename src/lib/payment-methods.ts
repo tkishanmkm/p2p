@@ -1,5 +1,4 @@
-
-const giftCards = [
+export const giftCardPaymentMethods = [
     "Amazon (USA - USD)", "Amazon (India - INR)", "Amazon (UK - GBP)", "Amazon (Canada - CAD)", "Amazon (Australia - AUD)", "Amazon (Germany - EUR)", "Amazon (France - EUR)", "Amazon (Italy - EUR)", "Amazon (Spain - EUR)", "Amazon (Japan - JPY)", "Amazon (UAE - AED)", "Amazon (Saudi Arabia - SAR)", "Amazon (Singapore - SGD)", "Amazon (Brazil - BRL)", "Amazon (Mexico - MXN)",
     "Apple iTunes (USA - USD)", "Apple iTunes (UK - GBP)", "Apple iTunes (Canada - CAD)", "Apple iTunes (Australia - AUD)", "Apple iTunes (India - INR)", "Apple iTunes (Germany - EUR)", "Apple iTunes (France - EUR)", "Apple iTunes (Japan - JPY)", "Apple iTunes (UAE - AED)", "Apple iTunes (Saudi Arabia - SAR)",
     "Google Play (USA - USD)", "Google Play (UK - GBP)", "Google Play (Canada - CAD)", "Google Play (Australia - AUD)", "Google Play (India - INR)", "Google Play (Germany - EUR)", "Google Play (France - EUR)", "Google Play (Japan - JPY)", "Google Play (UAE - AED)", "Google Play (Saudi Arabia - SAR)",
@@ -21,7 +20,7 @@ const giftCards = [
     "Mastercard Gift Card (USA - USD)", "Mastercard Gift Card (Europe - EUR)"
 ];
 
-const regularPaymentMethods = [
+export const paymentMethods = [
   "UPI India",
   "IMPS India",
   "NEFT India",
@@ -343,6 +342,3 @@ const regularPaymentMethods = [
   "Cooperative Bank Transfer",
   "Credit Union Transfer"
 ];
-
-export const paymentMethods = regularPaymentMethods;
-export const giftCardPaymentMethods = giftCards;
