@@ -300,21 +300,21 @@ export async function requestWithdrawal(
     });
 
     // Create withdrawal request
-    const withdrawalRef = collection(db, "users", user.uid, "withdrawals");
-    const newWithdrawal: Omit<Withdrawal, 'id'> = {
+    const withdrawalCollectionRef = collection(db, "users", user.uid, "withdrawals");
+    const newWithdrawalRef = doc(withdrawalCollectionRef); // Create a reference for the new document
+
+    const newWithdrawalData = {
       userId: user.uid,
       userDisplayName: user.displayName || 'Unknown',
       crypto: values.crypto as CryptoCurrency,
       chain: values.chain,
       address: values.address,
       amount: values.amount,
-      status: 'pending',
-      createdAt: new Date().toISOString(), // Placeholder
+      status: 'pending' as const,
+      createdAt: serverTimestamp(),
     };
-     addDoc(withdrawalRef, {
-        ...newWithdrawal,
-        createdAt: serverTimestamp()
-    });
+    
+    transaction.set(newWithdrawalRef, newWithdrawalData);
   });
 }
 
