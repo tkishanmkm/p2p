@@ -110,9 +110,11 @@ export default function AdminUserDetailPage() {
       
       // Deposits
       try {
-        const depositsQuery = query(collection(firestore, "deposits"), where("userId", "==", userId), orderBy('createdAt', 'desc'));
+        const depositsQuery = query(collection(firestore, "deposits"), where("userId", "==", userId));
         const depositsSnapshot = await getDocs(depositsQuery);
-        setDeposits(depositsSnapshot.docs.map(d => ({...d.data(), id: d.id } as Deposit)));
+        const depositsData = depositsSnapshot.docs.map(d => ({...d.data(), id: d.id } as Deposit));
+        depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+        setDeposits(depositsData);
       } catch (e) { console.error("Failed to fetch deposits", e); setDeposits([]); }
       finally { setAreDepositsLoading(false); }
       
@@ -126,8 +128,8 @@ export default function AdminUserDetailPage() {
 
       // Trades
       try {
-        const tradesAsBuyerQuery = query(collection(firestore, 'trades'), where('buyerId', '==', userId), orderBy('createdAt', 'desc'));
-        const tradesAsSellerQuery = query(collection(firestore, 'trades'), where('sellerId', '==', userId), orderBy('createdAt', 'desc'));
+        const tradesAsBuyerQuery = query(collection(firestore, 'trades'), where('buyerId', '==', userId));
+        const tradesAsSellerQuery = query(collection(firestore, 'trades'), where('sellerId', '==', userId));
         
         const [buyerSnapshot, sellerSnapshot] = await Promise.all([
           getDocs(tradesAsBuyerQuery),
@@ -146,9 +148,11 @@ export default function AdminUserDetailPage() {
 
       // Admin Logs
       try {
-        const logsQuery = query(collection(firestore, 'admin_logs'), where('targetId', '==', userId), orderBy('createdAt', 'desc'));
+        const logsQuery = query(collection(firestore, 'admin_logs'), where('targetId', '==', userId));
         const logsSnapshot = await getDocs(logsQuery);
-        setAdminLogs(logsSnapshot.docs.map(d => ({...d.data(), id: d.id } as AdminLog)));
+        const logsData = logsSnapshot.docs.map(d => ({...d.data(), id: d.id } as AdminLog));
+        logsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+        setAdminLogs(logsData);
       } catch(e) { console.error("failed to fetch admin logs", e); setAdminLogs([]); }
       finally { setAreLogsLoading(false); }
     };
