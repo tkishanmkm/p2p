@@ -64,8 +64,7 @@ service cloud.firestore {
 
     // --- User-Centric Collections ---
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
@@ -103,7 +102,7 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        allow create: if isOwner(request.resource.data.userId);
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
