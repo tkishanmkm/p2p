@@ -437,6 +437,10 @@
           "type": "number",
           "description": "Total amount of cryptocurrency in the trade."
         },
+        "escrowFee": {
+          "type": "number",
+          "description": "The 1% fee collected for the trade."
+        },
         "fiatCurrency": {
             "type": "string",
             "description": "The fiat currency for the trade."
@@ -798,6 +802,20 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["role", "createdAt"]
+    },
+    "EscrowLedger": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EscrowLedger",
+      "type": "object",
+      "description": "Represents a record of a collected escrow fee from a completed trade.",
+      "properties": {
+        "id": { "type": "string" },
+        "tradeId": { "type": "string" },
+        "feeAmount": { "type": "number" },
+        "crypto": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "tradeId", "feeAmount", "crypto", "createdAt"]
     }
   },
   "auth": {
@@ -1078,6 +1096,17 @@
           "description": "Stores documents to grant admin privileges. If a document exists for a user's UID, they are an admin.",
           "params": [
             { "name": "uid", "description": "The unique identifier for the user (admin)." }
+          ]
+        }
+      },
+      {
+        "path": "/escrow_ledger/{ledgerId}",
+        "definition": {
+          "entityName": "EscrowLedger",
+          "schema": { "$ref": "#/backend/entities/EscrowLedger" },
+          "description": "Stores a log of all collected escrow fees. Read-only for admins.",
+          "params": [
+            { "name": "ledgerId", "description": "The unique identifier for the ledger entry." }
           ]
         }
       }

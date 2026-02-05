@@ -74,6 +74,8 @@ export async function initiateTrade(
         lockedBalance: newSellerLockedBalance,
         updatedAt: serverTimestamp(),
       });
+      
+      const cryptoFee = cryptoAmount * 0.01;
 
       // Create the new trade document
       const newTrade: Omit<Trade, 'id'> = {
@@ -83,6 +85,7 @@ export async function initiateTrade(
         sellerId: ad.userId,
         crypto: ad.crypto,
         amount: cryptoAmount,
+        escrowFee: cryptoFee,
         fiatCurrency: ad.fiatCurrency,
         fiatAmount: fiatAmount,
         paymentMethod: paymentMethod,
@@ -196,6 +199,9 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         if (trade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
         if (trade.claimedByBuyer) throw new Error("Funds have already been claimed.");
 
+        const fee = trade.escrowFee || (trade.amount * 0.01);
+        const amountToBuyer = trade.amount - fee;
+
         const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
         const buyerWalletDoc = await transaction.get(buyerWalletRef);
         let currentBalance = 0;
@@ -207,7 +213,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         }
         
         transaction.set(buyerWalletRef, {
-            balance: currentBalance + trade.amount,
+            balance: currentBalance + amountToBuyer,
             lockedBalance: currentLockedBalance,
             crypto: trade.crypto,
             userId: buyerId,
@@ -216,6 +222,14 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         }, { merge: true });
 
         transaction.update(tradeRef, { claimedByBuyer: true });
+
+        const ledgerRef = doc(collection(db, "escrow_ledger"));
+        transaction.set(ledgerRef, {
+            tradeId: trade.id,
+            feeAmount: fee,
+            crypto: trade.crypto,
+            createdAt: serverTimestamp()
+        });
     });
 }
 

@@ -51,6 +51,16 @@ service cloud.firestore {
     match /admin_logs/{logId} {
         allow read, write: if isAdmin();
     }
+    match /escrow_ledger/{ledgerId} {
+      allow read, list: if isAdmin();
+      // Only the buyer of a released trade can create the corresponding ledger entry.
+      // This happens atomically within the claimFundsForTrade transaction.
+      allow create: if isSignedIn() &&
+                    request.resource.data.tradeId != null &&
+                    get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.buyerId == request.auth.uid &&
+                    get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.status == 'released';
+      allow update, delete: if false;
+    }
 
     // --- User-Centric Collections ---
     match /users/{userId} {

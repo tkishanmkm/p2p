@@ -110,6 +110,7 @@ export type Trade = {
   sellerId: string;
   crypto: CryptoCurrency;
   amount: number; // Crypto amount
+  escrowFee?: number;
   fiatCurrency: string;
   fiatAmount: number;
   paymentMethod: string;
@@ -123,6 +124,14 @@ export type Trade = {
   createdAt: string; // TIMESTAMP;
   buyer: Pick<User, 'userId'>;
   seller: Pick<User, 'userId'>;
+};
+
+export type EscrowLedger = {
+  id: string;
+  tradeId: string;
+  feeAmount: number;
+  crypto: CryptoCurrency;
+  createdAt: string; // TIMESTAMP
 };
 
 export type CoinTransfer = {

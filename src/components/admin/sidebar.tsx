@@ -29,6 +29,7 @@ import {
   ArrowUpFromLine,
   Database,
   Send,
+  DollarSign,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -75,6 +76,7 @@ export function AdminSidebar() {
     { href: "/adminnarayan/ads", label: "Ads", icon: FileText },
     { href: "/adminnarayan/support", label: "Support", icon: LifeBuoy, badge: openTickets?.length || 0 },
     { href: "/adminnarayan/disputes", label: "Disputes", icon: ShieldAlert, badge: openDisputes?.length || 0 },
+    { href: "/adminnarayan/escrow", label: "Escrow", icon: DollarSign },
   ];
 
   const handleLogout = async () => {
