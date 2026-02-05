@@ -216,81 +216,83 @@ export function DashboardHeader() {
       {/* Right side */}
       <div className="flex items-center gap-1 md:gap-2">
         <ModeToggle />
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full relative">
-                    <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 justify-center p-0">{unreadCount}</Badge>
+        <div className="flex items-center">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full relative">
+                        <Bell className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                            <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 justify-center p-0">{unreadCount}</Badge>
+                        )}
+                        <span className="sr-only">Toggle notifications</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                    <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {notifications && notifications.length > 0 ? notifications.map(n => (
+                        <DropdownMenuItem key={n.id} asChild className={cn("flex items-start gap-2", !n.isRead && "bg-secondary")}>
+                            <Link href={n.link || "#"} onClick={() => handleMarkAsRead(n.id)}>
+                                <Mail className="mt-1 h-4 w-4 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                    <p className="text-sm leading-snug">{n.message}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">{toDate(n.createdAt)?.toLocaleString() ?? 'Invalid Date'}</p>
+                                </div>
+                            </Link>
+                        </DropdownMenuItem>
+                    )) : (
+                        <p className="p-4 text-center text-sm text-muted-foreground">No new notifications.</p>
                     )}
-                    <span className="sr-only">Toggle notifications</span>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 p-1 h-auto rounded-md">
+                    <Avatar className="h-8 w-8 shrink-0">
+                        {user?.photoURL ? (
+                        <AvatarImage src={user.photoURL} alt={user.displayName || "User Avatar"} />
+                        ) : (
+                        <AvatarFallback className="bg-transparent">
+                            <DefaultAvatar />
+                        </AvatarFallback>
+                        )}
+                    </Avatar>
+                    <div className="flex-shrink min-w-0 text-left">
+                        {user?.displayName ? <p className="font-semibold text-sm truncate">{user.displayName}</p> : <Skeleton className="h-5 w-20" />}
+                        <p className="text-xs text-muted-foreground truncate">${totalWalletValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    </div>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{user?.displayName || "My Account"}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {notifications && notifications.length > 0 ? notifications.map(n => (
-                    <DropdownMenuItem key={n.id} asChild className={cn("flex items-start gap-2", !n.isRead && "bg-secondary")}>
-                         <Link href={n.link || "#"} onClick={() => handleMarkAsRead(n.id)}>
-                            <Mail className="mt-1 h-4 w-4 text-muted-foreground" />
-                            <div className="flex flex-col">
-                                <p className="text-sm leading-snug">{n.message}</p>
-                                <p className="text-xs text-muted-foreground mt-1">{toDate(n.createdAt)?.toLocaleString() ?? 'Invalid Date'}</p>
-                            </div>
-                        </Link>
-                    </DropdownMenuItem>
-                )) : (
-                    <p className="p-4 text-center text-sm text-muted-foreground">No new notifications.</p>
-                )}
+                <DropdownMenuItem asChild>
+                <Link href="/profile">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                <Link href="/trades">
+                    <ArrowLeftRight className="mr-2 h-4 w-4" />
+                    <span>My Trades</span>
+                </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+                </DropdownMenuItem>
             </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 p-1 h-auto rounded-md">
-                <Avatar className="h-8 w-8 shrink-0">
-                    {user?.photoURL ? (
-                    <AvatarImage src={user.photoURL} alt={user.displayName || "User Avatar"} />
-                    ) : (
-                    <AvatarFallback className="bg-transparent">
-                        <DefaultAvatar />
-                    </AvatarFallback>
-                    )}
-                </Avatar>
-                 <div className="flex-shrink min-w-0 text-left">
-                    {user?.displayName ? <p className="font-semibold text-sm truncate">{user.displayName}</p> : <Skeleton className="h-5 w-20" />}
-                    <p className="text-xs text-muted-foreground truncate">${totalWalletValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{user?.displayName || "My Account"}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/profile">
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/trades">
-                <ArrowLeftRight className="mr-2 h-4 w-4" />
-                <span>My Trades</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/settings">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Logout</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenu>
+        </div>
       </div>
     </header>
   );
