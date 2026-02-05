@@ -9,7 +9,6 @@ import { doc, updateDoc } from "firebase/firestore";
 import type { User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { currencies } from "@/lib/currencies";
-
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,8 +27,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
-import { Combobox } from "@/components/ui/combobox";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 
 const currencySchema = z.object({
   currency: z.string().min(1, "Please select a currency."),
@@ -38,8 +39,9 @@ const currencySchema = z.object({
 export function ChangeCurrencyForm() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const userRef = useMemoFirebase(() => user ? doc(firestore, "users", user.uid) : null, [user, firestore]);
+  const userRef = useMemoFirebase(() => (user ? doc(firestore, "users", user.uid) : null), [user, firestore]);
   const { data: userData, isLoading: isUserLoading } = useDoc<User>(userRef);
 
   const form = useForm<z.infer<typeof currencySchema>>({
@@ -74,7 +76,10 @@ export function ChangeCurrencyForm() {
     }
   };
   
-  const currencyOptions = currencies.map((c) => ({ value: c, label: c }));
+  const filteredCurrencies = currencies.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <Card>
@@ -84,25 +89,45 @@ export function ChangeCurrencyForm() {
             <CardTitle>Preferred Currency</CardTitle>
             <CardDescription>Select the fiat currency you prefer for display purposes across the app.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <Input 
+              placeholder="Search currency by name or code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
             {isUserLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
                 <FormField
-                control={form.control}
-                name="currency"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Currency</FormLabel>
-                    <Combobox
-                        options={currencyOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Select a currency..."
-                    />
-                    <FormMessage />
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="space-y-1"
+                        >
+                          <ScrollArea className="h-72 w-full rounded-md border">
+                            <div className="p-4">
+                              {filteredCurrencies.map((currency) => (
+                                <FormItem key={currency.code} className="flex items-center space-x-3 space-y-0 p-2 rounded-md hover:bg-muted/50">
+                                  <FormControl>
+                                    <RadioGroupItem value={currency.code} id={currency.code} />
+                                  </FormControl>
+                                  <FormLabel htmlFor={currency.code} className="font-normal w-full cursor-pointer">
+                                    {currency.name} ({currency.code})
+                                  </FormLabel>
+                                </FormItem>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
-                )}
+                  )}
                 />
             )}
           </CardContent>
