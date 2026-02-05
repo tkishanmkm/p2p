@@ -64,8 +64,8 @@ service cloud.firestore {
 
     // --- User-Centric Collections ---
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin(); 
-      allow list: if isAdmin();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
