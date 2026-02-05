@@ -224,8 +224,6 @@ export default function WalletsPage() {
                     <TableRow>
                       <TableHead>Asset</TableHead>
                       <TableHead>Total Balance</TableHead>
-                      <TableHead>Available</TableHead>
-                      <TableHead>Locked</TableHead>
                       <TableHead className="text-right">Value ({preferredCurrency})</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -242,8 +240,6 @@ export default function WalletsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(8)}</TableCell>
-                        <TableCell>{(wallet.balance || 0).toFixed(8)}</TableCell>
-                        <TableCell className="text-muted-foreground">{(wallet.lockedBalance || 0).toFixed(8)}</TableCell>
                         <TableCell className="text-right font-medium">{valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     )})}
@@ -269,14 +265,6 @@ export default function WalletsPage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Total</span>
                           <span className="font-medium">{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(8)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Available</span>
-                          <span>{(wallet.balance || 0).toFixed(8)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Locked</span>
-                          <span>{(wallet.lockedBalance || 0).toFixed(8)}</span>
                         </div>
                       </CardContent>
                     </Card>
