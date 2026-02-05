@@ -135,30 +135,41 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
         },
   });
   
-  const watchedRateType = form.watch("rateType");
-  const watchedCrypto = form.watch("crypto");
-  const currentMarketPrice = prices[watchedCrypto as CryptoCurrency] || 0;
+  const watchedFields = form.watch();
+  const currentMarketPrice = prices[watchedFields.crypto as CryptoCurrency] || 0;
   
-  // This single effect now manages the logic for setting default pricing values.
   useEffect(() => {
-    // Only proceed if we have a valid market price to work with.
-    if (currentMarketPrice <= 0) return;
+    if (!currentMarketPrice) return
 
-    // Logic for when the user switches to 'Fixed' rate type.
-    if (watchedRateType === 'fixed') {
-        const currentFixedRate = form.getValues('fixedRate');
-        // If the fixed rate field is empty/undefined (i.e., user hasn't set it),
-        // then pre-fill it with the current market price.
-        // This preserves any value the user might have entered previously.
-        if (currentFixedRate === undefined || currentFixedRate === null) {
-            form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
+    if (watchedFields.rateType === "market") {
+        // default market = 5%
+        if (watchedFields.ratePercent == null) {
+        form.setValue("ratePercent", 5, { shouldValidate: true })
         }
+        // clear fixed price
+        form.setValue("fixedRate", undefined)
     }
-  }, [watchedRateType, watchedCrypto, currentMarketPrice, form]);
+
+    if (watchedFields.rateType === "fixed") {
+        // default fixed = current market price
+        if (watchedFields.fixedRate == null) {
+        form.setValue(
+            "fixedRate",
+            Number(currentMarketPrice.toFixed(2)),
+            { shouldValidate: true }
+        )
+        }
+        // clear market percent
+        form.setValue("ratePercent", undefined)
+    }
+    }, [
+    watchedFields.rateType,
+    watchedFields.crypto,
+    currentMarketPrice,
+    ])
 
   useEffect(() => {
     setBalanceError(null);
-    const watchedFields = form.getValues();
     if (watchedFields.adType !== 'sell' || !watchedFields.maxAmount || !wallets || !watchedFields.crypto) {
         return;
     }
@@ -178,13 +189,27 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
       setBalanceError(`Insufficient ${watchedFields.crypto} balance. You need at least ${requiredCrypto.toFixed(6)} ${watchedFields.crypto} to cover the maximum amount, but you only have ${userBalance.toFixed(6)} available.`);
     }
 
-  }, [form.watch(), wallets, currentMarketPrice]);
+  }, [watchedFields, wallets, currentMarketPrice]);
 
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
   const fiatOptions = currencies.map((c) => ({ value: c, label: c }));
   const paymentMethodOptions = paymentMethods.map((pm) => ({ value: pm, label: pm }));
   const giftCardOptions = giftCardPaymentMethods.map((pm) => ({ value: pm, label: pm }));
+
+  const addPaymentMethod = (method: string) => {
+    if (!method) return;
+    const currentMethods = form.getValues('paymentMethods') || [];
+    if (currentMethods.length >= 5) {
+        toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
+        return;
+    }
+    if (currentMethods.map(c => c.toLowerCase()).includes(method.toLowerCase())) {
+        toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
+        return;
+    }
+    form.setValue('paymentMethods', [...currentMethods, method], { shouldValidate: true });
+};
 
   async function onSubmit(data: AdFormValues) {
     if (!firestore || !user || !userData) {
@@ -292,7 +317,14 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>With Fiat</FormLabel>
-                    <Combobox options={fiatOptions} value={field.value} onChange={field.onChange} placeholder="Select fiat currency" />
+                    <Combobox
+                        options={fiatOptions}
+                        value={field.value}
+                        onChange={(val) =>
+                            form.setValue("fiatCurrency", val, { shouldValidate: true })
+                        }
+                        placeholder="Select fiat currency"
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -319,23 +351,8 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                                   type="button"
                                   variant="secondary"
                                   onClick={() => {
-                                      const newMethod = customPaymentMethod.trim();
-                                      if (!newMethod) return;
-                                      if (newMethod.split(/\s+/).length > 5) {
-                                          toast({ variant: 'destructive', title: 'Error', description: 'Custom method cannot be more than 5 words.' });
-                                          return;
-                                      }
-                                      const currentMethods = field.value || [];
-                                      if (currentMethods.length >= 5) {
-                                        toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
-                                        return;
-                                      }
-                                      if (currentMethods.map(c => c.toLowerCase()).includes(newMethod.toLowerCase())) {
-                                          toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
-                                          return;
-                                      }
-                                      field.onChange([...currentMethods, newMethod]);
-                                      setCustomPaymentMethod('');
+                                    addPaymentMethod(customPaymentMethod.trim());
+                                    setCustomPaymentMethod('');
                                   }}
                               >
                                   Add
@@ -349,19 +366,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                          <CardContent className="p-4 pt-0">
                             <Combobox 
                               options={paymentMethodOptions}
-                              onChange={(method) => {
-                                if (!method) return;
-                                const currentMethods = field.value || [];
-                                if (currentMethods.length >= 5) {
-                                  toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
-                                  return;
-                                }
-                                if (currentMethods.map(c => c.toLowerCase()).includes(method.toLowerCase())) {
-                                    toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
-                                    return;
-                                }
-                                field.onChange([...currentMethods, method]);
-                              }}
+                              onChange={(val) => addPaymentMethod(val)}
                               placeholder="Add from predefined list..."
                               searchPlaceholder="Search payment methods..."
                               emptyText="No standard methods found."
@@ -375,19 +380,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                          <CardContent className="p-4 pt-0">
                             <Combobox 
                               options={giftCardOptions}
-                              onChange={(method) => {
-                                if (!method) return;
-                                const currentMethods = field.value || [];
-                                if (currentMethods.length >= 5) {
-                                  toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
-                                  return;
-                                }
-                                if (currentMethods.map(c => c.toLowerCase()).includes(method.toLowerCase())) {
-                                    toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
-                                    return;
-                                }
-                                field.onChange([...currentMethods, method]);
-                              }}
+                              onChange={(val) => addPaymentMethod(val)}
                               placeholder="Add a gift card..."
                               searchPlaceholder="Search gift cards..."
                               emptyText="No gift cards found."
@@ -440,7 +433,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
               )}
             />
 
-            {watchedRateType === "market" ? (
+            {watchedFields.rateType === "market" ? (
               <FormField
                 control={form.control}
                 name="ratePercent"
