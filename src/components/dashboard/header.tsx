@@ -247,7 +247,7 @@ export function DashboardHeader() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-3 p-1 h-auto rounded-full">
+            <Button variant="ghost" className="flex items-center gap-2 p-1 h-auto rounded-full">
                 <Avatar className="h-8 w-8">
                     {user?.photoURL ? (
                     <AvatarImage src={user.photoURL} alt={user.displayName || "User Avatar"} />
@@ -257,9 +257,9 @@ export function DashboardHeader() {
                     </AvatarFallback>
                     )}
                 </Avatar>
-                 <div className="text-left">
-                    {user?.displayName ? <p className="font-semibold text-sm">{user.displayName}</p> : <Skeleton className="h-5 w-20" />}
-                    <p className="text-xs text-muted-foreground">${totalWalletValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                 <div className="text-left overflow-hidden">
+                    {user?.displayName ? <p className="font-semibold text-sm truncate">{user.displayName}</p> : <Skeleton className="h-5 w-20" />}
+                    <p className="text-xs text-muted-foreground truncate">${totalWalletValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                 </div>
             </Button>
           </DropdownMenuTrigger>
