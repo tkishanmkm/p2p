@@ -38,7 +38,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
   try {
     const docRef = await addDoc(adsCollection, {
       ...newAdData,
-      createdAt: serverTimestamp()
+      createdAt: new Date().toISOString()
     });
     return docRef;
   } catch (error) {
