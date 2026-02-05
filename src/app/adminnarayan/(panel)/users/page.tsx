@@ -61,7 +61,8 @@ export default function AdminUsersPage() {
             const q = query(usersRef, orderBy("createdAt", "desc"));
             const snapshot = await getDocs(q);
             const allUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
-            const regularUsers = allUsers.filter(user => !user.isAdminAccount);
+            // Filter out any user documents that are flagged as admin accounts
+            const regularUsers = allUsers.filter(user => user.isAdminAccount !== true);
             setUsers(regularUsers);
         } catch (error) {
             console.error("Error fetching users:", error);

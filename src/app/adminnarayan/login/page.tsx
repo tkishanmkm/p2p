@@ -82,10 +82,10 @@ export default function AdminLoginPage() {
         });
         router.push("/adminnarayan/dashboard");
 
-    } catch (error: any) {
-        if (error.code === 'auth/user-not-found') {
+    } catch (signInError: any) {
+        if (signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/user-not-found') {
             try {
-                // If sign-in fails, attempt to create the admin account as a first-time setup.
+                // If sign-in fails, it might be a first-time setup. Attempt to create the account.
                 const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
                 const { user: newUser } = newUserCredential;
                 await updateProfile(newUser, { displayName: values.adminId });
@@ -128,24 +128,28 @@ export default function AdminLoginPage() {
                 router.push("/adminnarayan/dashboard");
 
             } catch (signUpError: any) {
-                toast({
-                    variant: "destructive",
-                    title: "Admin Setup Failed",
-                    description: signUpError.message,
-                });
+                 if (signUpError.code === 'auth/email-already-in-use') {
+                    // This means the user exists, so the original sign-in error was due to a wrong password.
+                    toast({
+                      variant: "destructive",
+                      title: "Login Failed",
+                      description: "Invalid Admin ID or password.",
+                    });
+                } else {
+                    // A different error occurred during the account creation attempt.
+                    toast({
+                        variant: "destructive",
+                        title: "Admin Setup Failed",
+                        description: signUpError.message,
+                    });
+                }
             }
-        } else if (error.code === 'auth/invalid-credential') {
-             toast({
-              variant: "destructive",
-              title: "Login Failed",
-              description: "Invalid Admin ID or password.",
-            });
-        }
-        else {
+        } else {
+            // A different, unexpected error occurred during sign-in.
             toast({
               variant: "destructive",
               title: "Login Failed",
-              description: error.message || "An unknown error occurred.",
+              description: signInError.message || "An unknown error occurred.",
             });
         }
     } finally {

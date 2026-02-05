@@ -58,7 +58,7 @@ export default function AdminDashboardPage() {
                 ]);
 
                 const allUsers = usersSnapshot.docs.map(doc => doc.data());
-                const regularUsersCount = allUsers.filter(user => !user.isAdminAccount).length;
+                const regularUsersCount = allUsers.filter(user => user.isAdminAccount !== true).length;
 
                 const activeTradesCount = tradesSnapshot.docs.filter(doc => {
                     const status = doc.data().status;
