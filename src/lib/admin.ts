@@ -9,6 +9,7 @@ import {
   Firestore,
   updateDoc,
   collection,
+  arrayRemove,
 } from "firebase/firestore";
 import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket } from "./types";
 
@@ -355,5 +356,22 @@ export async function adjustUserWalletBalance(
         createdAt: serverTimestamp(),
         link: '/wallets'
     });
+  });
+}
+
+/**
+ * Allows an administrator to remove a user from another user's block list.
+ * @param db The Firestore instance.
+ * @param ownerUserId The UID of the user whose block list is being modified.
+ * @param targetUserIdToUnblock The UID of the user to remove from the block list.
+ */
+export async function adminUnblockUser(
+  db: Firestore,
+  ownerUserId: string,
+  targetUserIdToUnblock: string
+): Promise<void> {
+  const userRef = doc(db, "users", ownerUserId);
+  await updateDoc(userRef, {
+    blockedUsers: arrayRemove(targetUserIdToUnblock)
   });
 }
