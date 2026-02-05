@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useFirebase, useDoc } from "@/firebase";
-import { doc, runTransaction } from "firebase/firestore";
+import { doc, runTransaction, collection, query, where, getDocs } from "firebase/firestore";
 import type { User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -56,18 +56,29 @@ export function ChangeUsernameForm() {
       return;
     }
 
+    // Check if username is already taken before starting the transaction
+    const usersRef = collection(firestore, "users");
+    const q = query(usersRef, where("userId", "==", values.newUsername));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      form.setError("newUsername", {
+        type: "manual",
+        message: "This username is already taken. Please choose another one.",
+      });
+      return;
+    }
+
     try {
       await runTransaction(firestore, async (transaction) => {
-        const userDoc = await transaction.get(userRef!);
+        const userDocRef = userRef!;
+        const userDoc = await transaction.get(userDocRef);
         if (!userDoc.exists()) throw new Error("User document not found.");
         
         const currentData = userDoc.data() as User;
         if (currentData.usernameChanged) throw new Error("Username has already been changed once.");
 
-        // NOTE: In a production app, you MUST check if the new username is already taken by another user.
-        // This usually requires a separate collection to enforce uniqueness on a field.
-        
-        transaction.update(userRef!, {
+        transaction.update(userDocRef, {
           oldUserId: currentData.userId,
           userId: values.newUsername,
           usernameChanged: true,
@@ -81,6 +92,7 @@ export function ChangeUsernameForm() {
         title: "Username Changed",
         description: `Your new username is ${values.newUsername}.`,
       });
+      form.reset({ newUsername: "" }); // Reset form on success
 
     } catch (error: any) {
       toast({

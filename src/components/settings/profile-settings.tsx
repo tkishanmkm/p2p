@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useFirebase } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,16 @@ import { doc, updateDoc } from 'firebase/firestore';
 export function ProfileSettings() {
     const { user, firestore, firebaseApp } = useFirebase();
     const { toast } = useToast();
-    const [previewUrl, setPreviewUrl] = useState<string | null>(user?.photoURL || null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (user?.photoURL) {
+            setPreviewUrl(user.photoURL);
+        }
+    }, [user]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -40,7 +46,7 @@ export function ProfileSettings() {
 
     const handleSave = async () => {
         if (!fileToUpload || !user || !firestore || !firebaseApp) {
-            toast({ variant: 'destructive', title: 'No file selected' });
+            toast({ variant: 'destructive', title: 'No file selected', description: 'Please choose a picture to upload.' });
             return;
         };
 
@@ -61,8 +67,10 @@ export function ProfileSettings() {
             const userDocRef = doc(firestore, 'users', user.uid);
             await updateDoc(userDocRef, { photoURL });
 
-            toast({ title: 'Profile Updated', description: 'Your new profile picture has been saved.' });
+            setPreviewUrl(photoURL);
             setFileToUpload(null); // Reset after successful upload
+
+            toast({ title: 'Profile Updated', description: 'Your new profile picture has been saved.' });
         } catch (error: any) {
             console.error("Error updating profile picture:", error);
             toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
