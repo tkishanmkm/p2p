@@ -48,7 +48,6 @@ import { usePrices } from "@/context/price-context";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Wallet, Edit } from "lucide-react";
-import { Combobox } from "../ui/combobox";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const adTags = [
@@ -113,6 +112,8 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const [customPaymentMethod, setCustomPaymentMethod] = useState('');
   const [currencySearchTerm, setCurrencySearchTerm] = useState("");
   const [isCurrencySheetOpen, setIsCurrencySheetOpen] = useState(false);
+  const [isPaymentMethodSheetOpen, setIsPaymentMethodSheetOpen] = useState(false);
+  const [paymentMethodSearchTerm, setPaymentMethodSearchTerm] = useState("");
 
   const adCreatorId = ad?.userId || user?.uid;
 
@@ -204,9 +205,6 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
     c.code.toLowerCase().includes(currencySearchTerm.toLowerCase())
   );
 
-  const paymentMethodOptions = paymentMethods.map((pm) => ({ value: pm, label: pm }));
-  const giftCardOptions = giftCardPaymentMethods.map((pm) => ({ value: pm, label: pm }));
-
   const addPaymentMethod = (method: string) => {
     if (!method) return;
     const currentMethods = form.getValues('paymentMethods') || [];
@@ -219,7 +217,11 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
         return;
     }
     form.setValue('paymentMethods', [...currentMethods, method], { shouldValidate: true });
-};
+  };
+
+  const filteredPaymentMethods = paymentMethods.filter(pm => pm.toLowerCase().includes(paymentMethodSearchTerm.toLowerCase()));
+  const filteredGiftCardMethods = giftCardPaymentMethods.filter(pm => pm.toLowerCase().includes(paymentMethodSearchTerm.toLowerCase()));
+
 
   async function onSubmit(data: AdFormValues) {
     if (!firestore || !user || !userData) {
@@ -395,62 +397,8 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Payment Methods</FormLabel>
-                   <div className="space-y-4">
-                       <Card>
-                         <CardHeader className="p-4"><CardTitle className="text-base">Custom Method</CardTitle></CardHeader>
-                         <CardContent className="p-4 pt-0">
-                           <div className="flex items-center gap-2">
-                             <Input
-                                  placeholder="Type a custom method"
-                                  value={customPaymentMethod}
-                                  onChange={(e) => setCustomPaymentMethod(e.target.value)}
-                              />
-                             <Button
-                                  type="button"
-                                  variant="secondary"
-                                  onClick={() => {
-                                    addPaymentMethod(customPaymentMethod.trim());
-                                    setCustomPaymentMethod('');
-                                  }}
-                              >
-                                  Add
-                              </Button>
-                           </div>
-                         </CardContent>
-                       </Card>
-
-                       <Card>
-                         <CardHeader className="p-4"><CardTitle className="text-base">Bank/Wallet Transfer</CardTitle></CardHeader>
-                         <CardContent className="p-4 pt-0">
-                            <Combobox 
-                              options={paymentMethodOptions}
-                              onChange={(val) => addPaymentMethod(val)}
-                              placeholder="Add from predefined list..."
-                              searchPlaceholder="Search payment methods..."
-                              emptyText="No standard methods found."
-                              shouldCloseOnSelect={true}
-                              value=""
-                            />
-                         </CardContent>
-                       </Card>
-
-                        <Card>
-                         <CardHeader className="p-4"><CardTitle className="text-base">Gift Cards</CardTitle></CardHeader>
-                         <CardContent className="p-4 pt-0">
-                            <Combobox 
-                              options={giftCardOptions}
-                              onChange={(val) => addPaymentMethod(val)}
-                              placeholder="Add a gift card..."
-                              searchPlaceholder="Search gift cards..."
-                              emptyText="No gift cards found."
-                              shouldCloseOnSelect={true}
-                              value=""
-                            />
-                         </CardContent>
-                       </Card>
-                   </div>
-                  <FormDescription>You can add up to 5 payment methods in total.</FormDescription>
-                  <div className="flex flex-wrap gap-2 pt-2">
+                  <FormDescription>Select up to 5 methods. Click below to add or change.</FormDescription>
+                  <div className="flex flex-wrap gap-2 pt-2 min-h-[2.5rem]">
                     {field.value?.map((pm, index) => (
                       <Badge key={index} variant="secondary">
                         {pm}
@@ -461,6 +409,93 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                       </Badge>
                     ))}
                   </div>
+
+                   <Sheet open={isPaymentMethodSheetOpen} onOpenChange={setIsPaymentMethodSheetOpen}>
+                    <SheetTrigger asChild>
+                        <Button type="button" variant="outline">
+                            <Edit className="mr-2 h-4 w-4" /> Add / Edit Payment Methods
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent className="flex flex-col">
+                        <SheetHeader>
+                            <SheetTitle>Select Payment Methods</SheetTitle>
+                            <SheetDescription>You can select up to 5 methods in total.</SheetDescription>
+                        </SheetHeader>
+                        <div className="py-2 space-y-2">
+                             <div className="flex items-center gap-2">
+                                <Input
+                                    placeholder="Type a custom method"
+                                    value={customPaymentMethod}
+                                    onChange={(e) => setCustomPaymentMethod(e.target.value)}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => {
+                                        addPaymentMethod(customPaymentMethod.trim());
+                                        setCustomPaymentMethod('');
+                                    }}
+                                >
+                                    Add
+                                </Button>
+                            </div>
+                             <Input 
+                                placeholder="Search methods..."
+                                value={paymentMethodSearchTerm}
+                                onChange={(e) => setPaymentMethodSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <ScrollArea className="flex-grow rounded-md border">
+                            <div className="p-4 space-y-4">
+                                <div>
+                                    <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Bank & Wallet Transfers</h4>
+                                    {filteredPaymentMethods.map((pm) => (
+                                        <FormItem key={pm} className="flex flex-row items-start space-x-3 space-y-0 py-2">
+                                            <FormControl>
+                                                <Checkbox
+                                                    checked={field.value?.includes(pm)}
+                                                    onCheckedChange={(checked) => {
+                                                        if (field.value?.length >= 5 && checked) {
+                                                            toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
+                                                            return;
+                                                        }
+                                                        return checked
+                                                            ? field.onChange([...(field.value || []), pm])
+                                                            : field.onChange(field.value?.filter(v => v !== pm));
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormLabel className="font-normal w-full cursor-pointer">{pm}</FormLabel>
+                                        </FormItem>
+                                    ))}
+                                </div>
+                                 <div>
+                                    <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Gift Cards</h4>
+                                    {filteredGiftCardMethods.map((pm) => (
+                                        <FormItem key={pm} className="flex flex-row items-start space-x-3 space-y-0 py-2">
+                                            <FormControl>
+                                                <Checkbox
+                                                    checked={field.value?.includes(pm)}
+                                                    onCheckedChange={(checked) => {
+                                                        if (field.value?.length >= 5 && checked) {
+                                                            toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
+                                                            return;
+                                                        }
+                                                        return checked
+                                                            ? field.onChange([...(field.value || []), pm])
+                                                            : field.onChange(field.value?.filter(v => v !== pm));
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormLabel className="font-normal w-full cursor-pointer">{pm}</FormLabel>
+                                        </FormItem>
+                                    ))}
+                                </div>
+                            </div>
+                        </ScrollArea>
+                    </SheetContent>
+                   </Sheet>
+
                   <FormMessage />
                 </FormItem>
               )}
