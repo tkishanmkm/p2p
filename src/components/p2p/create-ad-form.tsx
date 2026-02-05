@@ -98,6 +98,7 @@ export function CreateAdForm() {
   const { firestore, user } = useFirebase();
   const { prices, isLoading: arePricesLoading } = usePrices();
   const [balanceError, setBalanceError] = useState<string | null>(null);
+  const [customPaymentMethod, setCustomPaymentMethod] = useState('');
 
   const userRef = user ? doc(firestore, "users", user.uid) : null;
   const { data: userData } = useDoc<User>(userRef);
@@ -107,6 +108,7 @@ export function CreateAdForm() {
 
   const form = useForm<AdFormValues>({
     resolver: zodResolver(adFormSchema),
+    shouldUnregister: false,
     defaultValues: {
       adType: "sell",
       crypto: "BTC",
@@ -122,7 +124,7 @@ export function CreateAdForm() {
   const currentMarketPrice = prices[watchedFields.crypto as CryptoCurrency] || 0;
 
   useEffect(() => {
-    if (watchedFields.rateType === 'fixed' && currentMarketPrice > 0) {
+    if (watchedFields.rateType === 'fixed' && currentMarketPrice > 0 && !form.getValues('fixedRate')) {
         form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
     }
   }, [watchedFields.rateType, currentMarketPrice, form]);
@@ -270,34 +272,72 @@ export function CreateAdForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Payment Methods</FormLabel>
-                   <Combobox 
-                        options={paymentMethodOptions}
-                        value="" 
-                        onChange={(val) => {
-                            const current = field.value || [];
-                            if (val && !current.includes(val)) {
-                                if (current.length < 5) {
-                                    form.setValue('paymentMethods', [...current, val]);
-                                } else {
-                                    toast({
-                                        variant: "destructive",
-                                        title: "Limit Reached",
-                                        description: "You can select up to 5 payment methods."
-                                    });
+                   <div className="space-y-2">
+                       <div className="flex items-center gap-2">
+                           <Input
+                                placeholder="Type a custom method and click Add"
+                                value={customPaymentMethod}
+                                onChange={(e) => setCustomPaymentMethod(e.target.value)}
+                            />
+                           <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => {
+                                    const newMethod = customPaymentMethod.trim();
+                                    if (!newMethod) return;
+
+                                    if (newMethod.split(/\s+/).length > 5) {
+                                        toast({ variant: 'destructive', title: 'Error', description: 'Custom method cannot be more than 5 words.' });
+                                        return;
+                                    }
+
+                                    const current = field.value || [];
+                                    if (current.length >= 5) {
+                                        toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
+                                        return;
+                                    }
+
+                                    if (current.map(c => c.toLowerCase()).includes(newMethod.toLowerCase())) {
+                                        toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
+                                        return;
+                                    }
+
+                                    field.onChange([...current, newMethod]);
+                                    setCustomPaymentMethod('');
+                                }}
+                            >
+                                Add
+                            </Button>
+                       </div>
+                       <Combobox 
+                            options={paymentMethodOptions}
+                            value="" 
+                            onChange={(val) => {
+                                if (!val) return;
+                                const current = field.value || [];
+                                if (current.length >= 5) {
+                                    toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
+                                    return;
                                 }
-                            }
-                        }} 
-                        placeholder="Add a payment method"
-                        shouldCloseOnSelect={false}
-                    />
-                  <FormDescription>You can select up to 5 payment methods.</FormDescription>
+                                if (current.includes(val)) {
+                                     toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
+                                    return;
+                                }
+                                field.onChange([...current, val]);
+                            }} 
+                            placeholder="Or add from our list of predefined methods..."
+                            searchPlaceholder="Search payment methods..."
+                            shouldCloseOnSelect={true}
+                        />
+                   </div>
+                  <FormDescription>You can add up to 5 payment methods.</FormDescription>
                   <div className="flex flex-wrap gap-2 pt-2">
                     {field.value?.map((pm, index) => (
                       <Badge key={index} variant="secondary">
                         {pm}
                         <button type="button" onClick={() => {
                             const updatedPms = field.value?.filter((_, i) => i !== index) || [];
-                            form.setValue('paymentMethods', updatedPms);
+                            field.onChange(updatedPms);
                         }} className="ml-2 rounded-full hover:bg-destructive/50 p-0.5">&times;</button>
                       </Badge>
                     ))}
