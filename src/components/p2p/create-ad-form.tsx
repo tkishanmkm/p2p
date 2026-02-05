@@ -138,9 +138,11 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
 
   useEffect(() => {
     const currentRateType = watchedFields.rateType;
+    // Only set the default fixed rate when the user *switches* to fixed mode
     if (currentRateType === 'fixed' && rateTypeRef.current !== 'fixed' && currentMarketPrice > 0) {
         form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
     }
+    // Update the ref to the current value for the next render
     rateTypeRef.current = currentRateType;
   }, [watchedFields.rateType, currentMarketPrice, form]);
 
