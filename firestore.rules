@@ -117,7 +117,7 @@ service cloud.firestore {
 
     match /transfers/{transferId} {
       allow get: if isSignedIn() && (isOwner(resource.data.senderId) || isOwner(resource.data.recipientId) || isAdmin());
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && isOwner(request.resource.data.senderId);
       allow update, delete: if false;
     }
@@ -133,7 +133,8 @@ service cloud.firestore {
         allow list, get: if isAdmin();
     }
     match /{path=**}/disputes/{disputeId} {
-        allow list, get: if isAdmin();
+        allow list: if isAdmin();
+        allow get: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(resource.data.tradeId)).data) || isAdmin();
     }
   }
 }
