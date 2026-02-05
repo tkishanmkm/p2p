@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -84,7 +83,7 @@ export default function AdminLoginPage() {
         router.push("/adminnarayan/dashboard");
 
     } catch (error: any) {
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        if (error.code === 'auth/user-not-found') {
             try {
                 // If sign-in fails, attempt to create the admin account as a first-time setup.
                 const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
@@ -135,7 +134,14 @@ export default function AdminLoginPage() {
                     description: signUpError.message,
                 });
             }
-        } else {
+        } else if (error.code === 'auth/invalid-credential') {
+             toast({
+              variant: "destructive",
+              title: "Login Failed",
+              description: "Invalid Admin ID or password.",
+            });
+        }
+        else {
             toast({
               variant: "destructive",
               title: "Login Failed",
