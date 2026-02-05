@@ -32,7 +32,7 @@ export async function approveDeposit(
 
     if (walletDoc.exists()) {
       const walletData = walletDoc.data() as UserWallet;
-      newBalance += walletData.balance;
+      newBalance += (walletData.balance || 0);
       transaction.update(userWalletRef, {
         balance: newBalance,
         updatedAt: serverTimestamp(),
@@ -107,13 +107,13 @@ export async function approveWithdrawal(
     }
     
     const wallet = walletDoc.data() as UserWallet;
-    if (wallet.lockedBalance < withdrawal.amount) {
+    if ((wallet.lockedBalance || 0) < withdrawal.amount) {
       throw new Error("Insufficient locked balance. Critical error.");
     }
 
     // Deduct from locked balance
     transaction.update(userWalletRef, {
-      lockedBalance: wallet.lockedBalance - withdrawal.amount,
+      lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
       updatedAt: serverTimestamp(),
     });
 
@@ -158,14 +158,14 @@ export async function declineWithdrawal(
         }
 
         const wallet = walletDoc.data() as UserWallet;
-        if (wallet.lockedBalance < withdrawal.amount) {
+        if ((wallet.lockedBalance || 0) < withdrawal.amount) {
             throw new Error("Insufficient locked balance to return. Critical error.");
         }
 
         // Return funds from locked to available balance
         transaction.update(userWalletRef, {
-            balance: wallet.balance + withdrawal.amount,
-            lockedBalance: wallet.lockedBalance - withdrawal.amount,
+            balance: (wallet.balance || 0) + withdrawal.amount,
+            lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
             updatedAt: serverTimestamp(),
         });
 
@@ -254,18 +254,18 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
 
     if (winnerId === trade.sellerId) {
       // Return funds to seller
-      if (sellerWallet.lockedBalance < trade.amount) throw new Error("Insufficient locked funds to return.");
+      if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to return.");
       transaction.update(sellerWalletRef, {
-        balance: sellerWallet.balance + trade.amount,
-        lockedBalance: sellerWallet.lockedBalance - trade.amount,
+        balance: (sellerWallet.balance || 0) + trade.amount,
+        lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
       });
       transaction.update(tradeRef, { status: "cancelled" });
     } else { // Winner is buyer
       // Release funds (same as normal release, just from dispute context)
       // The buyer will claim it via the `claimFundsForTrade` function automatically
-      if (sellerWallet.lockedBalance < trade.amount) throw new Error("Insufficient locked funds to release.");
+      if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to release.");
       transaction.update(sellerWalletRef, {
-        lockedBalance: sellerWallet.lockedBalance - trade.amount
+        lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount
       });
       transaction.update(tradeRef, { status: "released" });
     }
@@ -315,8 +315,8 @@ export async function adjustUserWalletBalance(
 
     if (walletDoc.exists()) {
       const walletData = walletDoc.data() as UserWallet;
-      currentBalance = walletData.balance;
-      currentLockedBalance = walletData.lockedBalance;
+      currentBalance = (walletData.balance || 0);
+      currentLockedBalance = (walletData.lockedBalance || 0);
     }
 
     let newBalance: number;
