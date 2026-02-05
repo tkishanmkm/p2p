@@ -74,9 +74,13 @@ export function Combobox({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.label} // search only
-                  onSelect={() => {
-                    onChange(option.value) // ✅ always real value
+                  value={option.value} 
+                  onSelect={(currentValue) => {
+                    // Find the full option object to pass its value, not the search term
+                    const selectedOption = options.find(opt => opt.value.toLowerCase() === currentValue.toLowerCase());
+                    if (selectedOption) {
+                      onChange(selectedOption.value)
+                    }
                     if (shouldCloseOnSelect) setOpen(false)
                   }}
                 >

@@ -138,34 +138,25 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const currentMarketPrice = prices[watchedFields.crypto as CryptoCurrency] || 0;
   
   useEffect(() => {
-    if (!currentMarketPrice) return
+    if (!currentMarketPrice || arePricesLoading) return;
 
-    if (watchedFields.rateType === "market") {
-        // default market = 5%
-        if (watchedFields.ratePercent == null) {
-        form.setValue("ratePercent", 5, { shouldValidate: true })
+    if (watchedFields.rateType === 'market') {
+        // If switching to market, ensure a default percent is set if not already present
+        if (form.getValues('ratePercent') === undefined) {
+            form.setValue('ratePercent', 5, { shouldValidate: true });
         }
-        // clear fixed price
-        form.setValue("fixedRate", undefined)
+        // Clear fixed rate to avoid submission conflicts
+        form.setValue('fixedRate', undefined);
+    } else if (watchedFields.rateType === 'fixed') {
+        // If switching to fixed, set to market price ONLY if no fixed price is already set
+        if (form.getValues('fixedRate') === undefined) {
+            form.setValue('fixedRate', Number(currentMarketPrice.toFixed(2)), { shouldValidate: true });
+        }
+        // Clear market rate to avoid submission conflicts
+        form.setValue('ratePercent', undefined);
     }
+  }, [watchedFields.rateType, watchedFields.crypto, currentMarketPrice, arePricesLoading, form]);
 
-    if (watchedFields.rateType === "fixed") {
-        // default fixed = current market price
-        if (watchedFields.fixedRate == null) {
-        form.setValue(
-            "fixedRate",
-            Number(currentMarketPrice.toFixed(2)),
-            { shouldValidate: true }
-        )
-        }
-        // clear market percent
-        form.setValue("ratePercent", undefined)
-    }
-    }, [
-    watchedFields.rateType,
-    watchedFields.crypto,
-    currentMarketPrice,
-    ]);
 
   useEffect(() => {
     setBalanceError(null);
@@ -319,9 +310,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                     <Combobox
                         options={fiatOptions}
                         value={field.value}
-                        onChange={(val) =>
-                            form.setValue("fiatCurrency", val, { shouldValidate: true })
-                        }
+                        onChange={field.onChange}
                         placeholder="Select fiat currency"
                     />
                     <FormMessage />
@@ -440,7 +429,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                   <FormItem>
                     <FormLabel>Market Rate Adjustment</FormLabel>
                     <div className="relative">
-                      <Input type="number" step="0.01" placeholder="e.g. 5" {...field} value={field.value ?? ''} />
+                      <Input type="number" step="0.01" placeholder="e.g. 5" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value))} value={field.value ?? ''} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
                      <FormDescription>
@@ -463,6 +452,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                       step="any" 
                       placeholder={arePricesLoading ? "Loading..." : `${currentMarketPrice.toLocaleString()}`} 
                       {...field}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
                       value={field.value ?? ''}
                     />
                     <FormDescription>The fixed price in {form.getValues('fiatCurrency')}. Current market price is approx. {currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: form.getValues('fiatCurrency'), minimumFractionDigits: 2 })}.</FormDescription>
