@@ -194,7 +194,12 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
 
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
-  const fiatOptions = currencies.map((c) => ({ value: c, label: c }));
+  
+  const fiatOptions = currencies.map((c) => ({
+    value: c.code,
+    label: `${c.name} (${c.code})`,
+  }));
+
   const paymentMethodOptions = paymentMethods.map((pm) => ({ value: pm, label: pm }));
   const giftCardOptions = giftCardPaymentMethods.map((pm) => ({ value: pm, label: pm }));
 
@@ -324,6 +329,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                         value={field.value}
                         onChange={(val) => form.setValue("fiatCurrency", val, { shouldValidate: true })}
                         placeholder="Select fiat currency"
+                        searchPlaceholder="Search by name or code..."
                     />
                     <FormMessage />
                   </FormItem>
@@ -371,6 +377,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                               searchPlaceholder="Search payment methods..."
                               emptyText="No standard methods found."
                               shouldCloseOnSelect={true}
+                              value=""
                             />
                          </CardContent>
                        </Card>
@@ -385,6 +392,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                               searchPlaceholder="Search gift cards..."
                               emptyText="No gift cards found."
                               shouldCloseOnSelect={true}
+                              value=""
                             />
                          </CardContent>
                        </Card>
