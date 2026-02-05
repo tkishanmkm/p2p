@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Combobox } from "@/components/ui/combobox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -48,6 +48,7 @@ import { usePrices } from "@/context/price-context";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Wallet } from "lucide-react";
+import { Combobox } from "../ui/combobox";
 
 const adTags = [
   { id: "no-third-party", label: "No third party" },
@@ -109,6 +110,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const { prices, isLoading: arePricesLoading } = usePrices();
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [customPaymentMethod, setCustomPaymentMethod] = useState('');
+  const [currencySearchTerm, setCurrencySearchTerm] = useState("");
 
   const adCreatorId = ad?.userId || user?.uid;
 
@@ -195,10 +197,10 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
   
-  const fiatOptions = currencies.map((c) => ({
-    value: c.code,
-    label: `${c.name} (${c.code})`,
-  }));
+  const filteredCurrencies = currencies.filter(c => 
+    c.name.toLowerCase().includes(currencySearchTerm.toLowerCase()) || 
+    c.code.toLowerCase().includes(currencySearchTerm.toLowerCase())
+  );
 
   const paymentMethodOptions = paymentMethods.map((pm) => ({ value: pm, label: pm }));
   const giftCardOptions = giftCardPaymentMethods.map((pm) => ({ value: pm, label: pm }));
@@ -299,7 +301,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-8">
               <FormField
                 control={form.control}
                 name="crypto"
@@ -324,13 +326,36 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>With Fiat</FormLabel>
-                    <Combobox
-                        options={fiatOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Select fiat currency"
-                        searchPlaceholder="Search by name or code..."
+                    <Input 
+                      placeholder="Search currency by name or code..."
+                      value={currencySearchTerm}
+                      onChange={(e) => setCurrencySearchTerm(e.target.value)}
+                      className="mb-2"
                     />
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="space-y-1"
+                      >
+                        <ScrollArea className="h-60 w-full rounded-md border">
+                          <div className="p-4">
+                            {filteredCurrencies.length > 0 ? filteredCurrencies.map((currency) => (
+                              <FormItem key={currency.code} className="flex items-center space-x-3 space-y-0 p-2 rounded-md hover:bg-muted/50">
+                                <FormControl>
+                                  <RadioGroupItem value={currency.code} id={`fiat-${currency.code}`} />
+                                </FormControl>
+                                <FormLabel htmlFor={`fiat-${currency.code}`} className="font-normal w-full cursor-pointer">
+                                  {currency.name} ({currency.code})
+                                </FormLabel>
+                              </FormItem>
+                            )) : (
+                              <p className="text-center text-sm text-muted-foreground py-4">No currencies found.</p>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </RadioGroup>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
