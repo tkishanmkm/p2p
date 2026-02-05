@@ -185,20 +185,6 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const fiatOptions = currencies.map((c) => ({ value: c, label: c }));
   const paymentMethodOptions = paymentMethods.map((pm) => ({ value: pm, label: pm }));
   const giftCardOptions = giftCardPaymentMethods.map((pm) => ({ value: pm, label: pm }));
-  
-  const addPaymentMethod = (method: string) => {
-    if (!method) return;
-    const currentMethods = form.getValues('paymentMethods') || [];
-    if (currentMethods.length >= 5) {
-        toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
-        return;
-    }
-    if (currentMethods.map(c => c.toLowerCase()).includes(method.toLowerCase())) {
-        toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
-        return;
-    }
-    form.setValue('paymentMethods', [...currentMethods, method]);
-  };
 
   async function onSubmit(data: AdFormValues) {
     if (!firestore || !user || !userData) {
@@ -334,11 +320,21 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                                   variant="secondary"
                                   onClick={() => {
                                       const newMethod = customPaymentMethod.trim();
+                                      if (!newMethod) return;
                                       if (newMethod.split(/\s+/).length > 5) {
                                           toast({ variant: 'destructive', title: 'Error', description: 'Custom method cannot be more than 5 words.' });
                                           return;
                                       }
-                                      addPaymentMethod(newMethod);
+                                      const currentMethods = field.value || [];
+                                      if (currentMethods.length >= 5) {
+                                        toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
+                                        return;
+                                      }
+                                      if (currentMethods.map(c => c.toLowerCase()).includes(newMethod.toLowerCase())) {
+                                          toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
+                                          return;
+                                      }
+                                      field.onChange([...currentMethods, newMethod]);
                                       setCustomPaymentMethod('');
                                   }}
                               >
@@ -353,8 +349,19 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                          <CardContent className="p-4 pt-0">
                             <Combobox 
                               options={paymentMethodOptions}
-                              value="" 
-                              onChange={addPaymentMethod}
+                              onChange={(method) => {
+                                if (!method) return;
+                                const currentMethods = field.value || [];
+                                if (currentMethods.length >= 5) {
+                                  toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
+                                  return;
+                                }
+                                if (currentMethods.map(c => c.toLowerCase()).includes(method.toLowerCase())) {
+                                    toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
+                                    return;
+                                }
+                                field.onChange([...currentMethods, method]);
+                              }}
                               placeholder="Add from predefined list..."
                               searchPlaceholder="Search payment methods..."
                               emptyText="No standard methods found."
@@ -368,8 +375,19 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                          <CardContent className="p-4 pt-0">
                             <Combobox 
                               options={giftCardOptions}
-                              value="" 
-                              onChange={addPaymentMethod}
+                              onChange={(method) => {
+                                if (!method) return;
+                                const currentMethods = field.value || [];
+                                if (currentMethods.length >= 5) {
+                                  toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
+                                  return;
+                                }
+                                if (currentMethods.map(c => c.toLowerCase()).includes(method.toLowerCase())) {
+                                    toast({ variant: 'destructive', title: 'Duplicate', description: 'This payment method has already been added.' });
+                                    return;
+                                }
+                                field.onChange([...currentMethods, method]);
+                              }}
                               placeholder="Add a gift card..."
                               searchPlaceholder="Search gift cards..."
                               emptyText="No gift cards found."
