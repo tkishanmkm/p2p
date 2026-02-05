@@ -24,6 +24,7 @@ export type User = {
   lastTradeAt?: string;
   securityQuestion?: string;
   securityAnswer?: string;
+  isAdminAccount?: boolean;
 };
 
 export type UserWallet = {
@@ -110,8 +111,8 @@ export type Trade = {
   amount: number; // Crypto amount
   fiatCurrency: string;
   fiatAmount: number;
-  price: number; // Price per crypto
   paymentMethod: string;
+  price: number; // Price per crypto
   status: TradeStatus;
   claimedByBuyer: boolean;
   paymentReceiptUrl?: string;

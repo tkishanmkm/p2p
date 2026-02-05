@@ -74,14 +74,26 @@ export default function LoginPage() {
         toast({ title: "Admin Login Successful", description: "Redirecting to admin dashboard..." });
         router.push('/adminnarayan/dashboard');
       } else {
-        toast({ title: "Logging In...", description: "Please wait while we log you in." });
-        router.push('/buy');
+        // Verify a user document exists for non-admins for robustness
+        const userDocRef = doc(firestore, "users", userCredential.user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+            toast({ title: "Logging In...", description: "Please wait while we log you in." });
+            router.push('/buy');
+        } else {
+            // This case should not happen in normal flow, but it's a safeguard.
+            await auth.signOut();
+            throw new Error("User profile not found. Please contact support.");
+        }
       }
 
     } catch (error: any) {
       let description = "An unknown error occurred. Please try again.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
           description = "The User ID or password you entered is incorrect.";
+      } else if (error.message) {
+          description = error.message;
       }
       toast({ variant: "destructive", title: "Login Failed", description });
     } finally {

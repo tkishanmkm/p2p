@@ -50,7 +50,10 @@ export default function AdminUsersPage() {
             const usersRef = collection(firestore, "users");
             const q = query(usersRef, orderBy("createdAt", "desc"));
             const snapshot = await getDocs(q);
-            setUsers(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
+            const allUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+            // Filter out any user accounts that are flagged as admin accounts
+            const regularUsers = allUsers.filter(user => !user.isAdminAccount);
+            setUsers(regularUsers);
         } catch (error) {
             console.error("Error fetching users:", error);
             toast({ variant: "destructive", title: "Error", description: "Could not fetch users." });

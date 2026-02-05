@@ -89,10 +89,38 @@ export default function AdminLoginPage() {
                 // If sign-in fails, attempt to create the admin account as a first-time setup.
                 const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
                 const { user: newUser } = newUserCredential;
+                await updateProfile(newUser, { displayName: values.adminId });
                 
                 // Immediately create the admin role document for the new user.
                 const adminRoleRef = doc(firestore, 'admins', newUser.uid);
                 await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
+
+                // Also create a corresponding /users document to make the account more robust,
+                // but flag it so it can be filtered out of user lists.
+                const userDocRef = doc(firestore, 'users', newUser.uid);
+                await setDoc(userDocRef, {
+                    id: newUser.uid,
+                    userId: values.adminId,
+                    fullName: "Administrator",
+                    dob: "1970-01-01",
+                    isBanned: false,
+                    isOnHold: false,
+                    tradeVolume: "0",
+                    completedTrades: 0,
+                    usernameChanged: true, // Prevent admin from changing their ID
+                    createdAt: new Date().toISOString(),
+                    feedbackScore: 100,
+                    positiveFeedback: 0,
+                    negativeFeedback: 0,
+                    avgPaymentTime: 0,
+                    avgReleaseTime: 0,
+                    accountAge: "0 days",
+                    photoURL: "",
+                    preferredCurrency: "USD",
+                    securityQuestion: "Admin account", // Not used for password recovery
+                    securityAnswer: "Admin account", // Not used for password recovery
+                    isAdminAccount: true, // Special flag to identify admin profile
+                });
                 
                 toast({
                     title: "Admin Account Created",
