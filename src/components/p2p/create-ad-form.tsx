@@ -327,7 +327,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                     <Combobox
                         options={fiatOptions}
                         value={field.value}
-                        onChange={(val) => form.setValue("fiatCurrency", val, { shouldValidate: true })}
+                        onChange={field.onChange}
                         placeholder="Select fiat currency"
                         searchPlaceholder="Search by name or code..."
                     />
