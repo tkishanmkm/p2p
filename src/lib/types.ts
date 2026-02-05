@@ -25,6 +25,7 @@ export type User = {
   securityQuestion?: string;
   securityAnswer?: string;
   isAdminAccount?: boolean;
+  blockedUsers?: string[];
 };
 
 export type UserWallet = {

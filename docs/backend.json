@@ -95,6 +95,11 @@
         "securityAnswer": {
             "type": "string",
             "description": "The answer to the security question (should be encrypted)."
+        },
+        "blockedUsers": {
+            "type": "array",
+            "description": "A list of user UIDs that this user has blocked.",
+            "items": { "type": "string", "format": "uuid" }
         }
       },
       "required": [

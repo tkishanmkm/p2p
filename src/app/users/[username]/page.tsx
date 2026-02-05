@@ -2,8 +2,8 @@
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, limit } from 'firebase/firestore';
+import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, limit, doc } from 'firebase/firestore';
 import type { User, P2PAd } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,8 +12,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, CheckCircle, Clock, DollarSign, ThumbsUp, ThumbsDown, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, CheckCircle, Clock, DollarSign, ThumbsUp, ThumbsDown, FileText, UserX, UserCheck } from 'lucide-react';
 import { toDate } from '@/lib/utils';
+import { blockUser, unblockUser } from '@/lib/users';
+import { useToast } from '@/hooks/use-toast';
 
 function UserStats({ user }: { user: User }) {
   const lastTradeDate = toDate(user.lastTradeAt);
@@ -80,8 +83,12 @@ function UserStats({ user }: { user: User }) {
 
 export default function PublicProfilePage() {
   const params = useParams();
-  const { firestore } = useFirebase();
+  const { firestore, user: authUser } = useFirebase();
+  const { toast } = useToast();
   const username = Array.isArray(params.username) ? params.username[0] : params.username;
+
+  const currentUserRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
+  const { data: currentUserData } = useDoc<User>(currentUserRef);
 
   const userQuery = useMemoFirebase(
     () => (firestore && username ? query(collection(firestore, 'users'), where('userId', '==', username), limit(1)) : null),
@@ -96,6 +103,27 @@ export default function PublicProfilePage() {
   );
   const { data: ads, isLoading: areAdsLoading } = useCollection<P2PAd>(adsQuery);
 
+  const isBlocked = currentUserData?.blockedUsers?.includes(user?.id || '');
+
+  const handleBlock = async () => {
+    if (!firestore || !authUser || !user) return;
+    try {
+      await blockUser(firestore, authUser.uid, user.id);
+      toast({ title: "User Blocked", description: `You have blocked ${user.userId}.` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: "Error", description: e.message });
+    }
+  };
+
+  const handleUnblock = async () => {
+    if (!firestore || !authUser || !user) return;
+    try {
+      await unblockUser(firestore, authUser.uid, user.id);
+      toast({ title: "User Unblocked", description: `You have unblocked ${user.userId}.` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: "Error", description: e.message });
+    }
+  };
 
   if (isUserLoading) {
     return (
@@ -117,6 +145,7 @@ export default function PublicProfilePage() {
     );
   }
   const createdDate = toDate(user.createdAt);
+  const isOwnProfile = authUser?.uid === user.id;
 
   return (
     <>
@@ -143,6 +172,19 @@ export default function PublicProfilePage() {
                         <Calendar className="h-4 w-4" />
                         Joined {createdDate ? formatDistanceToNow(createdDate) + ' ago' : 'N/A'}
                     </p>
+                    {!isOwnProfile && authUser && (
+                      <div className="mt-4 w-full">
+                        {isBlocked ? (
+                          <Button variant="outline" className="w-full" onClick={handleUnblock}>
+                            <UserCheck className="mr-2 h-4 w-4" /> Unblock User
+                          </Button>
+                        ) : (
+                          <Button variant="destructive" className="w-full" onClick={handleBlock}>
+                            <UserX className="mr-2 h-4 w-4" /> Block User
+                          </Button>
+                        )}
+                      </div>
+                    )}
                 </CardContent>
             </Card>
             <UserStats user={user} />

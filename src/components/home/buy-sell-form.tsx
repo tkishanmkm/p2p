@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,15 +59,26 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
     const [fiatCurrency, setFiatCurrency] = useState('USD');
     const [cryptoAmount, setCryptoAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('');
-    const { prices } = usePrices();
+    const { prices, fiatRates } = usePrices();
 
-    const currentPrice = prices[crypto] || 0;
+    const currentPrice = prices[crypto] || 0; // Price of crypto in USD
+
+    useEffect(() => {
+        // Recalculate fiat amount when crypto amount or currency changes
+        if (cryptoAmount && !isNaN(parseFloat(cryptoAmount)) && currentPrice > 0) {
+            const usdAmount = parseFloat(cryptoAmount) * currentPrice;
+            const targetRate = fiatRates[fiatCurrency] || 1;
+            setFiatAmount((usdAmount * targetRate).toFixed(2));
+        }
+    }, [fiatCurrency, cryptoAmount, currentPrice, fiatRates]);
 
     const handleFiatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setFiatAmount(value);
-        if(value && !isNaN(parseFloat(value)) && currentPrice > 0) {
-            setCryptoAmount((parseFloat(value) / currentPrice).toFixed(6));
+        if (value && !isNaN(parseFloat(value)) && currentPrice > 0) {
+            const targetRate = fiatRates[fiatCurrency] || 1;
+            const usdAmount = parseFloat(value) / targetRate;
+            setCryptoAmount((usdAmount / currentPrice).toFixed(8));
         } else {
             setCryptoAmount('');
         }
@@ -76,8 +87,10 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
     const handleCryptoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setCryptoAmount(value);
-        if(value && !isNaN(parseFloat(value))) {
-            setFiatAmount((parseFloat(value) * currentPrice).toFixed(2));
+        if (value && !isNaN(parseFloat(value)) && currentPrice > 0) {
+            const usdAmount = parseFloat(value) * currentPrice;
+            const targetRate = fiatRates[fiatCurrency] || 1;
+            setFiatAmount((usdAmount * targetRate).toFixed(2));
         } else {
             setFiatAmount('');
         }
