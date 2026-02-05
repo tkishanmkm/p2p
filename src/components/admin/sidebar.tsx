@@ -1,10 +1,8 @@
-
 "use client";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Sidebar,
   SidebarHeader,
   SidebarContent,
   SidebarMenu,
@@ -93,7 +91,7 @@ export function AdminSidebar() {
   const adminId = user?.email?.split('@')[0];
 
   return (
-    <Sidebar>
+    <>
       <SidebarHeader>
         <Logo />
         <Badge variant="destructive">ADMIN</Badge>
@@ -156,8 +154,6 @@ export function AdminSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-    </Sidebar>
+    </>
   );
 }
-
-  

@@ -1,7 +1,7 @@
 "use client";
 
 import { AdminSidebar } from "@/components/admin/sidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar } from "@/components/ui/sidebar";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -33,9 +33,11 @@ export default function AdminPanelLayout({
   return (
     <SidebarProvider>
       <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-        <div className="hidden border-r bg-muted/40 md:block">
-          <AdminSidebar />
-        </div>
+        <Sidebar className="hidden md:block">
+           <div className="flex h-full max-h-screen flex-col gap-2 border-r bg-muted/40">
+                <AdminSidebar />
+            </div>
+        </Sidebar>
         <div className="flex flex-col">
           <AdminHeader />
           <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-secondary/20">
