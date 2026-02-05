@@ -45,6 +45,24 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   const currentUserRole = user?.uid === trade?.buyerId ? "buy" : "sell";
 
+  // Effect for handling expired trades
+  useEffect(() => {
+    if (trade && trade.status === 'active' && toDate(trade.expiresAt) && new Date() > toDate(trade.expiresAt)!) {
+        // Only trigger cancellation once
+        if (tradeRef && trade.status === 'active') { // Double-check status before acting
+             console.log("Trade is expired, attempting to cancel...");
+            cancelTrade(firestore, trade.id)
+                .then(() => {
+                    toast({ title: "Trade Expired", description: "The trade was automatically cancelled and funds returned to the seller." });
+                })
+                .catch((e) => {
+                    // Avoid spamming user with toasts on background failures
+                    console.error("Auto-cancellation of expired trade failed:", e);
+                });
+        }
+    }
+  }, [trade, firestore, toast, tradeRef]);
+
   // Effect for buyer to auto-claim funds
   useEffect(() => {
     if (trade?.status === "released" && currentUserRole === "buy" && !trade.claimedByBuyer) {
