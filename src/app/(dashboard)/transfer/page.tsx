@@ -50,11 +50,13 @@ import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { toDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 
 const transferSchema = z.object({
   recipientUsername: z.string().min(3, 'Recipient User ID is required.'),
   crypto: z.string().min(1, 'Please select a cryptocurrency.'),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
+  password: z.string().min(1, "Your password is required to authorize the transfer."),
 });
 
 type TransferFormValues = z.infer<typeof transferSchema>;
@@ -116,7 +118,7 @@ function TransferHistoryTable({
 }
 
 export default function TransferPage() {
-  const { firestore, user: authUser, isUserLoading: isAuthLoading } = useFirebase();
+  const { firestore, user: authUser, isUserLoading: isAuthLoading, auth } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -137,13 +139,16 @@ export default function TransferPage() {
 
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferSchema),
+    defaultValues: {
+      password: ""
+    }
   });
 
   const selectedCrypto = form.watch('crypto') as CryptoCurrency;
   const selectedWallet = wallets?.find((w) => w.crypto === selectedCrypto);
 
   async function onSubmit(values: TransferFormValues) {
-    if (!firestore || !authUser) return;
+    if (!firestore || !authUser || !auth) return;
 
     if (selectedWallet && values.amount > selectedWallet.balance) {
       form.setError('amount', {
@@ -154,6 +159,13 @@ export default function TransferPage() {
     }
 
     try {
+      if (!auth.currentUser || !auth.currentUser.email) {
+        throw new Error("Could not verify your identity.");
+      }
+      const credential = EmailAuthProvider.credential(auth.currentUser.email, values.password);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+
+      // If re-authentication is successful, proceed to transfer
       const transferId = await sendCoinToUser(
         firestore,
         { uid: authUser.uid, displayName: authUser.displayName },
@@ -165,14 +177,24 @@ export default function TransferPage() {
         title: 'Transfer Successful!',
         description: `Sent ${values.amount} ${values.crypto} to ${values.recipientUsername}. ID: ${transferId}`,
       });
-      form.reset();
-    } catch (error: any) {
-      console.error('Transfer failed:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Transfer Failed',
-        description: error.message,
+      form.reset({
+          recipientUsername: '',
+          crypto: '',
+          amount: undefined,
+          password: ''
       });
+
+    } catch (error: any) {
+        if (error.code === 'auth/wrong-password') {
+            form.setError("password", { type: 'manual', message: "The password you entered is incorrect." });
+        } else {
+             console.error('Transfer failed:', error);
+             toast({
+                variant: 'destructive',
+                title: 'Transfer Failed',
+                description: error.message,
+            });
+        }
     }
   }
 
@@ -266,6 +288,19 @@ export default function TransferPage() {
                           {selectedWallet.crypto}
                         </FormDescription>
                       )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Your Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter your password to confirm" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
