@@ -1,12 +1,12 @@
 // This is a new file
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { query, collection, where, orderBy } from 'firebase/firestore';
+import { query, collection, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { sendCoinToUser } from '@/lib/wallet';
 import {
@@ -120,11 +120,32 @@ export default function TransferPage() {
   const walletsRef = useMemoFirebase(() => (authUser ? collection(firestore, 'users', authUser.uid, 'wallets') : null), [authUser, firestore]);
   const { data: wallets } = useCollection<UserWallet>(walletsRef);
 
-  const sentQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('senderId', '==', authUser.uid), orderBy('createdAt', 'desc')) : null), [firestore, authUser]);
+  // Original queries without ordering
+  const sentQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('senderId', '==', authUser.uid)) : null), [firestore, authUser]);
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<CoinTransfer>(sentQuery);
 
-  const receivedQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('recipientId', '==', authUser.uid), orderBy('createdAt', 'desc')) : null), [firestore, authUser]);
+  const receivedQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('recipientId', '==', authUser.uid)) : null), [firestore, authUser]);
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<CoinTransfer>(receivedQuery);
+
+  // State for sorted data
+  const [sortedSent, setSortedSent] = useState<CoinTransfer[] | null>(null);
+  const [sortedReceived, setSortedReceived] = useState<CoinTransfer[] | null>(null);
+
+  // Effect for sorting sent transfers
+  useEffect(() => {
+    if (sentTransfers) {
+      const sorted = [...sentTransfers].sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+      setSortedSent(sorted);
+    }
+  }, [sentTransfers]);
+
+  // Effect for sorting received transfers
+  useEffect(() => {
+    if (receivedTransfers) {
+      const sorted = [...receivedTransfers].sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+      setSortedReceived(sorted);
+    }
+  }, [receivedTransfers]);
 
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferSchema),
@@ -296,7 +317,7 @@ export default function TransferPage() {
               </TabsList>
               <TabsContent value="received" className="mt-4">
                 <TransferHistoryTable
-                  transfers={receivedTransfers}
+                  transfers={sortedReceived}
                   isLoading={isLoadingReceived}
                   type="received"
                   currentUsername={authUser?.displayName || ''}
@@ -304,7 +325,7 @@ export default function TransferPage() {
               </TabsContent>
               <TabsContent value="sent" className="mt-4">
                 <TransferHistoryTable
-                  transfers={sentTransfers}
+                  transfers={sortedSent}
                   isLoading={isLoadingSent}
                   type="sent"
                   currentUsername={authUser?.displayName || ''}
@@ -317,5 +338,3 @@ export default function TransferPage() {
     </>
   );
 }
-
-  
