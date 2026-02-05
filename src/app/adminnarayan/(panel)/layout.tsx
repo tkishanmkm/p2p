@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AdminSidebar } from "@/components/admin/sidebar";
@@ -7,6 +6,7 @@ import { useAdminStatus } from "@/hooks/use-admin-status";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { AdminHeader } from "@/components/admin/header";
 
 export default function AdminPanelLayout({
   children,
@@ -37,6 +37,7 @@ export default function AdminPanelLayout({
           <AdminSidebar />
         </div>
         <div className="flex flex-col">
+          <AdminHeader />
           <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-secondary/20">
             {children}
           </main>

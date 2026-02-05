@@ -9,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Table,
@@ -48,18 +49,15 @@ export default function AdminTradesPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    // Wait until admin status is confirmed
     if (isAdminLoading) {
       setIsLoading(true);
       return;
     }
-    // If not an admin, do nothing
     if (!isAdmin || !firestore) {
       setIsLoading(false);
       return;
     }
     
-    // Fetch trades once admin status is confirmed
     const fetchTrades = async () => {
       setIsLoading(true);
       try {
@@ -70,7 +68,7 @@ export default function AdminTradesPage() {
         setTrades(tradesData);
       } catch (error) {
         console.error("Failed to fetch trades for admin:", error);
-        setTrades([]); // Set to empty array on error
+        setTrades([]);
       } finally {
         setIsLoading(false);
       }
@@ -114,62 +112,95 @@ export default function AdminTradesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Trade ID</TableHead>
-                <TableHead>Buyer</TableHead>
-                <TableHead>Seller</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && (
+          <div className="hidden md:block">
+            <Table>
+                <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center">
-                    <Skeleton className="h-4 w-1/4 mx-auto" />
-                  </TableCell>
+                    <TableHead>Trade ID</TableHead>
+                    <TableHead>Buyer</TableHead>
+                    <TableHead>Seller</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                 </TableRow>
-              )}
+                </TableHeader>
+                <TableBody>
+                {isLoading && (
+                    <TableRow>
+                    <TableCell colSpan={7} className="text-center">
+                        <Skeleton className="h-4 w-1/4 mx-auto" />
+                    </TableCell>
+                    </TableRow>
+                )}
+                {!isLoading && filteredTrades?.map((trade) => (
+                    <TableRow key={trade.id} onClick={() => router.push(`/trade/${trade.id}`)} className="cursor-pointer">
+                    <TableCell className="font-mono text-xs">{trade.tradeId}</TableCell>
+                    <TableCell>
+                        <Link href={`/users/${trade.buyer.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                            {trade.buyer.userId}
+                        </Link>
+                    </TableCell>
+                    <TableCell>
+                        <Link href={`/users/${trade.seller.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                            {trade.seller.userId}
+                        </Link>
+                    </TableCell>
+                    <TableCell>{trade.amount.toFixed(6)} {trade.crypto}</TableCell>
+                    <TableCell>
+                        <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>
+                        {trade.status}
+                        </Badge>
+                    </TableCell>
+                    <TableCell>{toDate(trade.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                            <Link href={`/trade/${trade.id}`}>View</Link>
+                        </Button>
+                    </TableCell>
+                    </TableRow>
+                ))}
+                {!isLoading && !filteredTrades?.length && (
+                    <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                        No trades found.
+                    </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-4 md:hidden">
+              {isLoading && <p className="text-center text-sm text-muted-foreground py-4">Loading trades...</p>}
               {!isLoading && filteredTrades?.map((trade) => (
-                <TableRow key={trade.id} onClick={() => router.push(`/trade/${trade.id}`)} className="cursor-pointer">
-                  <TableCell className="font-mono text-xs">{trade.tradeId}</TableCell>
-                  <TableCell>
-                    <Link href={`/users/${trade.buyer.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                        {trade.buyer.userId}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link href={`/users/${trade.seller.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                        {trade.seller.userId}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{trade.amount.toFixed(6)} {trade.crypto}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>
-                      {trade.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{toDate(trade.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                        <Link href={`/trade/${trade.id}`}>View</Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                  <Card key={trade.id} onClick={() => router.push(`/trade/${trade.id}`)} className="cursor-pointer">
+                      <CardHeader>
+                          <CardTitle className="text-base">{trade.amount.toFixed(4)} {trade.crypto}</CardTitle>
+                          <CardDescription className="font-mono">{trade.tradeId}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="text-sm space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Buyer</span>
+                            <span className="font-medium">{trade.buyer.userId}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Seller</span>
+                            <span className="font-medium">{trade.seller.userId}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Date</span>
+                            <span className="font-medium">{toDate(trade.createdAt)?.toLocaleDateString() ?? 'N/A'}</span>
+                          </div>
+                      </CardContent>
+                      <CardFooter>
+                          <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>
+                            {trade.status}
+                          </Badge>
+                      </CardFooter>
+                  </Card>
               ))}
-              {!isLoading && !filteredTrades?.length && (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    No trades found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+               {!isLoading && !filteredTrades?.length && <p className="text-center text-sm text-muted-foreground py-8">No trades found.</p>}
+          </div>
         </CardContent>
       </Card>
     </>

@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import {
   Table,
@@ -87,7 +88,6 @@ export default function AdminDisputesPage() {
         const snapshot = await getDocs(q);
         let disputesData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dispute));
         
-        // Sort on the client side
         disputesData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
         
         setDisputes(disputesData);
@@ -116,7 +116,6 @@ export default function AdminDisputesPage() {
   const handleResolve = async () => {
     if (!firestore || !selectedDispute || !awardTo || !adminUser) return;
     
-    // Fetch the full trade document, as it might not be denormalized
     const tradeRef = doc(firestore, 'trades', selectedDispute.tradeId);
     const tradeSnap = await getDoc(tradeRef);
 
@@ -130,7 +129,6 @@ export default function AdminDisputesPage() {
     try {
       await resolveDispute(firestore, trade, selectedDispute, winnerId, adminUser.uid);
       toast({ title: "Dispute Resolved", description: `Trade awarded to the ${awardTo}.` });
-      // Optimistically remove from list if not showing all
       if (!showAll) {
         setDisputes(disputes => disputes?.filter(d => d.id !== selectedDispute.id) || null);
       } else {
@@ -167,60 +165,86 @@ export default function AdminDisputesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Trade ID</TableHead>
-                <TableHead>Opened By</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={6}>Loading disputes...</TableCell></TableRow>}
-              {!isLoading && filteredDisputes?.map((dispute) => (
-                <TableRow key={dispute.id} onClick={() => router.push(`/trade/${dispute.tradeId}`)} className="cursor-pointer">
-                  <TableCell>
-                    <Button variant="link" asChild className="p-0" onClick={(e) => e.stopPropagation()}>
-                        <Link href={`/trade/${dispute.tradeId}`} target="_blank">{dispute.tradeId.substring(0,8)}...</Link>
-                    </Button>
-                  </TableCell>
-                  <TableCell className="font-medium">{dispute.openedBy}</TableCell>
-                   <TableCell className="max-w-[200px] truncate">{dispute.reason}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={cn("capitalize", statusColors[dispute.status])}>
-                      {dispute.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{toDate(dispute.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
-                  <TableCell className="text-right">
-                    {dispute.status === 'open' && (
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Resolve</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedDispute(dispute); setAwardTo('buyer'); setIsResolveAlertOpen(true); }}>
-                                Award to Buyer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedDispute(dispute); setAwardTo('seller'); setIsResolveAlertOpen(true); }}>
-                                Award to Seller
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-                  </TableCell>
+          <div className="hidden md:block">
+            <Table>
+                <TableHeader>
+                <TableRow>
+                    <TableHead>Trade ID</TableHead>
+                    <TableHead>Opened By</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
+                </TableHeader>
+                <TableBody>
+                {isLoading && <TableRow><TableCell colSpan={6}>Loading disputes...</TableCell></TableRow>}
+                {!isLoading && filteredDisputes?.map((dispute) => (
+                    <TableRow key={dispute.id} onClick={() => router.push(`/trade/${dispute.tradeId}`)} className="cursor-pointer">
+                    <TableCell>
+                        <Button variant="link" asChild className="p-0" onClick={(e) => e.stopPropagation()}>
+                            <Link href={`/trade/${dispute.tradeId}`} target="_blank">{dispute.tradeId.substring(0,8)}...</Link>
+                        </Button>
+                    </TableCell>
+                    <TableCell className="font-medium">{dispute.openedBy}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{dispute.reason}</TableCell>
+                    <TableCell>
+                        <Badge variant="outline" className={cn("capitalize", statusColors[dispute.status])}>
+                        {dispute.status}
+                        </Badge>
+                    </TableCell>
+                    <TableCell>{toDate(dispute.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                    <TableCell className="text-right">
+                        {dispute.status === 'open' && (
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Resolve</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedDispute(dispute); setAwardTo('buyer'); setIsResolveAlertOpen(true); }}>
+                                    Award to Buyer
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedDispute(dispute); setAwardTo('seller'); setIsResolveAlertOpen(true); }}>
+                                    Award to Seller
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </TableCell>
+                    </TableRow>
+                ))}
+                {!isLoading && !filteredDisputes?.length && <TableRow><TableCell colSpan={6} className="text-center h-24">No disputes found.</TableCell></TableRow>}
+                </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-4 md:hidden">
+              {isLoading && <p className="text-center text-sm text-muted-foreground py-4">Loading disputes...</p>}
+              {!isLoading && filteredDisputes?.map((dispute) => (
+                  <Card key={dispute.id} onClick={() => router.push(`/trade/${dispute.tradeId}`)}>
+                       <CardHeader>
+                           <div className="flex justify-between items-start">
+                                <CardTitle className="text-base font-mono">{dispute.tradeId.substring(0,12)}...</CardTitle>
+                                <Badge variant="outline" className={cn("capitalize", statusColors[dispute.status])}>{dispute.status}</Badge>
+                           </div>
+                           <CardDescription>Opened by: {dispute.openedBy}</CardDescription>
+                       </CardHeader>
+                       <CardContent>
+                           <p className="text-sm text-muted-foreground line-clamp-2">{dispute.reason}</p>
+                       </CardContent>
+                       {dispute.status === 'open' && (
+                           <CardFooter className="gap-2">
+                               <Button size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); setSelectedDispute(dispute); setAwardTo('buyer'); setIsResolveAlertOpen(true); }}>Award to Buyer</Button>
+                               <Button size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); setSelectedDispute(dispute); setAwardTo('seller'); setIsResolveAlertOpen(true); }}>Award to Seller</Button>
+                           </CardFooter>
+                       )}
+                  </Card>
               ))}
-              {!isLoading && !filteredDisputes?.length && <TableRow><TableCell colSpan={6} className="text-center h-24">No disputes found.</TableCell></TableRow>}
-            </TableBody>
-          </Table>
+              {!isLoading && !filteredDisputes?.length && <p className="text-center text-sm text-muted-foreground py-8">No disputes found.</p>}
+          </div>
         </CardContent>
       </Card>
       

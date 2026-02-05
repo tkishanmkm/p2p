@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import {
   Table,
@@ -61,7 +62,6 @@ const statusColors: Record<Withdrawal['status'], string> = {
   cancelled: "border-gray-500/50 text-gray-600 bg-gray-50",
 };
 
-// Reusable table component
 function WithdrawalsTable({ 
     withdrawals, 
     isLoading,
@@ -76,52 +76,86 @@ function WithdrawalsTable({
     onRowClick: (withdrawal: Withdrawal) => void;
 }) {
     if (isLoading) {
-        return <TableRow><TableCell colSpan={7} className="h-24 text-center">Loading...</TableCell></TableRow>;
+        return <p className="text-center text-sm text-muted-foreground py-4">Loading...</p>;
     }
     if (!withdrawals || withdrawals.length === 0) {
-        return <TableRow><TableCell colSpan={7} className="h-24 text-center">No withdrawals found for this filter.</TableCell></TableRow>;
+        return <p className="text-center text-sm text-muted-foreground py-8">No withdrawals found.</p>;
     }
 
     return (
         <>
-            {withdrawals.map((w) => (
-                <TableRow key={w.id} onClick={() => onRowClick(w)} className="cursor-pointer">
-                    <TableCell className="font-mono text-xs max-w-[100px] truncate">{w.id}</TableCell>
-                    <TableCell className="font-medium">{w.userDisplayName}</TableCell>
-                    <TableCell>{w.amount.toFixed(8)} {w.crypto}</TableCell>
-                    <TableCell>
-                        <Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>
-                        {w.status}
-                        </Badge>
-                    </TableCell>
-                    <TableCell>{toDate(w.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
-                    <TableCell className="text-right">
+            <div className="hidden md:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>ID</TableHead>
+                            <TableHead>User</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {withdrawals.map((w) => (
+                            <TableRow key={w.id} onClick={() => onRowClick(w)} className="cursor-pointer">
+                                <TableCell className="font-mono text-xs max-w-[100px] truncate">{w.id}</TableCell>
+                                <TableCell className="font-medium">{w.userDisplayName}</TableCell>
+                                <TableCell>{w.amount.toFixed(8)} {w.crypto}</TableCell>
+                                <TableCell>
+                                    <Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>
+                                    {w.status}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell>{toDate(w.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                                <TableCell className="text-right">
+                                    {w.status === 'pending' && (
+                                        <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                            <span className="sr-only">Toggle menu</span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); onApprove(w)}}>
+                                                <Check className="mr-2 h-4 w-4" /> Approve
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="text-destructive" onClick={(e) => {e.stopPropagation(); onDecline(w)}}>
+                                                <X className="mr-2 h-4 w-4" /> Decline
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+            <div className="grid gap-4 md:hidden">
+                {withdrawals.map((w) => (
+                    <Card key={w.id} onClick={() => onRowClick(w)}>
+                         <CardHeader>
+                            <CardTitle className="text-base">{w.amount.toFixed(4)} {w.crypto}</CardTitle>
+                            <CardDescription>{w.userDisplayName}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             <Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>{w.status}</Badge>
+                        </CardContent>
                         {w.status === 'pending' && (
-                            <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); onApprove(w)}}>
-                                    <Check className="mr-2 h-4 w-4" /> Approve
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={(e) => {e.stopPropagation(); onDecline(w)}}>
-                                    <X className="mr-2 h-4 w-4" /> Decline
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                            </DropdownMenu>
+                            <CardFooter className="gap-2">
+                                <Button size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); onApprove(w); }}><Check className="mr-2 h-4 w-4" /> Approve</Button>
+                                <Button size="sm" variant="destructive" className="flex-1" onClick={(e) => { e.stopPropagation(); onDecline(w); }}><X className="mr-2 h-4 w-4" /> Decline</Button>
+                            </CardFooter>
                         )}
-                    </TableCell>
-                </TableRow>
-            ))}
+                    </Card>
+                ))}
+            </div>
         </>
     );
 }
-
 
 export default function AdminWithdrawalsPage() {
   const { firestore, user } = useFirebase();
@@ -158,7 +192,6 @@ export default function AdminWithdrawalsPage() {
             return { ...data, id: doc.id, userId: userId, userDisplayName: data.userDisplayName || 'Unknown' };
         });
 
-        // Sort on client-side to prevent index issues
         withdrawalsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
         
         setAllWithdrawals(withdrawalsData);
@@ -201,7 +234,6 @@ export default function AdminWithdrawalsPage() {
     try {
       await approveWithdrawal(firestore, selectedWithdrawal, user.uid);
       toast({ title: "Withdrawal Approved", description: `User ${selectedWithdrawal.userDisplayName}'s locked balance has been debited.` });
-      // Optimistically update UI
       setAllWithdrawals(withdrawals => withdrawals?.map(w => w.id === selectedWithdrawal.id ? {...w, status: 'approved'} : w) || null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Approval Failed", description: e.message });
@@ -215,7 +247,6 @@ export default function AdminWithdrawalsPage() {
     try {
       await declineWithdrawal(firestore, selectedWithdrawal, user.uid);
       toast({ title: "Withdrawal Declined", description: `Funds have been returned to user ${selectedWithdrawal.userDisplayName}.` });
-      // Optimistically update UI
       setAllWithdrawals(withdrawals => withdrawals?.map(w => w.id === selectedWithdrawal.id ? {...w, status: 'declined'} : w) || null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Decline Failed", description: e.message });
@@ -270,50 +301,22 @@ export default function AdminWithdrawalsPage() {
                     <TabsTrigger value="all">All Withdrawals</TabsTrigger>
                 </TabsList>
                 <TabsContent value="pending" className="mt-4">
-                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>ID</TableHead>
-                                <TableHead>User</TableHead>
-                                <TableHead>Amount</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <WithdrawalsTable 
-                                withdrawals={pendingWithdrawals} 
-                                isLoading={isLoading || isAdminLoading} 
-                                onApprove={openApproveDialog}
-                                onDecline={openDeclineDialog}
-                                onRowClick={handleRowClick}
-                            />
-                        </TableBody>
-                    </Table>
+                    <WithdrawalsTable 
+                        withdrawals={pendingWithdrawals} 
+                        isLoading={isLoading || isAdminLoading} 
+                        onApprove={openApproveDialog}
+                        onDecline={openDeclineDialog}
+                        onRowClick={handleRowClick}
+                    />
                 </TabsContent>
                 <TabsContent value="all" className="mt-4">
-                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>ID</TableHead>
-                                <TableHead>User</TableHead>
-                                <TableHead>Amount</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                             <WithdrawalsTable 
-                                withdrawals={filteredWithdrawals} 
-                                isLoading={isLoading || isAdminLoading} 
-                                onApprove={openApproveDialog}
-                                onDecline={openDeclineDialog}
-                                onRowClick={handleRowClick}
-                            />
-                        </TableBody>
-                    </Table>
+                     <WithdrawalsTable 
+                        withdrawals={filteredWithdrawals} 
+                        isLoading={isLoading || isAdminLoading} 
+                        onApprove={openApproveDialog}
+                        onDecline={openDeclineDialog}
+                        onRowClick={handleRowClick}
+                    />
                 </TabsContent>
             </Tabs>
         </CardContent>

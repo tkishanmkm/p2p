@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Table,
@@ -23,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import type { User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { setUserBanStatus, setUserHoldStatus } from "@/lib/admin";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { useState, useEffect, useMemo } from 'react';
@@ -60,7 +61,6 @@ export default function AdminUsersPage() {
             const q = query(usersRef, orderBy("createdAt", "desc"));
             const snapshot = await getDocs(q);
             const allUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
-            // Filter out any user accounts that are flagged as admin accounts
             const regularUsers = allUsers.filter(user => !user.isAdminAccount);
             setUsers(regularUsers);
         } catch (error) {
@@ -100,7 +100,6 @@ export default function AdminUsersPage() {
         await setUserHoldStatus(firestore, user.id, user.userId, action === 'hold', adminUser.uid, reason);
       }
       toast({ title: "User Updated", description: `${user.userId}'s status has been updated.` });
-      // Optimistically update UI
       setUsers(currentUsers => currentUsers?.map(u => {
         if (u.id === user.id) {
           if (action === 'ban') return { ...u, isBanned: true };
@@ -143,57 +142,101 @@ export default function AdminUsersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User ID</TableHead>
-                <TableHead>Full Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={4}>Loading users...</TableCell></TableRow>}
-              {!isLoading && filteredUsers?.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">
-                     <Button variant="link" asChild className="p-0 h-auto">
-                        <Link href={`/adminnarayan/users/${user.id}`}>
-                            <div>{user.userId}</div>
-                            {user.oldUserId && <div className="text-xs text-muted-foreground">(was {user.oldUserId})</div>}
-                        </Link>
-                    </Button>
-                  </TableCell>
-                  <TableCell>{user.fullName}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                        {user.isBanned && <Badge variant="destructive">Banned</Badge>}
-                        {user.isOnHold && <Badge variant="secondary" className="bg-yellow-500 text-white">On Hold</Badge>}
-                        {!user.isBanned && !user.isOnHold && <Badge className="bg-green-500">Active</Badge>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => openActionDialog(user, user.isOnHold ? 'unhold' : 'hold')}>
-                          {user.isOnHold ? 'Remove Hold' : 'Place on Hold'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className={user.isBanned ? '' : 'text-destructive'} onClick={() => openActionDialog(user, user.isBanned ? 'unban' : 'ban')}>
-                          {user.isBanned ? 'Unban' : 'Ban User'}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          <div className="hidden md:block">
+            <Table>
+                <TableHeader>
+                <TableRow>
+                    <TableHead>User ID</TableHead>
+                    <TableHead>Full Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
+                </TableHeader>
+                <TableBody>
+                {isLoading && <TableRow><TableCell colSpan={4}>Loading users...</TableCell></TableRow>}
+                {!isLoading && filteredUsers?.map((user) => (
+                    <TableRow key={user.id}>
+                    <TableCell className="font-medium">
+                        <Button variant="link" asChild className="p-0 h-auto">
+                            <Link href={`/adminnarayan/users/${user.id}`}>
+                                <div>{user.userId}</div>
+                                {user.oldUserId && <div className="text-xs text-muted-foreground">(was {user.oldUserId})</div>}
+                            </Link>
+                        </Button>
+                    </TableCell>
+                    <TableCell>{user.fullName}</TableCell>
+                    <TableCell>
+                        <div className="flex gap-2">
+                            {user.isBanned && <Badge variant="destructive">Banned</Badge>}
+                            {user.isOnHold && <Badge variant="secondary" className="bg-yellow-500 text-white">On Hold</Badge>}
+                            {!user.isBanned && !user.isOnHold && <Badge className="bg-green-500">Active</Badge>}
+                        </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => openActionDialog(user, user.isOnHold ? 'unhold' : 'hold')}>
+                            {user.isOnHold ? 'Remove Hold' : 'Place on Hold'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className={user.isBanned ? '' : 'text-destructive'} onClick={() => openActionDialog(user, user.isBanned ? 'unban' : 'ban')}>
+                            {user.isBanned ? 'Unban' : 'Ban User'}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                    </TableRow>
+                ))}
+                {!isLoading && !filteredUsers?.length && <TableRow><TableCell colSpan={4} className="text-center h-24">No users found.</TableCell></TableRow>}
+                </TableBody>
+            </Table>
+          </div>
+          <div className="md:hidden grid gap-4">
+              {isLoading && <p>Loading users...</p>}
+              {!isLoading && filteredUsers?.map((user) => (
+                  <Card key={user.id}>
+                      <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <CardTitle>
+                                        <Link href={`/adminnarayan/users/${user.id}`} className="hover:underline">
+                                            {user.userId}
+                                        </Link>
+                                    </CardTitle>
+                                    <CardDescription>{user.fullName}</CardDescription>
+                                </div>
+                                <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={() => openActionDialog(user, user.isOnHold ? 'unhold' : 'hold')}>
+                                    {user.isOnHold ? 'Remove Hold' : 'Place on Hold'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className={user.isBanned ? '' : 'text-destructive'} onClick={() => openActionDialog(user, user.isBanned ? 'unban' : 'ban')}>
+                                    {user.isBanned ? 'Unban' : 'Ban User'}
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                      </CardHeader>
+                      <CardFooter>
+                         <div className="flex gap-2">
+                            {user.isBanned && <Badge variant="destructive">Banned</Badge>}
+                            {user.isOnHold && <Badge variant="secondary" className="bg-yellow-500 text-white">On Hold</Badge>}
+                            {!user.isBanned && !user.isOnHold && <Badge className="bg-green-500">Active</Badge>}
+                        </div>
+                      </CardFooter>
+                  </Card>
               ))}
-              {!isLoading && !filteredUsers?.length && <TableRow><TableCell colSpan={4} className="text-center h-24">No users found.</TableCell></TableRow>}
-            </TableBody>
-          </Table>
+               {!isLoading && !filteredUsers?.length && <p className="text-center text-sm text-muted-foreground py-8">No users found.</p>}
+          </div>
         </CardContent>
       </Card>
     </>

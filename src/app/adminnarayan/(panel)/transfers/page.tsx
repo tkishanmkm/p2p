@@ -1,4 +1,4 @@
-// This is a new file
+
 "use client";
 
 import { useFirebase } from "@/firebase";
@@ -117,50 +117,78 @@ export default function AdminTransfersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Transfer ID</TableHead>
-                <TableHead>Sender</TableHead>
-                <TableHead>Recipient</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && (
+          <div className="hidden md:block">
+            <Table>
+                <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
-                    Loading transfers...
-                  </TableCell>
+                    <TableHead>Transfer ID</TableHead>
+                    <TableHead>Sender</TableHead>
+                    <TableHead>Recipient</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Date</TableHead>
                 </TableRow>
-              )}
+                </TableHeader>
+                <TableBody>
+                {isLoading && (
+                    <TableRow>
+                    <TableCell colSpan={5} className="text-center">
+                        Loading transfers...
+                    </TableCell>
+                    </TableRow>
+                )}
+                {!isLoading && filteredTransfers?.map((transfer) => (
+                    <TableRow key={transfer.id} onClick={() => handleRowClick(transfer)} className="cursor-pointer">
+                    <TableCell className="font-mono text-xs">{transfer.publicId}</TableCell>
+                    <TableCell>
+                        <Link href={`/adminnarayan/users/${transfer.senderId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                            {transfer.senderUsername}
+                        </Link>
+                    </TableCell>
+                    <TableCell>
+                        <Link href={`/adminnarayan/users/${transfer.recipientId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                            {transfer.recipientUsername}
+                        </Link>
+                    </TableCell>
+                    <TableCell className="font-medium">{transfer.amount.toFixed(8)} {transfer.crypto}</TableCell>
+                    <TableCell>{toDate(transfer.createdAt)?.toLocaleString()}</TableCell>
+                    </TableRow>
+                ))}
+                {!isLoading && !filteredTransfers?.length && (
+                    <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        No transfers found.
+                    </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-4 md:hidden">
+              {isLoading && <p className="text-center text-sm text-muted-foreground py-4">Loading transfers...</p>}
               {!isLoading && filteredTransfers?.map((transfer) => (
-                <TableRow key={transfer.id} onClick={() => handleRowClick(transfer)} className="cursor-pointer">
-                  <TableCell className="font-mono text-xs">{transfer.publicId}</TableCell>
-                   <TableCell>
-                     <Link href={`/adminnarayan/users/${transfer.senderId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                        {transfer.senderUsername}
-                     </Link>
-                   </TableCell>
-                   <TableCell>
-                     <Link href={`/adminnarayan/users/${transfer.recipientId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                        {transfer.recipientUsername}
-                     </Link>
-                   </TableCell>
-                  <TableCell className="font-medium">{transfer.amount.toFixed(8)} {transfer.crypto}</TableCell>
-                  <TableCell>{toDate(transfer.createdAt)?.toLocaleString()}</TableCell>
-                </TableRow>
+                  <Card key={transfer.id} onClick={() => handleRowClick(transfer)}>
+                       <CardHeader>
+                            <CardTitle className="text-base font-mono">{transfer.publicId}</CardTitle>
+                            <CardDescription>{toDate(transfer.createdAt)?.toLocaleString()}</CardDescription>
+                       </CardHeader>
+                        <CardContent className="text-sm space-y-2">
+                           <div className="flex justify-between">
+                            <span className="text-muted-foreground">From</span>
+                            <span className="font-medium">{transfer.senderUsername}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">To</span>
+                            <span className="font-medium">{transfer.recipientUsername}</span>
+                          </div>
+                           <div className="flex justify-between">
+                            <span className="text-muted-foreground">Amount</span>
+                            <Badge variant="outline">{transfer.amount.toFixed(8)} {transfer.crypto}</Badge>
+                          </div>
+                       </CardContent>
+                  </Card>
               ))}
-              {!isLoading && !filteredTransfers?.length && (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    No transfers found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              {!isLoading && !filteredTransfers?.length && <p className="text-center text-sm text-muted-foreground py-8">No transfers found.</p>}
+          </div>
         </CardContent>
       </Card>
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
@@ -183,5 +211,3 @@ export default function AdminTransfersPage() {
     </>
   );
 }
-
-  

@@ -60,7 +60,6 @@ export default function AdminEscrowPage() {
         const entries = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as EscrowLedger));
         setLedgerEntries(entries);
 
-        // Calculate totals
         const calculatedTotals = entries.reduce((acc, entry) => {
           if (!acc[entry.crypto]) {
             acc[entry.crypto] = 0;
@@ -111,40 +110,57 @@ export default function AdminEscrowPage() {
           <CardDescription>A log of all escrow fees collected from completed trades.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Trade ID</TableHead>
-                <TableHead>Fee Amount</TableHead>
-                <TableHead>Asset</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && (
+          <div className="hidden md:block">
+            <Table>
+                <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    Loading transactions...
-                  </TableCell>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Trade ID</TableHead>
+                    <TableHead>Fee Amount</TableHead>
+                    <TableHead>Asset</TableHead>
                 </TableRow>
-              )}
-              {!isLoading && ledgerEntries && ledgerEntries.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell>{toDate(entry.createdAt)?.toLocaleString()}</TableCell>
-                  <TableCell className="font-mono text-xs">{entry.tradeId}</TableCell>
-                  <TableCell className="font-medium">{entry.feeAmount.toFixed(8)}</TableCell>
-                  <TableCell>{entry.crypto}</TableCell>
-                </TableRow>
+                </TableHeader>
+                <TableBody>
+                {isLoading && (
+                    <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                        Loading transactions...
+                    </TableCell>
+                    </TableRow>
+                )}
+                {!isLoading && ledgerEntries && ledgerEntries.map((entry) => (
+                    <TableRow key={entry.id}>
+                    <TableCell>{toDate(entry.createdAt)?.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-xs">{entry.tradeId}</TableCell>
+                    <TableCell className="font-medium">{entry.feeAmount.toFixed(8)}</TableCell>
+                    <TableCell>{entry.crypto}</TableCell>
+                    </TableRow>
+                ))}
+                {!isLoading && !ledgerEntries?.length && (
+                    <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                        No fee transactions found.
+                    </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+          </div>
+           <div className="grid gap-4 md:hidden">
+              {isLoading && <p className="text-center text-sm text-muted-foreground py-4">Loading...</p>}
+              {!isLoading && ledgerEntries?.map((entry) => (
+                  <Card key={entry.id}>
+                       <CardHeader>
+                            <CardTitle className="text-base">{entry.feeAmount.toFixed(8)} {entry.crypto}</CardTitle>
+                            <CardDescription className="font-mono text-xs">{entry.tradeId}</CardDescription>
+                       </CardHeader>
+                       <CardContent>
+                           <p className="text-sm text-muted-foreground">{toDate(entry.createdAt)?.toLocaleString()}</p>
+                       </CardContent>
+                  </Card>
               ))}
-              {!isLoading && !ledgerEntries?.length && (
-                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    No fee transactions found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              {!isLoading && !ledgerEntries?.length && <p className="text-center text-sm text-muted-foreground py-8">No fee transactions found.</p>}
+          </div>
         </CardContent>
       </Card>
     </>

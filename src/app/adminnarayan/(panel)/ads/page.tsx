@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useFirebase } from "@/firebase";
@@ -8,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import {
   Table,
@@ -116,72 +118,113 @@ export default function AdminAdsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ad ID</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && (
+          <div className="hidden md:block">
+            <Table>
+                <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">
-                    Loading ads...
-                  </TableCell>
+                    <TableHead>Ad ID</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              )}
+                </TableHeader>
+                <TableBody>
+                {isLoading && (
+                    <TableRow>
+                    <TableCell colSpan={6} className="text-center">
+                        Loading ads...
+                    </TableCell>
+                    </TableRow>
+                )}
+                {!isLoading && filteredAds?.map((ad) => (
+                    <TableRow key={ad.id} onClick={() => handleRowClick(ad)} className="cursor-pointer">
+                    <TableCell className="font-mono text-xs">{ad.publicAdId}</TableCell>
+                    <TableCell>
+                        <Link href={`/users/${ad.user.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                            {ad.user.userId}
+                        </Link>
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant={ad.adType === "sell" ? "secondary" : "outline"} className="capitalize">
+                        {ad.adType}
+                        </Badge>
+                    </TableCell>
+                    <TableCell>
+                        {ad.rateType === "fixed"
+                        ? `${ad.fixedRate} ${ad.fiatCurrency}`
+                        : `Market ${ad.ratePercent}%`}
+                    </TableCell>
+                    <TableCell>
+                        <Badge
+                        variant="outline"
+                        className={cn(
+                            ad.active ? "text-green-600 border-green-500/50 bg-green-50" : "text-gray-600 border-gray-500/50 bg-gray-50"
+                        )}
+                        >
+                        {ad.active ? "Active" : "Inactive"}
+                        </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/adminnarayan/ads/${ad.id}`);
+                            }}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                            </Button>
+                    </TableCell>
+                    </TableRow>
+                ))}
+                {!isLoading && !filteredAds?.length && (
+                    <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                        No ads found.
+                    </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+          </div>
+           <div className="grid gap-4 md:hidden">
+              {isLoading && <p className="text-center text-sm text-muted-foreground py-4">Loading ads...</p>}
               {!isLoading && filteredAds?.map((ad) => (
-                <TableRow key={ad.id} onClick={() => handleRowClick(ad)} className="cursor-pointer">
-                  <TableCell className="font-mono text-xs">{ad.publicAdId}</TableCell>
-                   <TableCell>
-                     <Link href={`/users/${ad.user.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                        {ad.user.userId}
-                     </Link>
-                   </TableCell>
-                  <TableCell>
-                    <Badge variant={ad.adType === "sell" ? "secondary" : "outline"} className="capitalize">
-                      {ad.adType}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {ad.rateType === "fixed"
-                      ? `${ad.fixedRate} ${ad.fiatCurrency}`
-                      : `Market ${ad.ratePercent}%`}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        ad.active ? "text-green-600 border-green-500/50 bg-green-50" : "text-gray-600 border-gray-500/50 bg-gray-50"
-                      )}
-                    >
-                      {ad.active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                   <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/adminnarayan/ads/${ad.id}`);
-                        }}>
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                        </Button>
-                   </TableCell>
-                </TableRow>
+                  <Card key={ad.id} onClick={() => handleRowClick(ad)} className="cursor-pointer">
+                      <CardHeader className="flex flex-row items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base">{ad.crypto}/{ad.fiatCurrency}</CardTitle>
+                            <CardDescription className="font-mono text-xs">{ad.publicAdId}</CardDescription>
+                          </div>
+                          <Badge variant={ad.adType === "sell" ? "secondary" : "outline"} className="capitalize">{ad.adType}</Badge>
+                      </CardHeader>
+                      <CardContent className="text-sm space-y-2">
+                           <div className="flex justify-between">
+                            <span className="text-muted-foreground">User</span>
+                            <span className="font-medium">{ad.user.userId}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Price</span>
+                             <span className="font-medium">{ad.rateType === "fixed" ? `${ad.fixedRate} ${ad.fiatCurrency}` : `Market ${ad.ratePercent}%`}</span>
+                          </div>
+                           <div className="flex justify-between">
+                            <span className="text-muted-foreground">Status</span>
+                             <Badge variant="outline" className={cn(ad.active ? "text-green-600 border-green-500/50 bg-green-50" : "text-gray-600 border-gray-500/50 bg-gray-50")}>
+                                {ad.active ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                      </CardContent>
+                      <CardFooter>
+                         <Button variant="outline" size="sm" className="w-full" onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/adminnarayan/ads/${ad.id}`);
+                            }}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Ad
+                            </Button>
+                      </CardFooter>
+                  </Card>
               ))}
-              {!isLoading && !filteredAds?.length && (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    No ads found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+               {!isLoading && !filteredAds?.length && <p className="text-center text-sm text-muted-foreground py-8">No ads found.</p>}
+          </div>
         </CardContent>
       </Card>
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>

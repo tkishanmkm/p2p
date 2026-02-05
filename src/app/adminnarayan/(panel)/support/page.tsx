@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useFirebase } from "@/firebase";
@@ -8,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card"
 import {
   Table,
@@ -80,7 +82,6 @@ export default function AdminSupportPage() {
     try {
         await updateSupportTicketStatus(firestore, ticketId, status);
         toast({ title: 'Ticket Updated', description: `Status set to ${status}` });
-        // Optimistically update UI
         setTickets(currentTickets => currentTickets?.map(t => t.id === ticketId ? {...t, status} : t) || null);
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
@@ -105,58 +106,80 @@ export default function AdminSupportPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User ID</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted At</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={4} className="text-center">Loading tickets...</TableCell></TableRow>}
-              {!isLoading && tickets && tickets.length > 0 ? tickets.map((ticket) => (
-                <TableRow key={ticket.id} onClick={() => handleViewDetails(ticket)} className="cursor-pointer">
-                  <TableCell className="font-medium">{ticket.userId || 'N/A'}</TableCell>
-                  <TableCell>
-                    <Badge variant={
-                        ticket.status === 'Open' ? 'destructive' : 
-                        ticket.status === 'In Progress' ? 'default' : 
-                        'outline'
-                    }>
-                      {ticket.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{toDate(ticket.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleViewDetails(ticket)}}>View Details</DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleStatusChange(ticket.id, 'In Progress')}}>Mark as In Progress</DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleStatusChange(ticket.id, 'Closed')}}>Close Ticket</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          <div className="hidden md:block">
+            <Table>
+                <TableHeader>
+                <TableRow>
+                    <TableHead>User ID</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Submitted At</TableHead>
+                    <TableHead>
+                    <span className="sr-only">Actions</span>
+                    </TableHead>
                 </TableRow>
-              )) : (
-                 <TableRow>
-                    <TableCell colSpan={4} className="text-center h-24">
-                        No support tickets found.
+                </TableHeader>
+                <TableBody>
+                {isLoading && <TableRow><TableCell colSpan={4} className="text-center">Loading tickets...</TableCell></TableRow>}
+                {!isLoading && tickets && tickets.length > 0 ? tickets.map((ticket) => (
+                    <TableRow key={ticket.id} onClick={() => handleViewDetails(ticket)} className="cursor-pointer">
+                    <TableCell className="font-medium">{ticket.userId || 'N/A'}</TableCell>
+                    <TableCell>
+                        <Badge variant={
+                            ticket.status === 'Open' ? 'destructive' : 
+                            ticket.status === 'In Progress' ? 'default' : 
+                            'outline'
+                        }>
+                        {ticket.status}
+                        </Badge>
                     </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                    <TableCell>{toDate(ticket.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                    <TableCell>
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleViewDetails(ticket)}}>View Details</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleStatusChange(ticket.id, 'In Progress')}}>Mark as In Progress</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleStatusChange(ticket.id, 'Closed')}}>Close Ticket</DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                    </TableRow>
+                )) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center h-24">
+                            No support tickets found.
+                        </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+          </div>
+           <div className="grid gap-4 md:hidden">
+              {isLoading && <p className="text-center text-sm text-muted-foreground py-4">Loading tickets...</p>}
+              {!isLoading && tickets?.map((ticket) => (
+                  <Card key={ticket.id} onClick={() => handleViewDetails(ticket)}>
+                       <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-base">{ticket.userId}</CardTitle>
+                                 <Badge variant={ticket.status === 'Open' ? 'destructive' : ticket.status === 'In Progress' ? 'default' : 'outline'}>
+                                    {ticket.status}
+                                </Badge>
+                            </div>
+                            <CardDescription>{toDate(ticket.createdAt)?.toLocaleString() ?? 'N/A'}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                          <p className="text-sm text-muted-foreground line-clamp-3">{ticket.message}</p>
+                      </CardContent>
+                  </Card>
+              ))}
+              {!isLoading && !tickets?.length && <p className="text-center text-sm text-muted-foreground py-8">No tickets found.</p>}
+          </div>
         </CardContent>
       </Card>
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>

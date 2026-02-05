@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import {
   Table,
@@ -141,58 +142,89 @@ function DepositsTable({
     }, [deposits, searchTerm]);
 
     return (
-        <Table>
-            <TableHeader>
-            <TableRow>
-                <TableHead>Deposit ID</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Crypto Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>TxID</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-            </TableHeader>
-            <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={7}>Loading...</TableCell></TableRow>}
-            {!isLoading && filteredDeposits?.map((deposit) => (
-                <TableRow key={deposit.id} onClick={() => onRowClick(deposit)} className="cursor-pointer">
-                <TableCell className="font-mono text-xs max-w-[100px] truncate">{deposit.id}</TableCell>
-                <TableCell className="font-medium">{deposit.userDisplayName}</TableCell>
-                <TableCell>{deposit.amount} {deposit.crypto}</TableCell>
-                <TableCell>
-                    <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
-                    {deposit.status.replace(/_/g, ' ')}
-                    </Badge>
-                </TableCell>
-                <TableCell className="font-mono text-xs truncate max-w-[100px]">{deposit.txId || 'N/A'}</TableCell>
-                <TableCell>{toDate(deposit.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
-                <TableCell className="text-right">
-                    {deposit.status === 'awaiting_confirmation' && (
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onApproveClick(deposit); }}>
-                                <Check className="mr-2 h-4 w-4" /> Approve
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDeclineClick(deposit); }}>
-                                <X className="mr-2 h-4 w-4" /> Decline
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-                </TableCell>
-                </TableRow>
-            ))}
-            {!isLoading && !filteredDeposits?.length && <TableRow><TableCell colSpan={7} className="text-center h-24">No deposits found.</TableCell></TableRow>}
-            </TableBody>
-        </Table>
+        <>
+            <div className="hidden md:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Deposit ID</TableHead>
+                            <TableHead>User</TableHead>
+                            <TableHead>Crypto Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>TxID</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading && <TableRow><TableCell colSpan={7}>Loading...</TableCell></TableRow>}
+                        {!isLoading && filteredDeposits?.map((deposit) => (
+                            <TableRow key={deposit.id} onClick={() => onRowClick(deposit)} className="cursor-pointer">
+                                <TableCell className="font-mono text-xs max-w-[100px] truncate">{deposit.id}</TableCell>
+                                <TableCell className="font-medium">{deposit.userDisplayName}</TableCell>
+                                <TableCell>{deposit.amount} {deposit.crypto}</TableCell>
+                                <TableCell>
+                                    <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
+                                    {deposit.status.replace(/_/g, ' ')}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="font-mono text-xs truncate max-w-[100px]">{deposit.txId || 'N/A'}</TableCell>
+                                <TableCell>{toDate(deposit.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                                <TableCell className="text-right">
+                                    {deposit.status === 'awaiting_confirmation' && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                    <span className="sr-only">Toggle menu</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onApproveClick(deposit); }}>
+                                                    <Check className="mr-2 h-4 w-4" /> Approve
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDeclineClick(deposit); }}>
+                                                    <X className="mr-2 h-4 w-4" /> Decline
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                        {!isLoading && !filteredDeposits?.length && <TableRow><TableCell colSpan={7} className="text-center h-24">No deposits found.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+            </div>
+             <div className="grid gap-4 md:hidden">
+                {isLoading && <p>Loading...</p>}
+                {!isLoading && filteredDeposits?.map((deposit) => (
+                    <Card key={deposit.id} onClick={() => onRowClick(deposit)}>
+                        <CardHeader>
+                            <CardTitle className="text-base">{deposit.amount} {deposit.crypto}</CardTitle>
+                            <CardDescription>{deposit.userDisplayName}</CardDescription>
+                        </CardHeader>
+                         <CardContent>
+                             <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
+                                {deposit.status.replace(/_/g, ' ')}
+                            </Badge>
+                        </CardContent>
+                        {deposit.status === 'awaiting_confirmation' && (
+                             <CardFooter className="gap-2">
+                                <Button size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); onApproveClick(deposit); }}>
+                                    <Check className="mr-2 h-4 w-4" /> Approve
+                                </Button>
+                                <Button size="sm" variant="destructive" className="flex-1" onClick={(e) => { e.stopPropagation(); onDeclineClick(deposit); }}>
+                                    <X className="mr-2 h-4 w-4" /> Decline
+                                </Button>
+                            </CardFooter>
+                        )}
+                    </Card>
+                ))}
+                 {!isLoading && !filteredDeposits?.length && <p className="text-center text-sm text-muted-foreground py-8">No deposits found.</p>}
+            </div>
+        </>
     );
 }
 
