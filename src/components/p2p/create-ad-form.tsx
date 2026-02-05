@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -166,7 +165,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
     watchedFields.rateType,
     watchedFields.crypto,
     currentMarketPrice,
-    ])
+    ]);
 
   useEffect(() => {
     setBalanceError(null);

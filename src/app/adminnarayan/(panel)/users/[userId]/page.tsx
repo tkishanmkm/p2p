@@ -5,11 +5,11 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, orderBy, documentId } from 'firebase/firestore';
 import type { User, P2PAd, Trade, UserWallet, Deposit, Withdrawal, AdminLog } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { AdjustBalanceDialog } from '@/components/admin/adjust-balance-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +21,8 @@ import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, Percent, F
 import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
 import { useAdminStatus } from '@/hooks/use-admin-status';
+import { useToast } from '@/hooks/use-toast';
+import { adminUnblockUser } from '@/lib/admin';
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | undefined }) {
     if (!value) return null;
@@ -54,6 +56,7 @@ export default function AdminUserDetailPage() {
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [isAdjustBalanceOpen, setIsAdjustBalanceOpen] = useState(false);
   const userId = Array.isArray(params.userId) ? params.userId[0] : params.userId;
+  const { toast } = useToast();
 
   const userRef = useMemoFirebase(
     () => (firestore && userId ? doc(firestore, 'users', userId) : null),
@@ -68,6 +71,7 @@ export default function AdminUserDetailPage() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null);
   const [allTrades, setAllTrades] = useState<Trade[] | null>(null);
   const [adminLogs, setAdminLogs] = useState<AdminLog[] | null>(null);
+  const [blockedUsers, setBlockedUsers] = useState<User[] | null>(null);
   
   // Loading states
   const [areAdsLoading, setAreAdsLoading] = useState(true);
@@ -76,6 +80,7 @@ export default function AdminUserDetailPage() {
   const [areWithdrawalsLoading, setAreWithdrawalsLoading] = useState(true);
   const [isLoadingTrades, setIsLoadingTrades] = useState(true);
   const [areLogsLoading, setAreLogsLoading] = useState(true);
+  const [areBlockedUsersLoading, setAreBlockedUsersLoading] = useState(true);
 
 
   useEffect(() => {
@@ -160,6 +165,46 @@ export default function AdminUserDetailPage() {
     fetchAllData();
   }, [firestore, userId, isAdmin, isAdminLoading]);
   
+  useEffect(() => {
+    if (!user || !firestore) {
+      setAreBlockedUsersLoading(false);
+      return;
+    }
+
+    const fetchBlockedUsers = async () => {
+      if (user.blockedUsers && user.blockedUsers.length > 0) {
+        setAreBlockedUsersLoading(true);
+        try {
+          const blockedUsersQuery = query(collection(firestore, 'users'), where(documentId(), 'in', user.blockedUsers));
+          const blockedUsersSnapshot = await getDocs(blockedUsersQuery);
+          setBlockedUsers(blockedUsersSnapshot.docs.map(d => ({ ...d.data(), id: d.id } as User)));
+        } catch (e) {
+          console.error("Failed to fetch blocked users", e);
+          setBlockedUsers([]);
+        } finally {
+          setAreBlockedUsersLoading(false);
+        }
+      } else {
+        setBlockedUsers([]);
+        setAreBlockedUsersLoading(false);
+      }
+    };
+    fetchBlockedUsers();
+  }, [user, firestore]);
+
+  const handleAdminUnblock = async (targetUserId: string, targetUsername: string) => {
+    if (!firestore || !user) return;
+    if (!confirm(`Are you sure you want to force ${user.userId} to unblock ${targetUsername}?`)) return;
+
+    try {
+      await adminUnblockUser(firestore, user.id, targetUserId);
+      toast({ title: 'User Unblocked', description: `${targetUsername} has been removed from ${user.userId}'s block list.` });
+      setBlockedUsers(current => current?.filter(u => u.id !== targetUserId) || null);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not unblock the user.' });
+    }
+  };
+
   const isLoading = isUserLoading || isAdminLoading;
   
   if (isLoading) {
@@ -233,6 +278,37 @@ export default function AdminUserDetailPage() {
                             <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Available</TableHead><TableHead>Locked</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {wallets?.length ? wallets.map(w => <TableRow key={w.id}><TableCell>{w.crypto}</TableCell><TableCell>{w.balance.toFixed(8)}</TableCell><TableCell>{w.lockedBalance.toFixed(8)}</TableCell></TableRow>) : <TableRow><TableCell colSpan={3} className="text-center">No wallets</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    )}
+                </SectionCard>
+                <SectionCard title="Blocked Users">
+                    {areBlockedUsersLoading ? <Skeleton className="h-24 w-full" /> : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>User</TableHead>
+                                    <TableHead className="text-right">Action</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {blockedUsers?.length ? blockedUsers.map(bu => (
+                                <TableRow key={bu.id}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-8 w-8">
+                                                {bu.photoURL ? <AvatarImage src={bu.photoURL} alt={bu.userId} /> : <AvatarFallback><DefaultAvatar /></AvatarFallback>}
+                                            </Avatar>
+                                            <Link href={`/adminnarayan/users/${bu.id}`} className="font-medium hover:underline">{bu.userId}</Link>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="outline" size="sm" onClick={() => handleAdminUnblock(bu.id, bu.userId)}>
+                                            Unblock
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                                )) : <TableRow><TableCell colSpan={2} className="text-center">This user has not blocked anyone.</TableCell></TableRow>}
                             </TableBody>
                         </Table>
                     )}
@@ -316,3 +392,5 @@ export default function AdminUserDetailPage() {
     </>
   );
 }
+
+    
