@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -37,31 +38,45 @@ export default function AdminDashboardPage() {
             setIsLoading(true);
             try {
                 const usersQuery = query(collection(firestore, 'users'));
-                const activeTradesQuery = query(collection(firestore, 'trades'), where('status', 'in', ['active', 'paid']));
-                const openDisputesQuery = query(collectionGroup(firestore, 'disputes'), where('status', '==', 'open'));
-                const pendingDepositsQuery = query(collection(firestore, 'deposits'), where('status', '==', 'awaiting_confirmation'));
-                const pendingWithdrawalsQuery = query(collectionGroup(firestore, 'withdrawals'), where('status', '==', 'pending'));
+                const tradesQuery = query(collection(firestore, 'trades'));
+                const disputesQuery = query(collectionGroup(firestore, 'disputes'));
+                const depositsQuery = query(collection(firestore, 'deposits'));
+                const withdrawalsQuery = query(collectionGroup(firestore, 'withdrawals'));
 
                 const [
                     usersSnapshot,
-                    activeTradesSnapshot,
-                    openDisputesSnapshot,
-                    pendingDepositsSnapshot,
-                    pendingWithdrawalsSnapshot
+                    tradesSnapshot,
+                    disputesSnapshot,
+                    depositsSnapshot,
+                    withdrawalsSnapshot
                 ] = await Promise.all([
                     getDocs(usersQuery),
-                    getDocs(activeTradesQuery),
-                    getDocs(openDisputesQuery),
-                    getDocs(pendingDepositsQuery),
-                    getDocs(pendingWithdrawalsQuery)
+                    getDocs(tradesQuery),
+                    getDocs(disputesQuery),
+                    getDocs(depositsQuery),
+                    getDocs(withdrawalsQuery)
                 ]);
 
+                const allUsers = usersSnapshot.docs.map(doc => doc.data());
+                const regularUsersCount = allUsers.filter(user => !user.isAdminAccount).length;
+
+                const activeTradesCount = tradesSnapshot.docs.filter(doc => {
+                    const status = doc.data().status;
+                    return status === 'active' || status === 'paid';
+                }).length;
+
+                const openDisputesCount = disputesSnapshot.docs.filter(doc => doc.data().status === 'open').length;
+
+                const pendingDepositsCount = depositsSnapshot.docs.filter(doc => doc.data().status === 'awaiting_confirmation').length;
+                
+                const pendingWithdrawalsCount = withdrawalsSnapshot.docs.filter(doc => doc.data().status === 'pending').length;
+
                 setStats({
-                    users: usersSnapshot.size,
-                    activeTrades: activeTradesSnapshot.size,
-                    openDisputes: openDisputesSnapshot.size,
-                    pendingDeposits: pendingDepositsSnapshot.size,
-                    pendingWithdrawals: pendingWithdrawalsSnapshot.size,
+                    users: regularUsersCount,
+                    activeTrades: activeTradesCount,
+                    openDisputes: openDisputesCount,
+                    pendingDeposits: pendingDepositsCount,
+                    pendingWithdrawals: pendingWithdrawalsCount,
                 });
 
             } catch (error) {
