@@ -84,7 +84,7 @@ service cloud.firestore {
         allow delete: if isAdmin();
       }
       match /notifications/{notificationId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
     
