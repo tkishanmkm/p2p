@@ -19,12 +19,18 @@ import {
   User,
   Settings,
   Send,
+  Globe, 
+  ChevronDown, 
+  BookOpen, 
+  Shield, 
+  HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -43,6 +49,8 @@ import { cn, toDate } from "@/lib/utils";
 import { usePrices } from "@/context/price-context";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
+import { LANGUAGES } from "@/lib/constants";
+
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -57,7 +65,7 @@ const navItems = [
 ];
 
 export function DashboardHeader() {
-  const { user, firestore, auth } = useFirebase();
+  const { user, isUserLoading, firestore, auth } = useFirebase();
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -92,7 +100,45 @@ export function DashboardHeader() {
       toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred during logout." });
     }
   };
+
+  // Loading State
+  if (isUserLoading) {
+    return (
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6 justify-between">
+            <Link href="/buy" className="flex items-center gap-2 text-lg font-semibold md:text-base"><Logo /></Link>
+            <div className="flex items-center gap-2"><Skeleton className="h-8 w-24" /><Skeleton className="h-8 w-24" /></div>
+        </header>
+    );
+  }
+
+  // Unauthenticated State
+  if (!user) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center">
+          <div className="mr-8 flex">
+            <Link href="/buy">
+              <Logo />
+            </Link>
+          </div>
+          <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+            <nav className="hidden md:flex items-center gap-6 text-sm">
+               <Link href="/buy" className="font-medium text-foreground/80 transition-colors hover:text-foreground">Buy</Link>
+               <Link href="/sell" className="font-medium text-foreground/80 transition-colors hover:text-foreground">Sell</Link>
+               <Link href="/contact" className="font-medium text-foreground/80 transition-colors hover:text-foreground">Support</Link>
+            </nav>
+            <div className="flex items-center gap-2">
+              <ModeToggle />
+              <Button variant="ghost" asChild className="text-foreground/80 px-2 font-semibold"><Link href="/login">Log in</Link></Button>
+              <Button asChild><Link href="/signup">Join us</Link></Button>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
   
+  // Authenticated State
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6 justify-between">
       {/* Left side */}
@@ -248,5 +294,3 @@ export function DashboardHeader() {
     </header>
   );
 }
-
-  

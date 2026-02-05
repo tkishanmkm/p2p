@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus, BookOpen, ShieldCheck, LifeBuoy, FileText, ArrowRight, ArrowLeftRight } from 'lucide-react';
+import { Minus, Plus, BookOpen, ShieldCheck, LifeBuoy, FileText, ArrowRight, ArrowLeftRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { BtcLogo, EthLogo, UsdtLogo, LtcLogo } from '@/components/icons';
 import type { CryptoCurrency, User, UserWallet, P2PAd, Trade } from '@/lib/types';
@@ -31,6 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn, toDate } from '@/lib/utils';
 import { statusColors } from '@/lib/status-colors';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
@@ -49,8 +50,15 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?:
 };
 
 export default function DashboardPage() {
-  const { firestore, user: authUser } = useFirebase();
+  const { firestore, user: authUser, isUserLoading: isAuthLoading } = useFirebase();
+  const router = useRouter();
   const { prices } = usePrices();
+
+  useEffect(() => {
+    if (!isAuthLoading && !authUser) {
+      router.push('/login');
+    }
+  }, [authUser, isAuthLoading, router]);
 
   const userRef = useMemoFirebase(
     () => (authUser ? doc(firestore, 'users', authUser.uid) : null),
@@ -87,6 +95,14 @@ export default function DashboardPage() {
       setActiveTrades(uniqueTrades);
     }
   }, [activeBuyerTrades, activeSellerTrades]);
+
+  if (isAuthLoading || !authUser) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>

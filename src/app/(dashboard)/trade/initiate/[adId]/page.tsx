@@ -22,7 +22,8 @@ import { AccountStatusAlert } from "@/components/p2p/account-status-alert";
 
 function ActiveTradePrompt({ trade }: { trade: Trade }) {
   const router = useRouter();
-  const isBuyer = useFirebase().user?.uid === trade.buyerId;
+  const { user } = useFirebase();
+  const isBuyer = user?.uid === trade.buyerId;
   const partner = isBuyer ? trade.seller : trade.buyer;
 
   return (
@@ -70,7 +71,14 @@ export default function InitiateTradePage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const { firestore, user: authUser } = useFirebase();
+  const { firestore, user: authUser, isUserLoading: isAuthLoading } = useFirebase();
+  
+  useEffect(() => {
+    if (!isAuthLoading && !authUser) {
+      router.push(`/login?redirect=/trade/initiate/${params.adId}`);
+    }
+  }, [authUser, isAuthLoading, router, params.adId]);
+
   const { prices } = usePrices();
   const adId = Array.isArray(params.adId) ? params.adId[0] : params.adId;
 
@@ -199,10 +207,14 @@ export default function InitiateTradePage() {
     }
   };
   
-  const isLoading = isUserLoading || isAdLoading || isLoadingActiveTrade || (ad?.adType === 'sell' && isSellerWalletLoading);
+  const isLoading = isAuthLoading || isUserLoading || isAdLoading || isLoadingActiveTrade || (ad?.adType === 'sell' && isSellerWalletLoading);
 
-  if (isLoading) {
-    return <div className="pt-10"><Skeleton className="h-96 w-full max-w-2xl mx-auto" /></div>;
+  if (isLoading || !authUser) {
+    return (
+        <div className="flex flex-1 items-center justify-center pt-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
   }
   
   if (activeTrade) {

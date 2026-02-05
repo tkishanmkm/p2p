@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -26,7 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
 import { useFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -39,11 +39,13 @@ const formSchema = z.object({
   }),
 });
 
-export default function LoginPage() {
+function LoginFormComponent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { auth, firestore } = useFirebase();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const redirectUrl = searchParams.get('redirect');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -80,7 +82,7 @@ export default function LoginPage() {
 
         if (userDocSnap.exists()) {
             toast({ title: "Logging In...", description: "Please wait while we log you in." });
-            router.push('/buy');
+            router.push(redirectUrl || '/buy');
         } else {
             // This case should not happen in normal flow, but it's a safeguard.
             await auth.signOut();
@@ -183,4 +185,12 @@ export default function LoginPage() {
       </Card>
     </div>
   );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+            <LoginFormComponent />
+        </Suspense>
+    )
 }

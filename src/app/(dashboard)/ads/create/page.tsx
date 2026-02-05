@@ -6,11 +6,30 @@ import { doc } from "firebase/firestore";
 import type { User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AccountStatusAlert } from "@/components/p2p/account-status-alert";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 export default function CreateAdPage() {
-  const { firestore, user: authUser } = useFirebase();
+  const { firestore, user: authUser, isUserLoading: isAuthLoading } = useFirebase();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthLoading && !authUser) {
+      router.push('/login');
+    }
+  }, [authUser, isAuthLoading, router]);
+
   const userRef = useMemoFirebase(() => (authUser ? doc(firestore, "users", authUser.uid) : null), [firestore, authUser]);
   const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
+
+  if (isAuthLoading || !authUser) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>

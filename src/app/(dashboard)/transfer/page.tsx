@@ -50,6 +50,7 @@ import { CryptoCurrency, UserWallet, CoinTransfer } from '@/lib/types';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { toDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRouter } from 'next/navigation';
 
 const transferSchema = z.object({
   recipientUsername: z.string().min(3, 'Recipient User ID is required.'),
@@ -116,8 +117,16 @@ function TransferHistoryTable({
 }
 
 export default function TransferPage() {
-  const { firestore, user: authUser } = useFirebase();
+  const { firestore, user: authUser, isUserLoading: isAuthLoading } = useFirebase();
+  const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!isAuthLoading && !authUser) {
+      router.push('/login');
+    }
+  }, [authUser, isAuthLoading, router]);
+
   const walletsRef = useMemoFirebase(() => (authUser ? collection(firestore, 'users', authUser.uid, 'wallets') : null), [authUser, firestore]);
   const { data: wallets } = useCollection<UserWallet>(walletsRef);
 
@@ -187,6 +196,14 @@ export default function TransferPage() {
         description: error.message,
       });
     }
+  }
+
+  if (isAuthLoading || !authUser) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (

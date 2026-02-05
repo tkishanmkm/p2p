@@ -18,7 +18,7 @@ interface AdCardProps {
 }
 
 export function AdCard({ ad }: AdCardProps) {
-  const { firestore } = useFirebase();
+  const { firestore, user: authUser } = useFirebase();
   const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-2');
   const { prices } = usePrices();
 
@@ -77,6 +77,7 @@ export function AdCard({ ad }: AdCardProps) {
   }
 
   const isLoading = (ad.adType === 'sell' && isWalletLoading) || isCreatorLoading;
+  const actionUrl = authUser ? `/trade/initiate/${ad.id}` : `/login?redirect=/trade/initiate/${ad.id}`;
 
   return (
     <Card>
@@ -142,7 +143,7 @@ export function AdCard({ ad }: AdCardProps) {
           {/* Action Button */}
           <div className="sm:col-span-1 sm:text-right">
             <Button asChild className="w-full sm:w-auto" disabled={!tradeIsPossible || isLoading}>
-              <Link href={tradeIsPossible ? `/trade/initiate/${ad.id}` : '#'}>
+              <Link href={actionUrl}>
                 {ad.adType === 'sell' ? `Buy ${ad.crypto}` : `Sell ${ad.crypto}`}
               </Link>
             </Button>

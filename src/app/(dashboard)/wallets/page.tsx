@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
 import { CryptoCurrency, User, UserWallet, Deposit, Withdrawal } from "@/lib/types";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
-import { Plus, Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy } from "lucide-react";
+import { Plus, Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
@@ -24,6 +24,7 @@ import { WithdrawDialog } from "@/components/wallets/withdraw-dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn, toDate } from "@/lib/utils";
 import { cancelWithdrawal } from "@/lib/wallet";
+import { useRouter } from 'next/navigation';
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
@@ -53,10 +54,17 @@ const withdrawalStatusColors: Record<Withdrawal['status'], string> = {
 
 
 export default function WalletsPage() {
-  const { firestore, user: authUser } = useFirebase();
+  const { firestore, user: authUser, isUserLoading: isAuthLoading } = useFirebase();
+  const router = useRouter();
   const { toast } = useToast();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthLoading && !authUser) {
+      router.push('/login');
+    }
+  }, [authUser, isAuthLoading, router]);
 
   const userRef = useMemoFirebase(() => (authUser ? doc(firestore, 'users', authUser.uid) : null), [firestore, authUser]);
   const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
@@ -134,6 +142,14 @@ export default function WalletsPage() {
   };
 
   const isDepositDisabled = isUserLoading || !!user?.isBanned || !!user?.isOnHold;
+
+  if (isAuthLoading || !authUser) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>

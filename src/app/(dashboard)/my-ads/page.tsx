@@ -1,4 +1,4 @@
-// This is a new file
+
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
@@ -22,7 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { softDeleteAd, updateAdStatus } from "@/lib/ads";
 import Link from "next/link";
@@ -43,10 +43,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 
 export default function MyAdsPage() {
-  const { firestore, user } = useFirebase();
+  const { firestore, user, isUserLoading } = useFirebase();
+  const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
   const myAdsQuery = useMemoFirebase(
     () =>
@@ -82,6 +92,14 @@ export default function MyAdsPage() {
       toast({ variant: "destructive", title: "Delete Failed", description: e.message });
     }
   };
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>

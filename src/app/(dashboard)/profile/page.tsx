@@ -9,9 +9,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DefaultAvatar } from "@/components/icons";
-import { User as UserIcon, Calendar, CheckCircle, Clock, DollarSign, UserCheck, ThumbsUp, ThumbsDown } from "lucide-react";
+import { User as UserIcon, Calendar, CheckCircle, Clock, DollarSign, UserCheck, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { toDate } from "@/lib/utils";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) {
     return (
@@ -26,22 +28,24 @@ function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: stri
 }
 
 export default function ProfilePage() {
-    const { user: authUser, firestore } = useFirebase();
+    const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!isAuthLoading && !authUser) {
+          router.push('/login');
+        }
+    }, [authUser, isAuthLoading, router]);
     
     const userRef = useMemoFirebase(() => authUser && firestore ? doc(firestore, "users", authUser.uid) : null, [authUser, firestore]);
     const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
 
-    if (isUserLoading) {
+    if (isAuthLoading || isUserLoading || !user) {
         return (
-             <div className="space-y-6">
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-64 w-full" />
-            </div>
+             <div className="flex flex-1 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
         )
-    }
-
-    if (!user) {
-        return <div>User not found.</div>;
     }
 
     const lastTradeDate = toDate(user.lastTradeAt);

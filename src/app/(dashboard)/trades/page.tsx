@@ -1,4 +1,4 @@
-// This is a new file
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,10 +24,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { DollarSign, CheckCircle, Percent, ArrowLeftRight, Download } from 'lucide-react';
+import { DollarSign, CheckCircle, Percent, ArrowLeftRight, Download, Loader2 } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { statusColors } from '@/lib/status-colors';
+import { useRouter } from 'next/navigation';
 
 function DashboardCardSkeleton() {
   return (
@@ -44,7 +45,14 @@ function DashboardCardSkeleton() {
 }
 
 export default function MyTradesPage() {
-  const { firestore, user: authUser } = useFirebase();
+  const { firestore, user: authUser, isUserLoading: isAuthLoading } = useFirebase();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthLoading && !authUser) {
+      router.push('/login');
+    }
+  }, [authUser, isAuthLoading, router]);
   
   const userRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
   const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
@@ -85,6 +93,13 @@ export default function MyTradesPage() {
     document.body.removeChild(link);
   };
 
+  if (isAuthLoading || !authUser) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>
