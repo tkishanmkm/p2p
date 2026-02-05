@@ -75,25 +75,32 @@ const adFormSchema = z.object({
   paymentTimeLimit: z.coerce.number().min(30).default(30),
   terms: z.string().min(10, "Terms must be at least 10 characters.").max(500, "Terms cannot exceed 500 characters."),
   tags: z.array(z.string()).optional(),
-}).refine(data => {
+}).superRefine((data, ctx) => {
     if (data.rateType === 'market') {
-        return data.ratePercent !== undefined && data.ratePercent !== null;
+        if (data.ratePercent === undefined || data.ratePercent === null || isNaN(data.ratePercent)) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Market rate adjustment is required.",
+                path: ["ratePercent"],
+            });
+        }
     }
-    return true;
-}, {
-    message: "Market rate adjustment is required.",
-    path: ["ratePercent"],
-}).refine(data => {
     if (data.rateType === 'fixed') {
-        return data.fixedRate !== undefined && data.fixedRate !== null;
+        if (data.fixedRate === undefined || data.fixedRate === null || isNaN(data.fixedRate) || data.fixedRate <= 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "A positive fixed rate is required.",
+                path: ["fixedRate"],
+            });
+        }
     }
-    return true;
-}, {
-    message: "Fixed rate is required.",
-    path: ["fixedRate"],
-}).refine(data => data.maxAmount >= data.minAmount, {
-    message: "Max amount must be greater than or equal to min amount.",
-    path: ["maxAmount"],
+    if (data.maxAmount < data.minAmount) {
+         ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Max amount must be greater than or equal to min amount.",
+            path: ["maxAmount"],
+        });
+    }
 });
 
 type AdFormValues = z.infer<typeof adFormSchema>;

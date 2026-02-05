@@ -118,6 +118,7 @@ export default function AdminLoginPage() {
                     securityQuestion: "Admin account", // Not used for password recovery
                     securityAnswer: "Admin account", // Not used for password recovery
                     isAdminAccount: true, // Special flag to identify admin profile
+                    blockedUsers: [],
                 });
                 
                 toast({

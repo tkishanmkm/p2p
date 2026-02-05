@@ -138,6 +138,7 @@ function SignupFormComponent() {
           preferredCurrency: "USD",
           securityQuestion: values.securityQuestion,
           securityAnswer: values.securityAnswer,
+          blockedUsers: [],
       };
       await setDoc(userDocRef, newUserDoc);
 
