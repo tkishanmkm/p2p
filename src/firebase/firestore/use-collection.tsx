@@ -101,21 +101,30 @@ export function useCollection<T = any>(
         setError(null);
         setIsLoading(false);
       },
-      (error: FirestoreError) => {
-        // This logic extracts the path from either a ref or a query
-        const queryPath: string =
+      (snapshotError: FirestoreError) => {
+        // This logic safely extracts the path from either a ref or a query
+        const queryPath: string | undefined =
           memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
+            : (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString();
+
+        // If for some reason we cannot determine the path, fall back to the original error.
+        if (!queryPath) {
+            setError(snapshotError);
+            setData(null);
+            setIsLoading(false);
+            console.error("useCollection error (could not determine path for contextual error):", snapshotError);
+            return;
+        }
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
           path: queryPath,
-        })
+        });
 
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
+        setError(contextualError);
+        setData(null);
+        setIsLoading(false);
 
         // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
