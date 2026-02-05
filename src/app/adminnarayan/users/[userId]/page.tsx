@@ -1,3 +1,3 @@
-// This file is intentionally left empty to resolve a build conflict.
-// The active page for this route is located at:
-// src/app/adminnarayan/(panel)/users/[userId]/page.tsx
+// This file has been intentionally modified to resolve a Next.js routing conflict.
+// The correct page is located at /src/app/adminnarayan/(panel)/users/[userId]/page.tsx.
+export {};
