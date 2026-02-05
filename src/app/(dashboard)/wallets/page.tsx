@@ -67,39 +67,51 @@ export default function WalletsPage() {
   const [deposits, setDeposits] = useState<Deposit[] | null>(null);
   const [isDepositsLoading, setIsDepositsLoading] = useState(true);
 
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null);
+  const [isWithdrawalsLoading, setIsWithdrawalsLoading] = useState(true);
+
   useEffect(() => {
     if (!authUser || !firestore) {
       setIsDepositsLoading(false);
+      setIsWithdrawalsLoading(false);
       return;
     }
 
-    const fetchDeposits = async () => {
+    const fetchTransactions = async () => {
       setIsDepositsLoading(true);
+      setIsWithdrawalsLoading(true);
+
       try {
+        // Fetch Deposits
         const depositsRef = collection(firestore, "deposits");
-        const q = query(depositsRef, where("userId", "==", authUser.uid));
-        const querySnapshot = await getDocs(q);
-        const depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
-        // Sort on the client side to avoid needing a composite index.
+        const depositQuery = query(depositsRef, where("userId", "==", authUser.uid));
+        const depositSnapshot = await getDocs(depositQuery);
+        const depositsData = depositSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
         depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
         setDeposits(depositsData);
+
+        // Fetch Withdrawals
+        const withdrawalsRef = collection(firestore, "users", authUser.uid, "withdrawals");
+        const withdrawalQuery = query(withdrawalsRef);
+        const withdrawalSnapshot = await getDocs(withdrawalQuery);
+        const withdrawalsData = withdrawalSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Withdrawal));
+        withdrawalsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+        setWithdrawals(withdrawalsData);
       } catch (error) {
-        console.error("Failed to fetch deposits:", error);
+        console.error("Failed to fetch transaction history:", error);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Could not fetch your deposit history.",
+          description: "Could not fetch your transaction history.",
         });
       } finally {
         setIsDepositsLoading(false);
+        setIsWithdrawalsLoading(false);
       }
     };
 
-    fetchDeposits();
+    fetchTransactions();
   }, [authUser, firestore, toast]);
-  
-  const withdrawalsQuery = useMemoFirebase(() => authUser ? query(collection(firestore, "users", authUser.uid, "withdrawals"), orderBy("createdAt", "desc")) : null, [firestore, authUser]);
-  const { data: withdrawals, isLoading: isWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
 
 
   const handleCancelWithdrawal = async (withdrawal: Withdrawal) => {
@@ -108,6 +120,8 @@ export default function WalletsPage() {
     try {
       await cancelWithdrawal(firestore, withdrawal);
       toast({ title: "Withdrawal Cancelled", description: "Your funds have been returned to your available balance." });
+      // Optimistically update UI
+      setWithdrawals(current => current?.map(w => w.id === withdrawal.id ? {...w, status: 'cancelled'} : w) || null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Cancellation Failed", description: e.message });
     }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -75,12 +76,17 @@ export default function AdminWithdrawalsPage() {
         const withdrawalsRef = collectionGroup(firestore, "withdrawals");
         let q;
         if (showAll) {
-          q = query(withdrawalsRef, orderBy("createdAt", "desc"));
+          q = query(withdrawalsRef);
         } else {
-          q = query(withdrawalsRef, where("status", "==", "pending"), orderBy("createdAt", "desc"));
+          q = query(withdrawalsRef, where("status", "==", "pending"));
         }
         const snapshot = await getDocs(q);
-        setWithdrawals(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Withdrawal)));
+        const withdrawalsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Withdrawal));
+        
+        // Sort on client
+        withdrawalsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+        
+        setWithdrawals(withdrawalsData);
       } catch (error) {
         console.error("Error fetching withdrawals:", error);
         toast({ variant: "destructive", title: "Error", description: "Could not fetch withdrawals." });
@@ -189,7 +195,7 @@ export default function AdminWithdrawalsPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !withdrawals?.length && <TableRow><TableCell colSpan={6} className="text-center">No withdrawals found.</TableCell></TableRow>}
+              {!isLoading && !withdrawals?.length && <TableRow><TableCell colSpan={6} className="text-center h-24">No withdrawals found.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
