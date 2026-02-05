@@ -164,6 +164,7 @@ export type Dispute = {
   tradeId: string;
   openedBy: string;
   reason: string;
+  explanation: string;
   status: 'open' | 'resolved' | 'cancelled';
   resolvedBy?: string;
   winnerId?: string;

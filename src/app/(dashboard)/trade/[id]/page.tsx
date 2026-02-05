@@ -16,18 +16,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useDoc, useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection, query, where, limit } from "firebase/firestore";
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow, claimFundsForTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Trade, Dispute } from "@/lib/types";
+import type { Trade, Dispute, P2PAd } from "@/lib/types";
 import { cn, toDate } from "@/lib/utils";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { OpenDisputeDialog } from "@/components/trade/open-dispute-dialog";
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
@@ -37,6 +37,9 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   const tradeRef = firestore && tradeId ? doc(firestore, "trades", tradeId) : null;
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
+  
+  const adRef = useMemoFirebase(() => (firestore && trade?.adId ? doc(firestore, 'p2p_ads', trade.adId) : null), [firestore, trade]);
+  const { data: ad } = useDoc<P2PAd>(adRef);
   
   const disputeQuery = useMemoFirebase(() => firestore && tradeId ? query(collection(firestore, `trades/${tradeId}/disputes`), where('status', '==', 'resolved'), limit(1)) : null, [firestore, tradeId]);
   const { data: resolvedDisputes } = useCollection<Dispute>(disputeQuery);
@@ -48,15 +51,13 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   // Effect for handling expired trades
   useEffect(() => {
     if (trade && trade.status === 'active' && toDate(trade.expiresAt) && new Date() > toDate(trade.expiresAt)!) {
-        // Only trigger cancellation once
-        if (tradeRef && trade.status === 'active') { // Double-check status before acting
+        if (tradeRef && trade.status === 'active') {
              console.log("Trade is expired, attempting to cancel...");
             cancelTrade(firestore, trade.id)
                 .then(() => {
                     toast({ title: "Trade Expired", description: "The trade was automatically cancelled and funds returned to the seller." });
                 })
                 .catch((e) => {
-                    // Avoid spamming user with toasts on background failures
                     console.error("Auto-cancellation of expired trade failed:", e);
                 });
         }
@@ -86,8 +87,8 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     return <div className="text-red-500">Error loading trade: {error.message}</div>;
   }
 
-  if (!trade) {
-    return <div>Trade not found.</div>;
+  if (!trade || !user) {
+    return <div>Trade not found or user not loaded.</div>;
   }
 
   const handleMarkAsPaid = async () => {
@@ -119,7 +120,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   
   const toggleView = () => setIsDetailsLeft(prev => !prev);
   
-  const isTradeClosed = ['released', 'cancelled', 'expired'].includes(trade.status);
+  const isTradeClosed = ['released', 'cancelled', 'expired', 'disputed'].includes(trade.status);
 
   return (
     <>
@@ -154,7 +155,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
       <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
         
         <div className={cn("lg:col-span-1 grid gap-4 auto-rows-min", { "lg:order-last": !isDetailsLeft })}>
-          <TradeDetails trade={trade} />
+          <TradeDetails trade={trade} sellerTerms={ad?.terms}/>
           <div className="space-y-2">
             {currentUserRole === "buy" && trade.status === "active" && (
               <AlertDialog>
@@ -212,7 +213,11 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 </AlertDialog>
             )}
             {trade.status === 'paid' && (
-              <Button variant="destructive" className="w-full"><Flag className="mr-2 h-4 w-4" /> Open Dispute</Button>
+                <OpenDisputeDialog 
+                    trade={trade}
+                    currentUserId={user.uid}
+                    currentUsername={user.displayName || 'user'}
+                />
             )}
             <div className="text-xs p-3 bg-red-100 border-l-4 border-red-500 text-red-900 rounded-r-md flex gap-2 items-start">
               <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
