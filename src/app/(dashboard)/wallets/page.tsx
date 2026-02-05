@@ -77,9 +77,12 @@ export default function WalletsPage() {
       setIsDepositsLoading(true);
       try {
         const depositsRef = collection(firestore, "deposits");
-        const q = query(depositsRef, where("userId", "==", authUser.uid), orderBy("createdAt", "desc"));
+        const q = query(depositsRef, where("userId", "==", authUser.uid));
         const querySnapshot = await getDocs(q);
-        setDeposits(querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit)));
+        const depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
+        // Sort on the client side to avoid needing a composite index.
+        depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+        setDeposits(depositsData);
       } catch (error) {
         console.error("Failed to fetch deposits:", error);
         toast({
