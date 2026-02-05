@@ -11,7 +11,7 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { usePrices } from "@/context/price-context";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "../ui/skeleton";
 
 interface AdCardProps {
   ad: P2PAd;
@@ -142,7 +142,7 @@ export function AdCard({ ad }: AdCardProps) {
 
           {/* Action Button */}
           <div className="sm:col-span-1 sm:text-right">
-            <Button asChild className="w-full sm:w-auto" disabled={!tradeIsPossible || isLoading}>
+            <Button asChild variant={ad.adType === 'sell' ? 'default' : 'destructive'} className="w-full sm:w-auto" disabled={!tradeIsPossible || isLoading}>
               <Link href={actionUrl}>
                 {ad.adType === 'sell' ? `Buy ${ad.crypto}` : `Sell ${ad.crypto}`}
               </Link>

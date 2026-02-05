@@ -156,11 +156,12 @@ export function DashboardHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-2 transition-colors ${
+              className={cn(
+                "flex items-center gap-2 transition-colors hover:text-foreground",
                 pathname === item.href
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+                  ? "text-primary font-semibold"
+                  : "text-muted-foreground"
+              )}
             >
               <item.icon className="h-4 w-4" />
               {item.label}
@@ -256,7 +257,7 @@ export function DashboardHeader() {
                     </AvatarFallback>
                     )}
                 </Avatar>
-                 <div className="text-left hidden sm:block">
+                 <div className="text-left">
                     {user?.displayName ? <p className="font-semibold text-sm">{user.displayName}</p> : <Skeleton className="h-5 w-20" />}
                     <p className="text-xs text-muted-foreground">${totalWalletValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                 </div>
