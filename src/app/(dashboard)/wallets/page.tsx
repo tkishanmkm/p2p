@@ -25,6 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn, toDate } from "@/lib/utils";
 import { cancelWithdrawal } from "@/lib/wallet";
 import { useRouter } from 'next/navigation';
+import { usePrices } from "@/context/price-context";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
@@ -59,6 +61,7 @@ export default function WalletsPage() {
   const { toast } = useToast();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const { prices, fiatRates } = usePrices();
 
   useEffect(() => {
     if (!isAuthLoading && !authUser) {
@@ -82,6 +85,17 @@ export default function WalletsPage() {
     navigator.clipboard.writeText(text);
     toast({ title: "Copied!", description: "Address copied to clipboard." });
   };
+  
+    const totalWalletValueUSD =
+    wallets?.reduce((acc, wallet) => {
+      const value = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+      return acc + value;
+    }, 0) || 0;
+
+  const preferredCurrency = user?.preferredCurrency || 'USD';
+  const exchangeRate = fiatRates[preferredCurrency] || 1;
+  const totalWalletValueConverted = totalWalletValueUSD * exchangeRate;
+
 
 
   useEffect(() => {
@@ -160,6 +174,23 @@ export default function WalletsPage() {
       </div>
       <div className="grid gap-8">
         <Card>
+          <CardHeader>
+            <CardTitle>Total Wallet Value</CardTitle>
+            <CardDescription>
+              This is the estimated total value of all your crypto assets, including available and locked balances.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+                {isWalletsLoading || isUserLoading ? (
+                    <Skeleton className="h-9 w-48" />
+                ) : (
+                    totalWalletValueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
           <CardHeader className="flex flex-col md:flex-row md:items-center">
             <div className="grid gap-2 flex-grow">
               <CardTitle>Crypto Balances</CardTitle>
@@ -195,10 +226,14 @@ export default function WalletsPage() {
                       <TableHead>Total Balance</TableHead>
                       <TableHead>Available</TableHead>
                       <TableHead>Locked</TableHead>
+                      <TableHead className="text-right">Value ({preferredCurrency})</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {wallets.map(wallet => (
+                    {wallets.map(wallet => {
+                      const valueUSD = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+                      const valueConverted = valueUSD * exchangeRate;
+                      return (
                       <TableRow key={wallet.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -206,39 +241,46 @@ export default function WalletsPage() {
                             <span className="font-medium">{wallet.crypto}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">{(wallet.balance + wallet.lockedBalance).toFixed(8)}</TableCell>
-                        <TableCell>{wallet.balance.toFixed(8)}</TableCell>
-                        <TableCell className="text-muted-foreground">{wallet.lockedBalance.toFixed(8)}</TableCell>
+                        <TableCell className="font-medium">{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(8)}</TableCell>
+                        <TableCell>{(wallet.balance || 0).toFixed(8)}</TableCell>
+                        <TableCell className="text-muted-foreground">{(wallet.lockedBalance || 0).toFixed(8)}</TableCell>
+                        <TableCell className="text-right font-medium">{valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
-                    ))}
+                    )})}
                   </TableBody>
                 </Table>
                 {/* Mobile Cards */}
                 <div className="md:hidden space-y-4">
-                  {wallets.map(wallet => (
+                  {wallets.map(wallet => {
+                      const valueUSD = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+                      const valueConverted = valueUSD * exchangeRate;
+                      return (
                     <Card key={wallet.id}>
                       <CardHeader className="flex flex-row items-center justify-between pb-2">
                          <div className="flex items-center gap-3">
                             <CryptoLogo crypto={wallet.crypto} />
                             <CardTitle className="text-lg">{wallet.crypto}</CardTitle>
                           </div>
+                          <div className="font-semibold text-right">
+                            {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Total</span>
-                          <span className="font-medium">{(wallet.balance + wallet.lockedBalance).toFixed(8)}</span>
+                          <span className="font-medium">{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(8)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Available</span>
-                          <span>{wallet.balance.toFixed(8)}</span>
+                          <span>{(wallet.balance || 0).toFixed(8)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Locked</span>
-                          <span>{wallet.lockedBalance.toFixed(8)}</span>
+                          <span>{(wallet.lockedBalance || 0).toFixed(8)}</span>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  )})}
                 </div>
               </>
             )}
