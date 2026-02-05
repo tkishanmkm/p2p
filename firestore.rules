@@ -117,7 +117,7 @@ service cloud.firestore {
 
     match /transfers/{transferId} {
       allow get: if isSignedIn() && (isOwner(resource.data.senderId) || isOwner(resource.data.recipientId) || isAdmin());
-      allow list: if isSignedIn();
+      allow list: if isAdmin();
       allow create: if isSignedIn() && isOwner(request.resource.data.senderId);
       allow update, delete: if false;
     }
@@ -137,5 +137,3 @@ service cloud.firestore {
     }
   }
 }
-
-  
