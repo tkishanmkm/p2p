@@ -122,7 +122,7 @@ service cloud.firestore {
         // Anyone can view ads.
         allow get, list: if true;
         // Any signed-in user can create an ad for themself.
-        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
         // Only the ad owner or an admin can update/delete it.
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
