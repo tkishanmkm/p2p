@@ -5,7 +5,6 @@ import {
   doc,
   runTransaction,
   writeBatch,
-  serverTimestamp,
   Firestore,
   updateDoc,
   collection,
@@ -35,7 +34,7 @@ export async function approveDeposit(
       newBalance += (walletData.balance || 0);
       transaction.update(userWalletRef, {
         balance: newBalance,
-        updatedAt: serverTimestamp(),
+        updatedAt: new Date().toISOString(),
       });
     } else {
       // Wallet doesn't exist, create it.
@@ -45,7 +44,7 @@ export async function approveDeposit(
         crypto: deposit.crypto,
         balance: newBalance,
         lockedBalance: 0,
-        updatedAt: new Date().toISOString(), // This will be replaced by server timestamp on write
+        updatedAt: new Date().toISOString(),
       };
       transaction.set(userWalletRef, newWallet);
     }
@@ -62,7 +61,7 @@ export async function approveDeposit(
         userId: deposit.userId,
         message: `Your deposit of ${approvedAmount} ${deposit.crypto} has been approved and added to your wallet.`,
         isRead: false,
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
         link: `/wallets`
     })
   });
@@ -114,7 +113,7 @@ export async function approveWithdrawal(
     // Deduct from locked balance
     transaction.update(userWalletRef, {
       lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
-      updatedAt: serverTimestamp(),
+      updatedAt: new Date().toISOString(),
     });
 
     // Mark withdrawal as approved
@@ -128,7 +127,7 @@ export async function approveWithdrawal(
         userId: withdrawal.userId,
         message: `Your withdrawal of ${withdrawal.amount} ${withdrawal.crypto} has been approved and processed.`,
         isRead: false,
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
         link: `/wallets`
     });
   });
@@ -166,7 +165,7 @@ export async function declineWithdrawal(
         transaction.update(userWalletRef, {
             balance: (wallet.balance || 0) + withdrawal.amount,
             lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
-            updatedAt: serverTimestamp(),
+            updatedAt: new Date().toISOString(),
         });
 
         // Mark withdrawal as declined
@@ -180,7 +179,7 @@ export async function declineWithdrawal(
             userId: withdrawal.userId,
             message: `Your withdrawal of ${withdrawal.amount} ${withdrawal.crypto} was declined and the funds returned to your wallet.`,
             isRead: false,
-            createdAt: serverTimestamp(),
+            createdAt: new Date().toISOString(),
             link: `/wallets`
         });
     });
@@ -200,7 +199,7 @@ export async function setUserBanStatus(db: Firestore, userId: string, userDispla
     adminId,
     action: actionMessage,
     targetId: userId,
-    createdAt: serverTimestamp(),
+    createdAt: new Date().toISOString(),
   });
 
   const notificationMessage = isBanned ? `Your account has been banned. Reason: ${reason}` : `The ban on your account has been lifted. Reason: ${reason}`;
@@ -208,7 +207,7 @@ export async function setUserBanStatus(db: Firestore, userId: string, userDispla
     userId,
     message: notificationMessage,
     isRead: false,
-    createdAt: serverTimestamp(),
+    createdAt: new Date().toISOString(),
   });
 
   await batch.commit();
@@ -228,7 +227,7 @@ export async function setUserHoldStatus(db: Firestore, userId: string, userDispl
     adminId,
     action: actionMessage,
     targetId: userId,
-    createdAt: serverTimestamp(),
+    createdAt: new Date().toISOString(),
   });
 
   const notificationMessage = isOnHold ? `Your account has been placed on hold. Reason: ${reason}` : `The hold on your account has been removed. Reason: ${reason}`;
@@ -236,7 +235,7 @@ export async function setUserHoldStatus(db: Firestore, userId: string, userDispl
     userId,
     message: notificationMessage,
     isRead: false,
-    createdAt: serverTimestamp(),
+    createdAt: new Date().toISOString(),
   });
 
   await batch.commit();
@@ -336,7 +335,7 @@ export async function adjustUserWalletBalance(
       crypto: crypto,
       balance: newBalance,
       lockedBalance: currentLockedBalance, // Don't touch locked balance
-      updatedAt: serverTimestamp(),
+      updatedAt: new Date().toISOString(),
     }, { merge: true });
 
     // Create a log entry for this action
@@ -344,7 +343,7 @@ export async function adjustUserWalletBalance(
       adminId: adminId,
       action: `Adjusted ${userDisplayName}'s ${crypto} balance. Action: ${action}, Amount: ${amount}. Reason: ${reason}`,
       targetId: userId,
-      createdAt: serverTimestamp(),
+      createdAt: new Date().toISOString(),
     });
 
      // Create user notification
@@ -353,7 +352,7 @@ export async function adjustUserWalletBalance(
         userId,
         message: notificationMessage,
         isRead: false,
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
         link: '/wallets'
     });
   });

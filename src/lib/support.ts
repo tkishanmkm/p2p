@@ -1,5 +1,5 @@
 'use client';
-import { Firestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Firestore, collection, addDoc } from 'firebase/firestore';
 import { SupportTicket } from './types';
 
 export async function createSupportTicket(
@@ -10,7 +10,7 @@ export async function createSupportTicket(
   const newTicket = {
     ...ticketData,
     status: 'Open' as 'Open',
-    createdAt: serverTimestamp(),
+    createdAt: new Date().toISOString(),
   };
   await addDoc(ticketsCollection, newTicket);
 }

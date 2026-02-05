@@ -6,7 +6,6 @@ import {
   runTransaction,
   collection,
   writeBatch,
-  serverTimestamp,
   addDoc,
   updateDoc,
   getDoc,
@@ -72,7 +71,7 @@ export async function initiateTrade(
       transaction.update(sellerWalletRef, {
         balance: newSellerBalance,
         lockedBalance: newSellerLockedBalance,
-        updatedAt: serverTimestamp(),
+        updatedAt: new Date().toISOString(),
       });
       
       const cryptoFee = cryptoAmount * 0.01;
@@ -105,7 +104,7 @@ export async function initiateTrade(
           message: `You have started a new trade (${newTrade.tradeId}) with ${ad.user.userId}.`,
           link: `/trade/${newTradeRef.id}`,
           isRead: false,
-          createdAt: serverTimestamp(),
+          createdAt: new Date().toISOString(),
       });
 
       const sellerNotificationRef = doc(collection(db, 'users', ad.userId, 'notifications'));
@@ -114,7 +113,7 @@ export async function initiateTrade(
           message: `${buyerData.userId} has started a new trade (${newTrade.tradeId}) with you.`,
           link: `/trade/${newTradeRef.id}`,
           isRead: false,
-          createdAt: serverTimestamp(),
+          createdAt: new Date().toISOString(),
       });
 
       transaction.set(newTradeRef, newTrade);
@@ -134,7 +133,7 @@ export async function markTradeAsPaid(db: Firestore, tradeId: string) {
   const tradeRef = doc(db, 'trades', tradeId);
   await updateDoc(tradeRef, {
       status: 'paid',
-      paidAt: serverTimestamp()
+      paidAt: new Date().toISOString()
   });
 }
 
@@ -171,13 +170,13 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
     // Decrement seller's locked balance
     transaction.update(sellerWalletRef, {
         lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-        updatedAt: serverTimestamp(),
+        updatedAt: new Date().toISOString(),
     });
 
     // Update trade status to released
     transaction.update(tradeRef, {
       status: 'released',
-      releasedAt: serverTimestamp()
+      releasedAt: new Date().toISOString()
     });
   });
 }
@@ -215,7 +214,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
             crypto: trade.crypto,
             userId: buyerId,
             id: trade.crypto,
-            updatedAt: serverTimestamp(),
+            updatedAt: new Date().toISOString(),
         }, { merge: true });
 
         transaction.update(tradeRef, { claimedByBuyer: true });
@@ -225,7 +224,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
             tradeId: trade.id,
             feeAmount: fee,
             crypto: trade.crypto,
-            createdAt: serverTimestamp()
+            createdAt: new Date().toISOString()
         });
     });
 }
@@ -261,7 +260,7 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
         transaction.update(sellerWalletRef, {
             balance: (sellerWallet.balance || 0) + trade.amount,
             lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-            updatedAt: serverTimestamp(),
+            updatedAt: new Date().toISOString(),
         });
 
         // Mark trade as cancelled
@@ -293,7 +292,7 @@ export async function requestWithdrawal(
     transaction.update(walletRef, {
       balance: (wallet.balance || 0) - values.amount,
       lockedBalance: (wallet.lockedBalance || 0) + values.amount,
-      updatedAt: serverTimestamp(),
+      updatedAt: new Date().toISOString(),
     });
 
     // Create withdrawal request
@@ -308,7 +307,7 @@ export async function requestWithdrawal(
       address: values.address,
       amount: values.amount,
       status: 'pending' as const,
-      createdAt: serverTimestamp(),
+      createdAt: new Date().toISOString(),
     };
     
     transaction.set(newWithdrawalRef, newWithdrawalData);
@@ -332,7 +331,7 @@ export async function cancelWithdrawal(db: Firestore, withdrawal: Withdrawal): P
         transaction.update(walletRef, {
             balance: (wallet.balance || 0) + withdrawal.amount,
             lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
-            updatedAt: serverTimestamp(),
+            updatedAt: new Date().toISOString(),
         });
 
         // Update withdrawal status
@@ -395,7 +394,7 @@ export async function sendCoinToUser(
         crypto,
         userId: recipient.id,
         id: crypto,
-        updatedAt: serverTimestamp(),
+        updatedAt: new Date().toISOString(),
       });
     }
 
@@ -409,7 +408,7 @@ export async function sendCoinToUser(
       recipientUsername: recipient.userId,
       crypto,
       amount,
-      createdAt: serverTimestamp(),
+      createdAt: new Date().toISOString(),
     });
     
     // 6. Send notifications
@@ -417,7 +416,7 @@ export async function sendCoinToUser(
     transaction.set(senderNotifRef, {
         message: `You sent ${amount} ${crypto} to ${recipientUsername}.`,
         isRead: false,
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
         link: `/transfer`
     });
 
@@ -425,7 +424,7 @@ export async function sendCoinToUser(
     transaction.set(recipientNotifRef, {
         message: `You received ${amount} ${crypto} from ${sender.displayName}.`,
         isRead: false,
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
         link: `/transfer`
     });
     

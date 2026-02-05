@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -8,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { add, set } from "date-fns";
 import { useFirebase } from "@/firebase";
-import { addDoc, collection, getDocs, query, where, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -100,13 +99,10 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
         qrCodeUrl: depositAddressDoc.qrCodeUrl,
         status: 'pending',
         timerEnd: add(new Date(), { minutes: 180 }).toISOString(),
-        createdAt: new Date().toISOString(), // This will be replaced by server timestamp
+        createdAt: new Date().toISOString(),
       };
 
-      const docRef = await addDoc(depositsRef, {
-        ...newDepositData,
-        createdAt: serverTimestamp()
-      });
+      const docRef = await addDoc(depositsRef, newDepositData);
       
       toast({ title: "Deposit Initiated", description: "Redirecting to deposit page..." });
       router.push(`/deposit/${docRef.id}`);
@@ -175,9 +171,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="any" placeholder="0.00" {...field} />
-                  </FormControl>
+                  <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}

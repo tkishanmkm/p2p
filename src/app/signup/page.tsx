@@ -30,7 +30,7 @@ import { useState, Suspense } from "react";
 import { useFirebase } from "@/firebase";
 import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc, collection, query, where, getDocs, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SECURITY_QUESTIONS } from "@/lib/constants";
 
@@ -128,7 +128,7 @@ function SignupFormComponent() {
           tradeVolume: 0,
           completedTrades: 0,
           usernameChanged: false,
-          createdAt: serverTimestamp(),
+          createdAt: new Date().toISOString(),
           feedbackScore: 100,
           positiveFeedback: 0,
           negativeFeedback: 0,

@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { addReceiptToTrade } from '@/lib/wallet';
 import { useToast } from '@/hooks/use-toast';
-import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 
 interface TradeChatProps {
@@ -108,7 +108,7 @@ export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
       const messagesCollection = collection(firestore, 'trades', trade.id, 'messages');
       await addDoc(messagesCollection, {
         ...tempMessage,
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
       });
 
       if (mediaUrl) {

@@ -27,7 +27,7 @@ import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, updateProfile, type User as AuthUser } from "firebase/auth";
-import { doc, setDoc, getDoc, serverTimestamp, type Firestore } from "firebase/firestore";
+import { doc, setDoc, getDoc, type Firestore } from "firebase/firestore";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
         const adminRoleRef = doc(firestore, 'admins', user.uid);
         const adminRoleSnap = await getDoc(adminRoleRef);
         if (!adminRoleSnap.exists()) {
-            await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
+            await setDoc(adminRoleRef, { role: "admin", createdAt: new Date().toISOString() });
         }
         
         toast({
@@ -92,7 +92,7 @@ export default function AdminLoginPage() {
                 
                 // Immediately create the admin role document for the new user.
                 const adminRoleRef = doc(firestore, 'admins', newUser.uid);
-                await setDoc(adminRoleRef, { role: "admin", createdAt: serverTimestamp() });
+                await setDoc(adminRoleRef, { role: "admin", createdAt: new Date().toISOString() });
 
                 // Also create a corresponding /users document to make the account more robust,
                 // but flag it so it can be filtered out of user lists.
@@ -107,7 +107,7 @@ export default function AdminLoginPage() {
                     tradeVolume: 0,
                     completedTrades: 0,
                     usernameChanged: true, // Prevent admin from changing their ID
-                    createdAt: serverTimestamp(),
+                    createdAt: new Date().toISOString(),
                     feedbackScore: 100,
                     positiveFeedback: 0,
                     negativeFeedback: 0,

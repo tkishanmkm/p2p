@@ -1,5 +1,5 @@
 'use client';
-import { Firestore, collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { Firestore, collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { P2PAd } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -33,7 +33,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       completedTrades: user.completedTrades,
       photoURL: user.photoURL,
     },
-    createdAt: serverTimestamp()
+    createdAt: new Date().toISOString()
   };
 
   try {

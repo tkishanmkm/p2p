@@ -1,11 +1,9 @@
-// This is a new file
 'use client';
 import {
   Firestore,
   doc,
   runTransaction,
   collection,
-  serverTimestamp,
   addDoc,
   getDoc,
   writeBatch,
@@ -47,7 +45,7 @@ export async function openDispute(
     explanation: explanation,
     status: 'open',
   };
-  batch.set(doc(disputeCollectionRef), { ...newDispute, createdAt: serverTimestamp() });
+  batch.set(doc(disputeCollectionRef), { ...newDispute, createdAt: new Date().toISOString() });
 
   // 3. Add a system message to the chat
   const systemMessage = {
@@ -56,7 +54,7 @@ export async function openDispute(
     senderUsername: 'System',
     message: `${openerUsername} has opened a dispute.\nReason: ${reason}\n\n"${explanation}"`,
     isModerator: true, // Use this flag to style it as a system/moderator message
-    createdAt: serverTimestamp(),
+    createdAt: new Date().toISOString(),
   };
   batch.set(doc(messagesCollectionRef), systemMessage);
   
@@ -70,7 +68,7 @@ export async function openDispute(
       message: `You have successfully opened a dispute for trade ${trade.tradeId}.`,
       link: `/trade/${trade.id}`,
       isRead: false,
-      createdAt: serverTimestamp(),
+      createdAt: new Date().toISOString(),
   });
 
   const opponentNotificationRef = doc(collection(db, 'users', opponentId, 'notifications'));
@@ -79,7 +77,7 @@ export async function openDispute(
       message: `${openerUsername} has opened a dispute on trade ${trade.tradeId}. A moderator will join shortly.`,
       link: `/trade/${trade.id}`,
       isRead: false,
-      createdAt: serverTimestamp(),
+      createdAt: new Date().toISOString(),
   });
   
   await batch.commit();
