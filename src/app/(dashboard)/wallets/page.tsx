@@ -88,7 +88,7 @@ export default function WalletsPage() {
   
     const totalWalletValueUSD =
     wallets?.reduce((acc, wallet) => {
-      const value = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+      const value = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
       return acc + value;
     }, 0) || 0;
 
@@ -175,9 +175,9 @@ export default function WalletsPage() {
       <div className="grid gap-8">
         <Card>
           <CardHeader>
-            <CardTitle>Total Wallet Value</CardTitle>
+            <CardTitle>Total Available Value</CardTitle>
             <CardDescription>
-              This is the estimated total value of all your crypto assets, including available and locked balances.
+              This is the estimated total value of your available (unlocked) crypto assets.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -223,13 +223,13 @@ export default function WalletsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Asset</TableHead>
-                      <TableHead>Total Balance</TableHead>
+                      <TableHead>Available Balance</TableHead>
                       <TableHead className="text-right">Value ({preferredCurrency})</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {wallets.map(wallet => {
-                      const valueUSD = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+                      const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
                       const valueConverted = valueUSD * exchangeRate;
                       return (
                       <TableRow key={wallet.id}>
@@ -239,7 +239,7 @@ export default function WalletsPage() {
                             <span className="font-medium">{wallet.crypto}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(8)}</TableCell>
+                        <TableCell className="font-medium">{(wallet.balance || 0).toFixed(8)}</TableCell>
                         <TableCell className="text-right font-medium">{valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     )})}
@@ -248,7 +248,7 @@ export default function WalletsPage() {
                 {/* Mobile Cards */}
                 <div className="md:hidden space-y-4">
                   {wallets.map(wallet => {
-                      const valueUSD = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+                      const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
                       const valueConverted = valueUSD * exchangeRate;
                       return (
                     <Card key={wallet.id}>
@@ -263,8 +263,8 @@ export default function WalletsPage() {
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total</span>
-                          <span className="font-medium">{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(8)}</span>
+                          <span className="text-muted-foreground">Available</span>
+                          <span className="font-medium">{(wallet.balance || 0).toFixed(8)}</span>
                         </div>
                       </CardContent>
                     </Card>

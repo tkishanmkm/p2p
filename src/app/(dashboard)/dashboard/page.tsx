@@ -72,7 +72,7 @@ export default function DashboardPage() {
   
   const totalWalletValueUSD =
     wallets?.reduce((acc, wallet) => {
-      const value = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+      const value = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
       return acc + value;
     }, 0) || 0;
 
@@ -127,7 +127,7 @@ export default function DashboardPage() {
                 <div className="grid gap-2">
                 <CardTitle>My Wallet</CardTitle>
                 <CardDescription>
-                    Total estimated value: {totalWalletValueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Total available value: {totalWalletValueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </CardDescription>
                 </div>
                 <div className="ml-auto flex gap-2">
@@ -151,13 +151,13 @@ export default function DashboardPage() {
                     <TableHeader>
                     <TableRow>
                         <TableHead>Asset</TableHead>
-                        <TableHead>Balance</TableHead>
+                        <TableHead>Available Balance</TableHead>
                         <TableHead className="text-right">{preferredCurrency} Value (est.)</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
                     {wallets?.map((wallet) => {
-                        const valueUSD = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+                        const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
                         const valueConverted = valueUSD * exchangeRate;
                         return (
                         <TableRow key={wallet.crypto}>
@@ -167,7 +167,7 @@ export default function DashboardPage() {
                                 <span className="font-medium">{wallet.crypto}</span>
                             </div>
                             </TableCell>
-                            <TableCell>{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(8)}</TableCell>
+                            <TableCell>{(wallet.balance || 0).toFixed(8)}</TableCell>
                             <TableCell className="text-right">
                             {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>

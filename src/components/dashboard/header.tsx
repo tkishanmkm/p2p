@@ -83,7 +83,7 @@ export function DashboardHeader() {
   const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
   
   const totalWalletValueUSD = wallets?.reduce((acc, wallet) => {
-    const value = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+    const value = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
     return acc + value;
   }, 0) || 0;
 
