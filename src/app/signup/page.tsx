@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
 import { Loader2 } from "lucide-react";
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense } from "react";
 import { useFirebase } from "@/firebase";
 import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -36,9 +36,9 @@ import { SECURITY_QUESTIONS } from "@/lib/constants";
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
-  dob: z.date({
-    required_error: "A date of birth is required.",
-  }),
+  day: z.string({ required_error: "Day is required."}),
+  month: z.string({ required_error: "Month is required."}),
+  year: z.string({ required_error: "Year is required."}),
   userId: z.string().min(3, { message: "User ID must be at least 3 characters." }).regex(/^[a-zA-Z0-9_]+$/, "User ID can only contain letters, numbers, and underscores."),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
   securityQuestion: z.string().min(1, "Please select a security question."),
@@ -46,7 +46,21 @@ const formSchema = z.object({
   captcha: z.boolean().refine((val) => val === true, {
     message: "Please confirm you are not a robot.",
   }),
+}).refine((data) => {
+    const date = new Date(parseInt(data.year), parseInt(data.month) - 1, parseInt(data.day));
+    const eighteenYearsAgo = new Date();
+    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+    // Also check if the constructed date is valid
+    return !isNaN(date.getTime()) && 
+           date.getFullYear() === parseInt(data.year) &&
+           date.getMonth() === parseInt(data.month) - 1 &&
+           date.getDate() === parseInt(data.day) &&
+           date <= eighteenYearsAgo;
+}, {
+    message: "You must be at least 18 and select a valid date.",
+    path: ["year"], // Attach error to the last field in the group
 });
+
 
 function SignupFormComponent() {
   const router = useRouter();
@@ -59,6 +73,9 @@ function SignupFormComponent() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: "",
+      day: "",
+      month: "",
+      year: "",
       userId: searchParams.get("userId") || "",
       password: "",
       securityQuestion: "",
@@ -66,28 +83,6 @@ function SignupFormComponent() {
       captcha: false,
     },
   });
-
-  const [day, setDay] = useState<string>();
-  const [month, setMonth] = useState<string>();
-  const [year, setYear] = useState<string>();
-
-  useEffect(() => {
-    const dob = form.getValues('dob');
-    if (dob) {
-        setDay(String(dob.getDate()));
-        setMonth(String(dob.getMonth() + 1));
-        setYear(String(dob.getFullYear()));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (day && month && year) {
-        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        if (!isNaN(date.getTime()) && date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month) - 1) {
-            form.setValue('dob', date, { shouldValidate: true });
-        }
-    }
-  }, [day, month, year, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!auth || !firestore) {
@@ -122,11 +117,12 @@ function SignupFormComponent() {
       
       // 4. Create Firestore user document
       const userDocRef = doc(firestore, "users", newUser.uid);
+      const dob = new Date(parseInt(values.year), parseInt(values.month) - 1, parseInt(values.day));
       const newUserDoc = {
           id: newUser.uid,
           userId: values.userId,
           fullName: values.fullName,
-          dob: values.dob.toISOString().split('T')[0], // YYYY-MM-DD
+          dob: dob.toISOString().split('T')[0], // YYYY-MM-DD
           isBanned: false,
           isOnHold: false,
           tradeVolume: "0",
@@ -202,42 +198,62 @@ function SignupFormComponent() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="dob"
-                render={() => (
-                    <FormItem>
-                        <FormLabel>Date of Birth</FormLabel>
-                        <div className="grid grid-cols-3 gap-2">
-                            <Select onValueChange={setMonth} value={month}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Select onValueChange={setDay} value={day}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Select onValueChange={setYear} value={year}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <FormMessage />
-                    </FormItem>
-                )}
-                />
+              <FormItem>
+                  <FormLabel>Date of Birth</FormLabel>
+                  <div className="grid grid-cols-3 gap-2">
+                      <FormField
+                          control={form.control}
+                          name="month"
+                          render={({ field }) => (
+                              <FormItem>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                      <FormControl>
+                                          <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                          {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                      <FormField
+                          control={form.control}
+                          name="day"
+                          render={({ field }) => (
+                              <FormItem>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                      <FormControl>
+                                          <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                          {days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                      <FormField
+                          control={form.control}
+                          name="year"
+                          render={({ field }) => (
+                              <FormItem>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                      <FormControl>
+                                          <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                          {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                  </div>
+              </FormItem>
               <FormField
                 control={form.control}
                 name="userId"
@@ -270,7 +286,7 @@ function SignupFormComponent() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Security Question</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select a security question" />
