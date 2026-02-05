@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { P2PAd, UserWallet } from "@/lib/types";
+import type { P2PAd, User, UserWallet } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { usePrices } from "@/context/price-context";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
@@ -21,6 +21,10 @@ export function AdCard({ ad }: AdCardProps) {
   const { firestore } = useFirebase();
   const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-2');
   const { prices } = usePrices();
+
+  // Fetch the ad creator's profile in real-time to get the latest avatar and stats
+  const adCreatorRef = useMemoFirebase(() => (firestore ? doc(firestore, 'users', ad.userId) : null), [firestore, ad.userId]);
+  const { data: adCreator, isLoading: isCreatorLoading } = useDoc<User>(adCreatorRef);
 
   // Fetch seller's wallet balance ONLY for sell ads.
   const sellerWalletRef = useMemoFirebase(() => 
@@ -42,6 +46,12 @@ export function AdCard({ ad }: AdCardProps) {
   let effectiveMaxAmount = ad.maxAmount;
   let availableCrypto: string | number = '...';
   let tradeIsPossible = true;
+
+  // Use the live creator data if available, otherwise fall back to the denormalized data
+  const displayUser = adCreator || ad.user;
+  const displayPhoto = adCreator?.photoURL || ad.user.photoURL;
+  const displayFeedback = adCreator?.feedbackScore ?? ad.user.feedbackScore;
+  const displayTrades = adCreator?.completedTrades ?? ad.user.completedTrades;
 
   if (ad.adType === 'sell') {
     if (!isWalletLoading) {
@@ -66,24 +76,34 @@ export function AdCard({ ad }: AdCardProps) {
     }
   }
 
-  const isLoading = ad.adType === 'sell' && isWalletLoading;
+  const isLoading = (ad.adType === 'sell' && isWalletLoading) || isCreatorLoading;
 
   return (
     <Card>
       <CardContent className="p-4">
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-center">
           {/* User Info */}
-          <Link href={`/users/${ad.user.userId}`} className="sm:col-span-1 flex items-center gap-3 hover:bg-muted/50 rounded-md p-2 -m-2 transition-colors">
-            {userAvatar && (
+          <Link href={`/users/${displayUser.userId}`} className="sm:col-span-1 flex items-center gap-3 hover:bg-muted/50 rounded-md p-2 -m-2 transition-colors">
+            {isLoading ? <Skeleton className="h-10 w-10 rounded-full" /> : (
               <Avatar>
-                <AvatarImage src={ad.user.photoURL || userAvatar.imageUrl} alt={ad.user.userId} data-ai-hint={userAvatar.imageHint} />
-                <AvatarFallback>{ad.user.userId.slice(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={displayPhoto || userAvatar?.imageUrl} alt={displayUser.userId} data-ai-hint={userAvatar?.imageHint} />
+                <AvatarFallback>{displayUser.userId.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
             )}
             <div>
-              <p className="font-semibold">{ad.user.userId}</p>
-              <p className="text-xs text-muted-foreground">{ad.user.completedTrades} trades</p>
-              <p className="text-xs text-muted-foreground">{ad.user.feedbackScore}% positive</p>
+              {isLoading ? (
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-3 w-12" />
+                  <Skeleton className="h-3 w-14" />
+                </div>
+              ) : (
+                <>
+                  <p className="font-semibold">{displayUser.userId}</p>
+                  <p className="text-xs text-muted-foreground">{displayTrades} trades</p>
+                  <p className="text-xs text-muted-foreground">{displayFeedback}% positive</p>
+                </>
+              )}
             </div>
           </Link>
           
