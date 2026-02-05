@@ -71,6 +71,7 @@ const adFormSchema = z.object({
   fixedRate: z.coerce.number({invalid_type_error: "A valid number is required."}).positive({message: "Fixed rate must be a positive number."}).optional(),
   minAmount: z.coerce.number().min(1, "Minimum amount is required."),
   maxAmount: z.coerce.number().min(1, "Maximum amount is required."),
+  paymentTimeLimit: z.coerce.number().min(30).default(30),
   terms: z.string().min(10, "Terms must be at least 10 characters.").max(500, "Terms cannot exceed 500 characters."),
   tags: z.array(z.string()).optional(),
 }).refine(data => {
@@ -119,9 +120,9 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
 
   const form = useForm<AdFormValues>({
     resolver: zodResolver(adFormSchema),
-    shouldUnregister: false, // Keep values in state when conditional fields are unmounted
+    shouldUnregister: false,
     defaultValues: ad 
-      ? { ...ad, ratePercent: ad.ratePercent ?? 5 } 
+      ? { ...ad, ratePercent: ad.ratePercent ?? 5, paymentTimeLimit: ad.paymentTimeLimit || 30 } 
       : {
           adType: "sell",
           crypto: "BTC",
@@ -129,7 +130,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
           paymentMethods: [],
           rateType: "market",
           ratePercent: 5,
-          // IMPORTANT: Do NOT set a default for fixedRate here. Let it be undefined.
+          paymentTimeLimit: 30,
           tags: [],
         },
   });
@@ -137,25 +138,35 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const watchedFields = form.watch();
   const currentMarketPrice = prices[watchedFields.crypto as CryptoCurrency] || 0;
   
-  useEffect(() => {
-    if (!currentMarketPrice || arePricesLoading) return;
+    useEffect(() => {
+        if (!currentMarketPrice) return
 
-    if (watchedFields.rateType === 'market') {
-        // If switching to market, ensure a default percent is set if not already present
-        if (form.getValues('ratePercent') === undefined) {
-            form.setValue('ratePercent', 5, { shouldValidate: true });
+        if (watchedFields.rateType === "market") {
+            // default market = 5%
+            if (watchedFields.ratePercent == null) {
+                form.setValue("ratePercent", 5, { shouldValidate: true })
+            }
+            // clear fixed price
+            form.setValue("fixedRate", undefined)
         }
-        // Clear fixed rate to avoid submission conflicts
-        form.setValue('fixedRate', undefined);
-    } else if (watchedFields.rateType === 'fixed') {
-        // If switching to fixed, set to market price ONLY if no fixed price is already set
-        if (form.getValues('fixedRate') === undefined) {
-            form.setValue('fixedRate', Number(currentMarketPrice.toFixed(2)), { shouldValidate: true });
+
+        if (watchedFields.rateType === "fixed") {
+            // default fixed = current market price
+            if (watchedFields.fixedRate == null) {
+                form.setValue(
+                    "fixedRate",
+                    Number(currentMarketPrice.toFixed(2)),
+                    { shouldValidate: true }
+                )
+            }
+            // clear market percent
+            form.setValue("ratePercent", undefined)
         }
-        // Clear market rate to avoid submission conflicts
-        form.setValue('ratePercent', undefined);
-    }
-  }, [watchedFields.rateType, watchedFields.crypto, currentMarketPrice, arePricesLoading, form]);
+    }, [
+        watchedFields.rateType,
+        watchedFields.crypto,
+        currentMarketPrice,
+    ]);
 
 
   useEffect(() => {
@@ -221,6 +232,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
         fixedRate: data.rateType === 'fixed' ? data.fixedRate : undefined,
         minAmount: data.minAmount,
         maxAmount: data.maxAmount,
+        paymentTimeLimit: data.paymentTimeLimit,
         terms: data.terms,
         tags: data.tags,
         active: ad?.active ?? true, // Preserve active status on edit, default to true on create
@@ -310,7 +322,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                     <Combobox
                         options={fiatOptions}
                         value={field.value}
-                        onChange={field.onChange}
+                        onChange={(val) => form.setValue("fiatCurrency", val, { shouldValidate: true })}
                         placeholder="Select fiat currency"
                     />
                     <FormMessage />
@@ -462,7 +474,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
               />
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <FormField
                 control={form.control}
                 name="minAmount"
@@ -483,6 +495,31 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                     <FormLabel>Maximum Trade Amount</FormLabel>
                     <Input type="number" placeholder="5000" {...field} />
                     <FormDescription>In your selected fiat currency.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="paymentTimeLimit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Window</FormLabel>
+                    <Select onValueChange={(val) => field.onChange(parseInt(val))} defaultValue={String(field.value)}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a time limit" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {[30, 60, 90, 120].map(time => (
+                          <SelectItem key={time} value={String(time)}>
+                            {time} minutes
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>Time buyer has to pay.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -93,7 +93,7 @@ export async function initiateTrade(
         status: 'active',
         claimedByBuyer: false,
         createdAt: new Date().toISOString(),
-        expiresAt: add(new Date(), { minutes: 30 }).toISOString(),
+        expiresAt: add(new Date(), { minutes: ad.paymentTimeLimit || 30 }).toISOString(),
         buyer: { userId: buyerData.userId },
         seller: { userId: ad.user.userId }
       };

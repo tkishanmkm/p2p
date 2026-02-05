@@ -165,7 +165,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confirm Payment</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Do not click confirm if you haven't paid.
+                      Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Only confirm after you have fully sent the payment. Falsely confirming payment may result in a dispute and suspension of your account.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

@@ -33,13 +33,11 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       completedTrades: user.completedTrades,
       photoURL: user.photoURL,
     },
+    createdAt: new Date().toISOString()
   };
 
   try {
-    const docRef = await addDoc(adsCollection, {
-      ...newAdData,
-      createdAt: new Date().toISOString()
-    });
+    const docRef = await addDoc(adsCollection, newAdData);
     return docRef;
   } catch (error) {
     console.error("Error creating P2P Ad: ", error);

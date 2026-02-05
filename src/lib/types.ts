@@ -88,6 +88,7 @@ export type P2PAd = {
   fixedRate?: number;
   minAmount: number;
   maxAmount: number;
+  paymentTimeLimit: number;
   terms: string;
   tags?: string[];
   active: boolean;

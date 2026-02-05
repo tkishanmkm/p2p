@@ -367,6 +367,10 @@
           "type": "number",
           "description": "Maximum trade amount."
         },
+        "paymentTimeLimit": {
+          "type": "number",
+          "description": "Time in minutes for the buyer to complete payment."
+        },
         "terms": {
           "type": "string",
           "description": "Terms and conditions of the ad."
@@ -397,6 +401,7 @@
         "rateType",
         "minAmount",
         "maxAmount",
+        "paymentTimeLimit",
         "terms",
         "active",
         "createdAt"
