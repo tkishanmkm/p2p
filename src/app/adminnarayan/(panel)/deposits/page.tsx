@@ -42,6 +42,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn, toDate } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminStatus } from "@/hooks/use-admin-status";
@@ -56,14 +63,22 @@ const statusColors: Record<Deposit['status'], string> = {
   expired: "border-orange-500/50 text-orange-600 bg-orange-50",
 };
 
-function DepositsTable({ status, searchTerm }: { status?: Deposit['status'], searchTerm: string }) {
-    const { firestore, user: adminUser } = useFirebase();
+function DepositsTable({ 
+    status, 
+    searchTerm, 
+    onRowClick, 
+    onApproveClick, 
+    onDeclineClick 
+}: { 
+    status?: Deposit['status'], 
+    searchTerm: string, 
+    onRowClick: (deposit: Deposit) => void,
+    onApproveClick: (deposit: Deposit) => void,
+    onDeclineClick: (deposit: Deposit) => void
+}) {
+    const { firestore } = useFirebase();
     const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
     const { toast } = useToast();
-    const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
-    const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
-    const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
-    const [editableAmount, setEditableAmount] = useState('');
     
     const [deposits, setDeposits] = useState<Deposit[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -93,7 +108,6 @@ function DepositsTable({ status, searchTerm }: { status?: Deposit['status'], sea
                 const querySnapshot = await getDocs(q);
                 let depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
 
-                // Sort on the client to avoid composite index requirements
                 depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
 
                 setDeposits(depositsData);
@@ -126,7 +140,88 @@ function DepositsTable({ status, searchTerm }: { status?: Deposit['status'], sea
         );
     }, [deposits, searchTerm]);
 
+    return (
+        <Table>
+            <TableHeader>
+            <TableRow>
+                <TableHead>Deposit ID</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Crypto Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>TxID</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+            </TableHeader>
+            <TableBody>
+            {isLoading && <TableRow><TableCell colSpan={7}>Loading...</TableCell></TableRow>}
+            {!isLoading && filteredDeposits?.map((deposit) => (
+                <TableRow key={deposit.id} onClick={() => onRowClick(deposit)} className="cursor-pointer">
+                <TableCell className="font-mono text-xs max-w-[100px] truncate">{deposit.id}</TableCell>
+                <TableCell className="font-medium">{deposit.userDisplayName}</TableCell>
+                <TableCell>{deposit.amount} {deposit.crypto}</TableCell>
+                <TableCell>
+                    <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
+                    {deposit.status.replace(/_/g, ' ')}
+                    </Badge>
+                </TableCell>
+                <TableCell className="font-mono text-xs truncate max-w-[100px]">{deposit.txId || 'N/A'}</TableCell>
+                <TableCell>{toDate(deposit.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                <TableCell className="text-right">
+                    {deposit.status === 'awaiting_confirmation' && (
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onApproveClick(deposit); }}>
+                                <Check className="mr-2 h-4 w-4" /> Approve
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDeclineClick(deposit); }}>
+                                <X className="mr-2 h-4 w-4" /> Decline
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </TableCell>
+                </TableRow>
+            ))}
+            {!isLoading && !filteredDeposits?.length && <TableRow><TableCell colSpan={7} className="text-center h-24">No deposits found.</TableCell></TableRow>}
+            </TableBody>
+        </Table>
+    );
+}
 
+export default function AdminDepositsPage() {
+    const { firestore, user: adminUser } = useFirebase();
+    const { toast } = useToast();
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
+    const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
+    const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
+    const [editableAmount, setEditableAmount] = useState('');
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+    const handleApproveClick = (deposit: Deposit) => {
+        setSelectedDeposit(deposit);
+        setEditableAmount(deposit.amount.toString());
+        setIsApproveAlertOpen(true);
+    };
+
+    const handleDeclineClick = (deposit: Deposit) => {
+        setSelectedDeposit(deposit);
+        setIsDeclineAlertOpen(true);
+    };
+
+    const handleRowClick = (deposit: Deposit) => {
+        setSelectedDeposit(deposit);
+        setIsDetailsOpen(true);
+    };
+    
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast({ title: "Copied to clipboard" });
@@ -144,7 +239,6 @@ function DepositsTable({ status, searchTerm }: { status?: Deposit['status'], sea
         try {
             await approveDeposit(firestore, selectedDeposit, finalAmount, adminUser.uid);
             toast({ title: "Deposit Approved", description: `User ${selectedDeposit.userDisplayName}'s balance has been updated.` });
-            setDeposits(deposits?.filter(d => d.id !== selectedDeposit.id) || null);
         } catch (e: any) {
             toast({ variant: "destructive", title: "Approval Failed", description: e.message });
         }
@@ -157,7 +251,6 @@ function DepositsTable({ status, searchTerm }: { status?: Deposit['status'], sea
         try {
             await declineDeposit(firestore, selectedDeposit, adminUser.uid);
             toast({ title: "Deposit Declined" });
-            setDeposits(deposits?.filter(d => d.id !== selectedDeposit.id) || null);
         } catch (e: any) {
             toast({ variant: "destructive", title: "Decline Failed", description: e.message });
         }
@@ -167,66 +260,63 @@ function DepositsTable({ status, searchTerm }: { status?: Deposit['status'], sea
 
     return (
         <>
-            <Table>
-                <TableHeader>
-                <TableRow>
-                    <TableHead>Deposit ID</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Crypto Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>TxID</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                {isLoading && <TableRow><TableCell colSpan={7}>Loading...</TableCell></TableRow>}
-                {!isLoading && filteredDeposits?.map((deposit) => (
-                    <TableRow key={deposit.id}>
-                    <TableCell className="font-mono text-xs max-w-[100px] truncate">
-                        <Button variant="link" className="p-0 h-auto" onClick={() => copyToClipboard(deposit.id)}>
-                            {deposit.id}
-                        </Button>
-                    </TableCell>
-                    <TableCell className="font-medium">{deposit.userDisplayName}</TableCell>
-                    <TableCell>{deposit.amount} {deposit.crypto}</TableCell>
-                    <TableCell>
-                        <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
-                        {deposit.status.replace(/_/g, ' ')}
-                        </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs truncate max-w-[100px]">{deposit.txId || 'N/A'}</TableCell>
-                    <TableCell>{toDate(deposit.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
-                    <TableCell className="text-right">
-                        {deposit.status === 'awaiting_confirmation' && (
-                            <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="ghost">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => { 
-                                    setSelectedDeposit(deposit); 
-                                    setEditableAmount(deposit.amount.toString());
-                                    setIsApproveAlertOpen(true); 
-                                    }}>
-                                    <Check className="mr-2 h-4 w-4" /> Approve
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => { setSelectedDeposit(deposit); setIsDeclineAlertOpen(true); }}>
-                                    <X className="mr-2 h-4 w-4" /> Decline
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
-                    </TableCell>
-                    </TableRow>
-                ))}
-                {!isLoading && !filteredDeposits?.length && <TableRow><TableCell colSpan={7} className="text-center h-24">No deposits found.</TableCell></TableRow>}
-                </TableBody>
-            </Table>
+            <div className="flex items-center justify-between">
+                <h1 className="text-lg font-semibold md:text-2xl">Deposit Requests</h1>
+            </div>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Filter & Search</CardTitle>
+                    <div className="relative mt-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search by Deposit ID, User ID, TxID, or amount..." 
+                            className="pl-10" 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </CardHeader>
+            </Card>
+            <Tabs defaultValue="awaiting_confirmation" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="awaiting_confirmation">Pending Approval</TabsTrigger>
+                    <TabsTrigger value="pending">Pending User Action</TabsTrigger>
+                    <TabsTrigger value="all">All Deposits</TabsTrigger>
+                </TabsList>
+                <TabsContent value="awaiting_confirmation">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Deposits Pending Approval</CardTitle>
+                            <CardDescription>Users have confirmed these transfers. Please verify and approve or decline.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                           <DepositsTable status="awaiting_confirmation" searchTerm={searchTerm} onRowClick={handleRowClick} onApproveClick={handleApproveClick} onDeclineClick={handleDeclineClick} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                 <TabsContent value="pending">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Deposits Pending User Action</CardTitle>
+                            <CardDescription>Users have initiated these deposits but have not yet confirmed the transfer.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                           <DepositsTable status="pending" searchTerm={searchTerm} onRowClick={handleRowClick} onApproveClick={handleApproveClick} onDeclineClick={handleDeclineClick} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                 <TabsContent value="all">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>All Deposits</CardTitle>
+                            <CardDescription>A complete history of all deposit requests on the platform.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                           <DepositsTable searchTerm={searchTerm} onRowClick={handleRowClick} onApproveClick={handleApproveClick} onDeclineClick={handleDeclineClick}/>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
             <AlertDialog open={isApproveAlertOpen} onOpenChange={setIsApproveAlertOpen}>
                 <AlertDialogContent>
@@ -293,72 +383,28 @@ function DepositsTable({ status, searchTerm }: { status?: Deposit['status'], sea
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </>
-    );
-}
-
-export default function AdminDepositsPage() {
-    const [searchTerm, setSearchTerm] = useState("");
-
-    return (
-        <>
-            <div className="flex items-center justify-between">
-                <h1 className="text-lg font-semibold md:text-2xl">Deposit Requests</h1>
-            </div>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Filter & Search</CardTitle>
-                    <div className="relative mt-2">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search by Deposit ID, User ID, TxID, or amount..." 
-                            className="pl-10" 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </CardHeader>
-            </Card>
-            <Tabs defaultValue="awaiting_confirmation" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="awaiting_confirmation">Pending Approval</TabsTrigger>
-                    <TabsTrigger value="pending">Pending User Action</TabsTrigger>
-                    <TabsTrigger value="all">All Deposits</TabsTrigger>
-                </TabsList>
-                <TabsContent value="awaiting_confirmation">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Deposits Pending Approval</CardTitle>
-                            <CardDescription>Users have confirmed these transfers. Please verify and approve or decline.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                           <DepositsTable status="awaiting_confirmation" searchTerm={searchTerm} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                 <TabsContent value="pending">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Deposits Pending User Action</CardTitle>
-                            <CardDescription>Users have initiated these deposits but have not yet confirmed the transfer.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                           <DepositsTable status="pending" searchTerm={searchTerm} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                 <TabsContent value="all">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>All Deposits</CardTitle>
-                            <CardDescription>A complete history of all deposit requests on the platform.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                           <DepositsTable searchTerm={searchTerm}/>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+            <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Deposit Details</DialogTitle>
+                        <DialogDescription>Full details for the deposit request.</DialogDescription>
+                    </DialogHeader>
+                    {selectedDeposit && (
+                        <div className="space-y-4 py-4 text-sm">
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Deposit ID</span><div className="flex items-center gap-2"><span className="font-mono text-xs">{selectedDeposit.id}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.id!)}><Copy className="h-3 w-3" /></Button></div></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedDeposit.userDisplayName}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Status</span><Badge variant="outline" className={cn("capitalize", statusColors[selectedDeposit.status])}>{selectedDeposit.status.replace(/_/g, ' ')}</Badge></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Requested Amount</span><span className="font-medium">{selectedDeposit.amount} {selectedDeposit.crypto}</span></div>
+                            {selectedDeposit.finalAmount && <div className="flex justify-between items-center"><span className="text-muted-foreground">Approved Amount</span><span className="font-medium">{selectedDeposit.finalAmount} {selectedDeposit.crypto}</span></div>}
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Chain</span><span className="font-medium">{selectedDeposit.chain}</span></div>
+                            <div className="flex justify-between items-start gap-4"><span className="text-muted-foreground flex-shrink-0">TxID</span><div className="flex items-center gap-2"><span className="font-mono text-xs break-all text-right">{selectedDeposit.txId || 'N/A'}</span>{selectedDeposit.txId && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.txId!)}><Copy className="h-3 w-3" /></Button>}</div></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Date Requested</span><span className="font-medium">{toDate(selectedDeposit.createdAt)?.toLocaleString()}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Expires</span><span className="font-medium">{toDate(selectedDeposit.timerEnd)?.toLocaleString()}</span></div>
+                            {selectedDeposit.adminId && <div className="flex justify-between items-center"><span className="text-muted-foreground">Processed by Admin</span><span className="font-mono text-xs">{selectedDeposit.adminId}</span></div>}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const statusColors: Record<Trade['status'], string> = {
   active: "border-blue-500/50 text-blue-600 bg-blue-50",
@@ -40,6 +41,7 @@ const statusColors: Record<Trade['status'], string> = {
 
 export default function AdminTradesPage() {
   const { firestore } = useFirebase();
+  const router = useRouter();
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [trades, setTrades] = useState<Trade[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,15 +135,15 @@ export default function AdminTradesPage() {
                 </TableRow>
               )}
               {!isLoading && filteredTrades?.map((trade) => (
-                <TableRow key={trade.id}>
+                <TableRow key={trade.id} onClick={() => router.push(`/trade/${trade.id}`)} className="cursor-pointer">
                   <TableCell className="font-mono text-xs">{trade.tradeId}</TableCell>
                   <TableCell>
-                    <Link href={`/users/${trade.buyer.userId}`} className="hover:underline font-medium">
+                    <Link href={`/users/${trade.buyer.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
                         {trade.buyer.userId}
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <Link href={`/users/${trade.seller.userId}`} className="hover:underline font-medium">
+                    <Link href={`/users/${trade.seller.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
                         {trade.seller.userId}
                     </Link>
                   </TableCell>
@@ -153,7 +155,7 @@ export default function AdminTradesPage() {
                   </TableCell>
                   <TableCell>{toDate(trade.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()}>
                         <Link href={`/trade/${trade.id}`}>View</Link>
                     </Button>
                   </TableCell>

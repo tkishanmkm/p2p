@@ -17,6 +17,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
@@ -40,6 +47,8 @@ export default function AdminSupportPage() {
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [tickets, setTickets] = useState<SupportTicket[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (isAdminLoading) return;
@@ -77,6 +86,11 @@ export default function AdminSupportPage() {
         toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
     }
   };
+  
+  const handleViewDetails = (ticket: SupportTicket) => {
+    setSelectedTicket(ticket);
+    setIsDetailsOpen(true);
+  };
 
   return (
     <>
@@ -105,7 +119,7 @@ export default function AdminSupportPage() {
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={4} className="text-center">Loading tickets...</TableCell></TableRow>}
               {!isLoading && tickets && tickets.length > 0 ? tickets.map((ticket) => (
-                <TableRow key={ticket.id}>
+                <TableRow key={ticket.id} onClick={() => handleViewDetails(ticket)} className="cursor-pointer">
                   <TableCell className="font-medium">{ticket.userId || 'N/A'}</TableCell>
                   <TableCell>
                     <Badge variant={
@@ -120,16 +134,16 @@ export default function AdminSupportPage() {
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                        <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">Toggle menu</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, 'In Progress')}>Mark as In Progress</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, 'Closed')}>Close Ticket</DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleViewDetails(ticket)}}>View Details</DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleStatusChange(ticket.id, 'In Progress')}}>Mark as In Progress</DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleStatusChange(ticket.id, 'Closed')}}>Close Ticket</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -145,6 +159,20 @@ export default function AdminSupportPage() {
           </Table>
         </CardContent>
       </Card>
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Support Ticket Details</DialogTitle>
+                 {selectedTicket && <DialogDescription>From: {selectedTicket.userId} | Submitted: {toDate(selectedTicket.createdAt)?.toLocaleString()}</DialogDescription>}
+            </DialogHeader>
+            {selectedTicket && (
+                <div className="space-y-4 py-4">
+                    <h4 className="font-medium">Message:</h4>
+                    <p className="text-sm p-4 bg-muted rounded-md text-muted-foreground whitespace-pre-wrap">{selectedTicket.message}</p>
+                </div>
+            )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

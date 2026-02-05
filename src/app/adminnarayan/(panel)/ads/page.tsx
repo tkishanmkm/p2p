@@ -17,6 +17,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import type { P2PAd } from "@/lib/types";
 import { cn, toDate } from "@/lib/utils";
@@ -34,6 +41,9 @@ export default function AdminAdsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+
+  const [selectedAd, setSelectedAd] = useState<P2PAd | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (isAdminLoading) return;
@@ -71,6 +81,11 @@ export default function AdminAdsPage() {
         ad.fiatCurrency.toLowerCase().includes(lower)
     );
   }, [ads, searchTerm]);
+  
+  const handleRowClick = (ad: P2PAd) => {
+    setSelectedAd(ad);
+    setIsDetailsOpen(true);
+  };
 
   return (
     <>
@@ -115,7 +130,7 @@ export default function AdminAdsPage() {
                 </TableRow>
               )}
               {!isLoading && filteredAds?.map((ad) => (
-                <TableRow key={ad.id}>
+                <TableRow key={ad.id} onClick={() => handleRowClick(ad)} className="cursor-pointer">
                   <TableCell className="font-mono text-xs">{ad.publicAdId}</TableCell>
                    <TableCell>
                      <Link href={`/users/${ad.user.userId}`} className="hover:underline font-medium">
@@ -157,6 +172,29 @@ export default function AdminAdsPage() {
           </Table>
         </CardContent>
       </Card>
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Ad Details</DialogTitle>
+                <DialogDescription>Public Ad ID: {selectedAd?.publicAdId}</DialogDescription>
+            </DialogHeader>
+            {selectedAd && (
+                 <div className="space-y-4 py-4 text-sm">
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedAd.user.userId}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Type</span><Badge variant={selectedAd.adType === "sell" ? "secondary" : "outline"} className="capitalize">{selectedAd.adType}</Badge></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Asset</span><span className="font-medium">{selectedAd.crypto} / {selectedAd.fiatCurrency}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Price</span><span className="font-medium">{selectedAd.rateType === 'fixed' ? `${selectedAd.fixedRate} ${selectedAd.fiatCurrency}` : `Market ${selectedAd.ratePercent}%`}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Limit</span><span className="font-medium">{selectedAd.minAmount} - {selectedAd.maxAmount} {selectedAd.fiatCurrency}</span></div>
+                    <div className="flex justify-between items-start gap-4"><span className="text-muted-foreground">Payment Methods</span><div className="flex flex-wrap gap-1 justify-end">{selectedAd.paymentMethods.map(pm => <Badge key={pm} variant="outline">{pm}</Badge>)}</div></div>
+                    {selectedAd.tags && selectedAd.tags.length > 0 && <div className="flex justify-between items-start gap-4"><span className="text-muted-foreground">Tags</span><div className="flex flex-wrap gap-1 justify-end">{selectedAd.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}</div></div>}
+                    <div className="space-y-1">
+                        <span className="text-muted-foreground">Terms</span>
+                        <p className="p-2 bg-muted rounded-md text-xs">{selectedAd.terms}</p>
+                    </div>
+                </div>
+            )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -45,6 +45,7 @@ import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 const statusColors: Record<Dispute['status'], string> = {
   open: "border-red-500/50 text-red-600 bg-red-50",
@@ -55,6 +56,7 @@ const statusColors: Record<Dispute['status'], string> = {
 export default function AdminDisputesPage() {
   const { firestore, user: adminUser } = useFirebase();
   const { toast } = useToast();
+  const router = useRouter();
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [showAll, setShowAll] = useState(false);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
@@ -173,9 +175,9 @@ export default function AdminDisputesPage() {
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={6}>Loading disputes...</TableCell></TableRow>}
               {!isLoading && filteredDisputes?.map((dispute) => (
-                <TableRow key={dispute.id}>
+                <TableRow key={dispute.id} onClick={() => router.push(`/trade/${dispute.tradeId}`)} className="cursor-pointer">
                   <TableCell>
-                    <Button variant="link" asChild className="p-0">
+                    <Button variant="link" asChild className="p-0" onClick={(e) => e.stopPropagation()}>
                         <Link href={`/trade/${dispute.tradeId}`} target="_blank">{dispute.tradeId.substring(0,8)}...</Link>
                     </Button>
                   </TableCell>
@@ -191,17 +193,17 @@ export default function AdminDisputesPage() {
                     {dispute.status === 'open' && (
                         <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Toggle menu</span>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Resolve</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => { setSelectedDispute(dispute); setAwardTo('buyer'); setIsResolveAlertOpen(true); }}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedDispute(dispute); setAwardTo('buyer'); setIsResolveAlertOpen(true); }}>
                                 Award to Buyer
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { setSelectedDispute(dispute); setAwardTo('seller'); setIsResolveAlertOpen(true); }}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedDispute(dispute); setAwardTo('seller'); setIsResolveAlertOpen(true); }}>
                                 Award to Seller
                             </DropdownMenuItem>
                         </DropdownMenuContent>
