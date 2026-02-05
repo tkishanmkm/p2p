@@ -28,26 +28,24 @@ export async function approveDeposit(
   await runTransaction(db, async (transaction) => {
     const walletDoc = await transaction.get(userWalletRef);
     let newBalance = approvedAmount;
+    let currentLockedBalance = 0;
 
     if (walletDoc.exists()) {
       const walletData = walletDoc.data() as UserWallet;
       newBalance += (walletData.balance || 0);
-      transaction.update(userWalletRef, {
-        balance: newBalance,
-        updatedAt: new Date().toISOString(),
-      });
-    } else {
-      // Wallet doesn't exist, create it.
-      const newWallet: UserWallet = {
-        id: deposit.crypto,
-        userId: deposit.userId,
-        crypto: deposit.crypto,
-        balance: newBalance,
-        lockedBalance: 0,
-        updatedAt: new Date().toISOString(),
-      };
-      transaction.set(userWalletRef, newWallet);
+      currentLockedBalance = walletData.lockedBalance || 0;
     }
+
+    // Use set with merge to safely update or create the wallet
+    transaction.set(userWalletRef, {
+        balance: newBalance,
+        lockedBalance: currentLockedBalance, // Preserve existing locked balance
+        crypto: deposit.crypto,
+        userId: deposit.userId,
+        id: deposit.crypto,
+        updatedAt: new Date().toISOString(),
+    }, { merge: true });
+
 
     // Mark the deposit as approved
     transaction.update(depositRef, {
@@ -110,8 +108,9 @@ export async function approveWithdrawal(
       throw new Error("Insufficient locked balance. Critical error.");
     }
 
-    // Deduct from locked balance
+    // Deduct from locked balance, preserving available balance
     transaction.update(userWalletRef, {
+      balance: wallet.balance || 0, // Preserve available balance
       lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
       updatedAt: new Date().toISOString(),
     });
@@ -257,6 +256,7 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
       transaction.update(sellerWalletRef, {
         balance: (sellerWallet.balance || 0) + trade.amount,
         lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
+        updatedAt: new Date().toISOString()
       });
       transaction.update(tradeRef, { status: "cancelled" });
     } else { // Winner is buyer
@@ -264,7 +264,9 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
       // The buyer will claim it via the `claimFundsForTrade` function automatically
       if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to release.");
       transaction.update(sellerWalletRef, {
-        lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount
+        balance: sellerWallet.balance || 0, // Preserve available balance
+        lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
+        updatedAt: new Date().toISOString()
       });
       transaction.update(tradeRef, { status: "released" });
     }

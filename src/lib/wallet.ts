@@ -167,8 +167,9 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
         throw new Error("Seller has insufficient locked funds. Critical error.");
     }
     
-    // Decrement seller's locked balance
+    // Decrement seller's locked balance, preserving available balance
     transaction.update(sellerWalletRef, {
+        balance: sellerWallet.balance || 0, // Preserve available balance
         lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
         updatedAt: new Date().toISOString(),
     });
