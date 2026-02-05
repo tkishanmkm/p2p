@@ -93,7 +93,7 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        allow create: if request.auth.uid == request.resource.data.userId;
+        allow create: if isOwner(request.resource.data.userId);
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
@@ -115,6 +115,13 @@ service cloud.firestore {
         }
     }
 
+    match /transfers/{transferId} {
+      allow get: if isSignedIn() && (isOwner(resource.data.senderId) || isOwner(resource.data.recipientId) || isAdmin());
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(request.resource.data.senderId);
+      allow update, delete: if false;
+    }
+
     match /support_tickets/{ticketId} {
         allow create: if isSignedIn() && isOwner(request.resource.data.userId);
         allow read, list, update: if isAdmin();
@@ -130,3 +137,5 @@ service cloud.firestore {
     }
   }
 }
+
+  

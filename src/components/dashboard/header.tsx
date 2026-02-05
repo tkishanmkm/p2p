@@ -18,6 +18,7 @@ import {
   LogOut,
   User,
   Settings,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +49,7 @@ const navItems = [
   { href: "/wallets", label: "Wallets", icon: Wallet },
   { href: "/buy", label: "Buy Coin", icon: ArrowDownToLine },
   { href: "/sell", label: "Sell Coin", icon: ArrowUpFromLine },
+  { href: "/transfer", label: "Transfer", icon: Send },
   { href: "/ads/create", label: "Create Ad", icon: PlusCircle },
   { href: "/my-ads", label: "My Ads", icon: FileText },
   { href: "/trades", label: "My Trades", icon: ArrowLeftRight },
@@ -246,3 +248,5 @@ export function DashboardHeader() {
     </header>
   );
 }
+
+  

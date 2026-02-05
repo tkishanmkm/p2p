@@ -28,6 +28,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Database,
+  Send,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -68,6 +69,7 @@ export function AdminSidebar() {
     { href: "/adminnarayan/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/adminnarayan/users", label: "Users", icon: Users },
     { href: "/adminnarayan/trades", label: "Trades", icon: ArrowLeftRight },
+    { href: "/adminnarayan/transfers", label: "Transfers", icon: Send },
     { href: "/adminnarayan/deposits", label: "Deposits", icon: ArrowDownToLine, badge: pendingDeposits?.length || 0 },
     { href: "/adminnarayan/withdrawals", label: "Withdrawals", icon: ArrowUpFromLine, badge: pendingWithdrawals?.length || 0 },
     { href: "/adminnarayan/ads", label: "Ads", icon: FileText },
@@ -155,3 +157,5 @@ export function AdminSidebar() {
     </Sidebar>
   );
 }
+
+  

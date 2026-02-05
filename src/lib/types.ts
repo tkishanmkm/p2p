@@ -124,6 +124,18 @@ export type Trade = {
   seller: Pick<User, 'userId'>;
 };
 
+export type CoinTransfer = {
+  id: string;
+  publicId: string;
+  senderId: string;
+  recipientId: string;
+  senderUsername: string;
+  recipientUsername: string;
+  crypto: CryptoCurrency;
+  amount: number;
+  createdAt: string; // TIMESTAMP
+};
+
 export type TradeChatMessage = {
   id: string;
   tradeId: string;
@@ -192,3 +204,5 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
+
+  
