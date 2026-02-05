@@ -1,4 +1,4 @@
-// This is a new file
+
 "use client";
 
 import { useState } from "react";
@@ -17,6 +17,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -168,7 +169,7 @@ export function WithdrawDialog({ open, onOpenChange, userWallets }: WithdrawDial
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount</FormLabel>
+                  <FormLabel>Amount {selectedCrypto ? `in ${selectedCrypto}` : ''}</FormLabel>
                   <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
                   {selectedWallet && <FormDescription>Available balance: {selectedWallet.balance.toFixed(8)} {selectedWallet.crypto}</FormDescription>}
                   <FormMessage />
