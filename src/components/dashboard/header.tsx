@@ -214,7 +214,7 @@ export function DashboardHeader() {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-0 sm:gap-1 md:gap-2">
+      <div className="flex items-center gap-0">
         <ModeToggle />
         <div className="flex items-center">
             <DropdownMenu>
@@ -248,7 +248,7 @@ export function DashboardHeader() {
 
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex shrink-0 items-center gap-2 p-1 h-auto rounded-md">
+                <Button variant="ghost" className="flex shrink-0 items-center gap-1 p-1 h-auto rounded-md">
                     <Avatar className="h-8 w-8 shrink-0">
                         {user?.photoURL ? (
                         <AvatarImage src={user.photoURL} alt={user.displayName || "User Avatar"} />
@@ -259,8 +259,8 @@ export function DashboardHeader() {
                         )}
                     </Avatar>
                     <div className="flex-shrink min-w-0 text-left">
-                        {user?.displayName ? <p className="font-semibold text-sm truncate">{user.displayName}</p> : <Skeleton className="h-5 w-20" />}
-                        <p className="text-xs text-muted-foreground truncate">${totalWalletValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                        {user?.displayName ? <p className="font-semibold text-xs truncate">{user.displayName}</p> : <Skeleton className="h-5 w-20" />}
+                        <p className="text-[10px] text-muted-foreground truncate">${totalWalletValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                     </div>
                 </Button>
             </DropdownMenuTrigger>
