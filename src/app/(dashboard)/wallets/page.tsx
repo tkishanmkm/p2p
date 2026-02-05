@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
 import { CryptoCurrency, User, UserWallet, Deposit, Withdrawal } from "@/lib/types";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
-import { Plus, Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw } from "lucide-react";
+import { Plus, Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
@@ -69,6 +69,12 @@ export default function WalletsPage() {
 
   const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null);
   const [isWithdrawalsLoading, setIsWithdrawalsLoading] = useState(true);
+  
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied!", description: "Address copied to clipboard." });
+  };
+
 
   useEffect(() => {
     if (!authUser || !firestore) {
@@ -138,18 +144,18 @@ export default function WalletsPage() {
       </div>
       <div className="grid gap-8">
         <Card>
-          <CardHeader className="flex flex-row items-center">
-            <div className="grid gap-2">
+          <CardHeader className="flex flex-col md:flex-row md:items-center">
+            <div className="grid gap-2 flex-grow">
               <CardTitle>Crypto Balances</CardTitle>
               <CardDescription>
                 Your personal cryptocurrency wallets on the platform.
               </CardDescription>
             </div>
-            <div className="ml-auto flex gap-2">
-              <Button variant="outline" onClick={() => setIsWithdrawOpen(true)}>
+            <div className="flex gap-2 mt-4 md:mt-0">
+              <Button variant="outline" onClick={() => setIsWithdrawOpen(true)} className="w-full md:w-auto">
                 <ArrowUpFromLine className="mr-2 h-4 w-4" /> Withdraw
               </Button>
-              <Button onClick={() => setIsDepositOpen(true)} disabled={isDepositDisabled}>
+              <Button onClick={() => setIsDepositOpen(true)} disabled={isDepositDisabled} className="w-full md:w-auto">
                 <ArrowDownToLine className="mr-2 h-4 w-4" /> Deposit
               </Button>
             </div>
@@ -164,31 +170,61 @@ export default function WalletsPage() {
               </div>
             )}
             {!isWalletsLoading && wallets && wallets.length > 0 && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Asset</TableHead>
-                    <TableHead>Total Balance</TableHead>
-                    <TableHead>Available</TableHead>
-                    <TableHead>Locked</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {wallets.map(wallet => (
-                    <TableRow key={wallet.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <CryptoLogo crypto={wallet.crypto} />
-                          <span className="font-medium">{wallet.crypto}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">{(wallet.balance + wallet.lockedBalance).toFixed(8)}</TableCell>
-                      <TableCell>{wallet.balance.toFixed(8)}</TableCell>
-                      <TableCell className="text-muted-foreground">{wallet.lockedBalance.toFixed(8)}</TableCell>
+              <>
+                {/* Desktop Table */}
+                <Table className="hidden md:table">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Asset</TableHead>
+                      <TableHead>Total Balance</TableHead>
+                      <TableHead>Available</TableHead>
+                      <TableHead>Locked</TableHead>
                     </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {wallets.map(wallet => (
+                      <TableRow key={wallet.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <CryptoLogo crypto={wallet.crypto} />
+                            <span className="font-medium">{wallet.crypto}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{(wallet.balance + wallet.lockedBalance).toFixed(8)}</TableCell>
+                        <TableCell>{wallet.balance.toFixed(8)}</TableCell>
+                        <TableCell className="text-muted-foreground">{wallet.lockedBalance.toFixed(8)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {/* Mobile Cards */}
+                <div className="md:hidden space-y-4">
+                  {wallets.map(wallet => (
+                    <Card key={wallet.id}>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                         <div className="flex items-center gap-3">
+                            <CryptoLogo crypto={wallet.crypto} />
+                            <CardTitle className="text-lg">{wallet.crypto}</CardTitle>
+                          </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total</span>
+                          <span className="font-medium">{(wallet.balance + wallet.lockedBalance).toFixed(8)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Available</span>
+                          <span>{wallet.balance.toFixed(8)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Locked</span>
+                          <span>{wallet.lockedBalance.toFixed(8)}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -208,7 +244,9 @@ export default function WalletsPage() {
                     </div>
                 )}
                  {!isDepositsLoading && deposits && deposits.length > 0 && (
-                    <Table>
+                   <>
+                    {/* Desktop Table */}
+                    <Table className="hidden md:table">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
@@ -232,6 +270,28 @@ export default function WalletsPage() {
                             ))}
                         </TableBody>
                     </Table>
+                    {/* Mobile Cards */}
+                    <div className="md:hidden space-y-4">
+                      {deposits.map(deposit => (
+                        <Card key={deposit.id}>
+                          <CardHeader className="flex flex-row items-center justify-between pb-2">
+                              <CardTitle className="text-base">{deposit.amount} {deposit.crypto}</CardTitle>
+                              <Badge variant="outline" className={cn("capitalize", depositStatusColors[deposit.status])}>{deposit.status.replace(/_/g, ' ')}</Badge>
+                          </CardHeader>
+                          <CardContent className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Date</span>
+                              <span>{toDate(deposit.createdAt)?.toLocaleString() ?? 'N/A'}</span>
+                            </div>
+                             <div className="flex justify-between">
+                              <span className="text-muted-foreground">Chain</span>
+                              <span>{deposit.chain}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                   </>
                  )}
             </CardContent>
         </Card>
@@ -251,39 +311,74 @@ export default function WalletsPage() {
                     </div>
                 )}
                  {!isWithdrawalsLoading && withdrawals && withdrawals.length > 0 && (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Asset</TableHead>
-                                <TableHead>Amount</TableHead>
-                                <TableHead>Address</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {withdrawals.map(w => (
-                                <TableRow key={w.id}>
-                                    <TableCell className="text-muted-foreground">{toDate(w.createdAt)?.toLocaleString() ?? 'Invalid Date'}</TableCell>
-                                    <TableCell className="font-medium">{w.crypto}</TableCell>
-                                    <TableCell>{w.amount.toFixed(8)}</TableCell>
-                                    <TableCell className="font-mono text-xs max-w-[150px] truncate">{w.address}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className={cn("capitalize", withdrawalStatusColors[w.status])}>{w.status}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        {w.status === 'pending' && (
-                                            <Button variant="ghost" size="sm" onClick={() => handleCancelWithdrawal(w)}>
-                                                <RotateCcw className="mr-2 h-4 w-4"/>
-                                                Cancel
-                                            </Button>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <>
+                      {/* Desktop Table */}
+                      <Table className="hidden md:table">
+                          <TableHeader>
+                              <TableRow>
+                                  <TableHead>Date</TableHead>
+                                  <TableHead>Asset</TableHead>
+                                  <TableHead>Amount</TableHead>
+                                  <TableHead>Address</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead className="text-right">Action</TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                              {withdrawals.map(w => (
+                                  <TableRow key={w.id}>
+                                      <TableCell className="text-muted-foreground">{toDate(w.createdAt)?.toLocaleString() ?? 'Invalid Date'}</TableCell>
+                                      <TableCell className="font-medium">{w.crypto}</TableCell>
+                                      <TableCell>{w.amount.toFixed(8)}</TableCell>
+                                      <TableCell className="font-mono text-xs max-w-[150px] truncate">{w.address}</TableCell>
+                                      <TableCell>
+                                          <Badge variant="outline" className={cn("capitalize", withdrawalStatusColors[w.status])}>{w.status}</Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                          {w.status === 'pending' && (
+                                              <Button variant="ghost" size="sm" onClick={() => handleCancelWithdrawal(w)}>
+                                                  <RotateCcw className="mr-2 h-4 w-4"/>
+                                                  Cancel
+                                              </Button>
+                                          )}
+                                      </TableCell>
+                                  </TableRow>
+                              ))}
+                          </TableBody>
+                      </Table>
+                       {/* Mobile Cards */}
+                      <div className="md:hidden space-y-4">
+                        {withdrawals.map(w => (
+                          <Card key={w.id}>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-base">{w.amount.toFixed(4)} {w.crypto}</CardTitle>
+                                <Badge variant="outline" className={cn("capitalize", withdrawalStatusColors[w.status])}>{w.status}</Badge>
+                            </CardHeader>
+                            <CardContent className="space-y-2 text-sm">
+                              <div className="flex justify-between items-start">
+                                <span className="text-muted-foreground">Address</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs max-w-[150px] truncate">{w.address}</span>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(w.address)}>
+                                      <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Date</span>
+                                <span>{toDate(w.createdAt)?.toLocaleString() ?? 'N/A'}</span>
+                              </div>
+                              {w.status === 'pending' && (
+                                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => handleCancelWithdrawal(w)}>
+                                  <RotateCcw className="mr-2 h-4 w-4"/>
+                                  Cancel Request
+                                </Button>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </>
                  )}
             </CardContent>
         </Card>
