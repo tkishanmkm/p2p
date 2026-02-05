@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useFirebase, useDoc } from "@/firebase";
+import { useFirebase } from "@/firebase";
 import { doc, runTransaction, collection, query, where, getDocs } from "firebase/firestore";
 import type { User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -35,12 +35,9 @@ const usernameSchema = z.object({
   newUsername: z.string().min(3, "Username must be at least 3 characters.").regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores."),
 });
 
-export function ChangeUsernameForm() {
+export function ChangeUsernameForm({ user: userData }: { user: User }) {
   const { firestore, auth, user } = useFirebase();
   const { toast } = useToast();
-
-  const userRef = user ? doc(firestore, "users", user.uid) : null;
-  const { data: userData, isLoading: isUserLoading } = useDoc<User>(userRef);
 
   const form = useForm<z.infer<typeof usernameSchema>>({
     resolver: zodResolver(usernameSchema),
@@ -70,15 +67,15 @@ export function ChangeUsernameForm() {
     }
 
     try {
+      const userRef = doc(firestore, "users", user.uid);
       await runTransaction(firestore, async (transaction) => {
-        const userDocRef = userRef!;
-        const userDoc = await transaction.get(userDocRef);
+        const userDoc = await transaction.get(userRef);
         if (!userDoc.exists()) throw new Error("User document not found.");
         
         const currentData = userDoc.data() as User;
         if (currentData.usernameChanged) throw new Error("Username has already been changed once.");
 
-        transaction.update(userDocRef, {
+        transaction.update(userRef, {
           oldUserId: currentData.userId,
           userId: values.newUsername,
           usernameChanged: true,
@@ -86,7 +83,9 @@ export function ChangeUsernameForm() {
       });
       
       // Also update the display name in Firebase Auth
-      await updateProfile(user, { displayName: values.newUsername });
+      if(auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: values.newUsername });
+      }
 
       toast({
         title: "Username Changed",
@@ -103,10 +102,6 @@ export function ChangeUsernameForm() {
     }
   };
   
-  if (isUserLoading) {
-      return <Card><CardContent className="p-6">Loading...</CardContent></Card>
-  }
-
   if (userData?.usernameChanged) {
     return (
       <Card>

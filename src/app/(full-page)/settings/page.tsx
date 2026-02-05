@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ProfileSettings } from "@/components/settings/profile-settings";
@@ -7,26 +6,44 @@ import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { ChangeCurrencyForm } from "@/components/settings/change-currency-form";
 import { SessionManagement } from "@/components/settings/session-management";
 import { BlockedUsersManagement } from "@/components/settings/blocked-users-management";
-import { useFirebase } from "@/firebase";
+import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { doc } from "firebase/firestore";
+import type { User } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SettingsPage() {
-  const { user, isUserLoading } = useFirebase();
+  const { user: authUser, isUserLoading: isAuthLoading, firestore } = useFirebase();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    if (!isAuthLoading && !authUser) {
       router.push('/login');
     }
-  }, [user, isUserLoading, router]);
+  }, [authUser, isAuthLoading, router]);
 
-  if (isUserLoading || !user) {
+  const userRef = useMemoFirebase(() => (authUser ? doc(firestore, "users", authUser.uid) : null), [firestore, authUser]);
+  const { data: userData, isLoading: isUserDocLoading } = useDoc<User>(userRef);
+
+  const isLoading = isAuthLoading || isUserDocLoading;
+
+  if (isLoading || !authUser || !userData) {
     return (
-        <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <>
+        <div className="flex items-center mb-6">
+          <h1 className="text-lg font-semibold md:text-2xl">Settings</h1>
         </div>
+        <div className="max-w-3xl mx-auto space-y-8">
+          <Skeleton className="h-72 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </>
     );
   }
 
@@ -36,12 +53,12 @@ export default function SettingsPage() {
         <h1 className="text-lg font-semibold md:text-2xl">Settings</h1>
       </div>
       <div className="max-w-3xl mx-auto space-y-8">
-        <ProfileSettings />
-        <ChangeUsernameForm />
+        <ProfileSettings user={userData} />
+        <ChangeUsernameForm user={userData} />
         <ChangePasswordForm />
-        <ChangeCurrencyForm />
+        <ChangeCurrencyForm user={userData} />
         <SessionManagement />
-        <BlockedUsersManagement />
+        <BlockedUsersManagement user={userData} />
       </div>
     </>
   );

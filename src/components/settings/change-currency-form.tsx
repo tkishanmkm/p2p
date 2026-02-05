@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
+import { useFirebase } from "@/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import type { User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -30,20 +30,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Skeleton } from "../ui/skeleton";
 
 const currencySchema = z.object({
   currency: z.string().min(1, "Please select a currency."),
 });
 
-export function ChangeCurrencyForm() {
+export function ChangeCurrencyForm({ user: userData }: { user: User }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-
-  const userRef = useMemoFirebase(() => (user ? doc(firestore, "users", user.uid) : null), [user, firestore]);
-  const { data: userData, isLoading: isUserLoading } = useDoc<User>(userRef);
 
   const form = useForm<z.infer<typeof currencySchema>>({
     resolver: zodResolver(currencySchema),
@@ -61,7 +57,9 @@ export function ChangeCurrencyForm() {
   const { isSubmitting } = form.formState;
 
   const handleCurrencyChange = async (values: z.infer<typeof currencySchema>) => {
-    if (!firestore || !userRef) return;
+    if (!firestore || !user) return;
+    
+    const userRef = doc(firestore, "users", user.uid);
 
     try {
       await updateDoc(userRef, {
@@ -97,17 +95,10 @@ export function ChangeCurrencyForm() {
       </CardHeader>
       <CardContent>
           <div className="flex items-center justify-between p-4 border rounded-lg bg-secondary/50">
-                {isUserLoading ? (
-                    <div className="space-y-2">
-                        <Skeleton className="h-5 w-40" />
-                        <Skeleton className="h-4 w-24" />
-                    </div>
-                ) : (
-                    <div>
-                        <p className="font-semibold text-lg">{currentCurrency?.name || 'United States Dollar'}</p>
-                        <p className="text-muted-foreground">{currentCurrency?.code || 'USD'}</p>
-                    </div>
-                )}
+                <div>
+                    <p className="font-semibold text-lg">{currentCurrency?.name || 'United States Dollar'}</p>
+                    <p className="text-muted-foreground">{currentCurrency?.code || 'USD'}</p>
+                </div>
                 <div>
                      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                         <SheetTrigger asChild>
@@ -163,7 +154,7 @@ export function ChangeCurrencyForm() {
                                             />
                                     </div>
                                     <SheetFooter className="mt-4">
-                                        <Button type="submit" disabled={isSubmitting || isUserLoading} className="w-full">
+                                        <Button type="submit" disabled={isSubmitting} className="w-full">
                                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             Save Currency
                                         </Button>

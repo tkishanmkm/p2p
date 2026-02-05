@@ -5,17 +5,16 @@ import { useFirebase } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
-// Imports for actual upload
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
+import type { User } from '@/lib/types';
 
 
-export function ProfileSettings() {
-    const { user, auth, firestore, firebaseApp } = useFirebase();
+export function ProfileSettings({ user }: { user: User }) {
+    const { auth, firestore, firebaseApp } = useFirebase();
     const { toast } = useToast();
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
@@ -53,7 +52,7 @@ export function ProfileSettings() {
             toast({ variant: 'destructive', title: 'No file selected', description: 'Please choose a picture to upload.' });
             return;
         }
-        if (!user || !user.uid) {
+        if (!user || !user.id) {
             toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to update your profile.' });
             return;
         }
@@ -63,11 +62,10 @@ export function ProfileSettings() {
         }
 
         setIsUploading(true);
-        const currentUserId = user.uid; // Capture uid in a variable
+        const currentUserId = user.id; 
         
         try {
             const storage = getStorage(firebaseApp);
-            // Use a consistent file name to prevent accumulating old files.
             const fileExtension = fileToUpload.name.split('.').pop() || 'jpg';
             const fileName = `avatar.${fileExtension}`;
             const storageRef = ref(storage, `avatars/${currentUserId}/${fileName}`);
@@ -90,9 +88,8 @@ export function ProfileSettings() {
             toast({ title: 'Profile Updated', description: 'Your new profile picture has been saved.' });
         } catch (error: any) {
             console.error("Error updating profile picture:", error);
-            // Revert preview on failure
-            if (auth.currentUser?.photoURL) {
-                setPreviewUrl(auth.currentUser.photoURL);
+            if (user?.photoURL) {
+                setPreviewUrl(user.photoURL);
             } else {
                 setPreviewUrl(null);
             }
@@ -112,7 +109,7 @@ export function ProfileSettings() {
                  <Avatar className="h-32 w-32 border-4 border-secondary shadow-md">
                     <AvatarImage src={previewUrl || ''} alt="User Avatar" />
                     <AvatarFallback className="bg-white border text-muted-foreground text-4xl font-light">
-                        {user?.displayName?.charAt(0).toUpperCase()}
+                        {user?.userId?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                 </Avatar>
                 <div className="text-sm text-muted-foreground">

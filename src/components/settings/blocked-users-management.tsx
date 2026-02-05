@@ -1,8 +1,7 @@
-// This is a new file
 "use client";
 
 import { useState, useMemo } from 'react';
-import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, documentId } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -21,15 +20,12 @@ import { DefaultAvatar } from '@/components/icons';
 import { Loader2, UserX, UserPlus, XCircle } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
-export function BlockedUsersManagement() {
+export function BlockedUsersManagement({ user: currentUserData }: { user: User }) {
   const { firestore, user: authUser } = useFirebase();
   const { toast } = useToast();
   const [usernameToBlock, setUsernameToBlock] = useState('');
   const [isBlocking, setIsBlocking] = useState(false);
 
-  const currentUserRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
-  const { data: currentUserData, isLoading: isCurrentUserLoading } = useDoc<User>(currentUserRef);
-  
   const blockedUserIds = useMemo(() => currentUserData?.blockedUsers || [], [currentUserData]);
   
   const blockedUsersQuery = useMemoFirebase(() => 
@@ -68,7 +64,7 @@ export function BlockedUsersManagement() {
     }
   };
   
-  const isLoading = isCurrentUserLoading || areBlockedUsersLoading;
+  const isLoading = areBlockedUsersLoading;
 
   return (
     <Card>
