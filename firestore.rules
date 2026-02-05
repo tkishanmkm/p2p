@@ -102,7 +102,7 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId && request.resource.data.createdAt is string;
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
