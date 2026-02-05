@@ -107,7 +107,7 @@ export default function AdminLoginPage() {
                     tradeVolume: "0",
                     completedTrades: 0,
                     usernameChanged: true, // Prevent admin from changing their ID
-                    createdAt: new Date().toISOString(),
+                    createdAt: serverTimestamp(),
                     feedbackScore: 100,
                     positiveFeedback: 0,
                     negativeFeedback: 0,
