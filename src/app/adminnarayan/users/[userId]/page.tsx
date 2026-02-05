@@ -1,3 +1,5 @@
 // This file has been intentionally modified to resolve a Next.js routing conflict.
-// It should not be treated as a page.
-export default null;
+// The primary page is located at src/app/adminnarayan/(panel)/users/[userId]/page.tsx
+export default function BlankPage() {
+  return null;
+}
