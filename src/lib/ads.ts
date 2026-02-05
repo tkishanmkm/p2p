@@ -44,7 +44,6 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     
     // For error reporting, create a version with a client-side date to ensure it's serializable
     const reportableData = { ...newAdData, createdAt: new Date().toISOString() };
-    delete (reportableData as any).ratePercent;
     
     errorEmitter.emit(
         'permission-error',

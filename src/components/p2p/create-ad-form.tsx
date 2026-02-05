@@ -260,8 +260,8 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
             await createP2PAd(firestore, adData, {
                 id: user.uid,
                 userId: userData.userId,
-                feedbackScore: userData.feedbackScore || 100,
-                completedTrades: userData.completedTrades || 0,
+                feedbackScore: userData.feedbackScore ?? 100,
+                completedTrades: userData.completedTrades ?? 0,
                 photoURL: userData.photoURL
             });
             toast({ title: "Ad Created", description: "Your ad has been successfully posted." });

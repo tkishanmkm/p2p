@@ -50,8 +50,8 @@ export function AdCard({ ad }: AdCardProps) {
   // Use the live creator data if available, otherwise fall back to the denormalized data
   const displayUser = adCreator || ad.user;
   const displayPhoto = adCreator?.photoURL || ad.user.photoURL;
-  const displayFeedback = adCreator?.feedbackScore ?? ad.user.feedbackScore;
-  const displayTrades = adCreator?.completedTrades ?? ad.user.completedTrades;
+  const displayFeedback = adCreator?.feedbackScore ?? ad.user.feedbackScore ?? 100;
+  const displayTrades = adCreator?.completedTrades ?? ad.user.completedTrades ?? 0;
 
   if (ad.adType === 'sell') {
     if (!isWalletLoading) {
