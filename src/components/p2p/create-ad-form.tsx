@@ -46,7 +46,7 @@ import Link from "next/link";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Wallet } from "lucide-react";
 
@@ -109,9 +109,6 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const { prices, isLoading: arePricesLoading } = usePrices();
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [customPaymentMethod, setCustomPaymentMethod] = useState('');
-  
-  const rateTypeRef = useRef<"market" | "fixed" | undefined>(ad?.rateType);
-  const previousCryptoRef = useRef<string | undefined>(ad?.crypto);
 
   const adCreatorId = ad?.userId || user?.uid;
 
@@ -123,53 +120,45 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
 
   const form = useForm<AdFormValues>({
     resolver: zodResolver(adFormSchema),
-    shouldUnregister: false,
-    defaultValues: ad ? {
-        ...ad,
-        ratePercent: ad.ratePercent ?? 5,
-    } : {
-      adType: "sell",
-      crypto: "BTC",
-      fiatCurrency: "USD",
-      paymentMethods: [],
-      rateType: "market",
-      ratePercent: 5,
-      tags: [],
-    },
+    shouldUnregister: false, // Keep values in state when conditional fields are unmounted
+    defaultValues: ad 
+      ? { ...ad, ratePercent: ad.ratePercent ?? 5 } 
+      : {
+          adType: "sell",
+          crypto: "BTC",
+          fiatCurrency: "USD",
+          paymentMethods: [],
+          rateType: "market",
+          ratePercent: 5,
+          // IMPORTANT: Do NOT set a default for fixedRate here. Let it be undefined.
+          tags: [],
+        },
   });
   
-  const watchedFields = form.watch();
-  const currentMarketPrice = prices[watchedFields.crypto as CryptoCurrency] || 0;
-
-  // This effect pre-fills the fixed rate input when switching modes.
+  const watchedRateType = form.watch("rateType");
+  const watchedCrypto = form.watch("crypto");
+  const currentMarketPrice = prices[watchedCrypto as CryptoCurrency] || 0;
+  
+  // This single effect now manages the logic for setting default pricing values.
   useEffect(() => {
-    const currentRateType = watchedFields.rateType;
-    const fixedRateHasValue = form.getValues('fixedRate');
+    // Only proceed if we have a valid market price to work with.
+    if (currentMarketPrice <= 0) return;
 
-    // When switching TO 'fixed' mode, pre-fill with market price if field is empty.
-    // This preserves user-entered values if they switch away and back.
-    if (currentRateType === 'fixed' && rateTypeRef.current !== 'fixed' && !fixedRateHasValue && currentMarketPrice > 0) {
-      form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
+    // Logic for when the user switches to 'Fixed' rate type.
+    if (watchedRateType === 'fixed') {
+        const currentFixedRate = form.getValues('fixedRate');
+        // If the fixed rate field is empty/undefined (i.e., user hasn't set it),
+        // then pre-fill it with the current market price.
+        // This preserves any value the user might have entered previously.
+        if (currentFixedRate === undefined || currentFixedRate === null) {
+            form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
+        }
     }
-    // Update ref to detect switches on next render.
-    rateTypeRef.current = currentRateType;
-  }, [watchedFields.rateType, currentMarketPrice, form]);
-
-  // This effect updates the fixed rate ONLY when the user changes the crypto asset.
-  useEffect(() => {
-    // If crypto has changed from the last render...
-    if (previousCryptoRef.current !== watchedFields.crypto) {
-      // ...and we are in 'fixed' mode, update the price to the new market rate.
-      if (watchedFields.rateType === 'fixed' && currentMarketPrice > 0) {
-        form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
-      }
-      // Update ref for the next render.
-      previousCryptoRef.current = watchedFields.crypto;
-    }
-  }, [watchedFields.crypto, currentMarketPrice, watchedFields.rateType, form]);
+  }, [watchedRateType, watchedCrypto, currentMarketPrice, form]);
 
   useEffect(() => {
     setBalanceError(null);
+    const watchedFields = form.getValues();
     if (watchedFields.adType !== 'sell' || !watchedFields.maxAmount || !wallets || !watchedFields.crypto) {
         return;
     }
@@ -189,7 +178,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
       setBalanceError(`Insufficient ${watchedFields.crypto} balance. You need at least ${requiredCrypto.toFixed(6)} ${watchedFields.crypto} to cover the maximum amount, but you only have ${userBalance.toFixed(6)} available.`);
     }
 
-  }, [watchedFields, wallets, currentMarketPrice]);
+  }, [form.watch(), wallets, currentMarketPrice]);
 
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
@@ -433,7 +422,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
               )}
             />
 
-            {watchedFields.rateType === "market" ? (
+            {watchedRateType === "market" ? (
               <FormField
                 control={form.control}
                 name="ratePercent"
@@ -445,7 +434,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
                      <FormDescription>
-                        Your price will float with the market. {arePricesLoading ? 'Loading market price...' : `Current price is approx. ${currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchedFields.fiatCurrency, minimumFractionDigits: 2 })}.`} <br/>
+                        Your price will float with the market. {arePricesLoading ? 'Loading market price...' : `Current price is approx. ${currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: form.getValues('fiatCurrency'), minimumFractionDigits: 2 })}.`} <br/>
                         Set your adjustment percentage (from -50% to 50%). E.g., '1.5' for 1.5% above market.
                     </FormDescription>
                     <FormMessage />
@@ -466,7 +455,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                       {...field}
                       value={field.value ?? ''}
                     />
-                    <FormDescription>The fixed price in {watchedFields.fiatCurrency}. Current market price is approx. {currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: watchedFields.fiatCurrency, minimumFractionDigits: 2 })}.</FormDescription>
+                    <FormDescription>The fixed price in {form.getValues('fiatCurrency')}. Current market price is approx. {currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: form.getValues('fiatCurrency'), minimumFractionDigits: 2 })}.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
