@@ -20,8 +20,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { setUserBanStatus, setUserHoldStatus } from "@/lib/admin";
@@ -29,6 +27,9 @@ import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { useState, useEffect } from 'react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
+import { AdminActionDialog, type AdminActionType } from '@/components/admin/admin-action-dialog';
 
 export default function AdminUsersPage() {
   const { firestore, user: adminUser } = useFirebase();
@@ -36,6 +37,12 @@ export default function AdminUsersPage() {
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [users, setUsers] = useState<User[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [dialogState, setDialogState] = useState<{
+    open: boolean;
+    user: User | null;
+    action: AdminActionType | null;
+  }>({ open: false, user: null, action: null });
 
   useEffect(() => {
     if (isAdminLoading) return;
@@ -65,32 +72,46 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, [isAdmin, isAdminLoading, firestore, toast]);
 
-  const handleBanToggle = async (user: User, isBanned: boolean) => {
-    if (!firestore || !adminUser) return;
-    try {
-      await setUserBanStatus(firestore, user.id, isBanned);
-      toast({ title: "User Updated", description: `${user.userId} has been ${isBanned ? 'banned' : 'unbanned'}.` });
-      // Optimistically update UI
-      setUsers(currentUsers => currentUsers?.map(u => u.id === user.id ? {...u, isBanned} : u) || null);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Update Failed", description: e.message });
-    }
+  const openActionDialog = (user: User, action: AdminActionType) => {
+    setDialogState({ open: true, user, action });
   };
-  
-  const handleHoldToggle = async (user: User, isOnHold: boolean) => {
-    if (!firestore || !adminUser) return;
+
+  const handleActionConfirm = async (reason: string) => {
+    if (!dialogState.user || !dialogState.action || !firestore || !adminUser) return;
+
+    const { user, action } = dialogState;
     try {
-      await setUserHoldStatus(firestore, user.id, isOnHold);
-      toast({ title: "User Updated", description: `Account for ${user.userId} has been put ${isOnHold ? 'on hold' : 'off hold'}.` });
-       // Optimistically update UI
-      setUsers(currentUsers => currentUsers?.map(u => u.id === user.id ? {...u, isOnHold} : u) || null);
+      if (action === 'ban' || action === 'unban') {
+        await setUserBanStatus(firestore, user.id, user.userId, action === 'ban', adminUser.uid, reason);
+      } else if (action === 'hold' || action === 'unhold') {
+        await setUserHoldStatus(firestore, user.id, user.userId, action === 'hold', adminUser.uid, reason);
+      }
+      toast({ title: "User Updated", description: `${user.userId}'s status has been updated.` });
+      // Optimistically update UI
+      setUsers(currentUsers => currentUsers?.map(u => {
+        if (u.id === user.id) {
+          if (action === 'ban') return { ...u, isBanned: true };
+          if (action === 'unban') return { ...u, isBanned: false };
+          if (action === 'hold') return { ...u, isOnHold: true };
+          if (action === 'unhold') return { ...u, isOnHold: false };
+        }
+        return u;
+      }) || null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Update Failed", description: e.message });
     }
   };
 
+
   return (
     <>
+       <AdminActionDialog
+        open={dialogState.open}
+        onOpenChange={(open) => setDialogState(prev => ({...prev, open}))}
+        user={dialogState.user}
+        action={dialogState.action}
+        onConfirm={handleActionConfirm}
+      />
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold md:text-2xl">User Management</h1>
       </div>
@@ -130,35 +151,21 @@ export default function AdminUsersPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <TooltipProvider>
-                        <div className="flex gap-4 justify-end">
-                            <Tooltip>
-                                <TooltipTrigger>
-                                    <Switch
-                                        checked={user.isOnHold}
-                                        onCheckedChange={(checked) => handleHoldToggle(user, checked)}
-                                        aria-label="Toggle Account Hold"
-                                        className="data-[state=checked]:bg-yellow-500"
-                                    />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Place Account on Hold</p>
-                                </TooltipContent>
-                            </Tooltip>
-                             <Tooltip>
-                                <TooltipTrigger>
-                                     <Switch
-                                        checked={user.isBanned}
-                                        onCheckedChange={(checked) => handleBanToggle(user, checked)}
-                                        aria-label="Toggle Account Ban"
-                                    />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Ban User</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </div>
-                    </TooltipProvider>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => openActionDialog(user, user.isOnHold ? 'unhold' : 'hold')}>
+                          {user.isOnHold ? 'Remove Hold' : 'Place on Hold'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className={user.isBanned ? '' : 'text-destructive'} onClick={() => openActionDialog(user, user.isBanned ? 'unban' : 'ban')}>
+                          {user.isBanned ? 'Unban' : 'Ban User'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}

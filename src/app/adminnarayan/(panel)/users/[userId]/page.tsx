@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -5,7 +6,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, getDocs, doc, orderBy } from 'firebase/firestore';
-import type { User, P2PAd, Trade, UserWallet, Deposit, Withdrawal } from '@/lib/types';
+import type { User, P2PAd, Trade, UserWallet, Deposit, Withdrawal, AdminLog } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -66,6 +67,7 @@ export default function AdminUserDetailPage() {
   const [deposits, setDeposits] = useState<Deposit[] | null>(null);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null);
   const [allTrades, setAllTrades] = useState<Trade[] | null>(null);
+  const [adminLogs, setAdminLogs] = useState<AdminLog[] | null>(null);
   
   // Loading states
   const [areAdsLoading, setAreAdsLoading] = useState(true);
@@ -73,6 +75,8 @@ export default function AdminUserDetailPage() {
   const [areDepositsLoading, setAreDepositsLoading] = useState(true);
   const [areWithdrawalsLoading, setAreWithdrawalsLoading] = useState(true);
   const [isLoadingTrades, setIsLoadingTrades] = useState(true);
+  const [areLogsLoading, setAreLogsLoading] = useState(true);
+
 
   useEffect(() => {
     if (!isAdmin || !firestore || !userId) {
@@ -82,6 +86,7 @@ export default function AdminUserDetailPage() {
           setAreDepositsLoading(false);
           setAreWithdrawalsLoading(false);
           setIsLoadingTrades(false);
+          setAreLogsLoading(false);
       }
       return;
     };
@@ -138,6 +143,14 @@ export default function AdminUserDetailPage() {
         setAllTrades(uniqueTrades);
       } catch (e) { console.error("Failed to fetch trades", e); setAllTrades([]); }
       finally { setIsLoadingTrades(false); }
+
+      // Admin Logs
+      try {
+        const logsQuery = query(collection(firestore, 'admin_logs'), where('targetId', '==', userId), orderBy('createdAt', 'desc'));
+        const logsSnapshot = await getDocs(logsQuery);
+        setAdminLogs(logsSnapshot.docs.map(d => ({...d.data(), id: d.id } as AdminLog)));
+      } catch(e) { console.error("failed to fetch admin logs", e); setAdminLogs([]); }
+      finally { setAreLogsLoading(false); }
     };
 
     fetchAllData();
@@ -216,6 +229,21 @@ export default function AdminUserDetailPage() {
                             <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Available</TableHead><TableHead>Locked</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {wallets?.length ? wallets.map(w => <TableRow key={w.id}><TableCell>{w.crypto}</TableCell><TableCell>{w.balance.toFixed(8)}</TableCell><TableCell>{w.lockedBalance.toFixed(8)}</TableCell></TableRow>) : <TableRow><TableCell colSpan={3} className="text-center">No wallets</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    )}
+                </SectionCard>
+                 <SectionCard title="Admin Actions Log">
+                    {areLogsLoading ? <Skeleton className="h-24 w-full" /> : (
+                        <Table>
+                            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Action & Reason</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {adminLogs?.length ? adminLogs.map(log => (
+                                    <TableRow key={log.id}>
+                                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{toDate(log.createdAt)?.toLocaleString()}</TableCell>
+                                        <TableCell>{log.action}</TableCell>
+                                    </TableRow>
+                                )) : <TableRow><TableCell colSpan={2} className="text-center">No actions logged</TableCell></TableRow>}
                             </TableBody>
                         </Table>
                     )}

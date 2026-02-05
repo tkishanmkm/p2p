@@ -74,19 +74,27 @@ export default function AdminWithdrawalsPage() {
       setIsLoading(true);
       try {
         const withdrawalsRef = collectionGroup(firestore, "withdrawals");
-        let q;
-        if (showAll) {
-          q = query(withdrawalsRef);
-        } else {
-          q = query(withdrawalsRef, where("status", "==", "pending"));
-        }
+        const q = query(withdrawalsRef);
         const snapshot = await getDocs(q);
-        const withdrawalsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Withdrawal));
+        
+        let withdrawalsData = snapshot.docs.map(doc => {
+            const data = doc.data() as Withdrawal;
+            // The path of a doc in a collection group is 'users/{userId}/withdrawals/{withdrawalId}'
+            // We need to extract the userId from the path.
+            const pathParts = doc.ref.path.split('/');
+            const userId = pathParts[1];
+            return { ...data, id: doc.id, userId: userId, userDisplayName: data.userDisplayName || 'Unknown' };
+        });
         
         // Sort on client
         withdrawalsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
         
-        setWithdrawals(withdrawalsData);
+        if (showAll) {
+            setWithdrawals(withdrawalsData);
+        } else {
+            setWithdrawals(withdrawalsData.filter(w => w.status === 'pending'));
+        }
+
       } catch (error) {
         console.error("Error fetching withdrawals:", error);
         toast({ variant: "destructive", title: "Error", description: "Could not fetch withdrawals." });

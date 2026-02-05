@@ -23,6 +23,7 @@ export async function approveDeposit(
 ): Promise<void> {
   const depositRef = doc(db, "deposits", deposit.id);
   const userWalletRef = doc(db, "users", deposit.userId, "wallets", deposit.crypto);
+  const notificationRef = doc(collection(db, "users", deposit.userId, "notifications"));
 
   await runTransaction(db, async (transaction) => {
     const walletDoc = await transaction.get(userWalletRef);
@@ -54,6 +55,15 @@ export async function approveDeposit(
       finalAmount: approvedAmount,
       adminId: adminId,
     });
+
+    // Notify user
+    transaction.set(notificationRef, {
+        userId: deposit.userId,
+        message: `Your deposit of ${approvedAmount} ${deposit.crypto} has been approved and added to your wallet.`,
+        isRead: false,
+        createdAt: serverTimestamp(),
+        link: `/wallets`
+    })
   });
 }
 
@@ -82,6 +92,7 @@ export async function approveWithdrawal(
 ): Promise<void> {
   const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
   const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
+  const notificationRef = doc(collection(db, "users", withdrawal.userId, "notifications"));
 
   await runTransaction(db, async (transaction) => {
     const withdrawalDoc = await transaction.get(withdrawalRef);
@@ -110,6 +121,15 @@ export async function approveWithdrawal(
       status: "approved",
       adminId: adminId,
     });
+
+     // Notify user
+    transaction.set(notificationRef, {
+        userId: withdrawal.userId,
+        message: `Your withdrawal of ${withdrawal.amount} ${withdrawal.crypto} has been approved and processed.`,
+        isRead: false,
+        createdAt: serverTimestamp(),
+        link: `/wallets`
+    });
   });
 }
 
@@ -123,6 +143,7 @@ export async function declineWithdrawal(
 ): Promise<void> {
     const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
     const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
+    const notificationRef = doc(collection(db, "users", withdrawal.userId, "notifications"));
 
     await runTransaction(db, async (transaction) => {
         const withdrawalDoc = await transaction.get(withdrawalRef);
@@ -152,17 +173,72 @@ export async function declineWithdrawal(
             status: "declined",
             adminId: adminId,
         });
+
+        // Notify user
+        transaction.set(notificationRef, {
+            userId: withdrawal.userId,
+            message: `Your withdrawal of ${withdrawal.amount} ${withdrawal.crypto} was declined and the funds returned to your wallet.`,
+            isRead: false,
+            createdAt: serverTimestamp(),
+            link: `/wallets`
+        });
     });
 }
 
-export async function setUserBanStatus(db: Firestore, userId: string, isBanned: boolean) {
+export async function setUserBanStatus(db: Firestore, userId: string, userDisplayName: string, isBanned: boolean, adminId: string, reason: string) {
   const userRef = doc(db, "users", userId);
-  await updateDoc(userRef, { isBanned });
+  const adminLogRef = doc(collection(db, "admin_logs"));
+  const notificationRef = doc(collection(db, "users", userId, "notifications"));
+
+  const batch = writeBatch(db);
+
+  batch.update(userRef, { isBanned });
+
+  const actionMessage = isBanned ? `Banned user ${userDisplayName}. Reason: ${reason}` : `Unbanned user ${userDisplayName}. Reason: ${reason}`;
+  batch.set(adminLogRef, {
+    adminId,
+    action: actionMessage,
+    targetId: userId,
+    createdAt: serverTimestamp(),
+  });
+
+  const notificationMessage = isBanned ? `Your account has been banned. Reason: ${reason}` : `The ban on your account has been lifted. Reason: ${reason}`;
+  batch.set(notificationRef, {
+    userId,
+    message: notificationMessage,
+    isRead: false,
+    createdAt: serverTimestamp(),
+  });
+
+  await batch.commit();
 }
 
-export async function setUserHoldStatus(db: Firestore, userId: string, isOnHold: boolean) {
+export async function setUserHoldStatus(db: Firestore, userId: string, userDisplayName: string, isOnHold: boolean, adminId: string, reason: string) {
   const userRef = doc(db, "users", userId);
-  await updateDoc(userRef, { isOnHold });
+  const adminLogRef = doc(collection(db, "admin_logs"));
+  const notificationRef = doc(collection(db, "users", userId, "notifications"));
+
+  const batch = writeBatch(db);
+
+  batch.update(userRef, { isOnHold });
+
+  const actionMessage = isOnHold ? `Placed account of ${userDisplayName} on hold. Reason: ${reason}` : `Removed hold on account of ${userDisplayName}. Reason: ${reason}`;
+  batch.set(adminLogRef, {
+    adminId,
+    action: actionMessage,
+    targetId: userId,
+    createdAt: serverTimestamp(),
+  });
+
+  const notificationMessage = isOnHold ? `Your account has been placed on hold. Reason: ${reason}` : `The hold on your account has been removed. Reason: ${reason}`;
+  batch.set(notificationRef, {
+    userId,
+    message: notificationMessage,
+    isRead: false,
+    createdAt: serverTimestamp(),
+  });
+
+  await batch.commit();
 }
 
 export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispute, winnerId: string, adminId: string) {
@@ -229,6 +305,7 @@ export async function adjustUserWalletBalance(
 
   const userWalletRef = doc(db, "users", userId, "wallets", crypto);
   const adminLogRef = doc(collection(db, "admin_logs"));
+  const notificationRef = doc(collection(db, "users", userId, "notifications"));
 
   await runTransaction(db, async (transaction) => {
     const walletDoc = await transaction.get(userWalletRef);
@@ -267,6 +344,16 @@ export async function adjustUserWalletBalance(
       action: `Adjusted ${userDisplayName}'s ${crypto} balance. Action: ${action}, Amount: ${amount}. Reason: ${reason}`,
       targetId: userId,
       createdAt: serverTimestamp(),
+    });
+
+     // Create user notification
+    const notificationMessage = `An admin has adjusted your ${crypto} wallet balance. Action: ${action}, Amount: ${amount}. Reason: ${reason}`;
+    transaction.set(notificationRef, {
+        userId,
+        message: notificationMessage,
+        isRead: false,
+        createdAt: serverTimestamp(),
+        link: '/wallets'
     });
   });
 }
