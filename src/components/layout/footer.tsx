@@ -11,9 +11,9 @@ export function Footer() {
     {
       title: "Company",
       links: [
-        { label: "About Us", href: "#" },
-        { label: "Careers", href: "#" },
-        { label: "Press", href: "#" },
+        { label: "About Us", href: "/about" },
+        { label: "Careers", href: "/careers" },
+        { label: "Press", href: "/press" },
       ],
     },
     {
@@ -21,7 +21,7 @@ export function Footer() {
       links: [
         { label: "Terms of Service", href: "/terms" },
         { label: "Privacy Policy", href: "/policy" },
-        { label: "AML Policy", href: "#" },
+        { label: "AML Policy", href: "/aml-policy" },
       ],
     },
     {
@@ -29,7 +29,7 @@ export function Footer() {
       links: [
         { label: "Contact Us", href: "/contact" },
         { label: "FAQ", href: "/faq" },
-        { label: "Dispute Resolution", href: "/contact" },
+        { label: "Dispute Resolution", href: "/dispute-resolution" },
       ],
     },
   ];
