@@ -26,10 +26,11 @@ import { setUserBanStatus, setUserHoldStatus } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
 import { useAdminStatus } from '@/hooks/use-admin-status';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Search } from 'lucide-react';
 import { AdminActionDialog, type AdminActionType } from '@/components/admin/admin-action-dialog';
+import { Input } from '@/components/ui/input';
 
 export default function AdminUsersPage() {
   const { firestore, user: adminUser } = useFirebase();
@@ -37,6 +38,7 @@ export default function AdminUsersPage() {
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [users, setUsers] = useState<User[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [dialogState, setDialogState] = useState<{
     open: boolean;
@@ -71,6 +73,17 @@ export default function AdminUsersPage() {
 
     fetchUsers();
   }, [isAdmin, isAdminLoading, firestore, toast]);
+  
+  const filteredUsers = useMemo(() => {
+    if (!users) return null;
+    if (!searchTerm.trim()) return users;
+    const lower = searchTerm.toLowerCase();
+    return users.filter(u => 
+        u.userId.toLowerCase().includes(lower) || 
+        u.fullName.toLowerCase().includes(lower) ||
+        u.id.toLowerCase().includes(lower)
+    );
+  }, [users, searchTerm]);
 
   const openActionDialog = (user: User, action: AdminActionType) => {
     setDialogState({ open: true, user, action });
@@ -119,6 +132,15 @@ export default function AdminUsersPage() {
         <CardHeader>
           <CardTitle>Registered Users</CardTitle>
           <CardDescription>View and manage all user accounts on the platform.</CardDescription>
+           <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search by User ID, full name, or system ID..." 
+              className="pl-10" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -132,7 +154,7 @@ export default function AdminUsersPage() {
             </TableHeader>
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={4}>Loading users...</TableCell></TableRow>}
-              {!isLoading && users?.map((user) => (
+              {!isLoading && filteredUsers?.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
                      <Button variant="link" asChild className="p-0 h-auto">
@@ -169,7 +191,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !users?.length && <TableRow><TableCell colSpan={4} className="text-center">No users found.</TableCell></TableRow>}
+              {!isLoading && !filteredUsers?.length && <TableRow><TableCell colSpan={4} className="text-center h-24">No users found.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

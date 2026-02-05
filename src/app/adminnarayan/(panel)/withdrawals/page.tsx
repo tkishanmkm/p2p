@@ -19,6 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +35,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Check, X, Search } from "lucide-react";
+import { MoreHorizontal, Check, X, Search, Copy } from "lucide-react";
 import type { Withdrawal } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { approveWithdrawal, declineWithdrawal } from "@/lib/admin";
@@ -59,27 +66,29 @@ function WithdrawalsTable({
     withdrawals, 
     isLoading,
     onApprove,
-    onDecline
+    onDecline,
+    onRowClick
 }: { 
     withdrawals: Withdrawal[] | null; 
     isLoading: boolean;
     onApprove: (withdrawal: Withdrawal) => void;
     onDecline: (withdrawal: Withdrawal) => void;
+    onRowClick: (withdrawal: Withdrawal) => void;
 }) {
     if (isLoading) {
-        return <TableRow><TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell></TableRow>;
+        return <TableRow><TableCell colSpan={7} className="h-24 text-center">Loading...</TableCell></TableRow>;
     }
     if (!withdrawals || withdrawals.length === 0) {
-        return <TableRow><TableCell colSpan={6} className="h-24 text-center">No withdrawals found for this filter.</TableCell></TableRow>;
+        return <TableRow><TableCell colSpan={7} className="h-24 text-center">No withdrawals found for this filter.</TableCell></TableRow>;
     }
 
     return (
         <>
             {withdrawals.map((w) => (
-                <TableRow key={w.id}>
+                <TableRow key={w.id} onClick={() => onRowClick(w)} className="cursor-pointer">
+                    <TableCell className="font-mono text-xs max-w-[100px] truncate">{w.id}</TableCell>
                     <TableCell className="font-medium">{w.userDisplayName}</TableCell>
                     <TableCell>{w.amount.toFixed(8)} {w.crypto}</TableCell>
-                    <TableCell className="font-mono text-xs truncate max-w-[150px]">{w.address}</TableCell>
                     <TableCell>
                         <Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>
                         {w.status}
@@ -90,17 +99,17 @@ function WithdrawalsTable({
                         {w.status === 'pending' && (
                             <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Toggle menu</span>
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => onApprove(w)}>
+                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); onApprove(w)}}>
                                     <Check className="mr-2 h-4 w-4" /> Approve
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => onDecline(w)}>
+                                <DropdownMenuItem className="text-destructive" onClick={(e) => {e.stopPropagation(); onDecline(w)}}>
                                     <X className="mr-2 h-4 w-4" /> Decline
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -126,6 +135,7 @@ export default function AdminWithdrawalsPage() {
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
   const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
   const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (isAdminLoading) return;
@@ -223,6 +233,16 @@ export default function AdminWithdrawalsPage() {
     setSelectedWithdrawal(withdrawal);
     setIsDeclineAlertOpen(true);
   }
+  
+  const handleRowClick = (withdrawal: Withdrawal) => {
+    setSelectedWithdrawal(withdrawal);
+    setIsDetailsOpen(true);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied to clipboard" });
+  };
 
   return (
     <>
@@ -253,9 +273,9 @@ export default function AdminWithdrawalsPage() {
                      <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead>ID</TableHead>
                                 <TableHead>User</TableHead>
                                 <TableHead>Amount</TableHead>
-                                <TableHead>Address</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -267,6 +287,7 @@ export default function AdminWithdrawalsPage() {
                                 isLoading={isLoading || isAdminLoading} 
                                 onApprove={openApproveDialog}
                                 onDecline={openDeclineDialog}
+                                onRowClick={handleRowClick}
                             />
                         </TableBody>
                     </Table>
@@ -275,9 +296,9 @@ export default function AdminWithdrawalsPage() {
                      <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead>ID</TableHead>
                                 <TableHead>User</TableHead>
                                 <TableHead>Amount</TableHead>
-                                <TableHead>Address</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -289,6 +310,7 @@ export default function AdminWithdrawalsPage() {
                                 isLoading={isLoading || isAdminLoading} 
                                 onApprove={openApproveDialog}
                                 onDecline={openDeclineDialog}
+                                onRowClick={handleRowClick}
                             />
                         </TableBody>
                     </Table>
@@ -325,6 +347,56 @@ export default function AdminWithdrawalsPage() {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Withdrawal Details</DialogTitle>
+                <DialogDescription>Full details for the transaction.</DialogDescription>
+            </DialogHeader>
+            {selectedWithdrawal && (
+                <div className="space-y-4 py-4 text-sm">
+                    <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Withdrawal ID</span>
+                        <div className="flex items-center gap-2">
+                           <span className="font-mono text-xs">{selectedWithdrawal.id}</span>
+                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedWithdrawal.id!)}><Copy className="h-3 w-3" /></Button>
+                        </div>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">User</span>
+                        <span className="font-medium">{selectedWithdrawal.userDisplayName}</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Status</span>
+                        <Badge variant="outline" className={cn("capitalize", statusColors[selectedWithdrawal.status])}>{selectedWithdrawal.status}</Badge>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Amount</span>
+                        <span className="font-medium">{selectedWithdrawal.amount.toFixed(8)} {selectedWithdrawal.crypto}</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Chain</span>
+                        <span className="font-medium">{selectedWithdrawal.chain}</span>
+                    </div>
+                     <div className="flex justify-between items-start gap-4">
+                        <span className="text-muted-foreground flex-shrink-0">Address</span>
+                        <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs break-all text-right">{selectedWithdrawal.address}</span>
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedWithdrawal.address)}><Copy className="h-3 w-3" /></Button>
+                        </div>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Date Requested</span>
+                        <span className="font-medium">{toDate(selectedWithdrawal.createdAt)?.toLocaleString()}</span>
+                    </div>
+                     {selectedWithdrawal.adminId && <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Processed by Admin</span>
+                        <span className="font-mono text-xs">{selectedWithdrawal.adminId}</span>
+                    </div>}
+                </div>
+            )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useFirebase } from "@/firebase";
 import { collectionGroup, query, where, orderBy, getDoc, doc, getDocs } from "firebase/firestore";
 import {
@@ -27,7 +27,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, ShieldCheck } from "lucide-react";
+import { MoreHorizontal, ShieldCheck, Search } from "lucide-react";
 import type { Dispute, Trade } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { resolveDispute } from "@/lib/admin";
@@ -44,6 +44,7 @@ import {
 import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
 import { useAdminStatus } from "@/hooks/use-admin-status";
+import { Input } from "@/components/ui/input";
 
 const statusColors: Record<Dispute['status'], string> = {
   open: "border-red-500/50 text-red-600 bg-red-50",
@@ -61,6 +62,7 @@ export default function AdminDisputesPage() {
   const [isResolveAlertOpen, setIsResolveAlertOpen] = useState(false);
   const [disputes, setDisputes] = useState<Dispute[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     if (isAdminLoading) return;
@@ -91,6 +93,17 @@ export default function AdminDisputesPage() {
 
     fetchDisputes();
   }, [isAdmin, isAdminLoading, firestore, showAll, toast]);
+
+  const filteredDisputes = useMemo(() => {
+    if (!disputes) return null;
+    if (!searchTerm.trim()) return disputes;
+    const lower = searchTerm.toLowerCase();
+    return disputes.filter(d => 
+        d.tradeId.toLowerCase().includes(lower) ||
+        d.openedBy.toLowerCase().includes(lower) ||
+        d.reason.toLowerCase().includes(lower)
+    );
+  }, [disputes, searchTerm]);
 
   const handleResolve = async () => {
     if (!firestore || !selectedDispute || !awardTo || !adminUser) return;
@@ -135,6 +148,15 @@ export default function AdminDisputesPage() {
         <CardHeader>
           <CardTitle>Manage Disputes</CardTitle>
           <CardDescription>Review and resolve trade disputes between users.</CardDescription>
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search by Trade ID, user, or reason..." 
+              className="pl-10" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -150,7 +172,7 @@ export default function AdminDisputesPage() {
             </TableHeader>
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={6}>Loading disputes...</TableCell></TableRow>}
-              {!isLoading && disputes?.map((dispute) => (
+              {!isLoading && filteredDisputes?.map((dispute) => (
                 <TableRow key={dispute.id}>
                   <TableCell>
                     <Button variant="link" asChild className="p-0">
@@ -188,7 +210,7 @@ export default function AdminDisputesPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !disputes?.length && <TableRow><TableCell colSpan={6} className="text-center">No disputes found.</TableCell></TableRow>}
+              {!isLoading && !filteredDisputes?.length && <TableRow><TableCell colSpan={6} className="text-center h-24">No disputes found.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

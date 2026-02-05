@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useFirebase } from "@/firebase";
 import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import {
@@ -28,7 +28,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Check, X, Copy } from "lucide-react";
+import { MoreHorizontal, Check, X, Copy, Search } from "lucide-react";
 import type { Deposit } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { approveDeposit, declineDeposit } from "@/lib/admin";
@@ -56,7 +56,7 @@ const statusColors: Record<Deposit['status'], string> = {
   expired: "border-orange-500/50 text-orange-600 bg-orange-50",
 };
 
-function DepositsTable({ status }: { status?: Deposit['status'] }) {
+function DepositsTable({ status, searchTerm }: { status?: Deposit['status'], searchTerm: string }) {
     const { firestore, user: adminUser } = useFirebase();
     const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
     const { toast } = useToast();
@@ -88,15 +88,13 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                 if (status) {
                     q = query(depositsRef, where("status", "==", status));
                 } else {
-                    q = query(depositsRef, orderBy("createdAt", "desc"));
+                    q = query(depositsRef);
                 }
                 const querySnapshot = await getDocs(q);
                 let depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
 
-                // If we filtered by status, we need to sort on the client
-                if (status) {
-                    depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
-                }
+                // Sort on the client to avoid composite index requirements
+                depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
 
                 setDeposits(depositsData);
             } catch (error) {
@@ -114,6 +112,19 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
 
         fetchDeposits();
     }, [firestore, status, isAdmin, isAdminLoading, toast]);
+    
+    const filteredDeposits = useMemo(() => {
+        if (!deposits) return null;
+        if (!searchTerm.trim()) return deposits;
+
+        const lowercasedFilter = searchTerm.toLowerCase();
+        return deposits.filter(d => 
+            d.id.toLowerCase().includes(lowercasedFilter) ||
+            d.userDisplayName.toLowerCase().includes(lowercasedFilter) ||
+            d.txId?.toLowerCase().includes(lowercasedFilter) ||
+            d.amount.toString().includes(lowercasedFilter)
+        );
+    }, [deposits, searchTerm]);
 
 
     const copyToClipboard = (text: string) => {
@@ -170,7 +181,7 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                 </TableHeader>
                 <TableBody>
                 {isLoading && <TableRow><TableCell colSpan={7}>Loading...</TableCell></TableRow>}
-                {!isLoading && deposits?.map((deposit) => (
+                {!isLoading && filteredDeposits?.map((deposit) => (
                     <TableRow key={deposit.id}>
                     <TableCell className="font-mono text-xs max-w-[100px] truncate">
                         <Button variant="link" className="p-0 h-auto" onClick={() => copyToClipboard(deposit.id)}>
@@ -213,7 +224,7 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
                     </TableCell>
                     </TableRow>
                 ))}
-                {!isLoading && !deposits?.length && <TableRow><TableCell colSpan={7} className="text-center h-24">No deposits found.</TableCell></TableRow>}
+                {!isLoading && !filteredDeposits?.length && <TableRow><TableCell colSpan={7} className="text-center h-24">No deposits found.</TableCell></TableRow>}
                 </TableBody>
             </Table>
 
@@ -287,11 +298,27 @@ function DepositsTable({ status }: { status?: Deposit['status'] }) {
 }
 
 export default function AdminDepositsPage() {
+    const [searchTerm, setSearchTerm] = useState("");
+
     return (
         <>
             <div className="flex items-center justify-between">
                 <h1 className="text-lg font-semibold md:text-2xl">Deposit Requests</h1>
             </div>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Filter & Search</CardTitle>
+                    <div className="relative mt-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search by Deposit ID, User ID, TxID, or amount..." 
+                            className="pl-10" 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </CardHeader>
+            </Card>
             <Tabs defaultValue="awaiting_confirmation" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="awaiting_confirmation">Pending Approval</TabsTrigger>
@@ -305,7 +332,7 @@ export default function AdminDepositsPage() {
                             <CardDescription>Users have confirmed these transfers. Please verify and approve or decline.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <DepositsTable status="awaiting_confirmation" />
+                           <DepositsTable status="awaiting_confirmation" searchTerm={searchTerm} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -316,7 +343,7 @@ export default function AdminDepositsPage() {
                             <CardDescription>Users have initiated these deposits but have not yet confirmed the transfer.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <DepositsTable status="pending" />
+                           <DepositsTable status="pending" searchTerm={searchTerm} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -327,7 +354,7 @@ export default function AdminDepositsPage() {
                             <CardDescription>A complete history of all deposit requests on the platform.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <DepositsTable />
+                           <DepositsTable searchTerm={searchTerm}/>
                         </CardContent>
                     </Card>
                 </TabsContent>

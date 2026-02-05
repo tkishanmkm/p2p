@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirebase } from "@/firebase";
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import {
   Card,
@@ -25,7 +25,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 const statusColors: Record<Trade['status'], string> = {
   active: "border-blue-500/50 text-blue-600 bg-blue-50",
@@ -41,6 +43,7 @@ export default function AdminTradesPage() {
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [trades, setTrades] = useState<Trade[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     // Wait until admin status is confirmed
@@ -75,6 +78,17 @@ export default function AdminTradesPage() {
 
   }, [firestore, isAdmin, isAdminLoading]);
 
+  const filteredTrades = useMemo(() => {
+    if (!trades) return null;
+    if (!searchTerm.trim()) return trades;
+    const lower = searchTerm.toLowerCase();
+    return trades.filter(t => 
+        t.tradeId.toLowerCase().includes(lower) ||
+        t.buyer.userId.toLowerCase().includes(lower) ||
+        t.seller.userId.toLowerCase().includes(lower) ||
+        t.crypto.toLowerCase().includes(lower)
+    );
+  }, [trades, searchTerm]);
 
   return (
     <>
@@ -87,6 +101,15 @@ export default function AdminTradesPage() {
           <CardDescription>
             A log of all trades that have occurred on the platform.
           </CardDescription>
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search by Trade ID, buyer, seller, or asset..." 
+              className="pl-10" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -109,7 +132,7 @@ export default function AdminTradesPage() {
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && trades?.map((trade) => (
+              {!isLoading && filteredTrades?.map((trade) => (
                 <TableRow key={trade.id}>
                   <TableCell className="font-mono text-xs">{trade.tradeId}</TableCell>
                   <TableCell>
@@ -136,7 +159,7 @@ export default function AdminTradesPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !trades?.length && (
+              {!isLoading && !filteredTrades?.length && (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
                     No trades found.
@@ -150,4 +173,3 @@ export default function AdminTradesPage() {
     </>
   );
 }
-

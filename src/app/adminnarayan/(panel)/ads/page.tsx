@@ -22,14 +22,17 @@ import type { P2PAd } from "@/lib/types";
 import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
 import { useAdminStatus } from "@/hooks/use-admin-status";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 export default function AdminAdsPage() {
   const { firestore } = useFirebase();
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [ads, setAds] = useState<P2PAd[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -57,6 +60,18 @@ export default function AdminAdsPage() {
     fetchAds();
   }, [isAdmin, isAdminLoading, firestore, toast]);
 
+  const filteredAds = useMemo(() => {
+    if (!ads) return null;
+    if (!searchTerm.trim()) return ads;
+    const lower = searchTerm.toLowerCase();
+    return ads.filter(ad => 
+        ad.publicAdId.toLowerCase().includes(lower) ||
+        ad.user.userId.toLowerCase().includes(lower) ||
+        ad.crypto.toLowerCase().includes(lower) ||
+        ad.fiatCurrency.toLowerCase().includes(lower)
+    );
+  }, [ads, searchTerm]);
+
   return (
     <>
       <div className="flex items-center justify-between">
@@ -68,6 +83,15 @@ export default function AdminAdsPage() {
           <CardDescription>
             View all ads on the platform, including active and inactive ones.
           </CardDescription>
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search by Ad ID, User ID, asset, or fiat..." 
+              className="pl-10" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -90,7 +114,7 @@ export default function AdminAdsPage() {
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && ads?.map((ad) => (
+              {!isLoading && filteredAds?.map((ad) => (
                 <TableRow key={ad.id}>
                   <TableCell className="font-mono text-xs">{ad.publicAdId}</TableCell>
                    <TableCell>
@@ -122,7 +146,7 @@ export default function AdminAdsPage() {
                   <TableCell>{toDate(ad.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !ads?.length && (
+              {!isLoading && !filteredAds?.length && (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
                     No ads found.
