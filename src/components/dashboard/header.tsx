@@ -37,13 +37,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import { DefaultAvatar } from "../icons";
 import { Badge } from "../ui/badge";
 import { collection, doc, orderBy, query, updateDoc } from "firebase/firestore";
-import type { UserWallet, Notification } from "@/lib/types";
+import type { UserWallet, Notification, User as AppUser } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
 import { cn, toDate } from "@/lib/utils";
 import { usePrices } from "@/context/price-context";
@@ -65,28 +65,36 @@ const navItems = [
 ];
 
 export function DashboardHeader() {
-  const { user, isUserLoading, firestore, auth } = useFirebase();
+  const { user: authUser, isUserLoading, firestore, auth } = useFirebase();
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { prices } = usePrices();
+  const { prices, fiatRates } = usePrices();
 
-  const walletsRef = useMemoFirebase(() => user ? collection(firestore, "users", user.uid, "wallets") : null, [firestore, user]);
+  const userDocRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
+  const { data: userData } = useDoc<AppUser>(userDocRef);
+
+  const walletsRef = useMemoFirebase(() => authUser ? collection(firestore, "users", authUser.uid, "wallets") : null, [firestore, authUser]);
   const { data: wallets } = useCollection<UserWallet>(walletsRef);
   
-  const notificationsRef = useMemoFirebase(() => user ? collection(firestore, "users", user.uid, "notifications") : null, [firestore, user]);
+  const notificationsRef = useMemoFirebase(() => authUser ? collection(firestore, "users", authUser.uid, "notifications") : null, [firestore, authUser]);
   const notificationsQuery = useMemoFirebase(() => notificationsRef ? query(notificationsRef, orderBy("createdAt", "desc")) : null, [notificationsRef]);
   const { data: notifications } = useCollection<Notification>(notificationsQuery);
   const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
   
-  const totalWalletValue = wallets?.reduce((acc, wallet) => {
-    const value = (wallet.balance + wallet.lockedBalance) * (prices[wallet.crypto] || 0);
+  const totalWalletValueUSD = wallets?.reduce((acc, wallet) => {
+    const value = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
     return acc + value;
   }, 0) || 0;
 
+  const preferredCurrency = userData?.preferredCurrency || 'USD';
+  const exchangeRate = fiatRates[preferredCurrency] || 1;
+  const totalWalletValueConverted = totalWalletValueUSD * exchangeRate;
+
+
   const handleMarkAsRead = async (notificationId: string) => {
-    if (!firestore || !user) return;
-    const notifRef = doc(firestore, "users", user.uid, "notifications", notificationId);
+    if (!firestore || !authUser) return;
+    const notifRef = doc(firestore, "users", authUser.uid, "notifications", notificationId);
     await updateDoc(notifRef, { isRead: true });
   }
 
@@ -112,7 +120,7 @@ export function DashboardHeader() {
   }
 
   // Unauthenticated State
-  if (!user) {
+  if (!authUser) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center">
@@ -250,8 +258,8 @@ export function DashboardHeader() {
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex shrink-0 items-center gap-1 p-1 h-auto rounded-md">
                     <Avatar className="h-8 w-8 shrink-0">
-                        {user?.photoURL ? (
-                        <AvatarImage src={user.photoURL} alt={user.displayName || "User Avatar"} />
+                        {authUser?.photoURL ? (
+                        <AvatarImage src={authUser.photoURL} alt={authUser.displayName || "User Avatar"} />
                         ) : (
                         <AvatarFallback className="bg-transparent">
                             <DefaultAvatar />
@@ -259,13 +267,13 @@ export function DashboardHeader() {
                         )}
                     </Avatar>
                     <div className="flex-shrink min-w-0 text-left">
-                        {user?.displayName ? <p className="font-semibold text-xs truncate">{user.displayName}</p> : <Skeleton className="h-5 w-20" />}
-                        <p className="text-[10px] text-muted-foreground truncate">${totalWalletValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                        {authUser?.displayName ? <p className="font-semibold text-xs truncate">{authUser.displayName}</p> : <Skeleton className="h-5 w-20" />}
+                        <p className="text-[10px] text-muted-foreground truncate">{totalWalletValueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{user?.displayName || "My Account"}</DropdownMenuLabel>
+                <DropdownMenuLabel>{authUser?.displayName || "My Account"}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                 <Link href="/profile">

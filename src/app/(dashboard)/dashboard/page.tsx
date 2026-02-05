@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -52,7 +50,7 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?:
 export default function DashboardPage() {
   const { firestore, user: authUser, isUserLoading: isAuthLoading } = useFirebase();
   const router = useRouter();
-  const { prices } = usePrices();
+  const { prices, fiatRates } = usePrices();
 
   useEffect(() => {
     if (!isAuthLoading && !authUser) {
@@ -72,11 +70,15 @@ export default function DashboardPage() {
   );
   const { data: wallets, isLoading: areWalletsLoading } = useCollection<UserWallet>(walletsRef);
   
-  const totalWalletValue =
+  const totalWalletValueUSD =
     wallets?.reduce((acc, wallet) => {
-      const value = (wallet.balance + wallet.lockedBalance) * (prices[wallet.crypto] || 0);
+      const value = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
       return acc + value;
     }, 0) || 0;
+
+  const preferredCurrency = user?.preferredCurrency || 'USD';
+  const exchangeRate = fiatRates[preferredCurrency] || 1;
+  const totalWalletValueConverted = totalWalletValueUSD * exchangeRate;
 
   const activeTradesAsBuyerQuery = useMemoFirebase(() => authUser ? query(collection(firestore, 'trades'), where('buyerId', '==', authUser.uid), where('status', 'in', ['active', 'paid'])) : null, [firestore, authUser]);
   const { data: activeBuyerTrades, isLoading: activeBuyerTradesLoading } = useCollection<Trade>(activeTradesAsBuyerQuery);
@@ -125,8 +127,7 @@ export default function DashboardPage() {
                 <div className="grid gap-2">
                 <CardTitle>My Wallet</CardTitle>
                 <CardDescription>
-                    Total estimated value: $
-                    {totalWalletValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Total estimated value: {totalWalletValueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </CardDescription>
                 </div>
                 <div className="ml-auto flex gap-2">
@@ -151,12 +152,13 @@ export default function DashboardPage() {
                     <TableRow>
                         <TableHead>Asset</TableHead>
                         <TableHead>Balance</TableHead>
-                        <TableHead className="text-right">USD Value (est.)</TableHead>
+                        <TableHead className="text-right">{preferredCurrency} Value (est.)</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
                     {wallets?.map((wallet) => {
-                        const value = (wallet.balance + wallet.lockedBalance) * (prices[wallet.crypto] || 0);
+                        const valueUSD = ((wallet.balance || 0) + (wallet.lockedBalance || 0)) * (prices[wallet.crypto] || 0);
+                        const valueConverted = valueUSD * exchangeRate;
                         return (
                         <TableRow key={wallet.crypto}>
                             <TableCell>
@@ -165,9 +167,9 @@ export default function DashboardPage() {
                                 <span className="font-medium">{wallet.crypto}</span>
                             </div>
                             </TableCell>
-                            <TableCell>{(wallet.balance + wallet.lockedBalance).toFixed(8)}</TableCell>
+                            <TableCell>{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(8)}</TableCell>
                             <TableCell className="text-right">
-                            ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                         </TableRow>
                         );

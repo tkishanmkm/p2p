@@ -204,13 +204,10 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
 
         const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
         const buyerWalletDoc = await transaction.get(buyerWalletRef);
-        let currentBalance = 0;
-        let currentLockedBalance = 0;
-
-        if (buyerWalletDoc.exists()) {
-            currentBalance = ((buyerWalletDoc.data() as UserWallet).balance || 0);
-            currentLockedBalance = ((buyerWalletDoc.data() as UserWallet).lockedBalance || 0);
-        }
+        
+        const walletData = buyerWalletDoc.data() as UserWallet | undefined;
+        const currentBalance = walletData?.balance || 0;
+        const currentLockedBalance = walletData?.lockedBalance || 0;
         
         transaction.set(buyerWalletRef, {
             balance: currentBalance + amountToBuyer,
@@ -435,5 +432,3 @@ export async function sendCoinToUser(
     return transferId;
   });
 }
-
-  
