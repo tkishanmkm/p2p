@@ -38,7 +38,7 @@ import { Badge } from "../ui/badge";
 import { collection, doc, orderBy, query, updateDoc } from "firebase/firestore";
 import type { UserWallet, Notification } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
 import { usePrices } from "@/context/price-context";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -186,7 +186,7 @@ export function DashboardHeader() {
                             <Mail className="mt-1 h-4 w-4 text-muted-foreground" />
                             <div className="flex flex-col">
                                 <p className="text-sm leading-snug">{n.message}</p>
-                                <p className="text-xs text-muted-foreground mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{toDate(n.createdAt)?.toLocaleString() ?? 'Invalid Date'}</p>
                             </div>
                         </Link>
                     </DropdownMenuItem>
