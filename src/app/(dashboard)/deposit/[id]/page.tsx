@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams } from "next/navigation";
@@ -17,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const depositConfirmationSchema = z.object({
   txId: z.string().min(10, { message: "Transaction Hash is required and must be at least 10 characters." }),
@@ -51,6 +52,24 @@ function DepositPageContent() {
     resolver: zodResolver(depositConfirmationSchema),
     defaultValues: { txId: "" },
   });
+  
+  const { isFinished } = useCountdown(deposit?.timerEnd || new Date());
+
+  useEffect(() => {
+    // Automatically expire the deposit if the timer runs out and it's still pending
+    if (deposit && deposit.status === 'pending' && isFinished && depositRef) {
+      const expireDeposit = async () => {
+        try {
+          await updateDoc(depositRef, { status: 'expired' });
+          // The page will re-render with the new status via the useDoc hook
+        } catch (e) {
+          // Log error but don't show a toast, as this is a background action
+          console.error("Failed to auto-expire deposit request:", e);
+        }
+      };
+      expireDeposit();
+    }
+  }, [deposit, isFinished, depositRef]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -62,7 +81,6 @@ function DepositPageContent() {
     setIsSubmitting(true);
 
     try {
-        // This insecure query was removed. Duplicate TxID checks should be handled by admins.
         await updateDoc(depositRef, { 
             txId: values.txId,
             status: 'awaiting_confirmation'
@@ -100,6 +118,7 @@ function DepositPageContent() {
   
   if (deposit.status !== 'pending') {
     const isCompleted = deposit.status === 'approved';
+    const isDeclinedOrExpired = deposit.status === 'declined' || deposit.status === 'expired';
     return (
         <Card className="max-w-2xl mx-auto">
             <CardHeader className="text-center">
@@ -107,7 +126,9 @@ function DepositPageContent() {
                     {isCompleted ? <CheckCircle className="h-10 w-10 text-green-500" /> : <AlertCircle className="h-10 w-10 text-destructive" />}
                 </div>
                 <CardTitle className="mt-4">Deposit {deposit.status}</CardTitle>
-                <CardDescription>This deposit request is now closed.</CardDescription>
+                 <CardDescription>
+                    {isDeclinedOrExpired ? 'This deposit request has been closed.' : 'This deposit request is now closed.'}
+                </CardDescription>
             </CardHeader>
         </Card>
     );

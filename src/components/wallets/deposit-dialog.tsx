@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -98,7 +99,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
         walletAddress: depositAddressDoc.address,
         qrCodeUrl: depositAddressDoc.qrCodeUrl,
         status: 'pending',
-        timerEnd: add(new Date(), { minutes: 181 }).toISOString(),
+        timerEnd: add(new Date(), { minutes: 180 }).toISOString(),
         createdAt: new Date().toISOString(), // This will be replaced by server timestamp
       };
 
