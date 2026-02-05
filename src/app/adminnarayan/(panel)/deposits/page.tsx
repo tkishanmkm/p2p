@@ -310,9 +310,10 @@ export default function AdminDepositsPage() {
                 </CardHeader>
             </Card>
             <Tabs defaultValue="awaiting_confirmation" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="awaiting_confirmation">Pending Approval</TabsTrigger>
                     <TabsTrigger value="pending">Pending User Action</TabsTrigger>
+                    <TabsTrigger value="expired">Expired</TabsTrigger>
                     <TabsTrigger value="all">All Deposits</TabsTrigger>
                 </TabsList>
                 <TabsContent value="awaiting_confirmation">
@@ -334,6 +335,17 @@ export default function AdminDepositsPage() {
                         </CardHeader>
                         <CardContent>
                            <DepositsTable status="pending" searchTerm={searchTerm} onRowClick={handleRowClick} onApproveClick={handleApproveClick} onDeclineClick={handleDeclineClick} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="expired">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Expired Deposit Requests</CardTitle>
+                            <CardDescription>These requests were not completed by the user in time.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                           <DepositsTable status="expired" searchTerm={searchTerm} onRowClick={handleRowClick} onApproveClick={handleApproveClick} onDeclineClick={handleDeclineClick} />
                         </CardContent>
                     </Card>
                 </TabsContent>
