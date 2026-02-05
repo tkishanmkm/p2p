@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useFirebase } from "@/firebase";
-import { collectionGroup, query, where, orderBy, getDocs } from "firebase/firestore";
+import { collectionGroup, query, getDocs } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -28,7 +28,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Check, X } from "lucide-react";
+import { MoreHorizontal, Check, X, Search } from "lucide-react";
 import type { Withdrawal } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { approveWithdrawal, declineWithdrawal } from "@/lib/admin";
@@ -44,6 +44,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn, toDate } from "@/lib/utils";
 import { useAdminStatus } from "@/hooks/use-admin-status";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const statusColors: Record<Withdrawal['status'], string> = {
   pending: "border-yellow-500/50 text-yellow-600 bg-yellow-50",
@@ -52,16 +54,78 @@ const statusColors: Record<Withdrawal['status'], string> = {
   cancelled: "border-gray-500/50 text-gray-600 bg-gray-50",
 };
 
+// Reusable table component
+function WithdrawalsTable({ 
+    withdrawals, 
+    isLoading,
+    onApprove,
+    onDecline
+}: { 
+    withdrawals: Withdrawal[] | null; 
+    isLoading: boolean;
+    onApprove: (withdrawal: Withdrawal) => void;
+    onDecline: (withdrawal: Withdrawal) => void;
+}) {
+    if (isLoading) {
+        return <TableRow><TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell></TableRow>;
+    }
+    if (!withdrawals || withdrawals.length === 0) {
+        return <TableRow><TableCell colSpan={6} className="h-24 text-center">No withdrawals found for this filter.</TableCell></TableRow>;
+    }
+
+    return (
+        <>
+            {withdrawals.map((w) => (
+                <TableRow key={w.id}>
+                    <TableCell className="font-medium">{w.userDisplayName}</TableCell>
+                    <TableCell>{w.amount.toFixed(8)} {w.crypto}</TableCell>
+                    <TableCell className="font-mono text-xs truncate max-w-[150px]">{w.address}</TableCell>
+                    <TableCell>
+                        <Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>
+                        {w.status}
+                        </Badge>
+                    </TableCell>
+                    <TableCell>{toDate(w.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                    <TableCell className="text-right">
+                        {w.status === 'pending' && (
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => onApprove(w)}>
+                                    <Check className="mr-2 h-4 w-4" /> Approve
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => onDecline(w)}>
+                                    <X className="mr-2 h-4 w-4" /> Decline
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </TableCell>
+                </TableRow>
+            ))}
+        </>
+    );
+}
+
+
 export default function AdminWithdrawalsPage() {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
-  const [showAll, setShowAll] = useState(false);
+
+  const [allWithdrawals, setAllWithdrawals] = useState<Withdrawal[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
   const [isApproveAlertOpen, setIsApproveAlertOpen] = useState(false);
   const [isDeclineAlertOpen, setIsDeclineAlertOpen] = useState(false);
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (isAdminLoading) return;
@@ -79,21 +143,15 @@ export default function AdminWithdrawalsPage() {
         
         let withdrawalsData = snapshot.docs.map(doc => {
             const data = doc.data() as Withdrawal;
-            // The path of a doc in a collection group is 'users/{userId}/withdrawals/{withdrawalId}'
-            // We need to extract the userId from the path.
             const pathParts = doc.ref.path.split('/');
             const userId = pathParts[1];
             return { ...data, id: doc.id, userId: userId, userDisplayName: data.userDisplayName || 'Unknown' };
         });
-        
-        // Sort on client
+
+        // Sort on client-side to prevent index issues
         withdrawalsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
         
-        if (showAll) {
-            setWithdrawals(withdrawalsData);
-        } else {
-            setWithdrawals(withdrawalsData.filter(w => w.status === 'pending'));
-        }
+        setAllWithdrawals(withdrawalsData);
 
       } catch (error) {
         console.error("Error fetching withdrawals:", error);
@@ -104,7 +162,29 @@ export default function AdminWithdrawalsPage() {
     };
 
     fetchWithdrawals();
-  }, [isAdmin, isAdminLoading, firestore, showAll, toast]);
+  }, [isAdmin, isAdminLoading, firestore, toast]);
+
+  const filteredWithdrawals = useMemo(() => {
+    if (!allWithdrawals) return null;
+    if (!searchTerm.trim()) return allWithdrawals;
+
+    const lowercasedFilter = searchTerm.toLowerCase();
+    
+    return allWithdrawals.filter(w => {
+        return (
+            w.userDisplayName.toLowerCase().includes(lowercasedFilter) ||
+            w.id.toLowerCase().includes(lowercasedFilter) ||
+            w.address.toLowerCase().includes(lowercasedFilter) ||
+            w.amount.toString().includes(lowercasedFilter) ||
+            (toDate(w.createdAt)?.toLocaleString() ?? '').toLowerCase().includes(lowercasedFilter)
+        );
+    });
+  }, [allWithdrawals, searchTerm]);
+
+  const pendingWithdrawals = useMemo(() => {
+      return filteredWithdrawals?.filter(w => w.status === 'pending') || null;
+  }, [filteredWithdrawals]);
+
 
   const handleApprove = async () => {
     if (!firestore || !selectedWithdrawal || !user) return;
@@ -112,11 +192,7 @@ export default function AdminWithdrawalsPage() {
       await approveWithdrawal(firestore, selectedWithdrawal, user.uid);
       toast({ title: "Withdrawal Approved", description: `User ${selectedWithdrawal.userDisplayName}'s locked balance has been debited.` });
       // Optimistically update UI
-      if (!showAll) {
-        setWithdrawals(withdrawals => withdrawals?.filter(w => w.id !== selectedWithdrawal.id) || null);
-      } else {
-        setWithdrawals(withdrawals => withdrawals?.map(w => w.id === selectedWithdrawal.id ? {...w, status: 'approved'} : w) || null);
-      }
+      setAllWithdrawals(withdrawals => withdrawals?.map(w => w.id === selectedWithdrawal.id ? {...w, status: 'approved'} : w) || null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Approval Failed", description: e.message });
     }
@@ -130,11 +206,7 @@ export default function AdminWithdrawalsPage() {
       await declineWithdrawal(firestore, selectedWithdrawal, user.uid);
       toast({ title: "Withdrawal Declined", description: `Funds have been returned to user ${selectedWithdrawal.userDisplayName}.` });
       // Optimistically update UI
-       if (!showAll) {
-        setWithdrawals(withdrawals => withdrawals?.filter(w => w.id !== selectedWithdrawal.id) || null);
-      } else {
-        setWithdrawals(withdrawals => withdrawals?.map(w => w.id === selectedWithdrawal.id ? {...w, status: 'declined'} : w) || null);
-      }
+      setAllWithdrawals(withdrawals => withdrawals?.map(w => w.id === selectedWithdrawal.id ? {...w, status: 'declined'} : w) || null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Decline Failed", description: e.message });
     }
@@ -142,70 +214,86 @@ export default function AdminWithdrawalsPage() {
     setSelectedWithdrawal(null);
   };
 
+  const openApproveDialog = (withdrawal: Withdrawal) => {
+    setSelectedWithdrawal(withdrawal);
+    setIsApproveAlertOpen(true);
+  }
+
+  const openDeclineDialog = (withdrawal: Withdrawal) => {
+    setSelectedWithdrawal(withdrawal);
+    setIsDeclineAlertOpen(true);
+  }
+
   return (
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold md:text-2xl">Withdrawal Requests</h1>
-        <Button variant="outline" onClick={() => setShowAll(!showAll)}>
-          {showAll ? "Show Pending Only" : "Show All"}
-        </Button>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Manage Withdrawals</CardTitle>
-          <CardDescription>Review, approve, or decline user withdrawal requests.</CardDescription>
+           <CardTitle>Manage Withdrawals</CardTitle>
+           <CardDescription>Review, approve, or decline user withdrawal requests.</CardDescription>
+           <div className="relative mt-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search by User ID, amount, address, ID, or date..." 
+                className="pl-10" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Address</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow>}
-              {!isLoading && withdrawals?.map((w) => (
-                <TableRow key={w.id}>
-                  <TableCell className="font-medium">{w.userDisplayName}</TableCell>
-                  <TableCell>{w.amount.toFixed(8)} {w.crypto}</TableCell>
-                  <TableCell className="font-mono text-xs truncate max-w-[150px]">{w.address}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>
-                      {w.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{toDate(w.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
-                  <TableCell className="text-right">
-                    {w.status === 'pending' && (
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => { setSelectedWithdrawal(w); setIsApproveAlertOpen(true); }}>
-                                <Check className="mr-2 h-4 w-4" /> Approve
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => { setSelectedWithdrawal(w); setIsDeclineAlertOpen(true); }}>
-                                <X className="mr-2 h-4 w-4" /> Decline
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!isLoading && !withdrawals?.length && <TableRow><TableCell colSpan={6} className="text-center h-24">No withdrawals found.</TableCell></TableRow>}
-            </TableBody>
-          </Table>
+            <Tabs defaultValue="pending">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="pending">Pending</TabsTrigger>
+                    <TabsTrigger value="all">All Withdrawals</TabsTrigger>
+                </TabsList>
+                <TabsContent value="pending" className="mt-4">
+                     <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Address</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <WithdrawalsTable 
+                                withdrawals={pendingWithdrawals} 
+                                isLoading={isLoading || isAdminLoading} 
+                                onApprove={openApproveDialog}
+                                onDecline={openDeclineDialog}
+                            />
+                        </TableBody>
+                    </Table>
+                </TabsContent>
+                <TabsContent value="all" className="mt-4">
+                     <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Address</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                             <WithdrawalsTable 
+                                withdrawals={filteredWithdrawals} 
+                                isLoading={isLoading || isAdminLoading} 
+                                onApprove={openApproveDialog}
+                                onDecline={openDeclineDialog}
+                            />
+                        </TableBody>
+                    </Table>
+                </TabsContent>
+            </Tabs>
         </CardContent>
       </Card>
       
@@ -239,5 +327,5 @@ export default function AdminWithdrawalsPage() {
       </AlertDialog>
     </>
   );
-}
+
     
