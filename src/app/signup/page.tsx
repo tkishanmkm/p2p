@@ -30,9 +30,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import { useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useFirebase } from "@/firebase";
-import { onAuthStateChanged, updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -71,57 +71,6 @@ function SignupFormComponent() {
     },
   });
 
-  useEffect(() => {
-    if (!auth || !firestore) return;
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && isSigningUp) {
-        setIsSigningUp(false);
-        const values = form.getValues();
-        
-        try {
-          // 1. Update auth user profile
-          await updateProfile(user, { displayName: values.userId });
-
-          // 2. Create firestore document
-          const userDocRef = doc(firestore, "users", user.uid);
-          const newUserDoc = {
-              id: user.uid,
-              userId: values.userId,
-              fullName: values.fullName,
-              dob: values.dob.toISOString().split('T')[0], // YYYY-MM-DD
-              isBanned: false,
-              isOnHold: false,
-              tradeVolume: "0",
-              completedTrades: 0,
-              usernameChanged: false,
-              createdAt: new Date().toISOString(),
-              feedbackScore: 100,
-              positiveFeedback: 0,
-              negativeFeedback: 0,
-              avgPaymentTime: 0,
-              avgReleaseTime: 0,
-              accountAge: "0 days",
-              photoURL: "",
-              preferredCurrency: "USD",
-              securityQuestion: values.securityQuestion,
-              securityAnswer: values.securityAnswer, // In a real app, this should be hashed
-          };
-          await setDoc(userDocRef, newUserDoc);
-
-          toast({ title: "Account Created", description: "Redirecting..." });
-          router.push('/buy');
-
-        } catch (error: any) {
-          console.error("Error creating user profile:", error);
-          toast({ variant: "destructive", title: "Signup Error", description: "Could not save user profile." });
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [auth, firestore, isSigningUp, form, router, toast]);
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!auth || !firestore) {
       toast({ variant: "destructive", title: "Error", description: "Authentication service not ready."});
@@ -130,7 +79,7 @@ function SignupFormComponent() {
     setIsSigningUp(true);
 
     try {
-      // Check for userId uniqueness
+      // 1. Check for userId uniqueness
       const usersRef = collection(firestore, "users");
       const q = query(usersRef, where("userId", "==", values.userId));
       const querySnapshot = await getDocs(q);
@@ -144,9 +93,43 @@ function SignupFormComponent() {
           return;
       }
       
+      // 2. Create user with email/password
       await setPersistence(auth, browserLocalPersistence);
       const dummyEmail = `${values.userId}@tradeflow.app`;
-      await createUserWithEmailAndPassword(auth, dummyEmail, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, dummyEmail, values.password);
+      const { user: newUser } = userCredential;
+
+      // 3. Update auth user profile (displayName)
+      await updateProfile(newUser, { displayName: values.userId });
+      
+      // 4. Create Firestore user document
+      const userDocRef = doc(firestore, "users", newUser.uid);
+      const newUserDoc = {
+          id: newUser.uid,
+          userId: values.userId,
+          fullName: values.fullName,
+          dob: values.dob.toISOString().split('T')[0], // YYYY-MM-DD
+          isBanned: false,
+          isOnHold: false,
+          tradeVolume: "0",
+          completedTrades: 0,
+          usernameChanged: false,
+          createdAt: new Date().toISOString(),
+          feedbackScore: 100,
+          positiveFeedback: 0,
+          negativeFeedback: 0,
+          avgPaymentTime: 0,
+          avgReleaseTime: 0,
+          accountAge: "0 days",
+          photoURL: "",
+          preferredCurrency: "USD",
+          securityQuestion: values.securityQuestion,
+          securityAnswer: values.securityAnswer,
+      };
+      await setDoc(userDocRef, newUserDoc);
+
+      toast({ title: "Account Created", description: "Redirecting..." });
+      router.push('/buy');
 
     } catch (error: any) {
         console.error("Error during sign up:", error);
@@ -156,6 +139,7 @@ function SignupFormComponent() {
             form.setError("userId", { type: "manual", message: description });
         }
         toast({ variant: "destructive", title: "Signup Failed", description });
+    } finally {
         setIsSigningUp(false);
     }
   }
