@@ -63,8 +63,13 @@ const adFormSchema = z.object({
   fiatCurrency: z.string().min(1, "Please select a fiat currency."),
   paymentMethods: z.array(z.string()).min(1, "Select at least one payment method.").max(5, "You can select up to 5 payment methods."),
   rateType: z.enum(["market", "fixed"]),
-  ratePercent: z.coerce.number().min(-50, "Value must be >= -50").max(50, "Value must be <= 50").optional(),
-  fixedRate: z.coerce.number().optional(),
+  ratePercent: z.coerce.number({
+        invalid_type_error: "A valid percentage is required.",
+    })
+    .min(-50, { message: "Please enter a value from -50 to 50." })
+    .max(50, { message: "Please enter a value from -50 to 50." })
+    .optional(),
+  fixedRate: z.coerce.number({invalid_type_error: "A valid number is required."}).positive({message: "Fixed rate must be a positive number."}).optional(),
   minAmount: z.coerce.number().min(1, "Minimum amount is required."),
   maxAmount: z.coerce.number().min(1, "Maximum amount is required."),
   terms: z.string().min(10, "Terms must be at least 10 characters.").max(500, "Terms cannot exceed 500 characters."),
@@ -79,11 +84,11 @@ const adFormSchema = z.object({
     path: ["ratePercent"],
 }).refine(data => {
     if (data.rateType === 'fixed') {
-        return data.fixedRate !== undefined && data.fixedRate !== null && data.fixedRate > 0;
+        return data.fixedRate !== undefined && data.fixedRate !== null;
     }
     return true;
 }, {
-    message: "Fixed rate is required and must be positive.",
+    message: "Fixed rate is required.",
     path: ["fixedRate"],
 }).refine(data => data.maxAmount >= data.minAmount, {
     message: "Max amount must be greater than or equal to min amount.",
@@ -105,8 +110,8 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [customPaymentMethod, setCustomPaymentMethod] = useState('');
   
-  // Keep a ref to the previous rate type to handle default value setting
   const rateTypeRef = useRef<"market" | "fixed" | undefined>(ad?.rateType);
+  const previousCryptoRef = useRef<string | undefined>(ad?.crypto);
 
   const adCreatorId = ad?.userId || user?.uid;
 
@@ -136,15 +141,32 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const watchedFields = form.watch();
   const currentMarketPrice = prices[watchedFields.crypto as CryptoCurrency] || 0;
 
+  // This effect pre-fills the fixed rate input when switching modes.
   useEffect(() => {
     const currentRateType = watchedFields.rateType;
-    // Only set the default fixed rate when the user *switches* to fixed mode
-    if (currentRateType === 'fixed' && rateTypeRef.current !== 'fixed' && currentMarketPrice > 0) {
-        form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
+    const fixedRateHasValue = form.getValues('fixedRate');
+
+    // When switching TO 'fixed' mode, pre-fill with market price if field is empty.
+    // This preserves user-entered values if they switch away and back.
+    if (currentRateType === 'fixed' && rateTypeRef.current !== 'fixed' && !fixedRateHasValue && currentMarketPrice > 0) {
+      form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
     }
-    // Update the ref to the current value for the next render
+    // Update ref to detect switches on next render.
     rateTypeRef.current = currentRateType;
   }, [watchedFields.rateType, currentMarketPrice, form]);
+
+  // This effect updates the fixed rate ONLY when the user changes the crypto asset.
+  useEffect(() => {
+    // If crypto has changed from the last render...
+    if (previousCryptoRef.current !== watchedFields.crypto) {
+      // ...and we are in 'fixed' mode, update the price to the new market rate.
+      if (watchedFields.rateType === 'fixed' && currentMarketPrice > 0) {
+        form.setValue('fixedRate', parseFloat(currentMarketPrice.toFixed(2)));
+      }
+      // Update ref for the next render.
+      previousCryptoRef.current = watchedFields.crypto;
+    }
+  }, [watchedFields.crypto, currentMarketPrice, watchedFields.rateType, form]);
 
   useEffect(() => {
     setBalanceError(null);
