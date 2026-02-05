@@ -40,10 +40,6 @@ service cloud.firestore {
         allow read: if true;
         allow write: if isAdmin();
     }
-    match /payment_methods/{paymentMethodId} {
-        allow get, list: if true;
-        allow write: if isAdmin();
-    }
     match /crypto_deposit_addresses/{addressId} {
         allow read: if isSignedIn(); // Any signed-in user can read deposit addresses
         allow write: if isAdmin(); // Only admins can set them
@@ -122,7 +118,7 @@ service cloud.firestore {
         // Anyone can view ads.
         allow get, list: if true;
         // Any signed-in user can create an ad for themself.
-        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
         // Only the ad owner or an admin can update/delete it.
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
