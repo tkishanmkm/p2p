@@ -12,6 +12,8 @@ import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Skeleton } from "../ui/skeleton";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { toDate } from "@/lib/utils";
+import { formatDistanceToNowStrict } from 'date-fns';
 
 interface AdCardProps {
   ad: P2PAd;
@@ -50,7 +52,8 @@ export function AdCard({ ad }: AdCardProps) {
   // Use the live creator data if available, otherwise fall back to the denormalized data
   const displayUser = adCreator || ad.user;
   const displayPhoto = adCreator?.photoURL || ad.user.photoURL;
-  const displayTrades = adCreator?.completedTrades ?? ad.user.completedTrades ?? 0;
+  const lastActiveDate = adCreator?.lastActive ? toDate(adCreator.lastActive) : null;
+  const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 15 * 60 * 1000;
 
   if (ad.adType === 'sell') {
     if (!isWalletLoading) {
@@ -100,7 +103,14 @@ export function AdCard({ ad }: AdCardProps) {
               ) : (
                 <>
                   <p className="font-semibold">{displayUser.userId}</p>
-                  <p className="text-xs text-muted-foreground">{displayTrades} trades</p>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {wasActiveRecently ? (
+                      <div className="h-2 w-2 rounded-full bg-green-500" title="Active recently" />
+                    ) : null}
+                    <span>
+                      {lastActiveDate ? `${formatDistanceToNowStrict(lastActiveDate)} ago` : 'Offline'}
+                    </span>
+                  </div>
                   <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <div className="flex items-center gap-0.5 text-green-600">
                         <ThumbsUp className="h-3 w-3" />

@@ -17,17 +17,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Paperclip, Info, Loader2, Shield, AlertTriangle } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
-import type { TradeChatMessage, Trade } from '@/lib/types';
+import type { TradeChatMessage, Trade, User } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { addReceiptToTrade } from '@/lib/wallet';
 import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
+import { formatDistanceToNowStrict } from 'date-fns';
 
 interface TradeChatProps {
   currentUserId: string;
   trade: Trade;
+  opponent: User | null | undefined;
   isAdmin: boolean;
 }
 
@@ -61,7 +63,7 @@ const checkMessageForBlockedWords = (message: string): boolean => {
   return blockedWords.some((word) => lowerCaseMessage.includes(word));
 };
 
-export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
+export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChatProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -76,6 +78,14 @@ export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
   const [showUsernames, setShowUsernames] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const opponentLastActive = opponent?.lastActive ? toDate(opponent.lastActive) : null;
+  const opponentIsActiveNow = opponentLastActive && (new Date().getTime() - opponentLastActive.getTime()) < 15 * 60 * 1000;
+  const opponentStatus = opponentIsActiveNow 
+      ? 'Active now' 
+      : opponentLastActive 
+      ? `Active ${formatDistanceToNowStrict(opponentLastActive)} ago` 
+      : 'Offline';
 
   useEffect(() => {
     // Auto-scroll to bottom
@@ -144,10 +154,19 @@ export function TradeChat({ currentUserId, trade, isAdmin }: TradeChatProps) {
   return (
     <Card className="flex flex-col h-full">
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
           <div>
             <CardTitle>Trade Chat</CardTitle>
-            <CardDescription>Communicate with the other party.</CardDescription>
+            <CardDescription>
+                {opponent ? (
+                    <div className="flex items-center gap-2 mt-1">
+                        <div className={cn("h-2.5 w-2.5 rounded-full", opponentIsActiveNow ? "bg-green-500" : "bg-muted-foreground/50")} />
+                        <span className="text-xs text-muted-foreground">{opponent.userId} - {opponentStatus}</span>
+                    </div>
+                ) : (
+                    "Communicate with the other party."
+                )}
+            </CardDescription>
           </div>
           <TooltipProvider>
             <Tooltip>

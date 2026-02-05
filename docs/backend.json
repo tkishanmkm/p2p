@@ -88,6 +88,11 @@
           "description": "Timestamp of when the user's last trade was completed.",
           "format": "date-time"
         },
+        "lastActive": {
+          "type": "string",
+          "description": "Timestamp of when the user was last active.",
+          "format": "date-time"
+        },
         "securityQuestion": {
             "type": "string",
             "description": "A security question chosen by the user for account recovery."

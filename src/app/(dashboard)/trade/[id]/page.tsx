@@ -22,7 +22,7 @@ import { doc, collection, query, where, limit } from "firebase/firestore";
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow, claimFundsForTrade } from "@/lib/wallet";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Trade, Dispute, P2PAd } from "@/lib/types";
+import type { Trade, Dispute, P2PAd, User } from "@/lib/types";
 import { cn, toDate } from "@/lib/utils";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useAdminStatus } from "@/hooks/use-admin-status";
@@ -44,6 +44,15 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const disputeQuery = useMemoFirebase(() => firestore && tradeId ? query(collection(firestore, `trades/${tradeId}/disputes`), where('status', '==', 'resolved'), limit(1)) : null, [firestore, tradeId]);
   const { data: resolvedDisputes } = useCollection<Dispute>(disputeQuery);
   const resolvedDispute = resolvedDisputes?.[0];
+
+  // Fetch full user profiles for opponent status
+  const buyerRef = useMemoFirebase(() => (firestore && trade?.buyerId ? doc(firestore, 'users', trade.buyerId) : null), [firestore, trade]);
+  const { data: buyerProfile } = useDoc<User>(buyerRef);
+
+  const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
+  const { data: sellerProfile } = useDoc<User>(sellerRef);
+
+  const opponentProfile = user?.uid === trade?.buyerId ? sellerProfile : buyerProfile;
 
 
   const currentUserRole = user?.uid === trade?.buyerId ? "buy" : "sell";
@@ -242,7 +251,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
             </div>
             <div className="h-[60vh] lg:h-auto">
-                <TradeChat currentUserId={user?.uid || ""} trade={trade} isAdmin={isAdmin} />
+                <TradeChat currentUserId={user?.uid || ""} trade={trade} opponent={opponentProfile} isAdmin={isAdmin} />
             </div>
         </div>
       </div>

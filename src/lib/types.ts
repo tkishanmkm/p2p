@@ -21,6 +21,7 @@ export type User = {
   avgReleaseTime: number; // In minutes
   preferredCurrency?: string;
   lastTradeAt?: string;
+  lastActive?: string;
   securityQuestion?: string;
   securityAnswer?: string;
   isAdminAccount?: boolean;

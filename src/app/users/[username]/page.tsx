@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, limit, doc } from 'firebase/firestore';
 import type { User, P2PAd } from '@/lib/types';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -145,6 +145,8 @@ export default function PublicProfilePage() {
     );
   }
   const createdDate = toDate(user.createdAt);
+  const lastActiveDate = user.lastActive ? toDate(user.lastActive) : null;
+  const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 15 * 60 * 1000;
   const isOwnProfile = authUser?.uid === user.id;
 
   return (
@@ -168,7 +170,21 @@ export default function PublicProfilePage() {
                         {user.isOnHold && <Badge variant="secondary" className="bg-yellow-500 text-white">On Hold</Badge>}
                         {!user.isBanned && !user.isOnHold && <Badge className="bg-green-500">Verified</Badge>}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-4 flex items-center gap-2">
+                    
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                        {wasActiveRecently ? (
+                            <Badge variant="secondary" className="border-green-500/50 bg-green-50 text-green-700">
+                                <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />
+                                Active now
+                            </Badge>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                {lastActiveDate ? `Active ${formatDistanceToNowStrict(lastActiveDate)} ago` : 'Activity unknown'}
+                            </p>
+                        )}
+                    </div>
+                    
+                    <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         Joined {createdDate ? formatDistanceToNow(createdDate) + ' ago' : 'N/A'}
                     </p>
