@@ -32,11 +32,12 @@ export interface UseCollectionResult<T> {
  */
 function getQueryPath(q: any): string | undefined {
   if (!q) return undefined;
+  // For CollectionReference
   if (q.type === 'collection' && typeof q.path === 'string') {
     return q.path;
   }
-  // This is an internal, undocumented API, so we check defensively.
-  if (q._query && q._query.path && typeof q._query.path.canonicalString === 'function') {
+  // For Query, using optional chaining for safety
+  if (q?._query?.path?.canonicalString) {
     return q._query.path.canonicalString();
   }
   return undefined;
