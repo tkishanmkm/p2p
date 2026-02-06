@@ -12,7 +12,7 @@ import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Skeleton } from "../ui/skeleton";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { toDate } from "@/lib/utils";
+import { toDate, cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { FlagIcon } from "../ui/flag-icon";
 import { countries } from "@/lib/countries";
@@ -134,7 +134,7 @@ export function AdCard({ ad }: AdCardProps) {
           {/* Price */}
           <div className="sm:col-span-1">
             <p className="text-xs text-muted-foreground">Price</p>
-            <p className="font-bold text-lg text-green-600">{priceLabel}</p>
+            <p className="font-bold text-lg">{priceLabel}</p>
           </div>
           
           {/* Limits & Payment */}
@@ -165,7 +165,16 @@ export function AdCard({ ad }: AdCardProps) {
 
           {/* Action Button */}
           <div className="sm:col-span-1 sm:text-right">
-            <Button asChild variant={ad.adType === 'sell' ? 'default' : 'destructive'} className="w-full sm:w-auto" disabled={!tradeIsPossible || isLoading}>
+            <Button
+              asChild
+              className={cn(
+                "w-full sm:w-auto",
+                ad.adType === 'sell'
+                  ? 'bg-green-600 hover:bg-green-700 text-primary-foreground'
+                  : 'bg-red-600 hover:bg-red-700 text-primary-foreground'
+              )}
+              disabled={!tradeIsPossible || isLoading}
+            >
               <Link href={actionUrl}>
                 {ad.adType === 'sell' ? `Buy ${ad.crypto}` : `Sell ${ad.crypto}`}
               </Link>
