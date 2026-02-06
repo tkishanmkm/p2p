@@ -34,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
+import { countries } from "@/lib/countries";
 import { paymentMethods, giftCardPaymentMethods } from "@/lib/payment-methods";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from "@/firebase";
@@ -47,8 +48,9 @@ import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Wallet, Edit } from "lucide-react";
+import { Loader2, Wallet, Edit, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { FlagIcon } from "../ui/flag-icon";
 
 const adTags = [
   { id: "no-third-party", label: "No third party" },
@@ -61,6 +63,10 @@ const adFormSchema = z.object({
   adType: z.enum(["buy", "sell"]),
   crypto: z.string().min(1, "Please select a coin."),
   fiatCurrency: z.string().min(1, "Please select a fiat currency."),
+  
+  targetedCountries: z.array(z.string()).optional(),
+  blockedCountries: z.array(z.string()).optional(),
+
   paymentMethods: z.array(z.string()).min(1, "Select at least one payment method.").max(5, "You can select up to 5 payment methods."),
   rateType: z.enum(["market", "fixed"]),
   ratePercent: z.coerce.number({
@@ -73,6 +79,7 @@ const adFormSchema = z.object({
   minAmount: z.coerce.number().min(1, "Minimum amount is required."),
   maxAmount: z.coerce.number().min(1, "Maximum amount is required."),
   paymentTimeLimit: z.coerce.number().min(30).default(30),
+  minCompletedTrades: z.coerce.number().min(0).max(5).default(0),
   terms: z.string().min(10, "Terms must be at least 10 characters.").max(500, "Terms cannot exceed 500 characters."),
   tags: z.array(z.string()).optional(),
 }).superRefine((data, ctx) => {
@@ -118,7 +125,10 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [customPaymentMethod, setCustomPaymentMethod] = useState('');
   const [currencySearchTerm, setCurrencySearchTerm] = useState("");
+  const [countrySearchTerm, setCountrySearchTerm] = useState("");
   const [isCurrencySheetOpen, setIsCurrencySheetOpen] = useState(false);
+  const [isTargetCountrySheetOpen, setIsTargetCountrySheetOpen] = useState(false);
+  const [isBlockedCountrySheetOpen, setIsBlockedCountrySheetOpen] = useState(false);
   const [isBankMethodSheetOpen, setIsBankMethodSheetOpen] = useState(false);
   const [isGiftCardSheetOpen, setIsGiftCardSheetOpen] = useState(false);
   const [paymentMethodSearchTerm, setPaymentMethodSearchTerm] = useState("");
@@ -135,7 +145,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
     resolver: zodResolver(adFormSchema),
     shouldUnregister: false,
     defaultValues: ad 
-      ? { ...ad, ratePercent: ad.ratePercent ?? 5, paymentTimeLimit: ad.paymentTimeLimit || 30 } 
+      ? { ...ad, ratePercent: ad.ratePercent ?? 5, paymentTimeLimit: ad.paymentTimeLimit || 30, minCompletedTrades: ad.minCompletedTrades || 0 } 
       : {
           adType: "sell",
           crypto: "BTC",
@@ -144,6 +154,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
           rateType: "market",
           ratePercent: 5,
           paymentTimeLimit: 30,
+          minCompletedTrades: 0,
           tags: [],
         },
   });
@@ -213,6 +224,10 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
     c.name.toLowerCase().includes(currencySearchTerm.toLowerCase()) || 
     c.code.toLowerCase().includes(currencySearchTerm.toLowerCase())
   );
+  
+  const filteredCountries = [{name: 'All Countries', code: 'all'}, ...countries].filter(c =>
+    c.name.toLowerCase().includes(countrySearchTerm.toLowerCase())
+  );
 
   const addPaymentMethod = (method: string) => {
     if (!method) return;
@@ -256,6 +271,9 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
         terms: data.terms,
         tags: data.tags,
         active: ad?.active ?? true, // Preserve active status on edit, default to true on create
+        targetedCountries: data.targetedCountries,
+        blockedCountries: data.blockedCountries,
+        minCompletedTrades: data.minCompletedTrades,
     };
     
     try {
@@ -267,6 +285,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
             await createP2PAd(firestore, adData, {
                 id: user.uid,
                 userId: userData.userId,
+                country: userData.country,
                 feedbackScore: userData.feedbackScore ?? 100,
                 completedTrades: userData.completedTrades ?? 0,
                 photoURL: userData.photoURL
@@ -725,6 +744,35 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                 </FormItem>
               )}
             />
+            
+            <div className="space-y-6">
+                <h3 className="font-medium text-lg">Trader Requirements</h3>
+                <FormField
+                    control={form.control}
+                    name="minCompletedTrades"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Minimum Completed Trades</FormLabel>
+                            <Select onValueChange={(val) => field.onChange(parseInt(val))} defaultValue={String(field.value)}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="No requirement" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {[0, 1, 2, 3, 4, 5].map(num => (
+                                    <SelectItem key={num} value={String(num)}>
+                                    {num === 0 ? "No requirement" : `${num} completed trade${num > 1 ? 's' : ''}`}
+                                    </SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>Set a minimum number of trades a user must have completed to start a trade with you.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
             
             {balanceError && !isAdmin && (
               <Alert variant="destructive">

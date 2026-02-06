@@ -97,6 +97,7 @@ export type P2PAd = {
   createdAt: string; // TIMESTAMP
   targetedCountries?: string[];
   blockedCountries?: string[];
+  minCompletedTrades?: number;
   user: {
       userId: string;
       country?: string;

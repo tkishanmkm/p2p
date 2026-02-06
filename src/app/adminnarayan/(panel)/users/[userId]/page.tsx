@@ -17,12 +17,13 @@ import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown, Globe } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { useToast } from '@/hooks/use-toast';
 import { adminUnblockUser } from '@/lib/admin';
+import { countries } from '@/lib/countries';
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | undefined }) {
     if (!value && value !== 0) return null;
@@ -214,6 +215,8 @@ export default function AdminUserDetailPage() {
   if (!user) {
     return <Card><CardHeader><CardTitle>User Not Found</CardTitle><CardDescription>The user with ID "{userId}" does not exist.</CardDescription></CardHeader></Card>;
   }
+  
+  const getCountryName = (code?: string) => code ? countries.find(c => c.code === code)?.name : 'N/A';
 
   const dobDate = toDate(user.dob);
   const createdDate = toDate(user.createdAt);
@@ -256,6 +259,8 @@ export default function AdminUserDetailPage() {
                         <DetailItem icon={<UserCheck size={20} />} label="User ID" value={user.userId} />
                         {user.oldUserId && <DetailItem icon={<UserIcon size={20} />} label="Previous User ID" value={user.oldUserId} />}
                         <DetailItem icon={<Calendar size={20} />} label="Date of Birth" value={dobDate ? format(dobDate, "LLLL d, yyyy") : 'N/A'} />
+                        <DetailItem icon={<Globe size={20} />} label="Origin Country" value={getCountryName(user.country)} />
+                        <DetailItem icon={<Globe size={20} />} label="IP-Based Country" value={getCountryName(user.ipBasedCountry)} />
                         <DetailItem icon={<Clock size={20} />} label="Member Since" value={createdDate ? `${format(createdDate, "PP")} (${formatDistanceToNow(createdDate)} ago)` : 'N/A'} />
                         <DetailItem icon={<DollarSign size={20} />} label="Preferred Currency" value={user.preferredCurrency || 'USD'} />
                         <DetailItem icon={<KeyRound size={20} />} label="Security Question" value={user.securityQuestion} />
