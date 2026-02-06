@@ -49,7 +49,7 @@ import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Wallet, Edit, Search } from "lucide-react";
+import { Loader2, Wallet, Edit, Search, Globe } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { FlagIcon } from "../ui/flag-icon";
 
@@ -730,7 +730,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                                                         />
                                                     </FormControl>
                                                     <FormLabel className="font-normal w-full cursor-pointer flex items-center gap-2">
-                                                        <FlagIcon countryCode={country.code} /> {country.name}
+                                                        {country.code === 'all' ? <Globe className="h-4 w-4" /> : <FlagIcon countryCode={country.code} />} {country.name}
                                                     </FormLabel>
                                                 </FormItem>
                                             ))}

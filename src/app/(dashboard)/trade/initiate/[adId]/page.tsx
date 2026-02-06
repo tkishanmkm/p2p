@@ -120,6 +120,44 @@ export default function InitiateTradePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [effectiveMaxAmount, setEffectiveMaxAmount] = useState<number | null>(null);
   const [balanceInfo, setBalanceInfo] = useState<string | null>(null);
+  const [isEligible, setIsEligible] = useState(true);
+  const [eligibilityMessage, setEligibilityMessage] = useState('');
+
+  useEffect(() => {
+    if (user && ad) {
+      const userCountry = user.country;
+      const targeted = ad.targetedCountries;
+      const blocked = ad.blockedCountries;
+
+      if (!userCountry) {
+        setIsEligible(false);
+        setEligibilityMessage("You must set your country in your profile to initiate this trade.");
+        return;
+      }
+
+      // Rule 1: Check targeted countries
+      if (targeted && targeted.length > 0 && !targeted.includes('all')) {
+        if (!targeted.includes(userCountry)) {
+          setIsEligible(false);
+          setEligibilityMessage("This ad is not available for users from your country.");
+          return;
+        }
+      }
+
+      // Rule 2: Check blocked countries
+      if (blocked && blocked.length > 0) {
+        if (blocked.includes(userCountry)) {
+          setIsEligible(false);
+          setEligibilityMessage("This ad is not available for users from your country.");
+          return;
+        }
+      }
+      
+      setIsEligible(true);
+      setEligibilityMessage('');
+    }
+  }, [user, ad]);
+
 
   useEffect(() => {
     if (ad && prices[ad.crypto]) {
@@ -246,6 +284,25 @@ export default function InitiateTradePage() {
           </CardHeader>
           <CardContent>
             <AccountStatusAlert user={user} />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isEligible) {
+    return (
+      <div className="flex justify-center items-start pt-10">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle>Trade Not Allowed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>You cannot trade this ad</AlertTitle>
+              <AlertDescription>{eligibilityMessage}</AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
       </div>

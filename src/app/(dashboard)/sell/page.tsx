@@ -20,13 +20,9 @@ import { currencies } from "@/lib/currencies";
 import { countries } from "@/lib/countries";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { P2PAd, User } from "@/lib/types";
-import { useMemo } from "react";
 
 function SellPageContent() {
-  const { firestore, user: authUser } = useFirebase();
-
-  const currentUserRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
-  const { data: currentUserData } = useDoc<User>(currentUserRef);
+  const { firestore } = useFirebase();
   
   const buyAdsQuery = useMemoFirebase(() =>
     firestore
@@ -35,32 +31,6 @@ function SellPageContent() {
     [firestore]
   );
   const { data: buyAds, isLoading } = useCollection<P2PAd>(buyAdsQuery);
-
-  const filteredAds = useMemo(() => {
-    if (!buyAds) return [];
-    if (!currentUserData?.country) return buyAds; // Show all if user has no country set
-
-    return buyAds.filter(ad => {
-      const userCountry = currentUserData.country;
-
-      // Rule 1: If the ad has a targeted countries list, the user's country MUST be in it.
-      if (ad.targetedCountries && ad.targetedCountries.length > 0 && !ad.targetedCountries.includes('all')) {
-        if (!ad.targetedCountries.includes(userCountry!)) {
-          return false;
-        }
-      }
-
-      // Rule 2: If the ad has a blocked countries list, the user's country must NOT be in it.
-      if (ad.blockedCountries && ad.blockedCountries.length > 0) {
-        if (ad.blockedCountries.includes(userCountry!)) {
-          return false;
-        }
-      }
-
-      // If neither rule filters the ad out, include it.
-      return true;
-    });
-  }, [buyAds, currentUserData]);
 
   return (
     <>
@@ -122,12 +92,12 @@ function SellPageContent() {
               <Skeleton className="h-24 w-full" />
             </div>
           )}
-          {!isLoading && filteredAds && filteredAds.length > 0 && (
-            filteredAds.map((ad) => (
+          {!isLoading && buyAds && buyAds.length > 0 && (
+            buyAds.map((ad) => (
               <AdCard key={ad.id} ad={ad} />
             ))
           )}
-          {!isLoading && (!filteredAds || filteredAds.length === 0) && (
+          {!isLoading && (!buyAds || buyAds.length === 0) && (
               <div className="text-center py-10 border-2 border-dashed rounded-lg">
                   <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-4 text-lg font-semibold">No Ads Available</h3>
