@@ -56,8 +56,6 @@ export function AdCard({ ad }: AdCardProps) {
   const displayPhoto = adCreator?.photoURL || ad.user.photoURL;
   const lastActiveDate = adCreator?.lastActive ? toDate(adCreator.lastActive) : null;
   const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 15 * 60 * 1000;
-  const countryName = countries.find(c => c.code === displayUser.country)?.name;
-
 
   if (ad.adType === 'sell') {
     if (!isWalletLoading) {
@@ -106,13 +104,10 @@ export function AdCard({ ad }: AdCardProps) {
                 </div>
               ) : (
                 <>
-                  <p className="font-semibold">{displayUser.userId}</p>
-                   {displayUser.country && countryName && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <FlagIcon countryCode={displayUser.country} className="h-3 w-auto" />
-                      <span>{countryName}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold">{displayUser.userId}</p>
+                    {displayUser.country && <FlagIcon countryCode={displayUser.country} className="w-5 h-auto" />}
+                  </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     {wasActiveRecently ? (
                       <div className="h-2 w-2 rounded-full bg-green-500" title="Active recently" />

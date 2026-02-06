@@ -24,6 +24,7 @@ import { useAdminStatus } from '@/hooks/use-admin-status';
 import { useToast } from '@/hooks/use-toast';
 import { adminUnblockUser } from '@/lib/admin';
 import { countries } from '@/lib/countries';
+import { FlagIcon } from '@/components/ui/flag-icon';
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | undefined }) {
     if (!value && value !== 0) return null;
@@ -255,7 +256,10 @@ export default function AdminUserDetailPage() {
                         <Avatar className="h-32 w-32 mb-4 border-4 border-secondary shadow-lg">
                             {user.photoURL ? <Image src={user.photoURL} alt={user.userId} width={128} height={128} className="object-cover"/> : <AvatarFallback className="bg-transparent"><DefaultAvatar /></AvatarFallback>}
                         </Avatar>
-                        <h2 className="text-2xl font-bold">{user.userId}</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-2xl font-bold">{user.userId}</h2>
+                            {user.country && <FlagIcon countryCode={user.country} className="w-6 h-auto" />}
+                        </div>
                         <p className="text-muted-foreground">{user.fullName}</p>
                         <div className="flex gap-2 mt-4">
                             {user.isBanned && <Badge variant="destructive">Banned</Badge>}
