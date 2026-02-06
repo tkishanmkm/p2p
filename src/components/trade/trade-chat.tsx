@@ -25,6 +25,8 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { formatDistanceToNowStrict } from 'date-fns';
+import { FlagIcon } from '../ui/flag-icon';
+import { countries } from '@/lib/countries';
 
 interface TradeChatProps {
   currentUserId: string;
@@ -86,6 +88,8 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
       : opponentLastActive 
       ? `Active ${formatDistanceToNowStrict(opponentLastActive)} ago` 
       : 'Offline';
+  const opponentCountry = countries.find(c => c.code === opponent?.country)?.name;
+
 
   useEffect(() => {
     // Auto-scroll to bottom
@@ -159,9 +163,11 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
             <CardTitle>Trade Chat</CardTitle>
             <CardDescription>
                 {opponent ? (
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                         <div className={cn("h-2.5 w-2.5 rounded-full", opponentIsActiveNow ? "bg-green-500" : "bg-muted-foreground/50")} />
-                        <span className="text-xs text-muted-foreground">{opponent.userId} - {opponentStatus}</span>
+                        <span>{opponent.userId}</span>
+                        {opponent.country && <FlagIcon countryCode={opponent.country} />}
+                        <span>- {opponentStatus}</span>
                     </div>
                 ) : (
                     "Communicate with the other party."

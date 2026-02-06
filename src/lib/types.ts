@@ -7,6 +7,8 @@ export type User = {
   oldUserId?: string;
   fullName: string; // Encrypted
   dob: string; // Encrypted, DATE
+  country?: string; // Country code, e.g., 'US'
+  ipBasedCountry?: string; // Country code, e.g., 'US'
   photoURL?: string;
   isBanned: boolean;
   isOnHold: boolean;
@@ -93,8 +95,11 @@ export type P2PAd = {
   tags?: string[];
   active: boolean;
   createdAt: string; // TIMESTAMP
+  targetedCountries?: string[];
+  blockedCountries?: string[];
   user: {
       userId: string;
+      country?: string;
       feedbackScore?: number;
       completedTrades?: number;
       photoURL?: string;
@@ -123,8 +128,8 @@ export type Trade = {
   paidAt?: string; // TIMESTAMP
   releasedAt?: string; // TIMESTAMP
   createdAt: string; // TIMESTAMP;
-  buyer: Pick<User, 'userId'>;
-  seller: Pick<User, 'userId'>;
+  buyer: { userId: string; country?: string; };
+  seller: { userId: string; country?: string; };
 };
 
 export type EscrowLedger = {

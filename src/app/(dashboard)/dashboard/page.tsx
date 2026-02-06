@@ -30,6 +30,7 @@ import { cn, toDate } from '@/lib/utils';
 import { statusColors } from '@/lib/status-colors';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { FlagIcon } from '@/components/ui/flag-icon';
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
@@ -210,7 +211,12 @@ export default function DashboardPage() {
                                     const partner = isBuyer ? trade.seller : trade.buyer;
                                     return (
                                         <TableRow key={trade.id}>
-                                            <TableCell className="font-medium">{partner.userId}</TableCell>
+                                            <TableCell>
+                                              <div className="flex items-center gap-2 font-medium">
+                                                {partner.userId}
+                                                {partner.country && <FlagIcon countryCode={partner.country} />}
+                                              </div>
+                                            </TableCell>
                                             <TableCell>{trade.amount.toFixed(6)} {trade.crypto}</TableCell>
                                             <TableCell>
                                                 <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade.status}</Badge>

@@ -17,6 +17,7 @@ function generatePublicAdId() {
 export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'>, user: {
     id: string;
     userId: string;
+    country?: string;
     feedbackScore: number;
     completedTrades: number;
     photoURL?: string;
@@ -29,6 +30,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     userId: user.id,
     user: {
       userId: user.userId,
+      country: user.country,
       feedbackScore: user.feedbackScore,
       completedTrades: user.completedTrades,
       photoURL: user.photoURL,

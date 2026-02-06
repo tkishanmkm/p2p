@@ -33,12 +33,14 @@ import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SECURITY_QUESTIONS } from "@/lib/constants";
+import { countries } from "@/lib/countries";
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
   day: z.string({ required_error: "Day is required."}),
   month: z.string({ required_error: "Month is required."}),
   year: z.string({ required_error: "Year is required."}),
+  country: z.string().min(1, "Please select your country."),
   userId: z.string().min(3, { message: "User ID must be at least 3 characters." }).regex(/^[a-zA-Z0-9_]+$/, "User ID can only contain letters, numbers, and underscores."),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
   securityQuestion: z.string().min(1, "Please select a security question."),
@@ -76,6 +78,7 @@ function SignupFormComponent() {
       day: "",
       month: "",
       year: "",
+      country: "",
       userId: searchParams.get("userId") || "",
       password: "",
       securityQuestion: undefined,
@@ -123,6 +126,8 @@ function SignupFormComponent() {
           userId: values.userId,
           fullName: values.fullName,
           dob: dob.toISOString().split('T')[0], // YYYY-MM-DD
+          country: values.country,
+          ipBasedCountry: values.country, // Simulate IP-based country
           isBanned: false,
           isOnHold: false,
           tradeVolume: 0,
@@ -254,6 +259,24 @@ function SignupFormComponent() {
                       />
                   </div>
               </FormItem>
+              <FormField
+                control={form.control}
+                name="country"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Country</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select your country" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {countries.map(c => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="userId"

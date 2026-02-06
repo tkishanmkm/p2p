@@ -12,6 +12,7 @@ import {
   query,
   where,
   limit,
+  getDocs,
 } from 'firebase/firestore';
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User as AppUser } from './types';
 import { add } from 'date-fns';
@@ -93,8 +94,8 @@ export async function initiateTrade(
         claimedByBuyer: false,
         createdAt: new Date().toISOString(),
         expiresAt: add(new Date(), { minutes: ad.paymentTimeLimit || 30 }).toISOString(),
-        buyer: { userId: buyerData.userId },
-        seller: { userId: ad.user.userId }
+        buyer: { userId: buyerData.userId, country: buyerData.country },
+        seller: { userId: ad.user.userId, country: ad.user.country }
       };
 
       // Create notifications for both users

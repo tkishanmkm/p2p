@@ -10,6 +10,7 @@ import type { Trade } from "@/lib/types";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { toDate } from "@/lib/utils";
+import { FlagIcon } from "../ui/flag-icon";
 
 interface TradeDetailsProps {
   trade: Trade;
@@ -33,6 +34,21 @@ function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { l
   )
 }
 
+function ParticipantRow({ label, user }: { label: string, user: { userId: string, country?: string } }) {
+  return (
+     <div className="flex justify-between items-center text-sm">
+      <p className="text-muted-foreground">{label}</p>
+        <Button variant="link" asChild className="p-0 h-auto font-medium">
+            <Link href={`/users/${user.userId}`} className="flex items-center gap-2">
+                {user.userId}
+                {user.country && <FlagIcon countryCode={user.country} />}
+            </Link>
+        </Button>
+    </div>
+  )
+}
+
+
 export function TradeDetails({ trade, sellerTerms }: TradeDetailsProps) {
   return (
     <Card>
@@ -54,8 +70,8 @@ export function TradeDetails({ trade, sellerTerms }: TradeDetailsProps) {
 
         <div className="space-y-2">
             <h4 className="font-semibold">Participants & Payment</h4>
-            <DetailRow label="Buyer" value={trade.buyer.userId} isLink href={`/users/${trade.buyer.userId}`} />
-            <DetailRow label="Seller" value={trade.seller.userId} isLink href={`/users/${trade.seller.userId}`} />
+            <ParticipantRow label="Buyer" user={trade.buyer} />
+            <ParticipantRow label="Seller" user={trade.seller} />
             <DetailRow label="Payment Method" value={trade.paymentMethod} />
         </div>
         

@@ -17,6 +17,8 @@ import { Calendar, CheckCircle, Clock, DollarSign, ThumbsUp, ThumbsDown, FileTex
 import { toDate } from '@/lib/utils';
 import { blockUser, unblockUser } from '@/lib/users';
 import { useToast } from '@/hooks/use-toast';
+import { FlagIcon } from '@/components/ui/flag-icon';
+import { countries } from '@/lib/countries';
 
 function UserStats({ user }: { user: User }) {
   const lastTradeDate = toDate(user.lastTradeAt);
@@ -148,6 +150,8 @@ export default function PublicProfilePage() {
   const lastActiveDate = user.lastActive ? toDate(user.lastActive) : null;
   const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 15 * 60 * 1000;
   const isOwnProfile = authUser?.uid === user.id;
+  const countryName = countries.find(c => c.code === user.country)?.name;
+
 
   return (
     <>
@@ -164,7 +168,10 @@ export default function PublicProfilePage() {
                             </AvatarFallback>
                         )}
                     </Avatar>
-                    <h1 className="text-2xl font-bold">{user.userId}</h1>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-2xl font-bold">{user.userId}</h1>
+                      {user.country && <FlagIcon countryCode={user.country} className="w-6 h-auto" />}
+                    </div>
                      <div className="flex gap-2 mt-2">
                         {user.isBanned && <Badge variant="destructive">Banned</Badge>}
                         {user.isOnHold && <Badge variant="secondary" className="bg-yellow-500 text-white">On Hold</Badge>}

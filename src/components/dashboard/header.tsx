@@ -50,6 +50,7 @@ import { usePrices } from "@/context/price-context";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { LANGUAGES } from "@/lib/constants";
+import { FlagIcon } from "../ui/flag-icon";
 
 
 const navItems = [
@@ -256,7 +257,8 @@ export function DashboardHeader() {
 
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex shrink-0 items-center gap-1 p-1 h-auto rounded-md">
+                <Button variant="ghost" className="flex shrink-0 items-center gap-2 p-1 h-auto rounded-md">
+                    {userData?.country && <FlagIcon countryCode={userData.country} className="w-5 h-auto rounded-sm" />}
                     <Avatar className="h-8 w-8 shrink-0">
                         {authUser?.photoURL ? (
                         <AvatarImage src={authUser.photoURL} alt={authUser.displayName || "User Avatar"} />
@@ -266,7 +268,7 @@ export function DashboardHeader() {
                         </AvatarFallback>
                         )}
                     </Avatar>
-                    <div className="flex-shrink min-w-0 text-left">
+                    <div className="flex-shrink min-w-0 text-left hidden sm:block">
                         {authUser?.displayName ? <p className="font-semibold text-xs truncate">{authUser.displayName}</p> : <Skeleton className="h-5 w-20" />}
                         <p className="text-[10px] text-muted-foreground truncate">{totalWalletValueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>

@@ -29,6 +29,7 @@ import { cn, toDate } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { statusColors } from '@/lib/status-colors';
 import { useRouter } from 'next/navigation';
+import { FlagIcon } from '@/components/ui/flag-icon';
 
 function DashboardCardSkeleton() {
   return (
@@ -184,7 +185,12 @@ export default function MyTradesPage() {
                     <TableCell>
                       <Badge variant={isBuyer ? 'default' : 'secondary'}>{isBuyer ? 'Buyer' : 'Seller'}</Badge>
                     </TableCell>
-                    <TableCell>{partner.userId}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {partner.userId}
+                        {partner.country && <FlagIcon countryCode={partner.country} />}
+                      </div>
+                    </TableCell>
                     <TableCell>{trade.amount.toFixed(6)} {trade.crypto}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>
