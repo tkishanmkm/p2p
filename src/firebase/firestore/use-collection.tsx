@@ -25,17 +25,23 @@ export interface UseCollectionResult<T> {
   error: FirestoreError | Error | null; // Error object, or null.
 }
 
-/* Internal implementation of Query:
-  https://github.com/firebase/firebase-js-sdk/blob/c5f08a9bc5da0d2b0207802c972d53724ccef055/packages/firestore/src/lite-api/reference.ts#L143
-*/
-export interface InternalQuery extends Query<DocumentData> {
-  _query: {
-    path: {
-      canonicalString(): string;
-      toString(): string;
-    }
+/**
+ * Safely extracts the path from a Firestore Query or CollectionReference.
+ * @param q The Firestore query or collection reference.
+ * @returns The path string or undefined if it cannot be determined.
+ */
+function getQueryPath(q: any): string | undefined {
+  if (!q) return undefined;
+  if (q.type === 'collection' && typeof q.path === 'string') {
+    return q.path;
   }
+  // This is an internal, undocumented API, so we check defensively.
+  if (q._query && q._query.path && typeof q._query.path.canonicalString === 'function') {
+    return q._query.path.canonicalString();
+  }
+  return undefined;
 }
+
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
@@ -69,12 +75,8 @@ export function useCollection<T = any>(
       return;
     }
 
-    // FIX: Add guard against root-level queries
-    const path: string | undefined =
-      memoizedTargetRefOrQuery.type === 'collection'
-        ? (memoizedTargetRefOrQuery as CollectionReference).path
-        : (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString();
-
+    const path = getQueryPath(memoizedTargetRefOrQuery);
+    
     // A root collection query will have an empty path string.
     if (path === '') {
         const rootQueryError = new Error("Firestore root collection queries are not allowed. Please specify a collection path.");
@@ -84,7 +86,6 @@ export function useCollection<T = any>(
         setIsLoading(false);
         return; // Stop execution
     }
-    // END FIX
 
     setIsLoading(true);
     setError(null);
@@ -102,11 +103,7 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (snapshotError: FirestoreError) => {
-        // This logic safely extracts the path from either a ref or a query
-        const queryPath: string | undefined =
-          memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString();
+        const queryPath = getQueryPath(memoizedTargetRefOrQuery);
 
         // If for some reason we cannot determine the path, fall back to the original error.
         if (!queryPath) {
