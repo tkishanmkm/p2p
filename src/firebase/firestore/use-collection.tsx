@@ -9,8 +9,6 @@ import {
   QuerySnapshot,
   CollectionReference,
 } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -24,25 +22,6 @@ export interface UseCollectionResult<T> {
   isLoading: boolean;       // True if loading.
   error: FirestoreError | Error | null; // Error object, or null.
 }
-
-/**
- * Safely extracts the path from a Firestore Query or CollectionReference.
- * @param q The Firestore query or collection reference.
- * @returns The path string or undefined if it cannot be determined.
- */
-function getQueryPath(q: any): string | undefined {
-  if (!q) return undefined;
-  // For CollectionReference
-  if (q.type === 'collection' && typeof q.path === 'string') {
-    return q.path;
-  }
-  // For Query, using optional chaining for safety
-  if (q?._query?.path?.canonicalString) {
-    return q._query.path.canonicalString();
-  }
-  return undefined;
-}
-
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
@@ -76,18 +55,6 @@ export function useCollection<T = any>(
       return;
     }
 
-    const path = getQueryPath(memoizedTargetRefOrQuery);
-    
-    // A root collection query will have an empty path string.
-    if (path === '') {
-        const rootQueryError = new Error("Firestore root collection queries are not allowed. Please specify a collection path.");
-        console.error("A component is attempting a root-level Firestore query, which is not permitted.", { query: memoizedTargetRefOrQuery });
-        setError(rootQueryError);
-        setData(null);
-        setIsLoading(false);
-        return; // Stop execution
-    }
-
     setIsLoading(true);
     setError(null);
 
@@ -104,28 +71,11 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (snapshotError: FirestoreError) => {
-        const queryPath = getQueryPath(memoizedTargetRefOrQuery);
-
-        // If for some reason we cannot determine the path, fall back to the original error.
-        if (!queryPath) {
-            setError(snapshotError);
-            setData(null);
-            setIsLoading(false);
-            console.error("useCollection error (could not determine path for contextual error):", snapshotError);
-            return;
-        }
-
-        const contextualError = new FirestorePermissionError({
-          operation: 'list',
-          path: queryPath,
-        });
-
-        setError(contextualError);
+        // Fallback to simpler error handling to avoid crashes from fragile internal property access.
+        console.error("useCollection error:", snapshotError);
+        setError(snapshotError);
         setData(null);
         setIsLoading(false);
-
-        // trigger global error propagation
-        errorEmitter.emit('permission-error', contextualError);
       }
     );
 

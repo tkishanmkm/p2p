@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { query, collection, where } from 'firebase/firestore';
+import { query, collection, where, limit, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { sendCoinToUser } from '@/lib/wallet';
 import {
@@ -44,8 +44,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, Send, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
-import { CryptoCurrency, UserWallet, CoinTransfer } from '@/lib/types';
+import { CryptoCurrency, User, UserWallet, CoinTransfer } from '@/lib/types';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { toDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -121,6 +122,10 @@ export default function TransferPage() {
   const { firestore, user: authUser, isUserLoading: isAuthLoading, auth } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
+  
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!isAuthLoading && !authUser) {
@@ -146,6 +151,43 @@ export default function TransferPage() {
 
   const selectedCrypto = form.watch('crypto') as CryptoCurrency;
   const selectedWallet = wallets?.find((w) => w.crypto === selectedCrypto);
+  
+  const recipientUsernameValue = form.watch('recipientUsername');
+
+  useEffect(() => {
+    if (debounceTimeout) {
+      clearTimeout(debounceTimeout);
+    }
+
+    if (recipientUsernameValue && recipientUsernameValue.length >= 2) {
+      setIsSearching(true);
+      const timeout = setTimeout(async () => {
+        if (!firestore) return;
+        const usersRef = collection(firestore, 'users');
+        const q = query(
+          usersRef,
+          where('userId', '>=', recipientUsernameValue),
+          where('userId', '<=', recipientUsernameValue + '\uf8ff'),
+          limit(5)
+        );
+        const snapshot = await getDocs(q);
+        const users = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as User)).filter(u => u.id !== authUser?.uid && !u.isAdminAccount);
+        setSearchResults(users);
+        setIsSearching(false);
+      }, 500); // 500ms debounce
+      setDebounceTimeout(timeout as any);
+    } else {
+      setSearchResults([]);
+    }
+
+    return () => {
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipientUsernameValue, firestore, authUser]);
+
 
   async function onSubmit(values: TransferFormValues) {
     if (!firestore || !authUser || !auth) return;
@@ -183,6 +225,7 @@ export default function TransferPage() {
           amount: undefined,
           password: ''
       });
+      setSearchResults([]);
 
     } catch (error: any) {
         if (error.code === 'auth/wrong-password') {
@@ -229,12 +272,37 @@ export default function TransferPage() {
                     <FormItem>
                       <FormLabel>Recipient's User ID</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter user ID" {...field} />
+                        <Input placeholder="Enter user ID to search" {...field} autoComplete="off" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                 {(isSearching || searchResults.length > 0) && (
+                    <div className="border rounded-md max-h-48 overflow-y-auto">
+                        {isSearching && <div className="p-2 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/> Searching...</div>}
+                        {!isSearching && searchResults.length > 0 && (
+                            <>
+                                {searchResults.map(user => (
+                                <div 
+                                    key={user.id} 
+                                    className="p-2 flex items-center gap-2 cursor-pointer hover:bg-muted"
+                                    onClick={() => {
+                                    form.setValue('recipientUsername', user.userId);
+                                    setSearchResults([]);
+                                    }}
+                                >
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={user.photoURL} />
+                                        <AvatarFallback>{user.userId.slice(0,2)}</AvatarFallback>
+                                    </Avatar>
+                                    <span>{user.userId}</span>
+                                </div>
+                                ))}
+                            </>
+                        )}
+                    </div>
+                 )}
                 <FormField
                   control={form.control}
                   name="crypto"
