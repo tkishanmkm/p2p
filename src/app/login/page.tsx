@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -30,6 +31,7 @@ import { useState, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
+import { createUserSession } from "@/lib/users";
 
 const formSchema = z.object({
   userId: z.string().min(1, { message: "User ID is required." }),
@@ -67,6 +69,9 @@ function LoginFormComponent() {
       await setPersistence(auth, browserLocalPersistence);
       const dummyEmail = `${values.userId}@tradeflow.app`;
       const userCredential = await signInWithEmailAndPassword(auth, dummyEmail, values.password);
+
+      // Create session document
+      await createUserSession(firestore, userCredential.user);
 
       // Check if the user is an admin
       const adminDocRef = doc(firestore, "admins", userCredential.user.uid);

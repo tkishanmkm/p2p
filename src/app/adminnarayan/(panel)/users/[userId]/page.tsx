@@ -5,8 +5,8 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, doc, orderBy, documentId } from 'firebase/firestore';
-import type { User, P2PAd, Trade, UserWallet, Deposit, Withdrawal, AdminLog } from '@/lib/types';
+import { collection, query, where, getDocs, doc, orderBy, documentId, limit } from 'firebase/firestore';
+import type { User, P2PAd, Trade, UserWallet, Deposit, Withdrawal, AdminLog, Session } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -17,7 +17,7 @@ import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown, Globe } from 'lucide-react';
+import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown, Globe, Smartphone, Monitor } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
 import { useAdminStatus } from '@/hooks/use-admin-status';
@@ -73,6 +73,7 @@ export default function AdminUserDetailPage() {
   const [allTrades, setAllTrades] = useState<Trade[] | null>(null);
   const [adminLogs, setAdminLogs] = useState<AdminLog[] | null>(null);
   const [blockedUsers, setBlockedUsers] = useState<User[] | null>(null);
+  const [sessions, setSessions] = useState<Session[] | null>(null);
   
   // Loading states
   const [areAdsLoading, setAreAdsLoading] = useState(true);
@@ -82,6 +83,7 @@ export default function AdminUserDetailPage() {
   const [isLoadingTrades, setIsLoadingTrades] = useState(true);
   const [areLogsLoading, setAreLogsLoading] = useState(true);
   const [areBlockedUsersLoading, setAreBlockedUsersLoading] = useState(true);
+  const [areSessionsLoading, setAreSessionsLoading] = useState(true);
 
 
   useEffect(() => {
@@ -93,6 +95,7 @@ export default function AdminUserDetailPage() {
           setAreWithdrawalsLoading(false);
           setIsLoadingTrades(false);
           setAreLogsLoading(false);
+          setAreSessionsLoading(false);
       }
       return;
     };
@@ -161,6 +164,14 @@ export default function AdminUserDetailPage() {
         setAdminLogs(logsData);
       } catch(e) { console.error("failed to fetch admin logs", e); setAdminLogs([]); }
       finally { setAreLogsLoading(false); }
+      
+      // Session History
+      try {
+        const sessionsQuery = query(collection(firestore, `users/${userId}/sessions`), orderBy('lastLogin', 'desc'), limit(10));
+        const sessionsSnapshot = await getDocs(sessionsQuery);
+        setSessions(sessionsSnapshot.docs.map(d => ({...d.data(), id: d.id } as Session)));
+      } catch(e) { console.error("failed to fetch sessions", e); setSessions([]); }
+      finally { setAreSessionsLoading(false); }
     };
 
     fetchAllData();
@@ -286,6 +297,25 @@ export default function AdminUserDetailPage() {
                                 {wallets?.length ? wallets.map(w => <TableRow key={w.id}><TableCell>{w.crypto}</TableCell><TableCell>{w.balance.toFixed(8)}</TableCell><TableCell>{w.lockedBalance.toFixed(8)}</TableCell></TableRow>) : <TableRow><TableCell colSpan={3} className="text-center">No wallets</TableCell></TableRow>}
                             </TableBody>
                         </Table>
+                    )}
+                </SectionCard>
+                <SectionCard title="Session History">
+                    {areSessionsLoading ? <Skeleton className="h-24 w-full" /> : (
+                        <div className="space-y-2">
+                           {sessions?.length ? sessions.map(session => {
+                                const isMobile = /Mobi|Android/i.test(session.userAgent);
+                                return (
+                                    <div key={session.id} className="flex items-start gap-4 p-2 border-b last:border-b-0">
+                                        {isMobile ? <Smartphone className="h-5 w-5 mt-1 text-muted-foreground flex-shrink-0" /> : <Monitor className="h-5 w-5 mt-1 text-muted-foreground flex-shrink-0" />}
+                                        <div>
+                                            <p className="text-sm font-medium leading-none">{session.ipAddress}</p>
+                                            <p className="text-xs text-muted-foreground break-all">{session.userAgent}</p>
+                                            <p className="text-xs text-muted-foreground mt-1">{toDate(session.lastLogin) ? formatDistanceToNow(toDate(session.lastLogin)!) + ' ago' : 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                )
+                           }) : <p className="text-center text-muted-foreground py-4">No session history found</p>}
+                        </div>
                     )}
                 </SectionCard>
                 <SectionCard title="Blocked Users">

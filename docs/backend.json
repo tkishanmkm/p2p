@@ -826,6 +826,21 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "tradeId", "feeAmount", "crypto", "createdAt"]
+    },
+    "Session": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Session",
+      "type": "object",
+      "description": "Represents a user's login session.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userAgent": { "type": "string", "description": "The user agent string of the client." },
+        "ipAddress": { "type": "string", "description": "The IP address of the login." },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean", "description": "Indicates if the session is currently active." }
+      },
+      "required": ["id", "userId", "userAgent", "ipAddress", "lastLogin", "isActive"]
     }
   },
   "auth": {
@@ -869,6 +884,18 @@
               "name": "walletId",
               "description": "The unique identifier for the user wallet."
             }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/sessions/{sessionId}",
+        "definition": {
+          "entityName": "Session",
+          "schema": { "$ref": "#/backend/entities/Session" },
+          "description": "Stores login session history for a user. Writable by the user, readable by user and admin.",
+          "params": [
+            { "name": "userId", "description": "The unique identifier for the user." },
+            { "name": "sessionId", "description": "The unique identifier for the session." }
           ]
         }
       },

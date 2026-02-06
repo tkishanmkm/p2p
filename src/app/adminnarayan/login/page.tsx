@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -30,6 +31,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersiste
 import { doc, setDoc, getDoc, type Firestore } from "firebase/firestore";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { createUserSession } from "@/lib/users";
 
 const formSchema = z.object({
   adminId: z.string().min(1, { message: "Admin ID is required." }),
@@ -76,6 +78,8 @@ export default function AdminLoginPage() {
             await setDoc(adminRoleRef, { role: "admin", createdAt: new Date().toISOString() });
         }
         
+        await createUserSession(firestore, user);
+        
         toast({
             title: "Login Successful",
             description: "Redirecting to admin dashboard...",
@@ -90,6 +94,8 @@ export default function AdminLoginPage() {
                 const { user: newUser } = newUserCredential;
                 await updateProfile(newUser, { displayName: values.adminId });
                 
+                await createUserSession(firestore, newUser);
+
                 // Immediately create the admin role document for the new user.
                 const adminRoleRef = doc(firestore, 'admins', newUser.uid);
                 await setDoc(adminRoleRef, { role: "admin", createdAt: new Date().toISOString() });

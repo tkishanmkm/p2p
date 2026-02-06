@@ -216,11 +216,18 @@ export type Notification = {
     createdAt: string; // TIMESTAMP
 };
 
+export type Session = {
+  id: string;
+  userId: string;
+  userAgent: string;
+  ipAddress: string;
+  lastLogin: string; // TIMESTAMP
+  isActive: boolean;
+};
+
 
 export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
-
-  
