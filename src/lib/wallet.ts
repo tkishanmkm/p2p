@@ -371,7 +371,7 @@ export async function sendCoinToUser(
 
     // 2. Find recipient by username
     const recipientQuery = query(usersCollectionRef, where("userId", "==", recipientUsername), limit(1));
-    const recipientSnapshot = await transaction.get(recipientQuery);
+    const recipientSnapshot = await getDocs(recipientQuery);
     if (recipientSnapshot.empty) {
       throw new Error(`User "${recipientUsername}" not found.`);
     }
@@ -380,14 +380,14 @@ export async function sendCoinToUser(
 
     // 3. Update sender's wallet
     const senderWallet = senderWalletDoc.data() as UserWallet;
-    transaction.update(senderWalletRef, { balance: (senderWallet.balance || 0) - amount });
+    transaction.update(senderWalletRef, { balance: (senderWallet.balance || 0) - amount, updatedAt: new Date().toISOString() });
 
     // 4. Update recipient's wallet (or create it)
     const recipientWalletRef = doc(db, "users", recipient.id, "wallets", crypto);
     const recipientWalletDoc = await transaction.get(recipientWalletRef);
     if (recipientWalletDoc.exists()) {
       const recipientWallet = recipientWalletDoc.data() as UserWallet;
-      transaction.update(recipientWalletRef, { balance: (recipientWallet.balance || 0) + amount });
+      transaction.update(recipientWalletRef, { balance: (recipientWallet.balance || 0) + amount, updatedAt: new Date().toISOString() });
     } else {
       transaction.set(recipientWalletRef, {
         balance: amount,
@@ -415,6 +415,7 @@ export async function sendCoinToUser(
     // 6. Send notifications
     const senderNotifRef = doc(collection(db, `users/${sender.uid}/notifications`));
     transaction.set(senderNotifRef, {
+        userId: sender.uid,
         message: `You sent ${amount} ${crypto} to ${recipientUsername}.`,
         isRead: false,
         createdAt: new Date().toISOString(),
@@ -423,6 +424,7 @@ export async function sendCoinToUser(
 
     const recipientNotifRef = doc(collection(db, `users/${recipient.id}/notifications`));
     transaction.set(recipientNotifRef, {
+        userId: recipient.id,
         message: `You received ${amount} ${crypto} from ${sender.displayName}.`,
         isRead: false,
         createdAt: new Date().toISOString(),
