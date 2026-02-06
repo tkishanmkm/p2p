@@ -1,0 +1,149 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+    // Checks if a user is signed in.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Checks if the requesting user is the owner of a document by UID.
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Checks if the user has an admin role.
+    function isAdmin() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Checks if a user is an active participant (buyer or seller) in a trade.
+    function isTradeParticipant(tradeData) {
+      return isSignedIn() && (tradeData.buyerId == request.auth.uid || tradeData.sellerId == request.auth.uid);
+    }
+
+    // --- Global Catch-All Rule ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Configuration Collections ---
+    // Globally readable configuration data. Writeable by admins.
+    match /_config/{docId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+    match /crypto_deposit_addresses/{addressId} {
+        allow read: if isSignedIn(); // Any signed-in user can read deposit addresses
+        allow write: if isAdmin(); // Only admins can set them
+    }
+
+    // --- Admin-Specific Collections ---
+    match /admins/{adminId} {
+        allow get, create: if isOwner(adminId);
+        allow list, update, delete: if false; // Protects admin list and roles from being altered.
+    }
+    match /admin_logs/{logId} {
+        allow read, write: if isAdmin();
+    }
+    match /escrow_ledger/{ledgerId} {
+      allow read, list: if isAdmin();
+      // Only the buyer of a released trade can create the corresponding ledger entry.
+      // This happens atomically within the claimFundsForTrade transaction.
+      allow create: if isSignedIn() &&
+                    request.resource.data.tradeId != null &&
+                    get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.buyerId == request.auth.uid &&
+                    get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.status == 'released';
+      allow update, delete: if false;
+    }
+
+    // --- User-Centric Collections ---
+    match /users/{userId} {
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+
+      match /wallets/{walletId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /withdrawals/{withdrawalId} {
+        allow read, create, update: if isOwner(userId) || isAdmin();
+        allow delete: if isAdmin();
+      }
+      match /notifications/{notificationId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+    
+    // --- Top-Level Data Collections ---
+
+    match /deposits/{depositId} {
+      allow get: if isOwner(resource.data.userId) || isAdmin();
+      allow list: if isSignedIn();
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isAdmin() || (
+        isOwner(resource.data.userId) &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status == 'awaiting_confirmation' &&
+        request.resource.data.txId != null &&
+        request.resource.data.amount == resource.data.amount &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.crypto == resource.data.crypto &&
+        request.resource.data.chain == resource.data.chain
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /p2p_ads/{adId} {
+        allow get, list: if true;
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+        allow update, delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /trades/{tradeId} {
+        allow get: if isTradeParticipant(resource.data) || isAdmin();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update: if isTradeParticipant(resource.data) || isAdmin();
+        allow delete: if false;
+
+        match /messages/{messageId} {
+            allow read, write: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(tradeId)).data) || isAdmin();
+        }
+        match /disputes/{disputeId} {
+            allow read, write: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(tradeId)).data) || isAdmin();
+        }
+        match /feedback/{feedbackId} {
+            allow read, write: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(tradeId)).data) || isAdmin();
+        }
+    }
+
+    match /transfers/{transferId} {
+      allow get: if isSignedIn() && (isOwner(resource.data.senderId) || isOwner(resource.data.recipientId) || isAdmin());
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(request.resource.data.senderId);
+      allow update, delete: if false;
+    }
+
+    match /support_tickets/{ticketId} {
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        allow read, list, update: if isAdmin();
+        allow delete: if false;
+    }
+    
+    // --- Collection Group Rules for Admin Panel ---
+    match /{path=**}/withdrawals/{withdrawalId} {
+        allow list, get: if isAdmin();
+    }
+    match /{path=**}/disputes/{disputeId} {
+        allow list: if isAdmin();
+        allow get: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(resource.data.tradeId)).data) || isAdmin();
+    }
+  }
+}

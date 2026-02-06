@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -156,6 +157,8 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
           paymentTimeLimit: 30,
           minCompletedTrades: 0,
           tags: [],
+          targetedCountries: [],
+          blockedCountries: [],
         },
   });
   
@@ -558,7 +561,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
               )}
             />
 
-            <FormField
+             <FormField
               control={form.control}
               name="rateType"
               render={({ field }) => (
@@ -676,6 +679,122 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                   </FormItem>
                 )}
               />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <FormField
+                    control={form.control}
+                    name="targetedCountries"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Targeted Countries (Optional)</FormLabel>
+                            <FormDescription>Only show this ad to users from these countries.</FormDescription>
+                            <div className="flex flex-wrap gap-2 pt-2 min-h-[2.5rem]">
+                                {field.value?.map((code, index) => {
+                                    const country = countries.find(c => c.code === code) || {name: code};
+                                    return (
+                                     <Badge key={index} variant="secondary">
+                                        {country.name}
+                                        <button type="button" onClick={() => field.onChange(field.value?.filter(c => c !== code))} className="ml-2 rounded-full hover:bg-destructive/50 p-0.5">&times;</button>
+                                    </Badge>
+                                    )
+                                })}
+                            </div>
+                            <Sheet open={isTargetCountrySheetOpen} onOpenChange={setIsTargetCountrySheetOpen}>
+                                <SheetTrigger asChild>
+                                    <Button type="button" variant="outline" className="w-full">
+                                        <Edit className="mr-2 h-4 w-4" /> Select Targeted Countries
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent className="flex flex-col">
+                                    <SheetHeader><SheetTitle>Select Countries</SheetTitle></SheetHeader>
+                                    <Input placeholder="Search countries..." value={countrySearchTerm} onChange={(e) => setCountrySearchTerm(e.target.value)} />
+                                    <ScrollArea className="flex-grow rounded-md border">
+                                        <div className="p-4 space-y-1">
+                                            {filteredCountries.map(country => (
+                                                <FormItem key={`target-${country.code}`} className="flex flex-row items-center space-x-3 space-y-0 p-2 rounded-md hover:bg-muted/50">
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value?.includes(country.code)}
+                                                            onCheckedChange={(checked) => {
+                                                                const currentSelection = field.value || [];
+                                                                if (country.code === 'all') {
+                                                                    field.onChange(checked ? ['all'] : []);
+                                                                } else {
+                                                                    const withoutAll = currentSelection.filter(c => c !== 'all');
+                                                                    return checked
+                                                                        ? field.onChange([...withoutAll, country.code])
+                                                                        : field.onChange(withoutAll.filter(c => c !== country.code));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal w-full cursor-pointer flex items-center gap-2">
+                                                        <FlagIcon countryCode={country.code} /> {country.name}
+                                                    </FormLabel>
+                                                </FormItem>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </SheetContent>
+                            </Sheet>
+                        </FormItem>
+                    )}
+                    />
+                 <FormField
+                    control={form.control}
+                    name="blockedCountries"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Blocked Countries (Optional)</FormLabel>
+                            <FormDescription>Hide this ad from users in these countries.</FormDescription>
+                             <div className="flex flex-wrap gap-2 pt-2 min-h-[2.5rem]">
+                                {field.value?.map((code, index) => {
+                                    const country = countries.find(c => c.code === code) || {name: code};
+                                    return (
+                                     <Badge key={index} variant="destructive">
+                                        {country.name}
+                                        <button type="button" onClick={() => field.onChange(field.value?.filter(c => c !== code))} className="ml-2 rounded-full hover:bg-destructive/50 p-0.5">&times;</button>
+                                    </Badge>
+                                    )
+                                })}
+                            </div>
+                             <Sheet open={isBlockedCountrySheetOpen} onOpenChange={setIsBlockedCountrySheetOpen}>
+                                <SheetTrigger asChild>
+                                    <Button type="button" variant="outline" className="w-full">
+                                        <Edit className="mr-2 h-4 w-4" /> Select Blocked Countries
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent className="flex flex-col">
+                                    <SheetHeader><SheetTitle>Select Countries</SheetTitle></SheetHeader>
+                                    <Input placeholder="Search countries..." value={countrySearchTerm} onChange={(e) => setCountrySearchTerm(e.target.value)} />
+                                    <ScrollArea className="flex-grow rounded-md border">
+                                        <div className="p-4 space-y-1">
+                                            {countries.filter(c => c.name.toLowerCase().includes(countrySearchTerm.toLowerCase())).map(country => (
+                                                <FormItem key={`block-${country.code}`} className="flex flex-row items-center space-x-3 space-y-0 p-2 rounded-md hover:bg-muted/50">
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value?.includes(country.code)}
+                                                            onCheckedChange={(checked) => {
+                                                                const currentSelection = field.value || [];
+                                                                return checked
+                                                                    ? field.onChange([...currentSelection, country.code])
+                                                                    : field.onChange(currentSelection.filter(c => c !== country.code));
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal w-full cursor-pointer flex items-center gap-2">
+                                                        <FlagIcon countryCode={country.code} /> {country.name}
+                                                    </FormLabel>
+                                                </FormItem>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </SheetContent>
+                            </Sheet>
+                        </FormItem>
+                    )}
+                />
             </div>
             
             <FormField
