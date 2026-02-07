@@ -72,9 +72,9 @@ export default function GuidesPage() {
             ))}
         </div>
         
-        <div className="mt-12 p-6 border-l-4 border-destructive bg-destructive/10 text-destructive-foreground rounded-r-lg">
-            <h3 className="mt-0 font-bold text-lg text-destructive-foreground">The Golden Rule: Stay on {APP_NAME}</h3>
-            <p className="!text-destructive-foreground/90 mt-2">
+        <div className="mt-12 p-6 border-l-4 border-destructive bg-destructive/10 text-destructive rounded-r-lg">
+            <h3 className="mt-0 font-bold text-lg text-destructive">The Golden Rule: Stay on {APP_NAME}</h3>
+            <p className="!text-destructive/90 mt-2">
                 <strong>NEVER</strong> communicate, negotiate, or trade with anyone outside of the {APP_NAME} platform. Our
                 secure escrow and moderation can only protect you if the entire transaction happens here. Anyone asking you to
                 use Telegram, WhatsApp, or any other app is likely trying to scam you.
