@@ -230,7 +230,7 @@ function BuyPageContent() {
   return (
     <>
       {/* Desktop Title & Header */}
-      <div className="hidden md:block bg-primary text-primary-foreground p-6 rounded-lg mb-6">
+      <div className="hidden md:block bg-primary text-primary-foreground md:-mt-4 md:-mx-4 lg:-mt-6 lg:-mx-6 p-6 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 className="text-2xl font-bold md:text-3xl">Buy <span className="text-orange-400">{coinFullName}</span></h1>
@@ -622,6 +622,8 @@ export default function BuyPage() {
         </Suspense>
     );
 }
+
+    
 
     
 
