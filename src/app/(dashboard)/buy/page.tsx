@@ -229,15 +229,17 @@ function BuyPageContent() {
 
   return (
     <>
-      {/* Desktop Title */}
-      <div className="hidden md:flex flex-wrap items-center justify-between gap-4 mb-4">
-        <div>
-            <h1 className="text-2xl font-bold md:text-3xl">Buy <span className="text-orange-500">{coinFullName}</span></h1>
-            <p className="text-sm text-muted-foreground">{marketPriceText}</p>
-        </div>
-        <div className="flex items-center gap-4 text-sm font-medium">
-            <Link href="/guides" className="flex items-center gap-2 hover:text-primary transition-colors"><BookOpen className="h-4 w-4" /> Academy</Link>
-            <Link href="#" className="flex items-center gap-2 hover:text-primary transition-colors"><HelpCircle className="h-4 w-4" /> Take a Tour</Link>
+      {/* Desktop Title & Header */}
+      <div className="hidden md:block bg-primary text-primary-foreground p-6 rounded-lg mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h1 className="text-2xl font-bold md:text-3xl">Buy <span className="text-orange-400">{coinFullName}</span></h1>
+                <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
+            </div>
+            <div className="flex items-center gap-4 text-sm font-medium">
+                <Link href="/guides" className="flex items-center gap-2 hover:text-primary-foreground/80 transition-colors"><BookOpen className="h-4 w-4" /> Academy</Link>
+                <Link href="#" className="flex items-center gap-2 hover:text-primary-foreground/80 transition-colors"><HelpCircle className="h-4 w-4" /> Take a Tour</Link>
+            </div>
         </div>
       </div>
       
@@ -272,8 +274,22 @@ function BuyPageContent() {
                 ))}
             </SelectContent>
         </Select>
+
+        <div className="relative flex items-center">
+            <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 pl-3 pr-16"/>
+            <Button type="button" variant="ghost" className="absolute right-1 h-8 px-2" onClick={() => setIsFiatSheetOpen(true)}>
+                {selectedFiat}
+            </Button>
+        </div>
         
-         <div className="ml-auto flex items-center gap-2">
+        <Button type="button" variant="outline" className="h-10 flex justify-between items-center text-left font-normal truncate" onClick={() => setIsPaymentSheetOpen(true)}>
+            <span className="truncate">{paymentMethod || 'Payment method'}</span>
+            <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
+        </Button>
+        
+        <div className="flex-grow" />
+        
+         <div className="flex items-center gap-2">
             <Button variant="outline" asChild>
                 <Link href="/ads/create"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
             </Button>
@@ -606,5 +622,7 @@ export default function BuyPage() {
         </Suspense>
     );
 }
+
+    
 
     
