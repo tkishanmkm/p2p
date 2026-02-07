@@ -13,6 +13,7 @@ import {
   where,
   limit,
   getDocs,
+  serverTimestamp,
 } from 'firebase/firestore';
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User as AppUser } from './types';
 import { add } from 'date-fns';
@@ -72,7 +73,7 @@ export async function initiateTrade(
       transaction.update(sellerWalletRef, {
         balance: newSellerBalance,
         lockedBalance: newSellerLockedBalance,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverTimestamp(),
       });
       
       const cryptoFee = cryptoAmount * 0.01;
@@ -105,7 +106,7 @@ export async function initiateTrade(
           message: `You have started a new trade (${newTrade.tradeId}) with ${ad.user.userId}.`,
           link: `/trade/${newTradeRef.id}`,
           isRead: false,
-          createdAt: new Date().toISOString(),
+          createdAt: serverTimestamp(),
       });
 
       const sellerNotificationRef = doc(collection(db, 'users', ad.userId, 'notifications'));
@@ -114,7 +115,7 @@ export async function initiateTrade(
           message: `${buyerData.userId} has started a new trade (${newTrade.tradeId}) with you.`,
           link: `/trade/${newTradeRef.id}`,
           isRead: false,
-          createdAt: new Date().toISOString(),
+          createdAt: serverTimestamp(),
       });
 
       transaction.set(newTradeRef, newTrade);
@@ -134,7 +135,7 @@ export async function markTradeAsPaid(db: Firestore, tradeId: string) {
   const tradeRef = doc(db, 'trades', tradeId);
   await updateDoc(tradeRef, {
       status: 'paid',
-      paidAt: new Date().toISOString()
+      paidAt: serverTimestamp()
   });
 }
 
@@ -172,13 +173,13 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
     transaction.update(sellerWalletRef, {
         balance: sellerWallet.balance || 0, // Preserve available balance
         lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverTimestamp(),
     });
 
     // Update trade status to released
     transaction.update(tradeRef, {
       status: 'released',
-      releasedAt: new Date().toISOString()
+      releasedAt: serverTimestamp()
     });
   });
 }
@@ -187,48 +188,46 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
  * Buyer claims the released funds.
  */
 export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId: string) {
-    const tradeRef = doc(db, 'trades', tradeId);
+  const tradeRef = doc(db, 'trades', tradeId);
+  
+  await runTransaction(db, async (transaction) => {
+    const tradeDoc = await transaction.get(tradeRef);
+    if (!tradeDoc.exists()) throw new Error("Trade not found.");
     
-    // We need to get the crypto type inside the transaction for safety,
-    // so we get it from the trade document itself.
-    await runTransaction(db, async (transaction) => {
-        const tradeDoc = await transaction.get(tradeRef);
-        if (!tradeDoc.exists()) throw new Error("Trade not found.");
-        const trade = tradeDoc.data() as Trade;
-        
-        if (trade.status !== 'released') throw new Error("Funds have not been released by the seller.");
-        if (trade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
-        if (trade.claimedByBuyer) throw new Error("Funds have already been claimed.");
+    const trade = tradeDoc.data() as Trade;
+    if (trade.status !== 'released') throw new Error("Funds have not been released by the seller.");
+    if (trade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
+    if (trade.claimedByBuyer) throw new Error("Funds have already been claimed.");
 
-        const fee = trade.escrowFee || (trade.amount * 0.01);
-        const amountToBuyer = trade.amount - fee;
+    const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
+    const buyerWalletDoc = await transaction.get(buyerWalletRef);
+    
+    const fee = trade.escrowFee || (trade.amount * 0.01);
+    const amountToBuyer = trade.amount - fee;
+    
+    const walletData = buyerWalletDoc.data() as UserWallet | undefined;
+    const currentBalance = walletData?.balance || 0;
+    const currentLockedBalance = walletData?.lockedBalance || 0;
+    
+    transaction.set(buyerWalletRef, {
+        balance: currentBalance + amountToBuyer,
+        lockedBalance: currentLockedBalance,
+        crypto: trade.crypto,
+        userId: buyerId,
+        id: trade.crypto,
+        updatedAt: serverTimestamp(),
+    }, { merge: true });
 
-        const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
-        const buyerWalletDoc = await transaction.get(buyerWalletRef);
-        
-        const walletData = buyerWalletDoc.data() as UserWallet | undefined;
-        const currentBalance = walletData?.balance || 0;
-        const currentLockedBalance = walletData?.lockedBalance || 0;
-        
-        transaction.set(buyerWalletRef, {
-            balance: currentBalance + amountToBuyer,
-            lockedBalance: currentLockedBalance,
-            crypto: trade.crypto,
-            userId: buyerId,
-            id: trade.crypto,
-            updatedAt: new Date().toISOString(),
-        }, { merge: true });
+    transaction.update(tradeRef, { claimedByBuyer: true });
 
-        transaction.update(tradeRef, { claimedByBuyer: true });
-
-        const ledgerRef = doc(collection(db, "escrow_ledger"));
-        transaction.set(ledgerRef, {
-            tradeId: trade.id,
-            feeAmount: fee,
-            crypto: trade.crypto,
-            createdAt: new Date().toISOString()
-        });
+    const ledgerRef = doc(collection(db, "escrow_ledger"));
+    transaction.set(ledgerRef, {
+        tradeId: trade.id,
+        feeAmount: fee,
+        crypto: trade.crypto,
+        createdAt: serverTimestamp()
     });
+  });
 }
 
 
@@ -262,7 +261,7 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
         transaction.update(sellerWalletRef, {
             balance: (sellerWallet.balance || 0) + trade.amount,
             lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-            updatedAt: new Date().toISOString(),
+            updatedAt: serverTimestamp(),
         });
 
         // Mark trade as cancelled
@@ -294,7 +293,7 @@ export async function requestWithdrawal(
     transaction.update(walletRef, {
       balance: (wallet.balance || 0) - values.amount,
       lockedBalance: (wallet.lockedBalance || 0) + values.amount,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverTimestamp(),
     });
 
     // Create withdrawal request
@@ -309,7 +308,7 @@ export async function requestWithdrawal(
       address: values.address,
       amount: values.amount,
       status: 'pending' as const,
-      createdAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
     };
     
     transaction.set(newWithdrawalRef, newWithdrawalData);
@@ -333,7 +332,7 @@ export async function cancelWithdrawal(db: Firestore, withdrawal: Withdrawal): P
         transaction.update(walletRef, {
             balance: (wallet.balance || 0) + withdrawal.amount,
             lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
-            updatedAt: new Date().toISOString(),
+            updatedAt: serverTimestamp(),
         });
 
         // Update withdrawal status
@@ -359,7 +358,6 @@ export async function sendCoinToUser(
     throw new Error("Amount must be a positive number.");
   }
 
-  // 1. Find recipient by username OUTSIDE the transaction for pre-checks
   const usersCollectionRef = collection(db, "users");
   const recipientQuery = query(
     usersCollectionRef,
@@ -373,7 +371,6 @@ export async function sendCoinToUser(
   const recipientDoc = recipientSnapshot.docs[0];
   const recipient = { id: recipientDoc.id, ...(recipientDoc.data() as AppUser) };
 
-  // Pre-transaction check for recipient status
   if (recipient.isBanned || recipient.isOnHold) {
     throw new Error(`Cannot send coins to ${recipientUsername} as their account is not active.`);
   }
@@ -383,30 +380,24 @@ export async function sendCoinToUser(
   const transferRef = doc(collection(db, "transfers"));
 
   return await runTransaction(db, async (transaction) => {
-    // --- All READS must happen first ---
     const senderWalletDoc = await transaction.get(senderWalletRef);
     const recipientWalletDoc = await transaction.get(recipientWalletRef);
 
-    // --- Validation ---
     if (!senderWalletDoc.exists() || ((senderWalletDoc.data() as UserWallet).balance || 0) < amount) {
       throw new Error(`Insufficient ${crypto} balance.`);
     }
 
-    // --- All WRITES happen after reads ---
-
-    // 1. Update sender's wallet
     const senderWallet = senderWalletDoc.data() as UserWallet;
     transaction.update(senderWalletRef, {
       balance: (senderWallet.balance || 0) - amount,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverTimestamp(),
     });
 
-    // 2. Update recipient's wallet (or create it)
     if (recipientWalletDoc.exists()) {
       const recipientWallet = recipientWalletDoc.data() as UserWallet;
       transaction.update(recipientWalletRef, {
         balance: (recipientWallet.balance || 0) + amount,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverTimestamp(),
       });
     } else {
       transaction.set(recipientWalletRef, {
@@ -415,11 +406,10 @@ export async function sendCoinToUser(
         crypto,
         userId: recipient.id,
         id: crypto,
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverTimestamp(),
       });
     }
 
-    // 3. Log the transfer
     const transferId = generateId("TX-", 10);
     transaction.set(transferRef, {
       publicId: transferId,
@@ -429,17 +419,25 @@ export async function sendCoinToUser(
       recipientUsername: recipient.userId,
       crypto,
       amount,
-      createdAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
     });
 
-    // 4. Send notification to sender
     const senderNotifRef = doc(collection(db, `users/${sender.uid}/notifications`));
     transaction.set(senderNotifRef, {
       userId: sender.uid,
       message: `You sent ${amount} ${crypto} to ${recipientUsername}.`,
       isRead: false,
-      createdAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
       link: `/transfer`,
+    });
+    
+    const recipientNotifRef = doc(collection(db, `users/${recipient.id}/notifications`));
+    transaction.set(recipientNotifRef, {
+        userId: recipient.id,
+        message: `You have received ${amount} ${crypto} from ${sender.displayName}.`,
+        isRead: false,
+        createdAt: serverTimestamp(),
+        link: `/transfer`
     });
 
     return transferId;

@@ -24,9 +24,9 @@ export function AdCard({ ad }: AdCardProps) {
   const { firestore } = useFirebase();
   const { prices, fiatRates } = usePrices();
 
-  // Fetch the ad creator's profile in real-time to get the latest avatar and stats
-  const adCreatorRef = useMemoFirebase(() => (firestore ? doc(firestore, 'users', ad.userId) : null), [firestore, ad.userId]);
-  const { data: adCreator, isLoading: isCreatorLoading } = useDoc<User>(adCreatorRef);
+  // The ad object already contains denormalized user data.
+  // We can use this directly to avoid extra database reads on list views.
+  const adCreator = ad.user;
 
   const marketPriceUsd = prices[ad.crypto] || 0;
   const exchangeRate = fiatRates[ad.fiatCurrency] || 1;
@@ -38,9 +38,7 @@ export function AdCard({ ad }: AdCardProps) {
 
   const pricePremium = marketPriceInFiat > 0 ? (adPrice - marketPriceInFiat) / marketPriceInFiat : 0;
   
-  const user = adCreator || ad.user;
-  
-  const lastActiveDate = user.lastActive ? toDate(user.lastActive) : null;
+  const lastActiveDate = adCreator.lastActive ? toDate(adCreator.lastActive) : null;
   const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 15 * 60 * 1000;
 
   return (
@@ -50,18 +48,18 @@ export function AdCard({ ad }: AdCardProps) {
         <div className="flex-grow space-y-3">
             <div className="flex items-center gap-3">
                 <Avatar>
-                    <AvatarImage src={user.photoURL} />
-                    <AvatarFallback>{user.userId.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={adCreator.photoURL} />
+                    <AvatarFallback>{adCreator.userId.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div>
-                     <Link href={`/users/${user.userId}`} className="font-semibold hover:underline flex items-center gap-2">
-                        {user.userId}
-                        {user.country && <FlagIcon countryCode={user.country} />}
+                     <Link href={`/users/${adCreator.userId}`} className="font-semibold hover:underline flex items-center gap-2">
+                        {adCreator.userId}
+                        {adCreator.country && <FlagIcon countryCode={adCreator.country} />}
                      </Link>
                     <div className="text-xs text-muted-foreground flex items-center gap-4">
-                        <span>{user.completedTrades} trades</span>
+                        <span>{adCreator.completedTrades} trades</span>
                         <div className="h-2 w-px bg-muted-foreground/30" />
-                        <span><ThumbsUp className="h-3 w-3 inline-block mr-1 text-green-500" />{user.feedbackScore?.toFixed(0) ?? 100}%</span>
+                        <span><ThumbsUp className="h-3 w-3 inline-block mr-1 text-green-500" />{adCreator.feedbackScore?.toFixed(0) ?? 100}%</span>
                          <div className="h-2 w-px bg-muted-foreground/30" />
                         <div className={cn("flex items-center gap-1.5", wasActiveRecently ? 'text-green-600' : '')}>
                            <div className={cn("h-1.5 w-1.5 rounded-full", wasActiveRecently ? "bg-green-500" : "bg-muted-foreground/50")} />
@@ -107,7 +105,7 @@ export function AdCard({ ad }: AdCardProps) {
                     <p className="text-sm font-medium">{ad.minAmount} - {ad.maxAmount} {ad.fiatCurrency}</p>
                 </div>
                 <Button asChild>
-                    <Link href={`/ad/${ad.id}`}>
+                    <Link href={`/trade/initiate/${ad.id}`}>
                         {ad.adType === 'buy' ? "Sell" : "Buy"} {ad.crypto}
                     </Link>
                 </Button>

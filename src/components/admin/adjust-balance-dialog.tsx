@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -94,8 +95,8 @@ export function AdjustBalanceDialog({ open, onOpenChange, userId, userDisplayNam
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-        onOpenChange(isOpen);
         if (!isOpen) form.reset();
+        onOpenChange(isOpen);
     }}>
       <DialogContent>
         <DialogHeader>

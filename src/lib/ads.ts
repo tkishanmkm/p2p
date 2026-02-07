@@ -23,6 +23,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     completedTrades: number;
     photoURL?: string;
     badges?: string[];
+    lastActive?: string;
 }) {
   const adsCollection = collection(db, 'p2p_ads');
   
@@ -48,6 +49,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       completedTrades: user.completedTrades,
       photoURL: user.photoURL || "",
       badges: user.badges || [],
+      lastActive: user.lastActive || new Date().toISOString()
     },
     createdAt: serverTimestamp()
   };
@@ -106,5 +108,5 @@ export async function updateAdStatus(db: Firestore, adId: string, active: boolea
 // Soft delete by marking as inactive
 export async function softDeleteAd(db: Firestore, adId: string) {
     const adRef = doc(db, 'p2p_ads', adId);
-    await updateDoc(adRef, { active: false });
+    await updateDoc(adRef, { active: false, deletedAt: serverTimestamp() });
 }

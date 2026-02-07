@@ -53,7 +53,7 @@ import Link from "next/link";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { usePrices } from "@/context/price-context";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Wallet, Edit, Search, Globe, Landmark, CreditCard, Smartphone, Car } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -252,60 +252,66 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
         },
   });
   
-  const watchedFields = form.watch();
-  const marketPriceUsd = prices[watchedFields.crypto as CryptoCurrency] || 0;
-  const exchangeRate = fiatRates[watchedFields.fiatCurrency] || 1;
-  const currentMarketPriceInFiat = marketPriceUsd * exchangeRate;
+  const watchedAdType = form.watch('adType');
+  const watchedCrypto = form.watch('crypto');
+  const watchedFiat = form.watch('fiatCurrency');
+  const watchedMaxAmount = form.watch('maxAmount');
+  const watchedRateType = form.watch('rateType');
+  const watchedFixedRate = form.watch('fixedRate');
+  const watchedRatePercent = form.watch('ratePercent');
+
+  const currentMarketPriceInFiat = useMemo(() => {
+    if (!watchedCrypto || !watchedFiat) return 0;
+    const marketPriceUsd = prices[watchedCrypto as CryptoCurrency] || 0;
+    const exchangeRate = fiatRates[watchedFiat] || 1;
+    return marketPriceUsd * exchangeRate;
+  }, [watchedCrypto, watchedFiat, prices, fiatRates]);
   
   useEffect(() => {
     if (!currentMarketPriceInFiat) return;
 
-    if (watchedFields.rateType === "market") {
-        if (watchedFields.ratePercent == null) {
+    if (watchedRateType === "market") {
+        if (watchedRatePercent == null) {
             form.setValue("ratePercent", 5, { shouldValidate: true });
         }
-        form.setValue("fixedRate", undefined);
     }
 
-    if (watchedFields.rateType === "fixed") {
-        if (watchedFields.fixedRate == null || watchedFields.fixedRate === 0) {
+    if (watchedRateType === "fixed") {
+        if (watchedFixedRate == null || watchedFixedRate === 0) {
             form.setValue(
                 "fixedRate",
                 Number(currentMarketPriceInFiat.toFixed(2)),
                 { shouldValidate: true }
             );
         }
-        form.setValue("ratePercent", undefined);
     }
-  }, [watchedFields.rateType, watchedFields.crypto, watchedFields.fiatCurrency, currentMarketPriceInFiat, form]);
+  }, [watchedRateType, watchedCrypto, watchedFiat, currentMarketPriceInFiat, form, watchedFixedRate, watchedRatePercent]);
 
 
   useEffect(() => {
     setBalanceError(null);
-    if (watchedFields.adType !== 'sell' || !watchedFields.maxAmount || !wallets || !watchedFields.crypto || arePricesLoading) {
+    if (watchedAdType !== 'sell' || !watchedMaxAmount || !wallets || !watchedCrypto || arePricesLoading) {
         return;
     }
 
-    const selectedWallet = wallets.find(w => w.crypto === watchedFields.crypto);
+    const selectedWallet = wallets.find(w => w.crypto === watchedCrypto);
     const userBalance = selectedWallet?.balance ?? 0;
     
-    const marketPriceUsd = prices[watchedFields.crypto as CryptoCurrency] || 0;
-    const exchangeRate = fiatRates[watchedFields.fiatCurrency] || 1;
-    const marketPriceInFiat = marketPriceUsd * exchangeRate;
-
-    const price = watchedFields.rateType === 'fixed' 
-      ? watchedFields.fixedRate ?? 0
-      : marketPriceInFiat > 0 ? marketPriceInFiat * (1 + (watchedFields.ratePercent ?? 0) / 100) : 0;
+    const price = watchedRateType === 'fixed' 
+      ? watchedFixedRate ?? 0
+      : currentMarketPriceInFiat > 0 ? currentMarketPriceInFiat * (1 + (watchedRatePercent ?? 0) / 100) : 0;
 
     if (price <= 0) return;
     
-    const requiredCrypto = watchedFields.maxAmount / price;
+    // The maximum amount of crypto the user wants to sell, in fiat value.
+    // We need to check if they have enough crypto to cover this.
+    const requiredCryptoForMaxAmount = watchedMaxAmount / price;
     
-    if (userBalance < requiredCrypto) {
-      setBalanceError(`Insufficient ${watchedFields.crypto} balance. You need at least ${requiredCrypto.toFixed(6)} ${watchedFields.crypto} to cover the maximum amount, but you only have ${userBalance.toFixed(6)} available.`);
+    if (userBalance < requiredCryptoForMaxAmount) {
+      setBalanceError(`Insufficient ${watchedCrypto} balance. You need at least ${requiredCryptoForMaxAmount.toFixed(6)} ${watchedCrypto} to cover the maximum amount, but you only have ${userBalance.toFixed(6)} available.`);
     }
 
-  }, [watchedFields, wallets, prices, fiatRates, arePricesLoading]);
+  }, [watchedAdType, watchedMaxAmount, watchedCrypto, watchedRateType, watchedFixedRate, watchedRatePercent, wallets, arePricesLoading, currentMarketPriceInFiat]);
 
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
@@ -363,6 +369,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                 completedTrades: userData.completedTrades ?? 0,
                 photoURL: userData.photoURL,
                 badges: userData.badges,
+                lastActive: userData.lastActive
             });
             toast({ title: "Ad Created", description: "Your ad has been successfully posted." });
             router.push(data.adType === 'sell' ? '/buy' : '/sell');
@@ -596,7 +603,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
               )}
             />
 
-            {watchedFields.rateType === "market" ? (
+            {watchedRateType === "market" ? (
               <FormField
                 control={form.control}
                 name="ratePercent"

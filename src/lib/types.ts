@@ -96,6 +96,7 @@ export type P2PAd = {
   tags?: string[];
   offerLabel?: string;
   active: boolean;
+  deletedAt?: string; // for soft deletes
   createdAt: string; // TIMESTAMP
   targetedCountries?: string[];
   blockedCountries?: string[];
@@ -107,6 +108,7 @@ export type P2PAd = {
       completedTrades?: number;
       photoURL?: string;
       badges?: string[];
+      lastActive?: string;
   };
 };
 
