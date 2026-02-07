@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Wallet, Landmark, CreditCard, Smartphone, Car, Search, Loader2, ArrowDown, ArrowUp, PlusCircle, SlidersHorizontal, RefreshCw, BookOpen, HelpCircle, BarChart, X, Globe, ChevronRight, Info } from "lucide-react";
+import { Wallet, Landmark, CreditCard, Smartphone, Car, Search, Loader2, ArrowDown, ArrowUp, PlusCircle, SlidersHorizontal, RefreshCw, BookOpen, HelpCircle, BarChart, X, Globe, ChevronRight, Info, ChevronDown } from "lucide-react";
 import { SUPPORTED_CRYPTOS, AD_TAGS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { countries } from "@/lib/countries";
@@ -342,13 +342,15 @@ function BuyPageContent() {
             </div>
             <div className="grid grid-cols-2 gap-2 rounded-lg bg-card/80 backdrop-blur-sm p-2 text-card-foreground">
               <div className="relative flex items-center">
-                    <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-16 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"/>
-                    <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 rounded-md bg-background/20 hover:bg-background/30" onClick={() => setIsFiatSheetOpen(true)}>
+                    <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-24 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"/>
+                    <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 flex items-center gap-1 rounded-md bg-background/20 hover:bg-background/30" onClick={() => setIsFiatSheetOpen(true)}>
                         {selectedFiat}
+                        <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                 </div>
-                <Button type="button" variant="outline" className="h-12 justify-start text-left font-normal truncate bg-transparent border-0" onClick={() => setIsPaymentSheetOpen(true)}>
-                    {paymentMethod || 'Payment method'}
+                <Button type="button" variant="outline" className="h-12 flex justify-between items-center text-left font-normal truncate bg-transparent border-0" onClick={() => setIsPaymentSheetOpen(true)}>
+                    <span className="truncate">{paymentMethod || 'Payment method'}</span>
+                    <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
                 </Button>
             </div>
           </div>

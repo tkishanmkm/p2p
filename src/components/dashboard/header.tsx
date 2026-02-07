@@ -164,7 +164,29 @@ export function DashboardHeader() {
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         {/* Left side */}
         <div className="flex items-center gap-4">
-          <div className="md:hidden">
+          <Link href="/dashboard">
+             <Logo />
+          </Link>
+          {/* Desktop nav */}
+          <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6 ml-4">
+             {navItems.slice(0, 5).map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'transition-colors hover:text-foreground',
+                  pathname.startsWith(item.href) ? 'text-primary font-semibold' : 'text-muted-foreground'
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        {/* Right side */}
+        <div className="flex items-center gap-2">
+           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon" className="shrink-0">
@@ -173,7 +195,7 @@ export function DashboardHeader() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="flex flex-col p-0">
-                <nav className="grid gap-6 text-lg font-medium mt-8">
+                <nav className="grid gap-6 text-lg font-medium mt-8 px-6">
                   <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
                     <Logo />
                   </Link>
@@ -192,7 +214,7 @@ export function DashboardHeader() {
                     </Link>
                   ))}
                 </nav>
-                 <div className="mt-auto">
+                 <div className="mt-auto p-6">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="w-full justify-start">
@@ -235,28 +257,6 @@ export function DashboardHeader() {
               </SheetContent>
             </Sheet>
           </div>
-          <Link href="/dashboard">
-             <Logo />
-          </Link>
-          {/* Desktop nav */}
-          <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6 ml-4">
-             {navItems.slice(0, 5).map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'transition-colors hover:text-foreground',
-                  pathname.startsWith(item.href) ? 'text-primary font-semibold' : 'text-muted-foreground'
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        {/* Right side */}
-        <div className="flex items-center gap-2">
           <ModeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -280,7 +280,7 @@ export function DashboardHeader() {
                     </DropdownMenuSubTrigger>
                     <DropdownMenuPortal>
                       <DropdownMenuSubContent>
-                        {lang.dialects.map((dialect) => (
+                        {lang.dialects.map(dialect => (
                           <DropdownMenuItem key={dialect.code} onClick={() => handleLanguageSelect(dialect)}>
                             <div className="flex flex-col">
                               <span className="font-medium">{dialect.nativeName}</span>
@@ -344,7 +344,7 @@ export function DashboardHeader() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex shrink-0 items-center gap-2 p-1 h-auto rounded-md">
+              <Button variant="ghost" className="flex shrink-0 items-center gap-1.5 p-1 h-auto rounded-md">
                 {userData?.country && <FlagIcon countryCode={userData.country} className="w-5 h-auto rounded-sm" />}
                 <Avatar className="h-8 w-8 shrink-0">
                   {authUser?.photoURL ? (
@@ -357,11 +357,11 @@ export function DashboardHeader() {
                 </Avatar>
                 <div className="flex-shrink min-w-0 text-left">
                   {authUser?.displayName ? (
-                    <p className="font-semibold text-xs truncate">{authUser.displayName}</p>
+                    <p className="font-semibold text-[11px] leading-tight truncate">{authUser.displayName}</p>
                   ) : (
-                    <Skeleton className="h-5 w-20" />
+                    <Skeleton className="h-4 w-16" />
                   )}
-                  <p className="text-[10px] text-muted-foreground truncate">
+                  <p className="text-[9px] leading-tight text-muted-foreground truncate">
                     {totalWalletValueConverted.toLocaleString(undefined, {
                       style: 'currency',
                       currency: preferredCurrency,
