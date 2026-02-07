@@ -50,6 +50,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LANGUAGES } from '@/lib/constants';
 import { FlagIcon } from '../ui/flag-icon';
 import { useI18n } from '@/context/i18n-context';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -57,10 +58,14 @@ const navItems = [
   { href: '/buy', label: 'Buy Coin', icon: ArrowDownToLine },
   { href: '/sell', label: 'Sell Coin', icon: ArrowUpFromLine },
   { href: '/transfer', label: 'Transfer', icon: Send },
-  { href: '/ads/create', label: 'Create Ad', icon: PlusCircle },
-  { href: '/my-ads', label: 'My Ads', icon: FileText },
-  { href: '/trades', label: 'My Trades', icon: ArrowLeftRight },
-  { href: '/contact', label: 'Support', icon: LifeBuoy },
+];
+
+const mobileNavItems = [
+    ...navItems,
+    { href: '/ads/create', label: 'Create Ad', icon: PlusCircle },
+    { href: '/my-ads', label: 'My Ads', icon: FileText },
+    { href: '/trades', label: 'My Trades', icon: ArrowLeftRight },
+    { href: '/contact', label: 'Support', icon: LifeBuoy },
 ];
 
 export function DashboardHeader() {
@@ -119,7 +124,7 @@ export function DashboardHeader() {
       toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
       router.push('/login');
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Logout Failed', description: 'An error occurred during logout.' });
+      toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred during logout." });
     }
   };
 
@@ -161,35 +166,13 @@ export function DashboardHeader() {
   // Authenticated State
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-        {/* Left side */}
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard">
-             <Logo />
-          </Link>
-          {/* Desktop nav */}
-          <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6 ml-4">
-             {navItems.slice(0, 5).map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'transition-colors hover:text-foreground',
-                  pathname.startsWith(item.href) ? 'text-primary font-semibold' : 'text-muted-foreground'
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        {/* Right side */}
-        <div className="flex items-center gap-2">
-           <div className="md:hidden">
+      <div className="container flex h-16 items-center px-4 md:px-6">
+        
+        {/* Mobile Header Left */}
+        <div className="flex items-center gap-4 md:hidden">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="shrink-0">
+                <Button variant="ghost" size="icon" className="shrink-0">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle navigation menu</span>
                 </Button>
@@ -199,12 +182,12 @@ export function DashboardHeader() {
                   <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
                     <Logo />
                   </Link>
-                  {navItems.map((item) => (
+                  {mobileNavItems.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
                       className={`flex items-center gap-4 text-base transition-colors ${
-                        pathname === item.href
+                        pathname.startsWith(item.href) && item.href !== '/dashboard' || pathname === item.href
                           ? 'text-foreground'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
@@ -256,7 +239,46 @@ export function DashboardHeader() {
               </div>
               </SheetContent>
             </Sheet>
-          </div>
+            <Link href="/dashboard">
+                <Logo />
+            </Link>
+        </div>
+
+
+        {/* Desktop Header Left */}
+        <div className="hidden md:flex items-center gap-6">
+            <Link href="/dashboard">
+                <Logo />
+            </Link>
+            <TooltipProvider>
+                <nav className="flex items-center gap-2">
+                    {navItems.map((item) => (
+                        <Tooltip key={item.href}>
+                            <TooltipTrigger asChild>
+                                <Button asChild variant="ghost" size="icon" className={cn(
+                                    'transition-colors hover:text-foreground',
+                                    (pathname.startsWith(item.href) && item.href !== '/dashboard' || pathname === item.href) ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+                                )}>
+                                    <Link href={item.href}>
+                                        <item.icon className="h-5 w-5" />
+                                        <span className="sr-only">{item.label}</span>
+                                    </Link>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{item.label}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ))}
+                </nav>
+            </TooltipProvider>
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Right side */}
+        <div className="flex items-center gap-2">
           <ModeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -345,7 +367,7 @@ export function DashboardHeader() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex shrink-0 items-center gap-1.5 p-1 h-auto rounded-md">
-                {userData?.country && <FlagIcon countryCode={userData.country} className="w-5 h-auto rounded-sm" />}
+                {userData?.country && <FlagIcon countryCode={userData.country} className="w-5 h-auto rounded-sm hidden sm:block" />}
                 <Avatar className="h-8 w-8 shrink-0">
                   {authUser?.photoURL ? (
                     <AvatarImage src={authUser.photoURL} alt={authUser.displayName || 'User Avatar'} />

@@ -122,7 +122,7 @@ export function Header() {
           </Link>
           
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-6 text-sm ml-2">
+          <nav className="hidden md:flex items-center gap-6 text-sm ml-6">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                  <Button variant="ghost" className="font-medium text-foreground/80 transition-colors hover:text-foreground px-0">
