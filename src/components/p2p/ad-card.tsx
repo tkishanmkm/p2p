@@ -20,7 +20,7 @@ interface AdCardProps {
 }
 
 export function AdCard({ ad }: AdCardProps) {
-  const { firestore, user: authUser } = useFirebase();
+  const { firestore } = useFirebase();
   const { prices } = usePrices();
 
   // Fetch the ad creator's profile in real-time to get the latest avatar and stats
@@ -65,7 +65,7 @@ export function AdCard({ ad }: AdCardProps) {
   }
 
   const isLoading = isCreatorLoading || (ad.adType === 'sell' && isWalletLoading);
-  const actionUrl = authUser ? `/trade/initiate/${ad.id}` : `/login?redirect=/trade/initiate/${ad.id}`;
+  const actionUrl = `/ad/${ad.id}`;
 
   const pricePremium = ad.rateType === 'market' && ad.ratePercent ? (ad.ratePercent / 100) : ad.rateType === 'fixed' && marketPrice > 0 ? ((ad.fixedRate! - marketPrice) / marketPrice) : 0;
   const premiumPercentage = (pricePremium * 100).toFixed(2);
