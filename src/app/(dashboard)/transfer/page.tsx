@@ -138,10 +138,10 @@ export default function TransferPage() {
   const walletsRef = useMemoFirebase(() => (authUser ? collection(firestore, 'users', authUser.uid, 'wallets') : null), [authUser, firestore]);
   const { data: wallets } = useCollection<UserWallet>(walletsRef);
 
-  const sentQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('senderId', '==', authUser.uid)) : null), [firestore, authUser]);
+  const sentQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('senderId', '==', authUser.uid), orderBy('createdAt', 'desc')) : null), [firestore, authUser]);
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<CoinTransfer>(sentQuery);
 
-  const receivedQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('recipientId', '==', authUser.uid)) : null), [firestore, authUser]);
+  const receivedQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('recipientId', '==', authUser.uid), orderBy('createdAt', 'desc')) : null), [firestore, authUser]);
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<CoinTransfer>(receivedQuery);
 
   const form = useForm<TransferFormValues>({
@@ -464,3 +464,5 @@ export default function TransferPage() {
     </>
   );
 }
+
+    

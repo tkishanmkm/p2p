@@ -364,6 +364,7 @@ export async function sendCoinToUser(
     where("userId", "==", recipientUsername),
     limit(1)
   );
+  
   const recipientSnapshot = await getDocs(recipientQuery);
   if (recipientSnapshot.empty) {
     throw new Error(`User "${recipientUsername}" not found.`);
@@ -371,15 +372,13 @@ export async function sendCoinToUser(
   const recipientDoc = recipientSnapshot.docs[0];
   const recipient = { id: recipientDoc.id, ...(recipientDoc.data() as AppUser) };
 
-  if (recipient.isBanned || recipient.isOnHold) {
-    throw new Error(`Cannot send coins to ${recipientUsername} as their account is not active.`);
-  }
-
   const senderWalletRef = doc(db, "users", sender.uid, "wallets", crypto);
   const recipientWalletRef = doc(db, "users", recipient.id, "wallets", crypto);
   const transferRef = doc(collection(db, "transfers"));
+  
+  let transferId = "";
 
-  return await runTransaction(db, async (transaction) => {
+  await runTransaction(db, async (transaction) => {
     const senderWalletDoc = await transaction.get(senderWalletRef);
     const recipientWalletDoc = await transaction.get(recipientWalletRef);
 
@@ -410,7 +409,7 @@ export async function sendCoinToUser(
       });
     }
 
-    const transferId = generateId("TX-", 10);
+    transferId = generateId("TX-", 10);
     transaction.set(transferRef, {
       publicId: transferId,
       senderId: sender.uid,
@@ -430,7 +429,22 @@ export async function sendCoinToUser(
       createdAt: serverTimestamp(),
       link: `/transfer`,
     });
-
-    return transferId;
   });
+
+  // After the transaction is successful, create a notification for the recipient.
+  // This is done outside the transaction to avoid permission errors.
+  if (transferId) {
+    const recipientNotifRef = doc(collection(db, `users/${recipient.id}/notifications`));
+    await setDoc(recipientNotifRef, {
+        userId: recipient.id,
+        message: `You received ${amount} ${crypto} from ${sender.displayName}.`,
+        isRead: false,
+        createdAt: serverTimestamp(),
+        link: `/transfer`,
+    });
+  }
+
+  return transferId;
 }
+
+    
