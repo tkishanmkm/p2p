@@ -1,5 +1,5 @@
 'use client';
-import { Firestore, doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc, writeBatch } from 'firebase/firestore';
+import { Firestore, doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc, writeBatch, limit } from 'firebase/firestore';
 import type { User as AuthUser } from 'firebase/auth';
 
 /**

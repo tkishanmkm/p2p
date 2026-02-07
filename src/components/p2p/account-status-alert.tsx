@@ -1,4 +1,3 @@
-// This is a new file
 'use client';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Ban, PauseCircle } from 'lucide-react';
