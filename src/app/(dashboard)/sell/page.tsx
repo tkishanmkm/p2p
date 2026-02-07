@@ -237,11 +237,11 @@ function SellPageContent() {
                   <h1 className="text-2xl font-bold md:text-3xl text-primary-foreground">Sell <span className="text-orange-400">{coinFullName}</span></h1>
                   <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
               </div>
-              <div className="flex items-center gap-2">
-                  <Button variant="outline" asChild>
+              <div className="flex items-center gap-4">
+                  <Button variant="link" asChild className="text-primary-foreground/90 hover:text-primary-foreground hover:no-underline">
                       <Link href="/academy"><BookOpen className="mr-2 h-4 w-4" /> Academy</Link>
                   </Button>
-                  <Button variant="outline" asChild>
+                  <Button variant="link" asChild className="text-primary-foreground/90 hover:text-primary-foreground hover:no-underline">
                       <Link href="/guides"><HelpCircle className="mr-2 h-4 w-4" /> Take Tour</Link>
                   </Button>
               </div>
