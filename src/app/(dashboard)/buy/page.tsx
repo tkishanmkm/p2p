@@ -241,13 +241,13 @@ function BuyPageContent() {
       </div>
       
       {/* Desktop Filter Bar */}
-      <div className="hidden md:flex items-center gap-2 rounded-lg bg-card border p-2 flex-wrap mb-6">
+      <div className="hidden md:flex items-center gap-2 rounded-lg bg-card border p-2 mb-6">
         <div className="flex items-center bg-muted p-1 rounded-md">
             <Button size="sm" onClick={() => handleToggle('buy')} className={cn('bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
-                <ArrowDown className="mr-2 h-4 w-4" /> Buy
+                <ArrowDown className="mr-2 h-3.5 w-3.5" /> Buy
             </Button>
             <Button size="sm" onClick={() => handleToggle('sell')} className={cn('bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
-                <ArrowUp className="mr-2 h-4 w-4" /> Sell
+                <ArrowUp className="mr-2 h-3.5 w-3.5" /> Sell
             </Button>
         </div>
 
@@ -272,17 +272,6 @@ function BuyPageContent() {
             </SelectContent>
         </Select>
         
-        <div className="relative flex items-center max-w-xs flex-1">
-            <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 rounded-md bg-background pl-4 pr-20"/>
-            <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md" onClick={() => setIsFiatSheetOpen(true)}>
-                {selectedFiat}
-            </Button>
-        </div>
-
-        <Button type="button" variant="outline" className="h-10 rounded-md bg-background min-w-[150px] justify-start text-left font-normal" onClick={() => setIsPaymentSheetOpen(true)}>
-            {paymentMethod || 'Payment method'}
-        </Button>
-
          <div className="ml-auto flex items-center gap-2">
             <Button variant="outline" asChild>
                 <Link href="/ads/create"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
@@ -336,7 +325,7 @@ function BuyPageContent() {
           <div className="grid grid-cols-2 gap-2">
               <div className="relative flex items-center">
                   <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-16"/>
-                  <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 rounded-md" onClick={() => setIsFiatSheetOpen(true)}>
+                  <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 rounded-md bg-muted hover:bg-muted/80" onClick={() => setIsFiatSheetOpen(true)}>
                       {selectedFiat}
                   </Button>
               </div>
@@ -393,7 +382,7 @@ function BuyPageContent() {
                 </div>
             </SheetHeader>
             <div className="py-4 space-y-6">
-                <div className="md:hidden space-y-4">
+                <div className="space-y-4">
                     <div className="space-y-2">
                         <Label>Coin</Label>
                         <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
@@ -405,7 +394,7 @@ function BuyPageContent() {
                         <Label>Amount</Label>
                         <div className="relative flex items-center">
                             <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                            <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md" onClick={() => { setIsFiltersSheetOpen(false); setIsFiatSheetOpen(true); }}>
+                            <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md bg-muted hover:bg-muted/80" onClick={() => { setIsFiltersSheetOpen(false); setIsFiatSheetOpen(true); }}>
                                 {selectedFiat}
                             </Button>
                         </div>
