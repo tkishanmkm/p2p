@@ -240,74 +240,125 @@ function BuyPageContent() {
         </div>
       </div>
       
-      {/* FILTER BAR */}
-      <div className="flex items-center gap-2 rounded-lg bg-card border p-2 flex-wrap mb-6">
-        {/* Desktop view */}
-        <div className="hidden md:flex items-center gap-2 w-full">
-            <div className="flex items-center bg-muted p-1 rounded-md">
-                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
-                    <ArrowDown className="mr-2 h-4 w-4" /> Buy
-                </Button>
-                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
-                    <ArrowUp className="mr-2 h-4 w-4" /> Sell
-                </Button>
-            </div>
-
-            <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
-                <SelectTrigger className="h-10 w-[120px] rounded-md border bg-background shadow-sm">
-                    <SelectValue>
-                        <div className="flex items-center gap-2">
-                            <CryptoLogo crypto={selectedCoin} className="h-5 w-5" />
-                            <span className="font-semibold">{selectedCoin}</span>
-                        </div>
-                    </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                     {SUPPORTED_CRYPTOS.map(c => (
-                        <SelectItem key={c.name} value={c.name}>
-                            <div className="flex items-center gap-2">
-                                <CryptoLogo crypto={c.name} className="h-5 w-5" />
-                                <span className="font-medium">{c.name}</span>
-                            </div>
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            
-            <div className="relative flex items-center max-w-xs flex-1">
-                <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 rounded-md bg-background pl-4 pr-20"/>
-                <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md" onClick={() => setIsFiatSheetOpen(true)}>
-                    {selectedFiat}
-                </Button>
-            </div>
-
-            <Button type="button" variant="outline" className="h-10 rounded-md bg-background min-w-[150px] justify-start text-left font-normal" onClick={() => setIsPaymentSheetOpen(true)}>
-                {paymentMethod || 'Payment method'}
+      {/* Desktop Filter Bar */}
+      <div className="hidden md:flex items-center gap-2 rounded-lg bg-card border p-2 flex-wrap mb-6">
+        <div className="flex items-center bg-muted p-1 rounded-md">
+            <Button size="sm" onClick={() => handleToggle('buy')} className={cn('bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
+                <ArrowDown className="mr-2 h-4 w-4" /> Buy
             </Button>
-
-             <div className="ml-auto flex items-center gap-2">
-                <Button variant="outline" asChild>
-                    <Link href="/ads/create"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
-                </Button>
-                <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
-                    <SlidersHorizontal className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
-                    <RefreshCw className="h-4 w-4" />
-                </Button>
-            </div>
+            <Button size="sm" onClick={() => handleToggle('sell')} className={cn('bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
+                <ArrowUp className="mr-2 h-4 w-4" /> Sell
+            </Button>
         </div>
 
-        {/* Mobile View */}
-         <div className="md:hidden flex items-center gap-2 w-full">
-            <div className="flex items-center bg-muted p-1 rounded-md flex-1">
-                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1', pathname.includes('/buy') ? 'bg-green-600 hover:bg-green-700 text-white shadow-md' : 'bg-transparent text-muted-foreground hover:bg-muted/50')}>Buy</Button>
-                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1', pathname.includes('/sell') ? 'bg-red-600 hover:bg-red-700 text-white shadow-md' : 'bg-transparent text-muted-foreground hover:bg-muted/50')}>Sell</Button>
-            </div>
-             <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
+        <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
+            <SelectTrigger className="h-10 w-[120px] rounded-md border bg-background shadow-sm">
+                <SelectValue>
+                    <div className="flex items-center gap-2">
+                        <CryptoLogo crypto={selectedCoin} className="h-5 w-5" />
+                        <span className="font-semibold">{selectedCoin}</span>
+                    </div>
+                </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+                 {SUPPORTED_CRYPTOS.map(c => (
+                    <SelectItem key={c.name} value={c.name}>
+                        <div className="flex items-center gap-2">
+                            <CryptoLogo crypto={c.name} className="h-5 w-5" />
+                            <span className="font-medium">{c.name}</span>
+                        </div>
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+        
+        <div className="relative flex items-center max-w-xs flex-1">
+            <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 rounded-md bg-background pl-4 pr-20"/>
+            <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md" onClick={() => setIsFiatSheetOpen(true)}>
+                {selectedFiat}
+            </Button>
+        </div>
+
+        <Button type="button" variant="outline" className="h-10 rounded-md bg-background min-w-[150px] justify-start text-left font-normal" onClick={() => setIsPaymentSheetOpen(true)}>
+            {paymentMethod || 'Payment method'}
+        </Button>
+
+         <div className="ml-auto flex items-center gap-2">
+            <Button variant="outline" asChild>
+                <Link href="/ads/create"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
                 <SlidersHorizontal className="h-4 w-4" />
             </Button>
-         </div>
+            <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
+                <RefreshCw className="h-4 w-4" />
+            </Button>
+        </div>
+      </div>
+      
+      {/* Mobile Filter UI */}
+      <div className="md:hidden space-y-4 mb-6">
+          <div className="grid grid-cols-2 gap-2">
+              <Button onClick={() => handleToggle('buy')} className={cn('h-12', pathname.includes('/buy') ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg' : 'bg-muted text-muted-foreground')}>
+                  <ArrowDown className="mr-2 h-4 w-4" /> Buy
+              </Button>
+              <Button onClick={() => handleToggle('sell')} className={cn('h-12', pathname.includes('/sell') ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg' : 'bg-muted text-muted-foreground')}>
+                  <ArrowUp className="mr-2 h-4 w-4" /> Sell
+              </Button>
+          </div>
+
+          <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
+              <SelectTrigger className="h-12 text-base">
+                  <SelectValue>
+                      <div className="flex items-center gap-2">
+                          <CryptoLogo crypto={selectedCoin} className="h-6 w-6" />
+                          <span className="font-semibold">{selectedCoin}</span>
+                      </div>
+                  </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                  {SUPPORTED_CRYPTOS.map(c => (
+                  <SelectItem key={c.name} value={c.name}>
+                      <div className="flex items-center gap-2">
+                          <CryptoLogo crypto={c.name} className="h-5 w-5" />
+                          <span className="font-medium">{c.name}</span>
+                      </div>
+                  </SelectItem>
+                  ))}
+              </SelectContent>
+          </Select>
+
+          <div className="text-center text-xs font-bold tracking-widest text-muted-foreground relative">
+              <span className="bg-secondary/20 px-2 relative z-10">USING</span>
+              <div className="absolute left-0 top-1/2 w-full h-px bg-border -z-0"></div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+              <div className="relative flex items-center">
+                  <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-16"/>
+                  <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 rounded-md" onClick={() => setIsFiatSheetOpen(true)}>
+                      {selectedFiat}
+                  </Button>
+              </div>
+              <Button type="button" variant="outline" className="h-12 justify-start text-left font-normal" onClick={() => setIsPaymentSheetOpen(true)}>
+                  {paymentMethod || 'Payment method'}
+              </Button>
+          </div>
+      </div>
+
+      <div className="md:hidden flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Offers</h2>
+          <div className="flex items-center gap-2">
+              <Button variant="outline" asChild size="icon">
+                  <Link href="/ads/create"><PlusCircle className="h-4 w-4" /></Link>
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
+                  <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
+                  <RefreshCw className="h-4 w-4" />
+              </Button>
+          </div>
       </div>
       
       <div className="space-y-1">

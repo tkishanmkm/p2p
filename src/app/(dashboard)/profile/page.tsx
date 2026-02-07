@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
@@ -18,7 +19,7 @@ import { useRouter } from "next/navigation";
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) {
     return (
         <div className="flex items-start gap-4">
-            <div className="text-muted-foreground mt-1">{icon}</div>
+            <div className="text-primary mt-1">{icon}</div>
             <div>
                 <p className="text-sm text-muted-foreground">{label}</p>
                 <p className="font-medium">{value}</p>

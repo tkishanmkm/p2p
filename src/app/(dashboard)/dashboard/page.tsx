@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -255,7 +256,7 @@ export default function DashboardPage() {
                 href="/faq"
                 className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors border"
                 >
-                <LifeBuoy className="h-8 w-8 text-accent" />
+                <LifeBuoy className="h-8 w-8 text-primary" />
                 <div>
                     <h3 className="font-semibold">FAQ</h3>
                     <p className="text-sm text-muted-foreground">Find answers to common questions.</p>
@@ -265,7 +266,7 @@ export default function DashboardPage() {
                 href="/guides"
                 className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors border"
                 >
-                <BookOpen className="h-8 w-8 text-accent" />
+                <BookOpen className="h-8 w-8 text-primary" />
                 <div>
                     <h3 className="font-semibold">Guides</h3>
                     <p className="text-sm text-muted-foreground">Learn how to trade safely.</p>
@@ -275,7 +276,7 @@ export default function DashboardPage() {
                 href="/terms"
                 className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors border"
                 >
-                <FileText className="h-8 w-8 text-accent" />
+                <FileText className="h-8 w-8 text-primary" />
                 <div>
                     <h3 className="font-semibold">Terms of Service</h3>
                     <p className="text-sm text-muted-foreground">Read the platform rules.</p>
@@ -285,7 +286,7 @@ export default function DashboardPage() {
                 href="/policy"
                 className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors border"
                 >
-                <ShieldCheck className="h-8 w-8 text-accent" />
+                <ShieldCheck className="h-8 w-8 text-primary" />
                 <div>
                     <h3 className="font-semibold">Privacy Policy</h3>
                     <p className="text-sm text-muted-foreground">How we protect your data.</p>
