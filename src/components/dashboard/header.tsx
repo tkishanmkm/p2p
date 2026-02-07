@@ -172,7 +172,7 @@ export function DashboardHeader() {
                   <span className="sr-only">Toggle navigation menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="flex flex-col">
+              <SheetContent side="left" className="flex flex-col p-0">
                 <nav className="grid gap-6 text-lg font-medium mt-8">
                   <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
                     <Logo />
@@ -355,7 +355,7 @@ export function DashboardHeader() {
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <div className="flex-shrink min-w-0 text-left hidden sm:block">
+                <div className="flex-shrink min-w-0 text-left">
                   {authUser?.displayName ? (
                     <p className="font-semibold text-xs truncate">{authUser.displayName}</p>
                   ) : (
