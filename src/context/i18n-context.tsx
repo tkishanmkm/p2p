@@ -1,3 +1,4 @@
+
 'use client';
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useFirebase } from '@/firebase';
@@ -15,6 +16,8 @@ import es from '@/locales/es.json';
 import vi from '@/locales/vi.json';
 import zhCN from '@/locales/zh-CN.json';
 import zhTW from '@/locales/zh-TW.json';
+import enIN from '@/locales/en-IN.json';
+import bho from '@/locales/bho.json';
 
 const translations: Record<string, any> = {
   en,
@@ -28,6 +31,8 @@ const translations: Record<string, any> = {
   vi,
   'zh-CN': zhCN,
   'zh-TW': zhTW,
+  'en-IN': enIN,
+  bho,
 };
 
 const countryToLang: Record<string, string> = {

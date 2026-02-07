@@ -30,6 +30,8 @@ export const LANGUAGES = [
   { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
   { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
   { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+  { code: 'en-IN', name: 'Hinglish', nativeName: 'Hinglish' },
+  { code: 'bho', name: 'Bhojpuri', nativeName: 'भोजपुरी' },
 ];
 
 // In a real app, these would be in environment variables
