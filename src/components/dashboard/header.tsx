@@ -169,7 +169,7 @@ export function DashboardHeader() {
       <div className="container flex h-16 items-center px-4 md:px-6">
         
         {/* Mobile Header Left */}
-        <div className="flex items-center gap-4 md:hidden">
+        <div className="flex items-center gap-2 md:hidden">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="shrink-0">
@@ -250,28 +250,26 @@ export function DashboardHeader() {
             <Link href="/dashboard">
                 <Logo />
             </Link>
-            <TooltipProvider>
-                <nav className="flex items-center gap-2">
-                    {navItems.map((item) => (
-                        <Tooltip key={item.href}>
-                            <TooltipTrigger asChild>
-                                <Button asChild variant="ghost" size="icon" className={cn(
-                                    'transition-colors hover:text-foreground',
-                                    (pathname.startsWith(item.href) && item.href !== '/dashboard' || pathname === item.href) ? 'text-primary bg-primary/10' : 'text-muted-foreground'
-                                )}>
-                                    <Link href={item.href}>
-                                        <item.icon className="h-5 w-5" />
-                                        <span className="sr-only">{item.label}</span>
-                                    </Link>
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{item.label}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    ))}
-                </nav>
-            </TooltipProvider>
+            <nav className="hidden md:flex items-center gap-1">
+              {navItems.map((item) => (
+                <Button
+                  key={item.href}
+                  asChild
+                  variant="ghost"
+                  className={cn(
+                    'h-auto px-3 py-2 text-sm font-medium transition-colors hover:text-foreground',
+                    (pathname.startsWith(item.href) && item.href !== '/dashboard') || pathname === item.href
+                      ? 'text-primary'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  <Link href={item.href} className="flex items-center gap-2">
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                </Button>
+              ))}
+            </nav>
         </div>
 
         {/* Spacer */}
@@ -366,7 +364,7 @@ export function DashboardHeader() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex shrink-0 items-center gap-1.5 p-1 h-auto rounded-md">
+              <Button variant="ghost" className="flex shrink-0 items-center gap-1.5 md:gap-2 p-1 h-auto rounded-md">
                 {userData?.country && <FlagIcon countryCode={userData.country} className="w-5 h-auto rounded-sm hidden sm:block" />}
                 <Avatar className="h-8 w-8 shrink-0">
                   {authUser?.photoURL ? (
@@ -379,11 +377,11 @@ export function DashboardHeader() {
                 </Avatar>
                 <div className="flex-shrink min-w-0 text-left">
                   {authUser?.displayName ? (
-                    <p className="font-semibold text-[11px] leading-tight truncate">{authUser.displayName}</p>
+                    <p className="font-semibold text-[11px] md:text-sm leading-tight truncate">{authUser.displayName}</p>
                   ) : (
                     <Skeleton className="h-4 w-16" />
                   )}
-                  <p className="text-[9px] leading-tight text-muted-foreground truncate">
+                  <p className="text-[9px] md:text-xs leading-tight text-muted-foreground truncate">
                     {totalWalletValueConverted.toLocaleString(undefined, {
                       style: 'currency',
                       currency: preferredCurrency,
