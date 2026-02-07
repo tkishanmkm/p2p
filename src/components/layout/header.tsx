@@ -11,11 +11,17 @@ import {
   DropdownMenuItem,
   DropdownMenuGroup,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { LANGUAGES } from "@/lib/constants";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { ModeToggle } from "../mode-toggle";
 import { useI18n } from "@/context/i18n-context";
+import type { Language } from "@/lib/types";
+
 
 const mobileNavLinks = [
   { href: "/buy", label: "Buy Coin" },
@@ -26,10 +32,10 @@ const mobileNavLinks = [
 
 export function Header() {
   const { language, setLanguage } = useI18n();
-  const selectedLanguage = LANGUAGES.find(l => l.code === language) || LANGUAGES[0];
+  const selectedLanguage = LANGUAGES.flatMap(l => l.dialects || l).find(l => l.code === language) || LANGUAGES[0];
 
 
-  const handleLanguageSelect = (language: { name: string; code: string; nativeName: string; }) => {
+  const handleLanguageSelect = (language: Language) => {
     setLanguage(language.code);
   };
 
@@ -164,14 +170,37 @@ export function Header() {
                    <span>{selectedLanguage.code.toUpperCase()}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48">
+              <DropdownMenuContent className="w-56">
                 {LANGUAGES.map((lang) => (
-                  <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
-                    <div className="flex flex-col">
-                        <span className="font-medium">{lang.nativeName}</span>
-                        <span className="text-xs text-muted-foreground">{lang.name}</span>
-                    </div>
-                  </DropdownMenuItem>
+                  lang.dialects ? (
+                    <DropdownMenuSub key={lang.code}>
+                      <DropdownMenuSubTrigger>
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">{lang.nativeName}</span>
+                          <span className="text-xs text-muted-foreground">{lang.name}</span>
+                        </div>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {lang.dialects.map(dialect => (
+                            <DropdownMenuItem key={dialect.code} onClick={() => handleLanguageSelect(dialect)}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{dialect.nativeName}</span>
+                                <span className="text-xs text-muted-foreground">{dialect.name}</span>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                  ) : (
+                    <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
+                      <div className="flex flex-col">
+                          <span className="font-medium">{lang.nativeName}</span>
+                          <span className="text-xs text-muted-foreground">{lang.name}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>

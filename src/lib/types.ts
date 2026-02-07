@@ -233,3 +233,10 @@ export type CryptoCurrency = 'USDT' | 'BTC' | 'ETH' | 'LTC';
 export type SupportedCrypto = {
   name: CryptoCurrency;
 };
+
+export type Language = {
+  code: string;
+  name: string;
+  nativeName: string;
+  dialects?: Language[];
+};

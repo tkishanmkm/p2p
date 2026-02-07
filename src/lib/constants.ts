@@ -1,5 +1,5 @@
 
-import type { CryptoCurrency, SupportedCrypto } from './types';
+import type { CryptoCurrency, SupportedCrypto, Language } from './types';
 
 export const APP_NAME = 'TradeFlow';
 
@@ -18,7 +18,7 @@ export const CHAINS: Record<CryptoCurrency, string[]> = {
 };
 
 
-export const LANGUAGES = [
+export const LANGUAGES: Language[] = [
   { code: 'en', name: 'English', nativeName: 'English' },
   { code: 'zh-CN', name: 'Simplified Chinese', nativeName: '简体中文' },
   { code: 'zh-TW', name: 'Traditional Chinese', nativeName: '繁體中文' },
@@ -29,9 +29,16 @@ export const LANGUAGES = [
   { code: 'ru', name: 'Russian', nativeName: 'Русский' },
   { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
   { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
-  { code: 'en-IN', name: 'Hinglish', nativeName: 'Hinglish' },
-  { code: 'bho', name: 'Bhojpuri', nativeName: 'भोजपुरी' },
+  {
+    code: 'hi',
+    name: 'Hindi',
+    nativeName: 'हिन्दी',
+    dialects: [
+        { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+        { code: 'en-IN', name: 'Hinglish', nativeName: 'Hinglish' },
+        { code: 'bho', name: 'Bhojpuri', nativeName: 'भोजपुरी' },
+    ]
+  },
 ];
 
 // In a real app, these would be in environment variables
