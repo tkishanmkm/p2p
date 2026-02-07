@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -130,7 +129,7 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-                <Label htmlFor="i-have-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">I have</Label>
+                <Label htmlFor="i-have-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">{type === 'buy' ? 'I have' : 'I want'}</Label>
                 <Input id="i-have-amount" value={cryptoAmount} onChange={handleCryptoChange} placeholder="Amount" className="bg-background h-12 text-base" />
             </div>
              <div>
