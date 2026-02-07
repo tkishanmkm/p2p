@@ -27,68 +27,60 @@ service cloud.firestore {
       return isSignedIn() && (tradeData.buyerId == request.auth.uid || tradeData.sellerId == request.auth.uid);
     }
     
-    // Function to validate a transfer that UPDATES an existing recipient wallet
-    function isPerformingValidTransferUpdate(recipientId, walletId) {
-        let senderId = request.auth.uid;
-        
-        // Ensure this is not a self-transfer attempt at the rule level
-        if (senderId == recipientId) {
-            return false;
-        }
+    // Validates a transfer that CREATES a new recipient wallet.
+    function isValidTransferCreation(recipientId) {
+      let senderId = request.auth.uid;
+      
+      // Not a self-transfer
+      if (senderId == recipientId) {
+        return false;
+      }
 
-        // Check if both users are active
-        let senderData = get(/databases/$(database)/documents/users/$(senderId)).data;
-        let recipientData = get(/databases/$(database)/documents/users/$(recipientId)).data;
-        if (senderData.isBanned == true || senderData.isOnHold == true || recipientData.isBanned == true || recipientData.isOnHold == true) {
-            return false;
-        }
-        
-        // Calculate amount being transferred to recipient
-        let transferredAmount = request.resource.data.balance - resource.data.balance;
-        
-        // Verify recipient wallet is only getting a positive balance increment
-        // and other fields are unchanged
-        if (transferredAmount <= 0 || request.resource.data.lockedBalance != resource.data.lockedBalance) {
-            return false;
-        }
-        
-        // Verify sender wallet is being decremented by the same amount in the same transaction
-        let senderWalletBefore = get(/databases/$(database)/documents/users/$(senderId)/wallets/$(walletId)).data;
-        let senderWalletAfter = getAfter(/databases/$(database)/documents/users/$(senderId)/wallets/$(walletId)).data;
-        
-        return senderWalletAfter.balance == senderWalletBefore.balance - transferredAmount;
+      // Check if both users are active from existing user documents
+      let senderIsActive = get(/databases/$(database)/documents/users/$(senderId)).data.isBanned == false &&
+                           get(/databases/$(database)/documents/users/$(senderId)).data.isOnHold == false;
+      let recipientIsActive = get(/databases/$(database)/documents/users/$(recipientId)).data.isBanned == false &&
+                              get(/databases/$(database)/documents/users/$(recipientId)).data.isOnHold == false;
+
+      if (!senderIsActive || !recipientIsActive) {
+        return false;
+      }
+      
+      // For a new wallet, balance must be positive and locked balance must be 0.
+      return request.resource.data.balance > 0 &&
+             request.resource.data.lockedBalance == 0 &&
+             request.resource.data.userId == recipientId;
     }
 
-    // Function to validate a transfer that CREATES a new recipient wallet
-    function isPerformingValidTransferCreation(recipientId, walletId) {
-        let senderId = request.auth.uid;
-        
-        // Ensure this is not a self-transfer attempt
-        if (senderId == recipientId) {
-            return false;
-        }
-        
-        // Check if both users are active
-        let senderData = get(/databases/$(database)/documents/users/$(senderId)).data;
-        let recipientData = get(/databases/$(database)/documents/users/$(recipientId)).data;
-        if (senderData.isBanned == true || senderData.isOnHold == true || recipientData.isBanned == true || recipientData.isOnHold == true) {
-            return false;
-        }
-        
-        // For a new wallet, the transferred amount is the initial balance
-        let transferredAmount = request.resource.data.balance;
+    // Validates a transfer that UPDATES an existing recipient wallet.
+    function isValidTransferUpdate(recipientId) {
+      let senderId = request.auth.uid;
+      
+      // Not a self-transfer
+      if (senderId == recipientId) {
+        return false;
+      }
 
-        // Verify new wallet has positive balance and 0 locked balance
-        if (transferredAmount <= 0 || request.resource.data.lockedBalance != 0) {
-            return false;
-        }
+      // Check if both users are active
+      let senderIsActive = get(/databases/$(database)/documents/users/$(senderId)).data.isBanned == false &&
+                           get(/databases/$(database)/documents/users/$(senderId)).data.isOnHold == false;
+      let recipientIsActive = get(/databases/$(database)/documents/users/$(recipientId)).data.isBanned == false &&
+                              get(/databases/$(database)/documents/users/$(recipientId)).data.isOnHold == false;
 
-        // Verify sender wallet is being decremented by the same amount
-        let senderWalletBefore = get(/databases/$(database)/documents/users/$(senderId)/wallets/$(walletId)).data;
-        let senderWalletAfter = getAfter(/databases/$(database)/documents/users/$(senderId)/wallets/$(walletId)).data;
+      if (!senderIsActive || !recipientIsActive) {
+        return false;
+      }
 
-        return senderWalletAfter.balance == senderWalletBefore.balance - transferredAmount;
+      let amountIncrement = request.resource.data.balance - resource.data.balance;
+
+      // Only allow a positive increment to the balance field.
+      // All other sensitive fields must remain unchanged.
+      return amountIncrement > 0 &&
+             request.resource.data.lockedBalance == resource.data.lockedBalance &&
+             request.resource.data.crypto == resource.data.crypto &&
+             request.resource.data.userId == resource.data.userId;
     }
+
 
     // --- Global Catch-All Rule ---
     match /{document=**} {
@@ -135,8 +127,8 @@ service cloud.firestore {
 
       match /wallets/{walletId} {
         allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) || isAdmin() || isPerformingValidTransferCreation(userId, walletId);
-        allow update: if isOwner(userId) || isAdmin() || isPerformingValidTransferUpdate(userId, walletId);
+        allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId);
+        allow update: if isOwner(userId) || isAdmin() || isValidTransferUpdate(userId);
         allow delete: if isAdmin();
       }
       match /withdrawals/{withdrawalId} {
@@ -173,9 +165,7 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        allow create: if isSignedIn() && 
-                       'userId' in request.resource.data && 
-                       request.resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
