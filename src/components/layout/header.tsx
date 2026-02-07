@@ -17,6 +17,7 @@ import { LANGUAGES } from "@/lib/constants";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { ModeToggle } from "../mode-toggle";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/context/i18n-context";
 
 const mobileNavLinks = [
   { href: "/buy", label: "Buy Coin" },
@@ -27,10 +28,12 @@ const mobileNavLinks = [
 
 export function Header() {
   const { toast } = useToast();
-  const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0]);
+  const { language, setLanguage } = useI18n();
+  const selectedLanguage = LANGUAGES.find(l => l.code === language) || LANGUAGES[0];
+
 
   const handleLanguageSelect = (language: { name: string; code: string; nativeName: string; }) => {
-    setSelectedLanguage(language);
+    setLanguage(language.code);
     toast({
       title: `Language set to ${language.name}`,
       description: "Full app translation is a feature coming soon.",

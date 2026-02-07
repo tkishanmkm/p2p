@@ -30,6 +30,7 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '../ui/sheet';
 import { ScrollArea } from '../ui/scroll-area';
+import { useI18n } from '@/context/i18n-context';
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
     switch (crypto) {
@@ -42,13 +43,14 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?:
 }
 
 export function BuySellForm() {
+  const { t } = useI18n();
   return (
     <Card className="bg-secondary/60 border-none shadow-lg rounded-xl w-full max-w-md">
         <CardContent className="p-4 sm:p-6">
             <Tabs defaultValue="buy" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-muted p-1 h-auto">
-                    <TabsTrigger value="buy" className="py-2 text-sm data-[state=active]:bg-green-600 data-[state=active]:text-primary-foreground">I want to buy</TabsTrigger>
-                    <TabsTrigger value="sell" className="py-2 text-sm data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">I want to sell</TabsTrigger>
+                    <TabsTrigger value="buy" className="py-2 text-sm data-[state=active]:bg-green-600 data-[state=active]:text-primary-foreground">{t('buySellForm.buyTab')}</TabsTrigger>
+                    <TabsTrigger value="sell" className="py-2 text-sm data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">{t('buySellForm.sellTab')}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="buy">
                     <FormContent type="buy" />
@@ -64,6 +66,7 @@ export function BuySellForm() {
 
 function FormContent({ type }: { type: 'buy' | 'sell' }) {
     const router = useRouter();
+    const { t } = useI18n();
     const [crypto, setCrypto] = useState<CryptoCurrency>('BTC');
     const [fiatAmount, setFiatAmount] = useState('');
     const [fiatCurrency, setFiatCurrency] = useState('USD');
@@ -120,7 +123,7 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
     <>
     <form onSubmit={handleSubmit} className="space-y-4 pt-6">
         <div>
-            <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Coin</Label>
+            <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('buySellForm.coinLabel')}</Label>
             <Select value={crypto} onValueChange={(v) => setCrypto(v as CryptoCurrency)}>
                 <SelectTrigger className="bg-background h-12 text-base">
                     <SelectValue>
@@ -144,27 +147,27 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
         </div>
         
         <div>
-            <Label htmlFor="fiat-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">{type === 'buy' ? 'I have' : 'I want'}</Label>
+            <Label htmlFor="fiat-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">{type === 'buy' ? t('buySellForm.haveLabel') : t('buySellForm.wantLabel')}</Label>
             <div className='flex items-center'>
-              <Input id="fiat-amount" value={fiatAmount} onChange={handleFiatChange} placeholder="Enter amount" className="bg-background h-12 text-base rounded-r-none" />
+              <Input id="fiat-amount" value={fiatAmount} onChange={handleFiatChange} placeholder={t('buySellForm.amountPlaceholder')} className="bg-background h-12 text-base rounded-r-none" />
                <Button type="button" variant="outline" className="bg-background h-12 w-32 rounded-l-none text-base border-l-0" onClick={() => setIsFiatSheetOpen(true)}>
                     {fiatCurrency}
                 </Button>
             </div>
-            {cryptoAmount && <p className="text-xs text-muted-foreground mt-1">You will {type === 'buy' ? 'get approx.' : 'pay approx.'} {cryptoAmount} {crypto}</p>}
+            {cryptoAmount && <p className="text-xs text-muted-foreground mt-1">{type === 'buy' ? t('buySellForm.getApprox') : t('buySellForm.payApprox')} {cryptoAmount} {crypto}</p>}
         </div>
 
         <div>
-             <Label htmlFor="payment-method" className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment method</Label>
+             <Label htmlFor="payment-method" className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('buySellForm.paymentMethodLabel')}</Label>
              <Button type="button" variant="outline" className="w-full justify-start text-left font-normal bg-background h-12 text-base" onClick={() => setIsPaymentSheetOpen(true)}>
-                {paymentMethod || 'All Payment Methods'}
+                {paymentMethod || t('buySellForm.allPaymentMethods')}
             </Button>
         </div>
       
       <div>
         <Button type="submit" className="w-full h-12 text-base font-semibold" size="lg">
           <Search className="mr-2 h-5 w-5" />
-          Find Offers
+          {t('buySellForm.findOffers')}
         </Button>
       </div>
     </form>

@@ -1,35 +1,37 @@
-
+"use client";
 import Link from "next/link";
 import { Facebook, Twitter, Linkedin } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { APP_NAME } from "@/lib/constants";
+import { useI18n } from "@/context/i18n-context";
 
 export function Footer() {
+  const { t } = useI18n();
   const currentYear = new Date().getFullYear();
 
   const sections = [
     {
-      title: "Company",
+      title: t('footer.company'),
       links: [
-        { label: "About Us", href: "/about" },
-        { label: "Careers", href: "/careers" },
-        { label: "Press", href: "/press" },
+        { label: t('footer.about'), href: "/about" },
+        { label: t('footer.careers'), href: "/careers" },
+        { label: t('footer.press'), href: "/press" },
       ],
     },
     {
-      title: "Legal",
+      title: t('footer.legal'),
       links: [
-        { label: "Terms of Service", href: "/terms" },
-        { label: "Privacy Policy", href: "/policy" },
-        { label: "AML Policy", href: "/aml-policy" },
+        { label: t('footer.terms'), href: "/terms" },
+        { label: t('footer.privacy'), href: "/policy" },
+        { label: t('footer.aml'), href: "/aml-policy" },
       ],
     },
     {
-      title: "Support",
+      title: t('footer.support'),
       links: [
-        { label: "Contact Us", href: "/contact" },
-        { label: "FAQ", href: "/faq" },
-        { label: "Dispute Resolution", href: "/dispute-resolution" },
+        { label: t('footer.contact'), href: "/contact" },
+        { label: t('footer.faq'), href: "/faq" },
+        { label: t('footer.dispute'), href: "/dispute-resolution" },
       ],
     },
   ];
@@ -47,7 +49,7 @@ export function Footer() {
           <div className="lg:col-span-2">
             <Logo />
             <p className="mt-4 text-sm text-muted-foreground max-w-xs">
-              Secure and easy P2P coin trading with an escrow system you can trust.
+              {t('footer.tagline')}
             </p>
           </div>
           {sections.map((section) => (
@@ -70,7 +72,7 @@ export function Footer() {
         </div>
         <div className="mt-12 border-t pt-8 flex flex-col sm:flex-row items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            &copy; {currentYear} {APP_NAME}. All rights reserved.
+            &copy; {currentYear} {APP_NAME}. {t('footer.copyright')}
           </p>
           <div className="flex items-center space-x-4 mt-4 sm:mt-0">
             {socialLinks.map((social) => (

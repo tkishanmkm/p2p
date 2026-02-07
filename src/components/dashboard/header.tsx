@@ -52,6 +52,7 @@ import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { LANGUAGES } from "@/lib/constants";
 import { FlagIcon } from "../ui/flag-icon";
+import { useI18n } from "@/context/i18n-context";
 
 
 const navItems = [
@@ -72,7 +73,8 @@ export function DashboardHeader() {
   const router = useRouter();
   const { toast } = useToast();
   const { prices, fiatRates } = usePrices();
-  const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0]);
+  const { language, setLanguage } = useI18n();
+  const selectedLanguage = LANGUAGES.find(l => l.code === language) || LANGUAGES[0];
 
   const userDocRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
   const { data: userData } = useDoc<AppUser>(userDocRef);
@@ -113,7 +115,7 @@ export function DashboardHeader() {
   };
 
   const handleLanguageSelect = (language: { name: string; code: string; nativeName: string; }) => {
-    setSelectedLanguage(language);
+    setLanguage(language.code);
     toast({
       title: `Language set to ${language.name}`,
       description: "Full app translation is a feature coming soon.",

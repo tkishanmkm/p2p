@@ -5,6 +5,7 @@ import { FirebaseClientProvider } from '@/firebase';
 import { ThemeProvider } from '@/components/theme-provider';
 import { PriceProvider } from '@/context/price-context';
 import { BrandingProvider } from '@/context/branding-context';
+import { I18nProvider } from '@/context/i18n-context';
 
 export const metadata: Metadata = {
   title: 'TradeFlow - Secure P2P Coin Trading',
@@ -33,9 +34,11 @@ export default function RootLayout({
         >
           <PriceProvider>
             <FirebaseClientProvider>
-              <BrandingProvider>
-                {children}
-              </BrandingProvider>
+                <I18nProvider>
+                  <BrandingProvider>
+                    {children}
+                  </BrandingProvider>
+                </I18nProvider>
             </FirebaseClientProvider>
           </PriceProvider>
           <Toaster />
