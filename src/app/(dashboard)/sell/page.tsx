@@ -1,9 +1,7 @@
-
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AdCard } from "@/components/p2p/ad-card";
@@ -14,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Wallet, Landmark, CreditCard, Smartphone, Car, Search, Loader2, ArrowDown, ArrowUp, PlusCircle, SlidersHorizontal, RefreshCw, BookOpen, HelpCircle } from "lucide-react";
+import { Wallet, Landmark, CreditCard, Smartphone, Car, Search, Loader2, ArrowDown, ArrowUp, PlusCircle, SlidersHorizontal, RefreshCw, BookOpen, HelpCircle, BarChart } from "lucide-react";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { countries } from "@/lib/countries";
@@ -229,12 +227,16 @@ function SellPageContent() {
          </div>
       </div>
       
-      <div className="space-y-4">
+       <div className="space-y-1">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground p-2">
+            <BarChart className="h-4 w-4" />
+            Promoted offers (3)
+        </div>
         {isLoading && (
-            <div className="space-y-4">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
+            <div className="space-y-1">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
             </div>
         )}
         {!isLoading && filteredAds && filteredAds.length > 0 && (
@@ -374,4 +376,3 @@ export default function SellPage() {
         </Suspense>
     );
 }
-

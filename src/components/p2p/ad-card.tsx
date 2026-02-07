@@ -1,21 +1,19 @@
-'use client';
+"use client";
 
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import type { P2PAd, User, UserWallet } from "@/lib/types";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { usePrices } from "@/context/price-context";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Skeleton } from "../ui/skeleton";
-import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { ThumbsUp, Info, Power } from "lucide-react";
 import { toDate, cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { FlagIcon } from "../ui/flag-icon";
-import { countries } from "@/lib/countries";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 interface AdCardProps {
   ad: P2PAd;
@@ -23,7 +21,6 @@ interface AdCardProps {
 
 export function AdCard({ ad }: AdCardProps) {
   const { firestore, user: authUser } = useFirebase();
-  const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-2');
   const { prices } = usePrices();
 
   // Fetch the ad creator's profile in real-time to get the latest avatar and stats
@@ -39,16 +36,11 @@ export function AdCard({ ad }: AdCardProps) {
 
   const marketPrice = prices[ad.crypto] || 0;
   
-  const priceLabel = ad.rateType === 'fixed'
-    ? `${ad.fixedRate?.toLocaleString()} ${ad.fiatCurrency}`
-    : `Market ${ad.ratePercent}%`;
-
   const adPrice = ad.rateType === 'fixed' 
     ? ad.fixedRate! 
     : marketPrice * (1 + (ad.ratePercent || 0) / 100);
 
   let effectiveMaxAmount = ad.maxAmount;
-  let availableCrypto: string | number = '...';
   let tradeIsPossible = true;
 
   // Use the live creator data if available, otherwise fall back to the denormalized data
@@ -62,109 +54,90 @@ export function AdCard({ ad }: AdCardProps) {
         if (sellerWallet && adPrice > 0) {
             const maxFiatFromBalance = sellerWallet.balance * adPrice;
             effectiveMaxAmount = Math.min(ad.maxAmount, maxFiatFromBalance);
-            availableCrypto = sellerWallet.balance.toFixed(5);
             if (effectiveMaxAmount < ad.minAmount) {
                 tradeIsPossible = false;
             }
         } else { // Seller has no wallet or 0 balance
             effectiveMaxAmount = 0;
-            availableCrypto = (0).toFixed(5);
             tradeIsPossible = false;
         }
     }
-  } else { // This is a 'buy' ad, no balance check needed for the ad creator (the buyer).
-    if (adPrice > 0) {
-        availableCrypto = (ad.maxAmount / adPrice).toFixed(5);
-    } else {
-        availableCrypto = 'N/A';
-    }
   }
 
-  const isLoading = (ad.adType === 'sell' && isWalletLoading) || isCreatorLoading;
+  const isLoading = isCreatorLoading || (ad.adType === 'sell' && isWalletLoading);
   const actionUrl = authUser ? `/trade/initiate/${ad.id}` : `/login?redirect=/trade/initiate/${ad.id}`;
 
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-center">
-          {/* User Info */}
-          <Link href={`/users/${displayUser.userId}`} className="sm:col-span-1 flex items-center gap-3 hover:bg-muted/50 rounded-md p-2 -m-2 transition-colors">
-            {isLoading ? <Skeleton className="h-10 w-10 rounded-full" /> : (
-              <Avatar>
-                <AvatarImage src={displayPhoto || userAvatar?.imageUrl} alt={displayUser.userId} data-ai-hint={userAvatar?.imageHint} />
-                <AvatarFallback>{displayUser.userId.slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-            )}
-            <div>
-              {isLoading ? (
-                <div className="space-y-1">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-3 w-12" />
-                  <Skeleton className="h-3 w-14" />
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold">{displayUser.userId}</p>
-                    {displayUser.country && <FlagIcon countryCode={displayUser.country} className="w-5 h-auto" />}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {wasActiveRecently ? (
-                      <div className="h-2 w-2 rounded-full bg-green-500" title="Active recently" />
-                    ) : null}
-                    <span>
-                      {lastActiveDate ? `${formatDistanceToNowStrict(lastActiveDate)} ago` : 'Offline'}
-                    </span>
-                  </div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <div className="flex items-center gap-0.5 text-green-600">
-                        <ThumbsUp className="h-3 w-3" />
-                        <span>{adCreator?.positiveFeedback || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-0.5 text-red-600">
-                        <ThumbsDown className="h-3 w-3" />
-                        <span>{adCreator?.negativeFeedback || 0}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </Link>
-          
-          {/* Price */}
-          <div className="sm:col-span-1">
-            <p className="text-xs text-muted-foreground">Price</p>
-            <p className="font-bold text-lg">{priceLabel}</p>
-          </div>
-          
-          {/* Limits & Payment */}
-          <div className="sm:col-span-2">
-            <div className="flex gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Limit</p>
-                {isLoading ? <Skeleton className="h-5 w-32" /> : (
-                  <p className="font-medium">{ad.minAmount.toLocaleString()} - {Math.floor(effectiveMaxAmount).toLocaleString()} {ad.fiatCurrency}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Available</p>
-                {isLoading ? <Skeleton className="h-5 w-24" /> : (
-                    <p className="font-medium">{availableCrypto} {ad.crypto}</p>
-                )}
-              </div>
-            </div>
-             <div className="mt-2 flex flex-wrap gap-1">
-                {ad.paymentMethods.slice(0, 3).map(pm => (
-                    <Badge key={pm} variant="secondary">{pm}</Badge>
-                ))}
-                 {ad.tags?.map(tag => (
-                    <Badge key={tag} variant="outline">{tag}</Badge>
-                ))}
-             </div>
-          </div>
+  const pricePremium = ad.rateType === 'market' && ad.ratePercent ? (ad.ratePercent / 100) : ad.rateType === 'fixed' && marketPrice > 0 ? ((ad.fixedRate! - marketPrice) / marketPrice) : 0;
+  const premiumPercentage = (pricePremium * 100).toFixed(2);
+  
+  // Example calculation for display
+  const exampleFiatAmount = 100;
+  const exampleCryptoAmount = adPrice > 0 ? (exampleFiatAmount / adPrice).toFixed(5) : '0.00';
+  
+  const hasPowerBadge = displayUser.badges?.includes('power');
 
-          {/* Action Button */}
-          <div className="sm:col-span-1 sm:text-right">
+  return (
+    <div className="grid grid-cols-12 items-center gap-x-4 gap-y-2 p-3 border-b hover:bg-card transition-colors">
+        {/* User Info */}
+        <div className="col-span-12 md:col-span-3 flex items-center gap-3">
+             <Link href={`/users/${displayUser.userId}`} className="flex-shrink-0">
+                <Avatar className="h-10 w-10">
+                    <AvatarImage src={displayPhoto || undefined} alt={displayUser.userId} />
+                    <AvatarFallback>{displayUser.userId.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+            </Link>
+            <div className="min-w-0">
+                 <div className="flex items-center gap-2">
+                    <Link href={`/users/${displayUser.userId}`} className="font-semibold text-sm hover:underline truncate">{displayUser.userId}</Link>
+                    {displayUser.country && <FlagIcon countryCode={displayUser.country} />}
+                    {hasPowerBadge && <Badge variant="secondary" className="bg-yellow-400/20 text-yellow-600 border-yellow-400/30"><Power className="h-3 w-3 mr-1" /> POWER</Badge>}
+                </div>
+                {isLoading ? <Skeleton className="h-3 w-32 mt-1" /> : (
+                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1"><ThumbsUp className="h-3 w-3" /> {displayUser.feedbackScore?.toFixed(2) || '100.00'}%</div>
+                        <span>{displayUser.completedTrades || 0} Trades</span>
+                        <div className="flex items-center gap-1">
+                            <div className={cn("h-2 w-2 rounded-full", wasActiveRecently ? "bg-green-500" : "bg-muted-foreground/50")} />
+                            {wasActiveRecently ? 'Active now' : 'Away'}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+
+        {/* Price/Limits */}
+        <div className="col-span-6 md:col-span-2">
+            <div className="flex items-center gap-2">
+                <p className="font-semibold">{adPrice.toFixed(2)} {ad.fiatCurrency}</p>
+                <Badge variant={pricePremium > 0 ? "destructive" : "default"} className="text-xs">{pricePremium > 0 ? '+' : ''}{premiumPercentage}%</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{ad.minAmount.toLocaleString()} - {Math.floor(effectiveMaxAmount).toLocaleString()} {ad.fiatCurrency}</p>
+        </div>
+
+        {/* Payment */}
+        <div className="col-span-6 md:col-span-3">
+             <div className="flex flex-wrap items-center gap-1">
+                {ad.paymentMethods.slice(0, 3).map(pm => <Badge key={pm} variant="outline" className="text-xs">{pm}</Badge>)}
+                {ad.paymentMethods.length > 3 && <Badge variant="outline">+{ad.paymentMethods.length - 3} more</Badge>}
+            </div>
+        </div>
+        
+        {/* Receive */}
+        <div className="col-span-6 md:col-span-2 text-left md:text-right">
+             <p className="text-xs text-muted-foreground">Receive (for 100 {ad.fiatCurrency})</p>
+             <p className="font-medium">{exampleCryptoAmount} {ad.crypto}</p>
+        </div>
+
+        {/* Action */}
+        <div className="col-span-6 md:col-span-2 flex items-center justify-end gap-2">
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                         <Button variant="ghost" size="icon"><Info className="h-4 w-4 text-muted-foreground"/></Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>{ad.terms}</p></TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
             <Button
               asChild
               className={cn(
@@ -179,10 +152,8 @@ export function AdCard({ ad }: AdCardProps) {
                 {ad.adType === 'sell' ? `Buy ${ad.crypto}` : `Sell ${ad.crypto}`}
               </Link>
             </Button>
-            {!tradeIsPossible && !isLoading && <p className="text-xs text-destructive text-center sm:text-right mt-1">Seller has insufficient funds.</p>}
-          </div>
         </div>
-      </CardContent>
-    </Card>
+        {!tradeIsPossible && !isLoading && <p className="col-span-12 text-xs text-destructive text-center md:text-right mt-1">Seller has insufficient funds.</p>}
+    </div>
   );
 }
