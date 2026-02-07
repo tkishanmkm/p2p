@@ -28,6 +28,7 @@ export type User = {
   securityAnswer?: string;
   isAdminAccount?: boolean;
   blockedUsers?: string[];
+  badges?: string[];
 };
 
 export type UserWallet = {
@@ -104,6 +105,7 @@ export type P2PAd = {
       feedbackScore?: number;
       completedTrades?: number;
       photoURL?: string;
+      badges?: string[];
   };
 };
 

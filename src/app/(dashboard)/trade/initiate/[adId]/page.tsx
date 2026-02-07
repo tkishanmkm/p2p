@@ -135,7 +135,14 @@ export default function InitiateTradePage() {
         return;
       }
 
-      // Rule 1: Check targeted countries
+      if (ad.minCompletedTrades && ad.minCompletedTrades > 0) {
+        if ((user.completedTrades || 0) < ad.minCompletedTrades) {
+          setIsEligible(false);
+          setEligibilityMessage(`This offer requires you to have at least ${ad.minCompletedTrades} completed trades. You have ${user.completedTrades || 0}.`);
+          return;
+        }
+      }
+
       if (targeted && targeted.length > 0 && !targeted.includes('all')) {
         if (!targeted.includes(userCountry)) {
           setIsEligible(false);
@@ -144,7 +151,6 @@ export default function InitiateTradePage() {
         }
       }
 
-      // Rule 2: Check blocked countries
       if (blocked && blocked.length > 0) {
         if (blocked.includes(userCountry)) {
           setIsEligible(false);
