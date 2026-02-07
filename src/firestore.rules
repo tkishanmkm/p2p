@@ -26,6 +26,46 @@ service cloud.firestore {
     function isTradeParticipant(tradeData) {
       return isSignedIn() && (tradeData.buyerId == request.auth.uid || tradeData.sellerId == request.auth.uid);
     }
+    
+    // Validates if a write to a wallet is part of a valid user-to-user transfer.
+    function isReceivingTransfer(recipientId, walletId) {
+      let senderId = request.auth.uid;
+      
+      // Not a self-transfer
+      if (senderId == recipientId) {
+        return false;
+      }
+
+      // Check if both users are active (not banned or on hold)
+      let senderIsActive = get(/databases/$(database)/documents/users/$(senderId)).data.isBanned == false &&
+                           get(/databases/$(database)/documents/users/$(senderId)).data.isOnHold == false;
+      let recipientIsActive = get(/databases/$(database)/documents/users/$(recipientId)).data.isBanned == false &&
+                              get(/databases/$(database)/documents/users/$(recipientId)).data.isOnHold == false;
+
+      if (!senderIsActive || !recipientIsActive) {
+        return false;
+      }
+
+      // Check if it's a create or update operation
+      let isCreating = !exists(/databases/$(database)/documents/users/$(recipientId)/wallets/$(walletId));
+      
+      if (isCreating) {
+        // For a new wallet, balance must be positive and locked balance must be 0.
+        return request.resource.data.balance > 0 &&
+               request.resource.data.lockedBalance == 0 &&
+               request.resource.data.userId == recipientId;
+      } else { // It's an update operation
+        let amountIncrement = request.resource.data.balance - resource.data.balance;
+
+        // Only allow a positive increment to the balance field.
+        // All other sensitive fields must remain unchanged.
+        return amountIncrement > 0 &&
+               request.resource.data.lockedBalance == resource.data.lockedBalance &&
+               request.resource.data.crypto == resource.data.crypto &&
+               request.resource.data.userId == resource.data.userId;
+      }
+    }
+
 
     // --- Global Catch-All Rule ---
     match /{document=**} {
@@ -71,7 +111,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /wallets/{walletId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId) || isAdmin() || isReceivingTransfer(userId, walletId);
+        allow delete: if isAdmin();
       }
       match /withdrawals/{withdrawalId} {
         allow read, create, update: if isOwner(userId) || isAdmin();

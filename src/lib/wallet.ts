@@ -427,20 +427,11 @@ export async function sendCoinToUser(
       createdAt: new Date().toISOString(),
     });
 
-    // 4. Send notifications
+    // 4. Send notification to sender
     const senderNotifRef = doc(collection(db, `users/${sender.uid}/notifications`));
     transaction.set(senderNotifRef, {
       userId: sender.uid,
       message: `You sent ${amount} ${crypto} to ${recipientUsername}.`,
-      isRead: false,
-      createdAt: new Date().toISOString(),
-      link: `/transfer`,
-    });
-
-    const recipientNotifRef = doc(collection(db, `users/${recipient.id}/notifications`));
-    transaction.set(recipientNotifRef, {
-      userId: recipient.id,
-      message: `You received ${amount} ${crypto} from ${sender.displayName}.`,
       isRead: false,
       createdAt: new Date().toISOString(),
       link: `/transfer`,
