@@ -64,7 +64,8 @@ service cloud.firestore {
 
     // --- User-Centric Collections ---
     match /users/{userId} {
-      allow get, list: if isSignedIn();
+      allow get: if true;
+      allow list: if isSignedIn();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
@@ -78,6 +79,10 @@ service cloud.firestore {
       }
       match /notifications/{notificationId} {
         allow read, write: if isOwner(userId) || isAdmin();
+      }
+       match /sessions/{sessionId} {
+        allow read, list, create: if isOwner(userId) || isAdmin();
+        allow update, delete: if isOwner(userId) || isAdmin();
       }
     }
     
