@@ -19,16 +19,17 @@ export const CHAINS: Record<CryptoCurrency, string[]> = {
 
 
 export const LANGUAGES = [
-  { code: 'en', name: 'English' },
-  { code: 'zh-CN', name: 'Simplified Chinese' },
-  { code: 'zh-TW', name: 'Traditional Chinese' },
-  { code: 'pt-BR', name: 'Brazilian Portuguese' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'fr', name: 'French' },
-  { code: 'es', name: 'Spanish' },
-  { code: 'ru', name: 'Russian' },
-  { code: 'vi', name: 'Vietnamese' },
-  { code: 'ar', name: 'Arabic' },
+  { code: 'en', name: 'English', nativeName: 'English' },
+  { code: 'zh-CN', name: 'Simplified Chinese', nativeName: '简体中文' },
+  { code: 'zh-TW', name: 'Traditional Chinese', nativeName: '繁體中文' },
+  { code: 'pt-BR', name: 'Brazilian Portuguese', nativeName: 'Português brasileiro' },
+  { code: 'ko', name: 'Korean', nativeName: '한국어' },
+  { code: 'fr', name: 'French', nativeName: 'Français' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español' },
+  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
+  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
 ];
 
 // In a real app, these would be in environment variables
@@ -42,4 +43,5 @@ export const SECURITY_QUESTIONS = [
     "In what city were you born?",
     "What is your favorite book?",
 ];
+
 

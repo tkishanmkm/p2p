@@ -112,7 +112,7 @@ export function DashboardHeader() {
     }
   };
 
-  const handleLanguageSelect = (language: { name: string; code: string; }) => {
+  const handleLanguageSelect = (language: { name: string; code: string; nativeName: string; }) => {
     setSelectedLanguage(language);
     toast({
       title: `Language set to ${language.name}`,
@@ -242,10 +242,13 @@ export function DashboardHeader() {
               <span>{selectedLanguage.code.toUpperCase()}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-48">
             {LANGUAGES.map((lang) => (
               <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
-                {lang.name}
+                <div className="flex flex-col">
+                    <span className="font-medium">{lang.nativeName}</span>
+                    <span className="text-xs text-muted-foreground">{lang.name}</span>
+                </div>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

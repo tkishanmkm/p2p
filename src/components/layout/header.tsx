@@ -29,7 +29,7 @@ export function Header() {
   const { toast } = useToast();
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0]);
 
-  const handleLanguageSelect = (language: { name: string; code: string; }) => {
+  const handleLanguageSelect = (language: { name: string; code: string; nativeName: string; }) => {
     setSelectedLanguage(language);
     toast({
       title: `Language set to ${language.name}`,
@@ -168,9 +168,14 @@ export function Header() {
                    <span>{selectedLanguage.code.toUpperCase()}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent className="w-48">
                 {LANGUAGES.map((lang) => (
-                  <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>{lang.name}</DropdownMenuItem>
+                  <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
+                    <div className="flex flex-col">
+                        <span className="font-medium">{lang.nativeName}</span>
+                        <span className="text-xs text-muted-foreground">{lang.name}</span>
+                    </div>
+                  </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
