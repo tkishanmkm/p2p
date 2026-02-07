@@ -90,19 +90,21 @@ function TradeForm({ ad }: { ad: P2PAd }) {
     const router = useRouter();
     const { toast } = useToast();
     const { firestore } = useFirebase();
-    const { prices } = usePrices();
+    const { prices, fiatRates } = usePrices();
 
     const [fiatAmount, setFiatAmount] = useState('');
     const [cryptoAmount, setCryptoAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    const marketPrice = prices[ad.crypto] || 0;
+    const marketPriceUsd = prices[ad.crypto] || 0;
+    const exchangeRate = fiatRates[ad.fiatCurrency] || 1;
+    const marketPriceInFiat = marketPriceUsd * exchangeRate;
+    
     const adPrice = ad.rateType === 'fixed' 
         ? ad.fixedRate! 
-        : marketPrice * (1 + (ad.ratePercent || 0) / 100);
+        : marketPriceInFiat * (1 + (ad.ratePercent || 0) / 100);
 
-    const pricePremium = ad.rateType === 'market' && ad.ratePercent ? (ad.ratePercent / 100) : ad.rateType === 'fixed' && marketPrice > 0 ? ((ad.fixedRate! - marketPrice) / marketPrice) : 0;
-    const premiumPercentage = (pricePremium * 100).toFixed(2);
+    const pricePremium = marketPriceInFiat > 0 ? (adPrice - marketPriceInFiat) / marketPriceInFiat : 0;
     
     const handleFiatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;

@@ -207,7 +207,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { firestore, user } = useFirebase();
-  const { prices, isLoading: arePricesLoading } = usePrices();
+  const { prices, fiatRates, isLoading: arePricesLoading } = usePrices();
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [customPaymentMethod, setCustomPaymentMethod] = useState('');
   const [currencySearchTerm, setCurrencySearchTerm] = useState("");
@@ -253,52 +253,49 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   });
   
   const watchedFields = form.watch();
-  const currentMarketPrice = prices[watchedFields.crypto as CryptoCurrency] || 0;
+  const marketPriceUsd = prices[watchedFields.crypto as CryptoCurrency] || 0;
+  const exchangeRate = fiatRates[watchedFields.fiatCurrency] || 1;
+  const currentMarketPriceInFiat = marketPriceUsd * exchangeRate;
   
-    useEffect(() => {
-        if (!currentMarketPrice) return
+  useEffect(() => {
+    if (!currentMarketPriceInFiat) return;
 
-        if (watchedFields.rateType === "market") {
-            // default market = 5%
-            if (watchedFields.ratePercent == null) {
-                form.setValue("ratePercent", 5, { shouldValidate: true })
-            }
-            // clear fixed price
-            form.setValue("fixedRate", undefined)
+    if (watchedFields.rateType === "market") {
+        if (watchedFields.ratePercent == null) {
+            form.setValue("ratePercent", 5, { shouldValidate: true });
         }
+        form.setValue("fixedRate", undefined);
+    }
 
-        if (watchedFields.rateType === "fixed") {
-            // default fixed = current market price
-            if (watchedFields.fixedRate == null) {
-                form.setValue(
-                    "fixedRate",
-                    Number(currentMarketPrice.toFixed(2)),
-                    { shouldValidate: true }
-                )
-            }
-            // clear market percent
-            form.setValue("ratePercent", undefined)
+    if (watchedFields.rateType === "fixed") {
+        if (watchedFields.fixedRate == null || watchedFields.fixedRate === 0) {
+            form.setValue(
+                "fixedRate",
+                Number(currentMarketPriceInFiat.toFixed(2)),
+                { shouldValidate: true }
+            );
         }
-    }, [
-        watchedFields.rateType,
-        watchedFields.crypto,
-        currentMarketPrice,
-        form
-    ]);
+        form.setValue("ratePercent", undefined);
+    }
+  }, [watchedFields.rateType, watchedFields.crypto, watchedFields.fiatCurrency, currentMarketPriceInFiat, form]);
 
 
   useEffect(() => {
     setBalanceError(null);
-    if (watchedFields.adType !== 'sell' || !watchedFields.maxAmount || !wallets || !watchedFields.crypto) {
+    if (watchedFields.adType !== 'sell' || !watchedFields.maxAmount || !wallets || !watchedFields.crypto || arePricesLoading) {
         return;
     }
 
     const selectedWallet = wallets.find(w => w.crypto === watchedFields.crypto);
     const userBalance = selectedWallet?.balance ?? 0;
     
+    const marketPriceUsd = prices[watchedFields.crypto as CryptoCurrency] || 0;
+    const exchangeRate = fiatRates[watchedFields.fiatCurrency] || 1;
+    const marketPriceInFiat = marketPriceUsd * exchangeRate;
+
     const price = watchedFields.rateType === 'fixed' 
       ? watchedFields.fixedRate ?? 0
-      : currentMarketPrice > 0 ? currentMarketPrice * (1 + (watchedFields.ratePercent ?? 0) / 100) : 0;
+      : marketPriceInFiat > 0 ? marketPriceInFiat * (1 + (watchedFields.ratePercent ?? 0) / 100) : 0;
 
     if (price <= 0) return;
     
@@ -308,7 +305,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
       setBalanceError(`Insufficient ${watchedFields.crypto} balance. You need at least ${requiredCrypto.toFixed(6)} ${watchedFields.crypto} to cover the maximum amount, but you only have ${userBalance.toFixed(6)} available.`);
     }
 
-  }, [watchedFields, wallets, currentMarketPrice]);
+  }, [watchedFields, wallets, prices, fiatRates, arePricesLoading]);
 
 
   const cryptoOptions = SUPPORTED_CRYPTOS.map((c) => ({ value: c.name, label: c.name }));
@@ -611,7 +608,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
                      <FormDescription>
-                        Your price will float with the market. {arePricesLoading ? 'Loading market price...' : `Current price is approx. ${currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: form.getValues('fiatCurrency'), minimumFractionDigits: 2 })}.`} <br/>
+                        Your price will float with the market. {arePricesLoading ? 'Loading market price...' : `Current price is approx. ${currentMarketPriceInFiat.toLocaleString(undefined, { style: 'currency', currency: form.getValues('fiatCurrency'), minimumFractionDigits: 2 })}.`} <br/>
                         Set your adjustment percentage (from -50% to 50%). E.g., '1.5' for 1.5% above market.
                     </FormDescription>
                     <FormMessage />
@@ -628,12 +625,12 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                     <Input 
                       type="number" 
                       step="any" 
-                      placeholder={arePricesLoading ? "Loading..." : `${currentMarketPrice.toLocaleString()}`} 
+                      placeholder={arePricesLoading ? "Loading..." : `${currentMarketPriceInFiat.toLocaleString()}`} 
                       {...field}
                       onChange={(e) => field.onChange(parseFloat(e.target.value))}
                       value={field.value ?? ''}
                     />
-                    <FormDescription>The fixed price in {form.getValues('fiatCurrency')}. Current market price is approx. {currentMarketPrice.toLocaleString(undefined, { style: 'currency', currency: form.getValues('fiatCurrency'), minimumFractionDigits: 2 })}.</FormDescription>
+                    <FormDescription>The fixed price in {form.getValues('fiatCurrency')}. Current market price is approx. {currentMarketPriceInFiat.toLocaleString(undefined, { style: 'currency', currency: form.getValues('fiatCurrency'), minimumFractionDigits: 2 })}.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -22,20 +22,21 @@ interface AdCardProps {
 
 export function AdCard({ ad }: AdCardProps) {
   const { firestore } = useFirebase();
-  const { prices } = usePrices();
+  const { prices, fiatRates } = usePrices();
 
   // Fetch the ad creator's profile in real-time to get the latest avatar and stats
   const adCreatorRef = useMemoFirebase(() => (firestore ? doc(firestore, 'users', ad.userId) : null), [firestore, ad.userId]);
   const { data: adCreator, isLoading: isCreatorLoading } = useDoc<User>(adCreatorRef);
 
-  const marketPrice = prices[ad.crypto] || 0;
+  const marketPriceUsd = prices[ad.crypto] || 0;
+  const exchangeRate = fiatRates[ad.fiatCurrency] || 1;
+  const marketPriceInFiat = marketPriceUsd * exchangeRate;
   
   const adPrice = ad.rateType === 'fixed' 
     ? ad.fixedRate! 
-    : marketPrice * (1 + (ad.ratePercent || 0) / 100);
+    : marketPriceInFiat * (1 + (ad.ratePercent || 0) / 100);
 
-  const pricePremium = ad.rateType === 'market' && ad.ratePercent ? (ad.ratePercent / 100) : ad.rateType === 'fixed' && marketPrice > 0 ? ((ad.fixedRate! - marketPrice) / marketPrice) : 0;
-  const premiumPercentage = (pricePremium * 100).toFixed(2);
+  const pricePremium = marketPriceInFiat > 0 ? (adPrice - marketPriceInFiat) / marketPriceInFiat : 0;
   
   const user = adCreator || ad.user;
   
@@ -85,7 +86,7 @@ export function AdCard({ ad }: AdCardProps) {
              <div>
                 <p className="text-xs text-muted-foreground">Price</p>
                 <p className="font-bold text-lg text-primary">{adPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {ad.fiatCurrency}</p>
-                 {marketPrice > 0 && (
+                 {marketPriceInFiat > 0 && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -94,7 +95,7 @@ export function AdCard({ ad }: AdCardProps) {
                            </p>
                         </TooltipTrigger>
                         <TooltipContent>
-                           <p>Market price: {marketPrice.toLocaleString()} {ad.fiatCurrency}</p>
+                           <p>Market price: {marketPriceInFiat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {ad.fiatCurrency}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

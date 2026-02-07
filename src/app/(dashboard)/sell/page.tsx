@@ -84,7 +84,7 @@ function SellPageContent() {
   const [showAcceptable, setShowAcceptable] = useState(searchParams.get('acceptable') === 'true');
   const [isOfferTagsSheetOpen, setIsOfferTagsSheetOpen] = useState(false);
 
-  const { prices } = usePrices();
+  const { prices, fiatRates } = usePrices();
 
   const handleResetFilters = () => {
     setAmount('');
@@ -149,6 +149,7 @@ function SellPageContent() {
 
   const filteredAds = useMemo(() => {
     if (!buyAds) return [];
+    const exchangeRate = fiatRates[selectedFiat] || 1;
 
     let ads = buyAds.filter(ad => {
       const amountNum = parseFloat(amount);
@@ -203,8 +204,10 @@ function SellPageContent() {
 
     ads.sort((a, b) => {
         if (sortBy === 'price') {
-            const priceA = a.rateType === 'fixed' ? a.fixedRate! : prices[a.crypto] * (1 + (a.ratePercent || 0) / 100);
-            const priceB = b.rateType === 'fixed' ? b.fixedRate! : prices[b.crypto] * (1 + (b.ratePercent || 0) / 100);
+            const marketPriceA = (prices[a.crypto] || 0) * exchangeRate;
+            const marketPriceB = (prices[b.crypto] || 0) * exchangeRate;
+            const priceA = a.rateType === 'fixed' ? a.fixedRate! : marketPriceA * (1 + (a.ratePercent || 0) / 100);
+            const priceB = b.rateType === 'fixed' ? b.fixedRate! : marketPriceB * (1 + (b.ratePercent || 0) / 100);
             return priceB - priceA; // Higher price is better for seller
         }
         if (sortBy === 'rating') {
@@ -217,15 +220,15 @@ function SellPageContent() {
     });
 
     return ads;
-  }, [buyAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, showTopRated, showVerified, showRecentlyActive, showAcceptable, selectedTags, currentUserData, sortBy, prices]);
+  }, [buyAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, showTopRated, showVerified, showRecentlyActive, showAcceptable, selectedTags, currentUserData, sortBy, prices, fiatRates]);
   
   const handleToggle = (page: 'buy' | 'sell') => {
     router.push(`/${page}`);
   }
 
   const coinFullName = selectedCoin === 'BTC' ? 'Bitcoin' : selectedCoin === 'ETH' ? 'Ethereum' : selectedCoin === 'LTC' ? 'Litecoin' : 'Tether';
-  const marketPrice = prices[selectedCoin] || 0;
-  const marketPriceText = `1 ${selectedCoin} ≈ ${marketPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+  const marketPriceInFiat = (prices[selectedCoin] || 0) * (fiatRates[selectedFiat] || 1);
+  const marketPriceText = `1 ${selectedCoin} ≈ ${marketPriceInFiat.toLocaleString('en-US', { style: 'currency', currency: selectedFiat, minimumFractionDigits: 2 })}`;
 
   return (
     <>
