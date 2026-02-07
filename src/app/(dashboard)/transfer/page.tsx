@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useEffect, useState } from 'react';
@@ -6,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { query, collection, where, limit, getDocs } from 'firebase/firestore';
+import { query, collection, where, limit, getDocs, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { sendCoinToUser } from '@/lib/wallet';
 import {
@@ -464,5 +463,3 @@ export default function TransferPage() {
     </>
   );
 }
-
-    
