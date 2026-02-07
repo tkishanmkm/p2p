@@ -27,58 +27,48 @@ service cloud.firestore {
       return isSignedIn() && (tradeData.buyerId == request.auth.uid || tradeData.sellerId == request.auth.uid);
     }
     
-    // Validates a transfer that CREATES a new recipient wallet.
-    function isValidTransferCreation(recipientId) {
+    function isValidTransferCreation(recipientId, walletId) {
       let senderId = request.auth.uid;
-      
-      // Not a self-transfer
-      if (senderId == recipientId) {
-        return false;
-      }
+      if (senderId == recipientId) { return false; } // No self-transfer
 
-      // Check if both users are active from existing user documents
       let senderIsActive = get(/databases/$(database)/documents/users/$(senderId)).data.isBanned == false &&
                            get(/databases/$(database)/documents/users/$(senderId)).data.isOnHold == false;
       let recipientIsActive = get(/databases/$(database)/documents/users/$(recipientId)).data.isBanned == false &&
                               get(/databases/$(database)/documents/users/$(recipientId)).data.isOnHold == false;
+      if (!senderIsActive || !recipientIsActive) { return false; }
 
-      if (!senderIsActive || !recipientIsActive) {
-        return false;
-      }
-      
-      // For a new wallet, balance must be positive and locked balance must be 0.
+      // On create, ensure balance is positive, locked is 0, and all required fields are set correctly by the sender.
       return request.resource.data.balance > 0 &&
              request.resource.data.lockedBalance == 0 &&
-             request.resource.data.userId == recipientId;
+             request.resource.data.userId == recipientId &&
+             request.resource.data.id == walletId &&
+             request.resource.data.crypto == walletId;
     }
 
-    // Validates a transfer that UPDATES an existing recipient wallet.
     function isValidTransferUpdate(recipientId) {
       let senderId = request.auth.uid;
-      
-      // Not a self-transfer
-      if (senderId == recipientId) {
-        return false;
-      }
+      if (senderId == recipientId) { return false; } // No self-transfer
 
-      // Check if both users are active
       let senderIsActive = get(/databases/$(database)/documents/users/$(senderId)).data.isBanned == false &&
                            get(/databases/$(database)/documents/users/$(senderId)).data.isOnHold == false;
       let recipientIsActive = get(/databases/$(database)/documents/users/$(recipientId)).data.isBanned == false &&
                               get(/databases/$(database)/documents/users/$(recipientId)).data.isOnHold == false;
-
       if (!senderIsActive || !recipientIsActive) {
         return false;
       }
 
-      let amountIncrement = request.resource.data.balance - resource.data.balance;
+      // For an update, the incoming data from the client MUST only contain 'balance' and 'updatedAt'.
+      let incomingKeys = request.resource.data.keys();
+      if (!incomingKeys.hasAll(['balance', 'updatedAt']) || incomingKeys.size() != 2) {
+          return false;
+      }
+      
+      // Ensure the balance is only being increased.
+      if (request.resource.data.balance <= resource.data.balance) {
+        return false;
+      }
 
-      // Only allow a positive increment to the balance field.
-      // All other sensitive fields must remain unchanged.
-      return amountIncrement > 0 &&
-             request.resource.data.lockedBalance == resource.data.lockedBalance &&
-             request.resource.data.crypto == resource.data.crypto &&
-             request.resource.data.userId == resource.data.userId;
+      return true;
     }
 
 
@@ -127,7 +117,7 @@ service cloud.firestore {
 
       match /wallets/{walletId} {
         allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId);
+        allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId, walletId);
         allow update: if isOwner(userId) || isAdmin() || isValidTransferUpdate(userId);
         allow delete: if isAdmin();
       }
