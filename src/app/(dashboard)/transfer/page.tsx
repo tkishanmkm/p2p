@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useEffect, useState } from 'react';
@@ -123,6 +124,7 @@ export default function TransferPage() {
   const router = useRouter();
   const { toast } = useToast();
   
+  const [isProcessing, setIsProcessing] = useState(false);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -191,13 +193,37 @@ export default function TransferPage() {
 
   async function onSubmit(values: TransferFormValues) {
     if (!firestore || !authUser || !auth) return;
+    setIsProcessing(true);
 
     if (selectedWallet && values.amount > selectedWallet.balance) {
       form.setError('amount', {
         type: 'manual',
         message: 'Amount exceeds available balance.',
       });
+      setIsProcessing(false);
       return;
+    }
+
+    // Pre-flight check for recipient status
+    try {
+        const usersRef = collection(firestore, 'users');
+        const q = query(usersRef, where("userId", "==", values.recipientUsername), limit(1));
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) {
+            form.setError("recipientUsername", { type: 'manual', message: "Recipient user not found." });
+            setIsProcessing(false);
+            return;
+        }
+        const recipientData = snapshot.docs[0].data() as User;
+        if (recipientData.isBanned || recipientData.isOnHold) {
+            form.setError("recipientUsername", { type: 'manual', message: `Cannot transfer. User is ${recipientData.isBanned ? 'banned' : 'on hold'}.`});
+            setIsProcessing(false);
+            return;
+        }
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Validation Error', description: e.message });
+        setIsProcessing(false);
+        return;
     }
 
     try {
@@ -207,7 +233,6 @@ export default function TransferPage() {
       const credential = EmailAuthProvider.credential(auth.currentUser.email, values.password);
       await reauthenticateWithCredential(auth.currentUser, credential);
 
-      // If re-authentication is successful, proceed to transfer
       const transferId = await sendCoinToUser(
         firestore,
         { uid: authUser.uid, displayName: authUser.displayName },
@@ -238,6 +263,8 @@ export default function TransferPage() {
                 description: error.message,
             });
         }
+    } finally {
+        setIsProcessing(false);
     }
   }
 
@@ -383,9 +410,9 @@ export default function TransferPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={form.formState.isSubmitting}
+                  disabled={isProcessing}
                 >
-                  {form.formState.isSubmitting && (
+                  {isProcessing && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   Send Coins
