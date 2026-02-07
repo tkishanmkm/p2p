@@ -2,6 +2,7 @@
 "use client";
 
 import { DashboardHeader } from "@/components/dashboard/header";
+import { Footer } from "@/components/layout/footer";
 
 export default function DashboardLayout({
   children,
@@ -14,6 +15,7 @@ export default function DashboardLayout({
       <main className="flex flex-1 flex-col gap-4 p-2 sm:p-4 lg:p-6 bg-primary">
         {children}
       </main>
+      <Footer />
     </div>
   );
 }

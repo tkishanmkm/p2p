@@ -1,13 +1,12 @@
 "use client";
 import Link from "next/link";
-import { Facebook, Twitter, Linkedin } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { APP_NAME } from "@/lib/constants";
 import { useI18n } from "@/context/i18n-context";
 
 export function Footer() {
   const { t } = useI18n();
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2026;
 
   const sections = [
     {
@@ -34,12 +33,6 @@ export function Footer() {
         { label: t('footer.dispute'), href: "/dispute-resolution" },
       ],
     },
-  ];
-
-  const socialLinks = [
-    { icon: Facebook, href: "#", label: "Facebook" },
-    { icon: Twitter, href: "#", label: "Twitter" },
-    { icon: Linkedin, href: "#", label: "LinkedIn" },
   ];
 
   return (
@@ -74,18 +67,6 @@ export function Footer() {
           <p className="text-sm text-muted-foreground">
             &copy; {currentYear} {APP_NAME}. {t('footer.copyright')}
           </p>
-          <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-            {socialLinks.map((social) => (
-              <Link
-                key={social.label}
-                href={social.href}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <social.icon className="h-5 w-5" />
-                <span className="sr-only">{social.label}</span>
-              </Link>
-            ))}
-          </div>
         </div>
       </div>
     </footer>

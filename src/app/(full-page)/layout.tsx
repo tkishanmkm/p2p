@@ -2,6 +2,7 @@
 "use client";
 
 import { DashboardHeader } from "@/components/dashboard/header";
+import { Footer } from "@/components/layout/footer";
 
 export default function FullPageLayout({
   children,
@@ -14,6 +15,7 @@ export default function FullPageLayout({
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
         {children}
       </main>
+      <Footer />
     </div>
   );
 }
