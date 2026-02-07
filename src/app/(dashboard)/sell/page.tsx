@@ -1,7 +1,8 @@
+
 "use client";
 
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { useFirebase, useCollection, useMemoFirebase, useDoc } from "@/firebase";
+import { collection, query, where, doc } from "firebase/firestore";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AdCard } from "@/components/p2p/ad-card";
@@ -12,12 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Wallet, Landmark, CreditCard, Smartphone, Car, Search, Loader2, ArrowDown, ArrowUp, PlusCircle, SlidersHorizontal, RefreshCw, BookOpen, HelpCircle, BarChart } from "lucide-react";
-import { SUPPORTED_CRYPTOS } from "@/lib/constants";
+import { Wallet, Landmark, CreditCard, Smartphone, Car, Search, Loader2, ArrowDown, ArrowUp, PlusCircle, SlidersHorizontal, RefreshCw, BookOpen, HelpCircle, BarChart, X, Globe, ChevronRight } from "lucide-react";
+import { SUPPORTED_CRYPTOS, AD_TAGS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { countries } from "@/lib/countries";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { P2PAd, CryptoCurrency } from "@/lib/types";
+import type { P2PAd, CryptoCurrency, User } from "@/lib/types";
 import { useState, useMemo, Suspense, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from 'next/link';
@@ -33,8 +34,12 @@ import {
     giftCardPaymentMethods,
 } from "@/lib/payment-methods";
 import { FlagIcon } from "@/components/ui/flag-icon";
-import { cn } from "@/lib/utils";
+import { cn, toDate } from "@/lib/utils";
 import { usePrices } from "@/context/price-context";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FormItem, FormControl, FormLabel } from "@/components/ui/form";
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
@@ -48,10 +53,13 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?:
 }
 
 function SellPageContent() {
-  const { firestore } = useFirebase();
+  const { firestore, user: authUser } = useFirebase();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+
+  const userRef = useMemoFirebase(() => (authUser ? doc(firestore, "users", authUser.uid) : null), [firestore, authUser]);
+  const { data: currentUserData } = useDoc<User>(userRef);
 
   const [amount, setAmount] = useState(searchParams.get('amount') || "");
   const [paymentMethod, setPaymentMethod] = useState(searchParams.get('paymentMethod') || "");
@@ -67,7 +75,30 @@ function SellPageContent() {
   const [countrySearch, setCountrySearch] = useState("");
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
 
+  const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'price');
+  const [selectedTags, setSelectedTags] = useState<string[]>(searchParams.get('tags')?.split(',').filter(Boolean) || []);
+  const [showTopRated, setShowTopRated] = useState(searchParams.get('topRated') === 'true');
+  const [showVerified, setShowVerified] = useState(searchParams.get('verified') === 'true');
+  const [showRecentlyActive, setShowRecentlyActive] = useState(searchParams.get('recentlyActive') === 'true');
+  const [showAcceptable, setShowAcceptable] = useState(searchParams.get('acceptable') === 'true');
+  const [isOfferTagsSheetOpen, setIsOfferTagsSheetOpen] = useState(false);
+
   const { prices } = usePrices();
+
+  const handleResetFilters = () => {
+    setAmount('');
+    setPaymentMethod('');
+    setSelectedCoin('BTC');
+    setSelectedFiat('USD');
+    setSelectedCountry('');
+    setSortBy('price');
+    setSelectedTags([]);
+    setShowTopRated(false);
+    setShowVerified(false);
+    setShowRecentlyActive(false);
+    setShowAcceptable(false);
+    setIsFiltersSheetOpen(false);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
@@ -76,8 +107,14 @@ function SellPageContent() {
     if (selectedCoin) params.set('coin', selectedCoin); else params.delete('coin');
     if (selectedFiat) params.set('fiat', selectedFiat); else params.delete('fiat');
     if (selectedCountry) params.set('country', selectedCountry); else params.delete('country');
+    if(sortBy !== 'price') params.set('sortBy', sortBy); else params.delete('sortBy');
+    if(selectedTags.length > 0) params.set('tags', selectedTags.join(',')); else params.delete('tags');
+    if(showTopRated) params.set('topRated', 'true'); else params.delete('topRated');
+    if(showVerified) params.set('verified', 'true'); else params.delete('verified');
+    if(showRecentlyActive) params.set('recentlyActive', 'true'); else params.delete('recentlyActive');
+    if(showAcceptable) params.set('acceptable', 'true'); else params.delete('acceptable');
     router.replace(`${pathname}?${params.toString()}`);
-  }, [amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, pathname, router, searchParams]);
+  }, [amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, sortBy, selectedTags, showTopRated, showVerified, showRecentlyActive, showAcceptable, pathname, router, searchParams]);
 
   const allPaymentMethods = useMemo(() => [
     { category: 'Bank Transfers', methods: bankTransfers, icon: Landmark },
@@ -112,7 +149,7 @@ function SellPageContent() {
   const filteredAds = useMemo(() => {
     if (!buyAds) return [];
 
-    return buyAds.filter(ad => {
+    let ads = buyAds.filter(ad => {
       const amountNum = parseFloat(amount);
       if (amount && !isNaN(amountNum)) {
         if (amountNum < ad.minAmount || amountNum > ad.maxAmount) {
@@ -132,9 +169,54 @@ function SellPageContent() {
       if (selectedCountry && ad.user.country !== selectedCountry) {
         return false;
       }
+      if (showTopRated) {
+        if (!ad.user.badges?.includes('power')) return false;
+      }
+      if (showVerified) {
+        if (!ad.user.badges?.includes('verified')) return false;
+      }
+      if (showRecentlyActive) {
+        if (!ad.user.lastActive) return false;
+        const lastActiveDate = toDate(ad.user.lastActive);
+        if (!lastActiveDate || (new Date().getTime() - lastActiveDate.getTime()) > 30 * 60 * 1000) {
+            return false;
+        }
+      }
+      if (selectedTags.length > 0) {
+          if (!ad.tags || !selectedTags.every(tag => ad.tags!.includes(tag))) {
+              return false;
+          }
+      }
+      if (showAcceptable && currentUserData) {
+        if (ad.userId === currentUserData.id) return false;
+        if ((ad.minCompletedTrades || 0) > (currentUserData.completedTrades || 0)) return false;
+        if (ad.targetedCountries && ad.targetedCountries.length > 0 && !ad.targetedCountries.includes('all')) {
+            if (!currentUserData.country || !ad.targetedCountries.includes(currentUserData.country)) return false;
+        }
+        if (ad.blockedCountries && ad.blockedCountries.length > 0) {
+            if (currentUserData.country && ad.blockedCountries.includes(currentUserData.country)) return false;
+        }
+      }
       return true;
     });
-  }, [buyAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry]);
+
+    ads.sort((a, b) => {
+        if (sortBy === 'price') {
+            const priceA = a.rateType === 'fixed' ? a.fixedRate! : prices[a.crypto] * (1 + (a.ratePercent || 0) / 100);
+            const priceB = b.rateType === 'fixed' ? b.fixedRate! : prices[b.crypto] * (1 + (b.ratePercent || 0) / 100);
+            return priceB - priceA; // Higher price is better for seller
+        }
+        if (sortBy === 'rating') {
+            return (b.user.feedbackScore || 0) - (a.user.feedbackScore || 0);
+        }
+        if (sortBy === 'popular') {
+            return (b.user.completedTrades || 0) - (a.user.completedTrades || 0);
+        }
+        return 0;
+    });
+
+    return ads;
+  }, [buyAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, showTopRated, showVerified, showRecentlyActive, showAcceptable, selectedTags, currentUserData, sortBy, prices]);
   
   const handleToggle = (page: 'buy' | 'sell') => {
     router.push(`/${page}`);
@@ -251,38 +333,126 @@ function SellPageContent() {
       
       <Sheet open={isFiltersSheetOpen} onOpenChange={setIsFiltersSheetOpen}>
         <SheetContent>
-            <SheetHeader><SheetTitle>Filters</SheetTitle></SheetHeader>
-            <div className="py-4 space-y-6">
-                {/* Filters for mobile */}
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">Coin</label>
-                    <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{SUPPORTED_CRYPTOS.map(c => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
-                    </Select>
+            <SheetHeader className="flex-row items-center justify-between border-b -mt-2 pb-4">
+                <SheetTitle>Filters</SheetTitle>
+                <div className="flex items-center">
+                    <Button variant="ghost" size="sm" onClick={handleResetFilters}>Reset all filters</Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsFiltersSheetOpen(false)}><X className="h-4 w-4" /></Button>
                 </div>
-                 <div className="space-y-2">
-                    <label className="text-sm font-medium">Amount</label>
-                     <div className="relative flex items-center">
-                        <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                        <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md" onClick={() => { setIsFiltersSheetOpen(false); setIsFiatSheetOpen(true); }}>
-                            {selectedFiat}
+            </SheetHeader>
+            <div className="py-4 space-y-6">
+                <div className="md:hidden space-y-4">
+                    <div className="space-y-2">
+                        <Label>Coin</Label>
+                        <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>{SUPPORTED_CRYPTOS.map(c => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Amount</Label>
+                        <div className="relative flex items-center">
+                            <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                            <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md" onClick={() => { setIsFiltersSheetOpen(false); setIsFiatSheetOpen(true); }}>
+                                {selectedFiat}
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Payment Method</Label>
+                        <Button type="button" variant="outline" className="w-full justify-start text-left font-normal" onClick={() => { setIsFiltersSheetOpen(false); setIsPaymentSheetOpen(true); }}>
+                            {paymentMethod || 'All Payment Methods'}
                         </Button>
                     </div>
                 </div>
+
                 <div className="space-y-2">
-                    <label className="text-sm font-medium">Payment Method</label>
-                     <Button type="button" variant="outline" className="w-full justify-start text-left font-normal" onClick={() => { setIsFiltersSheetOpen(false); setIsPaymentSheetOpen(true); }}>
-                        {paymentMethod || 'All Payment Methods'}
+                    <Label>Country</Label>
+                    <Button type="button" variant="outline" className="w-full justify-between font-normal" onClick={() => { setIsFiltersSheetOpen(false); setIsCountrySheetOpen(true); }}>
+                        <span>{selectedCountry ? countries.find(c=>c.code === selectedCountry)?.name : 'All Countries'}</span>
+                        <Globe className="h-4 w-4" />
                     </Button>
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">Country</label>
-                    <Button type="button" variant="outline" className="w-full justify-start text-left font-normal" onClick={() => { setIsFiltersSheetOpen(false); setIsCountrySheetOpen(true); }}>
-                        {selectedCountry ? countries.find(c=>c.code === selectedCountry)?.name : 'All Countries'}
+                <div className="flex items-center justify-between">
+                    <Label>Sorting</Label>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger className="w-[120px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="price">Price</SelectItem>
+                            <SelectItem value="rating">Rating</SelectItem>
+                            <SelectItem value="popular">Popular</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <Label>Offer tags</Label>
+                    <Button variant="ghost" className="text-muted-foreground" onClick={() => setIsOfferTagsSheetOpen(true)}>
+                        <span>{selectedTags.length > 0 ? `${selectedTags.length} selected` : 'All'}</span>
+                        <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
+                </div>
+                
+                <div className="space-y-1 pt-4 border-t">
+                    <div className="flex items-center justify-between py-2">
+                        <div>
+                            <Label htmlFor="top-rated-switch" className="cursor-pointer">Show only top-rated traders</Label>
+                            <p className="text-xs text-muted-foreground">Experienced traders with badges</p>
+                        </div>
+                        <Switch id="top-rated-switch" checked={showTopRated} onCheckedChange={setShowTopRated} />
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                        <div>
+                            <Label htmlFor="verified-switch" className="cursor-pointer">Verified users only</Label>
+                            <p className="text-xs text-muted-foreground">Show offers from ID-verified users</p>
+                        </div>
+                        <Switch id="verified-switch" checked={showVerified} onCheckedChange={setShowVerified} />
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                        <div>
+                            <Label htmlFor="active-switch" className="cursor-pointer">Recently active</Label>
+                            <p className="text-xs text-muted-foreground">Last seen 30 mins ago</p>
+                        </div>
+                        <Switch id="active-switch" checked={showRecentlyActive} onCheckedChange={setShowRecentlyActive} />
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                        <div>
+                            <Label htmlFor="acceptable-switch" className="cursor-pointer">Acceptable only</Label>
+                            <p className="text-xs text-muted-foreground">Show only offers that I can accept now</p>
+                        </div>
+                        <Switch id="acceptable-switch" checked={showAcceptable} onCheckedChange={setShowAcceptable} />
+                    </div>
                 </div>
             </div>
+        </SheetContent>
+      </Sheet>
+      
+      <Sheet open={isOfferTagsSheetOpen} onOpenChange={setIsOfferTagsSheetOpen}>
+        <SheetContent>
+            <SheetHeader>
+                <SheetTitle>Filter by Offer Tags</SheetTitle>
+            </SheetHeader>
+            <div className="py-4 space-y-1">
+                {AD_TAGS.map((tag) => (
+                    <div key={tag} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted">
+                        <Checkbox
+                            id={`tag-${tag}`}
+                            checked={selectedTags.includes(tag)}
+                            onCheckedChange={(checked) => {
+                                return checked
+                                ? setSelectedTags([...selectedTags, tag])
+                                : setSelectedTags(selectedTags.filter(t => t !== tag))
+                            }}
+                        />
+                        <Label htmlFor={`tag-${tag}`} className="font-normal cursor-pointer w-full">{tag}</Label>
+                    </div>
+                ))}
+            </div>
+            <SheetFooter>
+                <Button onClick={() => setIsOfferTagsSheetOpen(false)} className="w-full">Done</Button>
+            </SheetFooter>
         </SheetContent>
       </Sheet>
 

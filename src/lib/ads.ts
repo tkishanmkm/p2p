@@ -1,3 +1,4 @@
+
 'use client';
 import { Firestore, collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { P2PAd } from './types';
@@ -21,6 +22,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     feedbackScore: number;
     completedTrades: number;
     photoURL?: string;
+    badges?: string[];
 }) {
   const adsCollection = collection(db, 'p2p_ads');
   
@@ -34,6 +36,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       feedbackScore: user.feedbackScore,
       completedTrades: user.completedTrades,
       photoURL: user.photoURL,
+      badges: user.badges,
     },
     createdAt: new Date().toISOString()
   };

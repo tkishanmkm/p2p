@@ -33,7 +33,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { SUPPORTED_CRYPTOS } from "@/lib/constants";
+import { SUPPORTED_CRYPTOS, AD_TAGS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { countries } from "@/lib/countries";
 import { 
@@ -59,12 +59,10 @@ import { Loader2, Wallet, Edit, Search, Globe, Landmark, CreditCard, Smartphone,
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { FlagIcon } from "../ui/flag-icon";
 
-const adTags = [
-  { id: "no-third-party", label: "No third party" },
-  { id: "no-receipt-required", label: "No receipt required" },
-  { id: "no-verification", label: "No verification" },
-  { id: "invoice-accepted", label: "Invoice accepted" },
-];
+const adTags = AD_TAGS.map((label) => ({
+  id: label.toLowerCase().replace(/ /g, '-'),
+  label,
+}));
 
 const adFormSchema = z.object({
   adType: z.enum(["buy", "sell"]),
@@ -364,7 +362,8 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                 country: userData.country,
                 feedbackScore: userData.feedbackScore ?? 100,
                 completedTrades: userData.completedTrades ?? 0,
-                photoURL: userData.photoURL
+                photoURL: userData.photoURL,
+                badges: userData.badges,
             });
             toast({ title: "Ad Created", description: "Your ad has been successfully posted." });
             router.push(data.adType === 'sell' ? '/buy' : '/sell');
