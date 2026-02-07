@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -105,12 +106,10 @@ service cloud.firestore {
     }
 
     match /p2p_ads/{adId} {
-        function isAdOwner() {
-            return request.auth.uid == request.resource.data.userId;
-        }
-
         allow get, list: if true;
-        allow create: if isSignedIn() && isAdOwner();
+        allow create: if request.auth != null && 
+                       'userId' in request.resource.data && 
+                       request.resource.data.userId == request.auth.uid;
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
