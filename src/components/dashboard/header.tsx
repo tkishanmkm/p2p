@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -116,10 +115,6 @@ export function DashboardHeader() {
 
   const handleLanguageSelect = (language: { name: string; code: string; nativeName: string; }) => {
     setLanguage(language.code);
-    toast({
-      title: `Language set to ${language.name}`,
-      description: "Full app translation is a feature coming soon.",
-    });
   };
 
   // Loading State

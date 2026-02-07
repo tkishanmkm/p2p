@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -16,7 +15,6 @@ import {
 import { LANGUAGES } from "@/lib/constants";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { ModeToggle } from "../mode-toggle";
-import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/context/i18n-context";
 
 const mobileNavLinks = [
@@ -27,17 +25,12 @@ const mobileNavLinks = [
 ];
 
 export function Header() {
-  const { toast } = useToast();
   const { language, setLanguage } = useI18n();
   const selectedLanguage = LANGUAGES.find(l => l.code === language) || LANGUAGES[0];
 
 
   const handleLanguageSelect = (language: { name: string; code: string; nativeName: string; }) => {
     setLanguage(language.code);
-    toast({
-      title: `Language set to ${language.name}`,
-      description: "Full app translation is a feature coming soon.",
-    });
   };
 
   return (
