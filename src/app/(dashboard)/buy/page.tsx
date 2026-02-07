@@ -230,10 +230,6 @@ function BuyPageContent() {
       </div>
       
       <div className="space-y-1">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground p-2">
-            <BarChart className="h-4 w-4" />
-            Promoted offers (3)
-        </div>
         {isLoading && (
             <div className="space-y-1">
             <Skeleton className="h-20 w-full" />
