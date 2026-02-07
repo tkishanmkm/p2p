@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   Bell,
   LayoutDashboard,
@@ -71,6 +72,7 @@ export function DashboardHeader() {
   const router = useRouter();
   const { toast } = useToast();
   const { prices, fiatRates } = usePrices();
+  const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0]);
 
   const userDocRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
   const { data: userData } = useDoc<AppUser>(userDocRef);
@@ -108,6 +110,14 @@ export function DashboardHeader() {
     } catch (error) {
       toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred during logout." });
     }
+  };
+
+  const handleLanguageSelect = (language: { name: string; code: string; }) => {
+    setSelectedLanguage(language);
+    toast({
+      title: `Language set to ${language.name}`,
+      description: "Full app translation is a feature coming soon.",
+    });
   };
 
   // Loading State
@@ -223,8 +233,24 @@ export function DashboardHeader() {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-0">
+      <div className="flex items-center gap-2">
         <ModeToggle />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="hidden sm:inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+              <Globe className="h-4 w-4" />
+              <span>{selectedLanguage.code.toUpperCase()}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {LANGUAGES.map((lang) => (
+              <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
+                {lang.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <div className="flex items-center">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>

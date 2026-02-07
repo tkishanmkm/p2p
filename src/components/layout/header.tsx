@@ -1,4 +1,8 @@
+
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Globe, Menu, ChevronDown, ArrowDownToLine, ArrowUpFromLine, PlusCircle, BookOpen, FileText, Shield, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
@@ -12,6 +16,7 @@ import {
 import { LANGUAGES } from "@/lib/constants";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { ModeToggle } from "../mode-toggle";
+import { useToast } from "@/hooks/use-toast";
 
 const mobileNavLinks = [
   { href: "/buy", label: "Buy Coin" },
@@ -21,6 +26,17 @@ const mobileNavLinks = [
 ];
 
 export function Header() {
+  const { toast } = useToast();
+  const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0]);
+
+  const handleLanguageSelect = (language: { name: string; code: string; }) => {
+    setSelectedLanguage(language);
+    toast({
+      title: `Language set to ${language.name}`,
+      description: "Full app translation is a feature coming soon.",
+    });
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
@@ -147,14 +163,14 @@ export function Header() {
             <ModeToggle />
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-                  <Globe className="h-5 w-5 text-foreground/80" />
-                  <span className="sr-only">Select language</span>
+                <Button variant="ghost" className="hidden sm:inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+                  <Globe className="h-4 w-4" />
+                   <span>{selectedLanguage.code.toUpperCase()}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 {LANGUAGES.map((lang) => (
-                  <DropdownMenuItem key={lang.code}>{lang.name}</DropdownMenuItem>
+                  <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>{lang.name}</DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
