@@ -239,10 +239,10 @@ function BuyPageContent() {
                     <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" asChild className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
+                    <Button variant="outline" asChild>
                         <Link href="/academy"><BookOpen className="mr-2 h-4 w-4" /> Academy</Link>
                     </Button>
-                    <Button variant="outline" asChild className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
+                    <Button variant="outline" asChild>
                         <Link href="/guides"><HelpCircle className="mr-2 h-4 w-4" /> Take Tour</Link>
                     </Button>
                 </div>
