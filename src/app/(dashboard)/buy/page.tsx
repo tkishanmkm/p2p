@@ -230,9 +230,19 @@ function BuyPageContent() {
   return (
     <>
       {/* Desktop Title & Header */}
-      <div className="hidden md:block mb-6">
-        <h1 className="text-2xl font-bold md:text-3xl text-primary-foreground">Buy <span className="text-orange-400">{coinFullName}</span></h1>
-        <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
+      <div className="hidden md:flex justify-between items-center mb-6">
+        <div>
+            <h1 className="text-2xl font-bold md:text-3xl text-primary-foreground">Buy <span className="text-orange-400">{coinFullName}</span></h1>
+            <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
+        </div>
+        <div className="flex items-center gap-2">
+            <Button variant="outline" asChild className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
+                <Link href="/academy"><BookOpen className="mr-2 h-4 w-4" /> Academy</Link>
+            </Button>
+            <Button variant="outline" asChild className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
+                <Link href="/guides"><HelpCircle className="mr-2 h-4 w-4" /> Take Tour</Link>
+            </Button>
+        </div>
       </div>
       
       {/* Desktop Filter Bar */}
@@ -606,14 +616,16 @@ function BuyPageContent() {
 }
 
 
-export default function BuyPage() {
+export default function SellPage() {
     return (
-        <Suspense fallback={
+         <Suspense fallback={
             <div className="flex flex-1 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         }>
-            <BuyPageContent />
+            <SellPageContent />
         </Suspense>
     );
 }
+
+    
