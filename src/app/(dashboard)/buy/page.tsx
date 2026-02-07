@@ -230,37 +230,27 @@ function BuyPageContent() {
   return (
     <>
       {/* Desktop Title & Header */}
-      <div className="hidden md:block bg-primary text-primary-foreground md:-mt-4 md:-mx-4 lg:-mt-6 lg:-mx-6 p-6 mb-6">
-        <div className="container mx-auto">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold md:text-3xl">Buy <span className="text-orange-400">{coinFullName}</span></h1>
-                    <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
-                </div>
-                <div className="flex items-center gap-4 text-sm font-medium">
-                    <Link href="/guides" className="flex items-center gap-2 hover:text-primary-foreground/80 transition-colors"><BookOpen className="h-4 w-4" /> Academy</Link>
-                    <Link href="#" className="flex items-center gap-2 hover:text-primary-foreground/80 transition-colors"><HelpCircle className="h-4 w-4" /> Take a Tour</Link>
-                </div>
-            </div>
-        </div>
+      <div className="hidden md:block mb-6">
+        <h1 className="text-2xl font-bold md:text-3xl text-primary-foreground">Buy <span className="text-orange-400">{coinFullName}</span></h1>
+        <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
       </div>
       
       {/* Desktop Filter Bar */}
-      <div className="container mx-auto hidden md:block mb-6">
-        <div className="w-full flex flex-wrap items-center gap-2 rounded-lg bg-primary text-primary-foreground p-2">
+      <div className="hidden md:block mb-6">
+        <div className="w-full flex flex-wrap items-center gap-2 rounded-lg bg-card text-card-foreground p-2 shadow-sm">
             
-            <div className="flex items-center bg-black/20 p-1 rounded-md">
-                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1 bg-transparent text-primary-foreground/80 hover:bg-black/30', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
+            <div className="flex items-center bg-muted p-1 rounded-md">
+                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-background/80', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
                     <ArrowDown className="mr-2 h-3.5 w-3.5" /> Buy
                 </Button>
-                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1 bg-transparent text-primary-foreground/80 hover:bg-black/30', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
+                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-background/80', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
                     <ArrowUp className="mr-2 h-3.5 w-3.5" /> Sell
                 </Button>
             </div>
 
             <div className="flex-grow sm:flex-grow-0 sm:w-40">
               <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
-                  <SelectTrigger className="h-10 w-full rounded-md border-0 bg-background shadow-sm text-foreground">
+                  <SelectTrigger className="h-10 w-full rounded-md shadow-sm">
                       <SelectValue>
                           <div className="flex items-center gap-2">
                               <CryptoLogo crypto={selectedCoin} className="h-5 w-5" />
@@ -282,7 +272,7 @@ function BuyPageContent() {
             </div>
             
             <div className="relative flex items-center flex-1 min-w-[200px]">
-                <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 pl-3 pr-20 border-0 bg-background text-foreground"/>
+                <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 pl-3 pr-20"/>
                 <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground" onClick={() => setIsFiatSheetOpen(true)}>
                     {selectedFiat}
                     <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
@@ -290,20 +280,20 @@ function BuyPageContent() {
             </div>
             
             <div className="flex-1 min-w-[200px]">
-              <Button type="button" variant="outline" className="h-10 w-full flex justify-between items-center text-left font-normal truncate bg-background border-0 text-foreground" onClick={() => setIsPaymentSheetOpen(true)}>
+              <Button type="button" variant="outline" className="h-10 w-full flex justify-between items-center text-left font-normal truncate" onClick={() => setIsPaymentSheetOpen(true)}>
                   <span className="truncate">{paymentMethod || 'Payment method'}</span>
                   <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
               </Button>
             </div>
             
-            <div className="flex items-center gap-2">
-                <Button variant="outline" asChild className="bg-background/20 border-0 text-primary-foreground hover:bg-background/30">
+            <div className="flex items-center gap-2 ml-auto">
+                <Button variant="outline" asChild>
                     <Link href="/ads/create"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
                 </Button>
-                <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)} className="bg-background/20 border-0 text-primary-foreground hover:bg-background/30">
+                <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
                     <SlidersHorizontal className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="icon" onClick={() => window.location.reload()} className="bg-background/20 border-0 text-primary-foreground hover:bg-background/30">
+                <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
                     <RefreshCw className="h-4 w-4" />
                 </Button>
             </div>
@@ -411,7 +401,7 @@ function BuyPageContent() {
             ))
         )}
         {!isLoading && (!filteredAds || filteredAds.length === 0) && (
-            <div className="text-center py-10 border-2 border-dashed rounded-lg">
+            <div className="text-center py-10 border-2 border-dashed rounded-lg bg-card">
                 <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold">No Ads Found</h3>
                 <p className="mt-1 text-sm text-muted-foreground">No ads match your current filter criteria. Try adjusting your filters.</p>
@@ -630,6 +620,8 @@ export default function BuyPage() {
         </Suspense>
     );
 }
+
+    
 
     
 
