@@ -365,13 +365,13 @@ function SignupFormComponent() {
               </div>
               <Button type="submit" className="w-full" disabled={isSigningUp}>
                 {isSigningUp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSigningUp ? "Creating Account..." : "Create Account"}
+                {isSigningUp ? "Creating Account..." : "Join us"}
               </Button>
             </form>
           </Form>
           <div className="mt-4 text-center text-sm">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-accent hover:underline">
+            <Link href="/login" className="font-medium text-primary hover:underline">
               Log In
             </Link>
           </div>

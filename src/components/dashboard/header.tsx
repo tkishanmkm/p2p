@@ -189,12 +189,12 @@ export function DashboardHeader() {
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6 justify-between">
       {/* Left side */}
       <div className="flex items-center gap-4">
+        <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold md:text-base">
+          <Logo />
+          <span className="sr-only">TradeFlow</span>
+        </Link>
         {/* Desktop nav */}
         <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
-          <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold md:text-base">
-            <Logo />
-            <span className="sr-only">TradeFlow</span>
-          </Link>
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -209,42 +209,6 @@ export function DashboardHeader() {
             </Link>
           ))}
         </nav>
-
-        {/* Mobile nav */}
-        <div className="flex items-center gap-2 md:hidden">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <nav className="grid gap-6 text-lg font-medium">
-                <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
-                  <Logo />
-                </Link>
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-4 text-base transition-colors ${
-                      pathname === item.href
-                        ? 'text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
-          <Link href="/dashboard" className="flex items-center font-semibold">
-            <Logo />
-          </Link>
-        </div>
       </div>
 
       {/* Right side */}
@@ -394,6 +358,80 @@ export function DashboardHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        
+        {/* Mobile Nav Trigger */}
+        <div className="flex items-center md:hidden">
+            <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="shrink-0">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="flex flex-col">
+              <nav className="grid gap-6 text-lg font-medium mt-8">
+                <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
+                  <Logo />
+                </Link>
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-4 text-base transition-colors ${
+                      pathname === item.href
+                        ? 'text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+               <div className="mt-auto">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start">
+                            <Globe className="mr-2 h-4 w-4" />
+                            <span>{selectedLanguage.nativeName}</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {LANGUAGES.map((lang) =>
+                            lang.dialects ? (
+                                <DropdownMenuSub key={lang.code}>
+                                <DropdownMenuSubTrigger>
+                                    <div className="flex flex-col items-start">
+                                    <span className="font-medium">{lang.nativeName}</span>
+                                    </div>
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                    {lang.dialects.map((dialect) => (
+                                        <DropdownMenuItem key={dialect.code} onClick={() => handleLanguageSelect(dialect)}>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{dialect.nativeName}</span>
+                                        </div>
+                                        </DropdownMenuItem>
+                                    ))}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                            ) : (
+                                <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
+                                <div className="flex flex-col">
+                                    <span className="font-medium">{lang.nativeName}</span>
+                                </div>
+                                </DropdownMenuItem>
+                            )
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+
       </div>
     </header>
   );

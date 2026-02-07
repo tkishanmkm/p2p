@@ -143,9 +143,9 @@ function LoginFormComponent() {
                   <FormItem>
                     <div className="flex justify-between items-center">
                         <FormLabel>Password</FormLabel>
-                        <Link href="/forgot-password" passHref legacyBehavior>
-                           <a className="text-sm font-medium text-accent hover:underline">Forgot password?</a>
-                        </Link>
+                        <Button asChild variant="link" className="p-0 h-auto text-sm">
+                           <Link href="/forgot-password">Forgot password?</Link>
+                        </Button>
                     </div>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
@@ -182,8 +182,8 @@ function LoginFormComponent() {
           </Form>
           <div className="mt-6 text-center text-sm">
             Don't have an account?{" "}
-            <Link href="/signup" className="font-medium text-accent hover:underline">
-              Sign Up
+            <Link href="/signup" className="font-medium text-primary hover:underline">
+              Join us
             </Link>
           </div>
         </CardContent>
