@@ -300,8 +300,8 @@ function SellPageContent() {
         {/* Mobile View */}
          <div className="md:hidden flex items-center gap-2 w-full">
             <div className="flex items-center bg-muted p-1 rounded-md flex-1">
-                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>Buy</Button>
-                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>Sell</Button>
+                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1', pathname.includes('/buy') ? 'bg-green-600 hover:bg-green-700 text-white shadow-md' : 'bg-transparent text-muted-foreground hover:bg-muted/50')}>Buy</Button>
+                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1', pathname.includes('/sell') ? 'bg-red-600 hover:bg-red-700 text-white shadow-md' : 'bg-transparent text-muted-foreground hover:bg-muted/50')}>Sell</Button>
             </div>
              <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
                 <SlidersHorizontal className="h-4 w-4" />
