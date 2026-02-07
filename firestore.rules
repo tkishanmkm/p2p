@@ -80,7 +80,7 @@ service cloud.firestore {
       match /notifications/{notificationId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
-      match /sessions/{sessionId} {
+       match /sessions/{sessionId} {
         allow read, list, create: if isOwner(userId) || isAdmin();
         allow update, delete: if isOwner(userId) || isAdmin();
       }
@@ -107,7 +107,9 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow create: if request.auth.uid != null
+                      && 'userId' in request.resource.data
+                      && request.resource.data.userId == request.auth.uid;
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
