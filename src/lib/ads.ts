@@ -1,7 +1,7 @@
 
 'use client';
 import { Firestore, collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import type { P2PAd } from './types';
+import type { P2PAd, CryptoCurrency } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -26,20 +26,49 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
 }) {
   const adsCollection = collection(db, 'p2p_ads');
   
-  const newAdData = {
-    ...adData,
+  // Explicitly build the object to avoid sending undefined fields
+  const newAdData: any = {
+    adType: adData.adType,
+    crypto: adData.crypto,
+    fiatCurrency: adData.fiatCurrency,
+    paymentMethods: adData.paymentMethods,
+    rateType: adData.rateType,
+    minAmount: adData.minAmount,
+    maxAmount: adData.maxAmount,
+    paymentTimeLimit: adData.paymentTimeLimit,
+    terms: adData.terms,
+    active: adData.active,
+    minCompletedTrades: adData.minCompletedTrades,
     publicAdId: generatePublicAdId(),
-    userId: user.id,
-    user: {
+    userId: user.id, // The UID of the user creating the ad
+    user: { // The denormalized public user data
       userId: user.userId,
       country: user.country,
       feedbackScore: user.feedbackScore,
       completedTrades: user.completedTrades,
-      photoURL: user.photoURL,
-      badges: user.badges,
+      photoURL: user.photoURL || "",
+      badges: user.badges || [],
     },
     createdAt: serverTimestamp()
   };
+
+  // Conditionally add optional fields to avoid sending 'undefined'
+  if (adData.rateType === 'market' && adData.ratePercent !== undefined) {
+    newAdData.ratePercent = adData.ratePercent;
+  }
+  if (adData.rateType === 'fixed' && adData.fixedRate !== undefined) {
+    newAdData.fixedRate = adData.fixedRate;
+  }
+  if (adData.tags && adData.tags.length > 0) {
+    newAdData.tags = adData.tags;
+  }
+  if (adData.targetedCountries && adData.targetedCountries.length > 0) {
+    newAdData.targetedCountries = adData.targetedCountries;
+  }
+  if (adData.blockedCountries && adData.blockedCountries.length > 0) {
+    newAdData.blockedCountries = adData.blockedCountries;
+  }
+
 
   try {
     const docRef = await addDoc(adsCollection, newAdData);
@@ -47,7 +76,6 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
   } catch (error) {
     console.error("Error creating P2P Ad: ", error);
     
-    // For error reporting, create a version with a client-side date to ensure it's serializable
     const reportableData = { ...newAdData, createdAt: new Date().toISOString() };
     
     errorEmitter.emit(
