@@ -359,36 +359,50 @@ export async function sendCoinToUser(
     throw new Error("Amount must be a positive number.");
   }
 
-  const senderWalletRef = doc(db, "users", sender.uid, "wallets", crypto);
+  // 1. Find recipient by username OUTSIDE the transaction
   const usersCollectionRef = collection(db, "users");
+  const recipientQuery = query(
+    usersCollectionRef,
+    where("userId", "==", recipientUsername),
+    limit(1)
+  );
+  const recipientSnapshot = await getDocs(recipientQuery);
+  if (recipientSnapshot.empty) {
+    throw new Error(`User "${recipientUsername}" not found.`);
+  }
+  const recipientDoc = recipientSnapshot.docs[0];
+  const recipient = { id: recipientDoc.id, ...(recipientDoc.data() as AppUser) };
+
+  const senderWalletRef = doc(db, "users", sender.uid, "wallets", crypto);
+  const recipientWalletRef = doc(db, "users", recipient.id, "wallets", crypto);
   const transferRef = doc(collection(db, "transfers"));
 
   return await runTransaction(db, async (transaction) => {
-    // 1. Verify sender's balance
+    // --- All READS must happen first ---
     const senderWalletDoc = await transaction.get(senderWalletRef);
+    const recipientWalletDoc = await transaction.get(recipientWalletRef);
+
+    // --- Validation ---
     if (!senderWalletDoc.exists() || ((senderWalletDoc.data() as UserWallet).balance || 0) < amount) {
       throw new Error(`Insufficient ${crypto} balance.`);
     }
 
-    // 2. Find recipient by username
-    const recipientQuery = query(usersCollectionRef, where("userId", "==", recipientUsername), limit(1));
-    const recipientSnapshot = await getDocs(recipientQuery);
-    if (recipientSnapshot.empty) {
-      throw new Error(`User "${recipientUsername}" not found.`);
-    }
-    const recipientDoc = recipientSnapshot.docs[0];
-    const recipient = { id: recipientDoc.id, ...recipientDoc.data() as AppUser };
+    // --- All WRITES happen after reads ---
 
-    // 3. Update sender's wallet
+    // 1. Update sender's wallet
     const senderWallet = senderWalletDoc.data() as UserWallet;
-    transaction.update(senderWalletRef, { balance: (senderWallet.balance || 0) - amount, updatedAt: new Date().toISOString() });
+    transaction.update(senderWalletRef, {
+      balance: (senderWallet.balance || 0) - amount,
+      updatedAt: new Date().toISOString(),
+    });
 
-    // 4. Update recipient's wallet (or create it)
-    const recipientWalletRef = doc(db, "users", recipient.id, "wallets", crypto);
-    const recipientWalletDoc = await transaction.get(recipientWalletRef);
+    // 2. Update recipient's wallet (or create it)
     if (recipientWalletDoc.exists()) {
       const recipientWallet = recipientWalletDoc.data() as UserWallet;
-      transaction.update(recipientWalletRef, { balance: (recipientWallet.balance || 0) + amount, updatedAt: new Date().toISOString() });
+      transaction.update(recipientWalletRef, {
+        balance: (recipientWallet.balance || 0) + amount,
+        updatedAt: new Date().toISOString(),
+      });
     } else {
       transaction.set(recipientWalletRef, {
         balance: amount,
@@ -400,7 +414,7 @@ export async function sendCoinToUser(
       });
     }
 
-    // 5. Log the transfer
+    // 3. Log the transfer
     const transferId = generateId("TX-", 10);
     transaction.set(transferRef, {
       publicId: transferId,
@@ -412,26 +426,26 @@ export async function sendCoinToUser(
       amount,
       createdAt: new Date().toISOString(),
     });
-    
-    // 6. Send notifications
+
+    // 4. Send notifications
     const senderNotifRef = doc(collection(db, `users/${sender.uid}/notifications`));
     transaction.set(senderNotifRef, {
-        userId: sender.uid,
-        message: `You sent ${amount} ${crypto} to ${recipientUsername}.`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        link: `/transfer`
+      userId: sender.uid,
+      message: `You sent ${amount} ${crypto} to ${recipientUsername}.`,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      link: `/transfer`,
     });
 
     const recipientNotifRef = doc(collection(db, `users/${recipient.id}/notifications`));
     transaction.set(recipientNotifRef, {
-        userId: recipient.id,
-        message: `You received ${amount} ${crypto} from ${sender.displayName}.`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        link: `/transfer`
+      userId: recipient.id,
+      message: `You received ${amount} ${crypto} from ${sender.displayName}.`,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      link: `/transfer`,
     });
-    
+
     return transferId;
   });
 }
