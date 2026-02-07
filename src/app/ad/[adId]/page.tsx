@@ -223,8 +223,8 @@ export default function AdDetailPage() {
     
     return (
         <div className="space-y-8">
-            <div>
-                 <p className="text-sm text-muted-foreground">
+            <div className="bg-primary text-primary-foreground p-6 md:p-8 rounded-lg shadow-lg">
+                 <p className="text-sm text-primary-foreground/80">
                     {user.country ? <Link href={`/buy?country=${user.country}`} className="hover:underline">{user.country}</Link> : 'Global'} / <Link href={`/${ad.adType === 'sell' ? 'buy' : 'sell'}`} className="hover:underline">{titleAction} {ad.crypto}</Link> / {ad.paymentMethods[0]}
                 </p>
                 <h1 className="text-3xl md:text-4xl font-bold mt-1">
