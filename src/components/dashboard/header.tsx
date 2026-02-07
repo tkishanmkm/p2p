@@ -59,14 +59,10 @@ const navItems = [
   { href: '/buy', label: 'Buy Coin', icon: ArrowDownToLine },
   { href: '/sell', label: 'Sell Coin', icon: ArrowUpFromLine },
   { href: '/transfer', label: 'Transfer', icon: Send },
-];
-
-const mobileNavItems = [
-    ...navItems,
-    { href: '/ads/create', label: 'Create Ad', icon: PlusCircle },
-    { href: '/my-ads', label: 'My Ads', icon: FileText },
-    { href: '/trades', label: 'My Trades', icon: ArrowLeftRight },
-    { href: '/contact', label: 'Support', icon: LifeBuoy },
+  { href: '/ads/create', label: 'Create Ad', icon: PlusCircle },
+  { href: '/my-ads', label: 'My Ads', icon: FileText },
+  { href: '/trades', label: 'My Trades', icon: ArrowLeftRight },
+  { href: '/contact', label: 'Support', icon: LifeBuoy },
 ];
 
 export function DashboardHeader() {
@@ -152,7 +148,7 @@ export function DashboardHeader() {
   if (!authUser) {
     return (
        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-16 items-center justify-between px-4 md:px-6">
+        <div className="container flex h-16 items-center justify-between">
           <Link href="/">
             <Logo />
           </Link>
@@ -167,7 +163,7 @@ export function DashboardHeader() {
   // Authenticated State
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center px-4 md:px-6">
+      <div className="container flex h-16 items-center">
         
         {/* Mobile Header Left */}
         <div className="flex items-center gap-1 md:hidden">
@@ -183,7 +179,7 @@ export function DashboardHeader() {
                   <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
                     <Logo />
                   </Link>
-                  {mobileNavItems.map((item) => (
+                  {navItems.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
