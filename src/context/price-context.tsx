@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { CryptoCurrency } from '@/lib/types';
+import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 
 interface PriceContextType {
   prices: Record<CryptoCurrency, number>;
@@ -13,9 +14,9 @@ const PriceContext = createContext<PriceContextType | undefined>(undefined);
 
 export function PriceProvider({ children }: { children: ReactNode }) {
   const [prices, setPrices] = useState<Record<CryptoCurrency, number>>({
-    BTC: 65000,
-    ETH: 3500,
-    LTC: 80,
+    BTC: 0,
+    ETH: 0,
+    LTC: 0,
     USDT: 1,
   });
 
@@ -58,17 +59,49 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate initial fetch
-    setTimeout(() => setIsLoading(false), 500);
+    const cryptoIdMap: Record<string, string> = {
+      BTC: 'bitcoin',
+      ETH: 'ethereum',
+      LTC: 'litecoin',
+      USDT: 'tether',
+    };
+    
+    const cryptoSymbols = SUPPORTED_CRYPTOS.map(c => cryptoIdMap[c.name]).filter(Boolean).join(',');
 
-    const cryptoInterval = setInterval(() => {
-      setPrices(prev => ({
-        BTC: prev.BTC * (1 + (Math.random() - 0.5) * 0.005),
-        ETH: prev.ETH * (1 + (Math.random() - 0.5) * 0.005),
-        LTC: prev.LTC * (1 + (Math.random() - 0.5) * 0.01),
-        USDT: 1,
-      }));
-    }, 15000);
+    const fetchPrices = async () => {
+      try {
+        const response = await fetch(`https://api.coincap.io/v2/assets?ids=${cryptoSymbols}`);
+        if (!response.ok) {
+            console.error("Failed to fetch crypto prices from CoinCap API.");
+            return;
+        }
+        const data = await response.json();
+        
+        const newPrices: Partial<Record<CryptoCurrency, number>> = {};
+        
+        data.data.forEach((asset: any) => {
+          const symbol = Object.keys(cryptoIdMap).find(key => cryptoIdMap[key] === asset.id) as CryptoCurrency | undefined;
+          if (symbol) {
+            newPrices[symbol] = parseFloat(asset.priceUsd);
+          }
+        });
+
+        // Ensure USDT is always 1, as API might fluctuate slightly
+        newPrices.USDT = 1.00;
+
+        setPrices(prev => ({ ...prev, ...newPrices }));
+        
+      } catch (error) {
+        console.error("Error fetching prices:", error);
+      } finally {
+        if (isLoading) {
+            setIsLoading(false);
+        }
+      }
+    };
+    
+    fetchPrices();
+    const cryptoInterval = setInterval(fetchPrices, 15000);
 
     const fiatInterval = setInterval(() => {
       setFiatRates(prev => {
@@ -86,7 +119,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       clearInterval(cryptoInterval);
       clearInterval(fiatInterval);
     };
-  }, []);
+  }, [isLoading]);
 
   return (
     <PriceContext.Provider value={{ prices, fiatRates, isLoading }}>
