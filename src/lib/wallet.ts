@@ -14,6 +14,7 @@ import {
   limit,
   getDocs,
   serverTimestamp,
+  setDoc,
 } from 'firebase/firestore';
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User as AppUser } from './types';
 import { add } from 'date-fns';
@@ -431,20 +432,5 @@ export async function sendCoinToUser(
     });
   });
 
-  // After the transaction is successful, create a notification for the recipient.
-  // This is done outside the transaction to avoid permission errors.
-  if (transferId) {
-    const recipientNotifRef = doc(collection(db, `users/${recipient.id}/notifications`));
-    await setDoc(recipientNotifRef, {
-        userId: recipient.id,
-        message: `You received ${amount} ${crypto} from ${sender.displayName}.`,
-        isRead: false,
-        createdAt: serverTimestamp(),
-        link: `/transfer`,
-    });
-  }
-
   return transferId;
 }
-
-    
