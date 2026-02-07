@@ -53,6 +53,8 @@ export const SECURITY_QUESTIONS = [
     "What is your favorite book?",
 ];
 
+export const BLOCK_LIMIT = 100;
+
 export const AD_TAGS = [
   "No third party",
   "No receipt required",

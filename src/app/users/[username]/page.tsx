@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -13,7 +14,7 @@ import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, CheckCircle, Clock, DollarSign, ThumbsUp, ThumbsDown, FileText, UserX, UserCheck } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, DollarSign, ThumbsUp, ThumbsDown, FileText, UserX, UserCheck, ShieldOff } from 'lucide-react';
 import { toDate } from '@/lib/utils';
 import { blockUser, unblockUser } from '@/lib/users';
 import { useToast } from '@/hooks/use-toast';
@@ -105,12 +106,14 @@ export default function PublicProfilePage() {
   );
   const { data: ads, isLoading: areAdsLoading } = useCollection<P2PAd>(adsQuery);
 
-  const isBlocked = currentUserData?.blockedUsers?.includes(user?.id || '');
+  const isBlockedByCurrentUser = currentUserData?.blockedUsers?.includes(user?.id || '');
+  const isCurrentUserBlocked = user?.blockedUsers?.includes(currentUserData?.id || '');
+  const isInteractionBlocked = !isUserLoading && (isBlockedByCurrentUser || isCurrentUserBlocked);
 
   const handleBlock = async () => {
     if (!firestore || !authUser || !user) return;
     try {
-      await blockUser(firestore, authUser.uid, user.id);
+      await blockUser(firestore, authUser.uid, user.userId);
       toast({ title: "User Blocked", description: `You have blocked ${user.userId}.` });
     } catch (e: any) {
       toast({ variant: 'destructive', title: "Error", description: e.message });
@@ -197,7 +200,7 @@ export default function PublicProfilePage() {
                     </p>
                     {!isOwnProfile && authUser && (
                       <div className="mt-4 w-full">
-                        {isBlocked ? (
+                        {isBlockedByCurrentUser ? (
                           <Button variant="outline" className="w-full" onClick={handleUnblock}>
                             <UserCheck className="mr-2 h-4 w-4" /> Unblock User
                           </Button>
@@ -214,26 +217,38 @@ export default function PublicProfilePage() {
         </div>
 
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Ads</CardTitle>
-              <CardDescription>
-                P2P ads currently run by {user.userId}.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {areAdsLoading && <Skeleton className="h-32 w-full" />}
-              {!areAdsLoading && ads && ads.length > 0 ? (
-                ads.map(ad => <AdCard key={ad.id} ad={ad} />)
-              ) : (
-                <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                  <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 text-lg font-semibold">No Active Ads</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{user.userId} does not have any active ads right now.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            {isInteractionBlocked ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Interaction Blocked</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center py-10">
+                        <ShieldOff className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <p className="mt-4 text-muted-foreground">You cannot view ads or trade with this user.</p>
+                    </CardContent>
+                </Card>
+            ) : (
+                <Card>
+                    <CardHeader>
+                    <CardTitle>Active Ads</CardTitle>
+                    <CardDescription>
+                        P2P ads currently run by {user.userId}.
+                    </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                    {areAdsLoading && <Skeleton className="h-32 w-full" />}
+                    {!areAdsLoading && ads && ads.length > 0 ? (
+                        ads.map(ad => <AdCard key={ad.id} ad={ad} />)
+                    ) : (
+                        <div className="text-center py-10 border-2 border-dashed rounded-lg">
+                        <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <h3 className="mt-4 text-lg font-semibold">No Active Ads</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">{user.userId} does not have any active ads right now.</p>
+                        </div>
+                    )}
+                    </CardContent>
+                </Card>
+            )}
         </div>
       </div>
     </>

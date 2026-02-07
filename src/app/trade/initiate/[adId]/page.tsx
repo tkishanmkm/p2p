@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useDoc, useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection, query, where } from "firebase/firestore";
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, ShieldOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePrices } from "@/context/price-context";
@@ -88,6 +88,9 @@ export default function InitiateTradePage() {
   const adRef = firestore && adId ? doc(firestore, "p2p_ads", adId) : null;
   const { data: ad, isLoading: isAdLoading } = useDoc<P2PAd>(adRef);
   
+  const adCreatorRef = useMemoFirebase(() => (ad ? doc(firestore, "users", ad.userId) : null), [ad, firestore]);
+  const { data: adCreator, isLoading: isAdCreatorLoading } = useDoc<User>(adCreatorRef);
+
   const tradesRef = useMemoFirebase(() => (firestore ? collection(firestore, "trades") : null), [firestore]);
 
   const activeTradeAsBuyerQuery = useMemoFirebase(() => (
@@ -251,7 +254,18 @@ export default function InitiateTradePage() {
     }
   };
   
-  const isLoading = isAuthLoading || isUserLoading || isAdLoading || isLoadingActiveTrade || (ad?.adType === 'sell' && isSellerWalletLoading);
+  const blockDetails = useMemo(() => {
+    if (!user || !adCreator) return null;
+    if (user.blockedUsers?.includes(adCreator.id)) {
+      return { blocked: true, message: `You have blocked ${adCreator.userId}. You must unblock them to trade.` };
+    }
+    if (adCreator.blockedUsers?.includes(user.id)) {
+      return { blocked: true, message: `You cannot trade with this user. ${adCreator.userId} has blocked you.` };
+    }
+    return { blocked: false, message: '' };
+  }, [user, adCreator]);
+
+  const isLoading = isAuthLoading || isUserLoading || isAdLoading || isLoadingActiveTrade || isAdCreatorLoading || (ad?.adType === 'sell' && isSellerWalletLoading);
 
   if (isLoading || !authUser) {
     return (
@@ -313,6 +327,25 @@ export default function InitiateTradePage() {
         </Card>
       </div>
     );
+  }
+
+  if (blockDetails?.blocked) {
+    return (
+      <div className="flex justify-center items-start pt-10">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle>Trade Not Allowed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Alert variant="destructive">
+              <ShieldOff className="h-4 w-4" />
+              <AlertTitle>Interaction Blocked</AlertTitle>
+              <AlertDescription>{blockDetails.message}</AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   const isTradePossible = effectiveMaxAmount !== null && effectiveMaxAmount >= ad.minAmount;

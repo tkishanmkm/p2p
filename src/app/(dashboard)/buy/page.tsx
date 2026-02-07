@@ -2,7 +2,7 @@
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from "@/firebase";
-import { collection, query, where, doc } from "firebase/firestore";
+import { collection, query, where, doc, getDocs, documentId } from "firebase/firestore";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AdCard } from "@/components/p2p/ad-card";
@@ -61,6 +61,7 @@ function BuyPageContent() {
 
   const userRef = useMemoFirebase(() => (authUser ? doc(firestore, "users", authUser.uid) : null), [firestore, authUser]);
   const { data: currentUserData } = useDoc<User>(userRef);
+  const [adCreators, setAdCreators] = useState<Record<string, User>>({});
 
   const [amount, setAmount] = useState(searchParams.get('amount') || "");
   const [paymentMethod, setPaymentMethod] = useState(searchParams.get('paymentMethod') || "");
@@ -134,6 +135,35 @@ function BuyPageContent() {
   );
   const { data: sellAds, isLoading } = useCollection<P2PAd>(sellAdsQuery);
 
+  useEffect(() => {
+    if (!sellAds || !firestore) return;
+
+    const creatorIds = [...new Set(sellAds.map(ad => ad.userId))];
+
+    const fetchCreators = async () => {
+      if (creatorIds.length === 0) return;
+      const usersRef = collection(firestore, 'users');
+      const chunks = [];
+      for (let i = 0; i < creatorIds.length; i += 30) {
+          chunks.push(creatorIds.slice(i, i + 30));
+      }
+      
+      const newCreators: Record<string, User> = {};
+      for (const chunk of chunks) {
+        if (chunk.length === 0) continue;
+        const q = query(usersRef, where(documentId(), 'in', chunk));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+            newCreators[doc.id] = { id: doc.id, ...doc.data() } as User;
+        });
+      }
+      setAdCreators(prev => ({...prev, ...newCreators}));
+    };
+
+    fetchCreators();
+
+  }, [sellAds, firestore]);
+
   const filteredFiats = useMemo(() => {
     return currencies.filter(c => 
         c.name.toLowerCase().includes(fiatSearch.toLowerCase()) || 
@@ -154,6 +184,18 @@ function BuyPageContent() {
     const exchangeRate = fiatRates[selectedFiat] || 1;
 
     let ads = sellAds.filter(ad => {
+      if (currentUserData) {
+        // Hide if I have blocked the ad creator
+        if (currentUserData.blockedUsers?.includes(ad.userId)) {
+          return false;
+        }
+        // Hide if the ad creator has blocked me
+        const adCreator = adCreators[ad.userId];
+        if (adCreator?.blockedUsers?.includes(currentUserData.id)) {
+          return false;
+        }
+      }
+      
       const amountNum = parseFloat(amount);
       if (amount && !isNaN(amountNum)) {
         if (amountNum < ad.minAmount || amountNum > ad.maxAmount) {
@@ -222,7 +264,7 @@ function BuyPageContent() {
     });
     
     return ads;
-  }, [sellAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, showTopRated, showVerified, showRecentlyActive, showAcceptable, selectedTags, currentUserData, sortBy, prices, fiatRates]);
+  }, [sellAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, showTopRated, showVerified, showRecentlyActive, showAcceptable, selectedTags, currentUserData, sortBy, prices, fiatRates, adCreators]);
   
   const handleToggle = (page: 'buy' | 'sell') => {
     router.push(`/${page}`);
