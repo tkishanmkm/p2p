@@ -301,36 +301,36 @@ function BuyPageContent() {
       </div>
       
       {/* Mobile Filter UI */}
-      <div className="md:hidden -mx-2 -mt-2 sm:-mx-4 sm:-mt-4 mb-6">
-        <div className="bg-primary text-primary-foreground p-4 rounded-b-lg shadow-md">
+      <div className="md:hidden mb-6">
+        <div className="bg-card text-card-foreground p-4 rounded-lg shadow-md">
           <div className="flex items-center justify-between gap-4 my-2">
             <div>
               <h1 className="text-2xl font-bold">
                 Buy <span className="text-orange-400">{coinFullName}</span>
               </h1>
-              <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
+              <p className="text-sm text-muted-foreground">{marketPriceText}</p>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" asChild>
+              <Button variant="ghost" size="icon" asChild>
                 <Link href="/guides"><BookOpen className="h-5 w-5" /></Link>
               </Button>
-              <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" asChild>
+              <Button variant="ghost" size="icon" asChild>
                 <Link href="/faq"><HelpCircle className="h-5 w-5" /></Link>
               </Button>
             </div>
           </div>
           <div className="space-y-2 mt-4">
-            <div className="flex items-center gap-2 rounded-lg bg-card/80 backdrop-blur-sm p-2 text-card-foreground">
-              <div className="flex items-center bg-background/20 p-1 rounded-md flex-grow">
-                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
+            <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
+              <div className="flex items-center bg-background p-1 rounded-md flex-grow">
+                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-secondary', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
                     <ArrowDown className="mr-1 h-4 w-4" /> Buy
                 </Button>
-                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
+                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-secondary', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
                     <ArrowUp className="mr-1 h-4 w-4" /> Sell
                 </Button>
               </div>
               <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
-                  <SelectTrigger className="h-10 rounded-md border-0 bg-transparent shadow-none w-[130px]">
+                  <SelectTrigger className="h-10 rounded-md border-0 bg-background shadow-none w-[130px]">
                       <SelectValue>
                           <div className="flex items-center gap-2 font-semibold">
                               <CryptoLogo crypto={selectedCoin} className="h-6 w-6" />
@@ -350,19 +350,15 @@ function BuyPageContent() {
                   </SelectContent>
               </Select>
             </div>
-            <div className="text-center text-xs font-bold tracking-widest text-primary-foreground/70 relative my-1">
-              <span className="bg-primary px-2 relative z-10">USING</span>
-              <div className="absolute left-0 top-1/2 w-full h-px bg-primary-foreground/20 -z-0"></div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 rounded-lg bg-card/80 backdrop-blur-sm p-2 text-card-foreground">
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-2">
               <div className="relative flex items-center">
-                    <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-24 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"/>
+                    <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-24 bg-background border-0 focus-visible:ring-0 focus-visible:ring-offset-0"/>
                     <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 flex items-center gap-1 rounded-md bg-background/20 hover:bg-background/30" onClick={() => setIsFiatSheetOpen(true)}>
                         {selectedFiat}
                         <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                 </div>
-                <Button type="button" variant="outline" className="h-12 flex justify-between items-center text-left font-normal truncate bg-transparent border-0" onClick={() => setIsPaymentSheetOpen(true)}>
+                <Button type="button" variant="outline" className="h-12 flex justify-between items-center text-left font-normal truncate bg-background border-0" onClick={() => setIsPaymentSheetOpen(true)}>
                     <span className="truncate">{paymentMethod || 'Payment method'}</span>
                     <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
                 </Button>
