@@ -48,27 +48,18 @@ service cloud.firestore {
     function isValidTransferUpdate(recipientId) {
       let senderId = request.auth.uid;
       if (senderId == recipientId) { return false; } // No self-transfer
-
+      
       let senderIsActive = get(/databases/$(database)/documents/users/$(senderId)).data.isBanned == false &&
                            get(/databases/$(database)/documents/users/$(senderId)).data.isOnHold == false;
       let recipientIsActive = get(/databases/$(database)/documents/users/$(recipientId)).data.isBanned == false &&
                               get(/databases/$(database)/documents/users/$(recipientId)).data.isOnHold == false;
-      if (!senderIsActive || !recipientIsActive) {
-        return false;
-      }
-
-      // For an update, the incoming data from the client MUST only contain 'balance' and 'updatedAt'.
-      let incomingKeys = request.resource.data.keys();
-      if (!incomingKeys.hasAll(['balance', 'updatedAt']) || incomingKeys.size() != 2) {
-          return false;
-      }
+      if (!senderIsActive || !recipientIsActive) { return false; }
       
-      // Ensure the balance is only being increased.
-      if (request.resource.data.balance <= resource.data.balance) {
-        return false;
-      }
-
-      return true;
+      // Ensure that only the balance is being increased and 'updatedAt' is being changed.
+      let isBalanceIncrement = request.resource.data.balance > resource.data.balance;
+      let onlyAllowedKeysChanged = request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'updatedAt']);
+      
+      return isBalanceIncrement && onlyAllowedKeysChanged;
     }
 
 
@@ -116,7 +107,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /wallets/{walletId} {
-        allow get, list: if isOwner(userId) || isAdmin();
+        allow get, list: if isSignedIn();
         allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId, walletId);
         allow update: if isOwner(userId) || isAdmin() || isValidTransferUpdate(userId);
         allow delete: if isAdmin();
