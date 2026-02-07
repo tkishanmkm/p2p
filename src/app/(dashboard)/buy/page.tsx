@@ -370,43 +370,44 @@ function BuyPageContent() {
           </div>
         </div>
       </div>
-
-
-      <div className="md:hidden flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Offers</h2>
-          <div className="flex items-center gap-2">
-              <Button variant="outline" asChild size="icon">
-                  <Link href="/ads/create"><PlusCircle className="h-4 w-4" /></Link>
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
-                  <SlidersHorizontal className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
-                  <RefreshCw className="h-4 w-4" />
-              </Button>
-          </div>
-      </div>
       
-      <div className="space-y-1">
-        {isLoading && (
-            <div className="space-y-1">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
+      <div className="bg-card text-card-foreground rounded-lg p-4 sm:p-6">
+        <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Offers</h2>
+            <div className="md:hidden flex items-center gap-2">
+                <Button variant="outline" asChild size="icon">
+                    <Link href="/ads/create"><PlusCircle className="h-4 w-4" /></Link>
+                </Button>
+                <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
+                    <SlidersHorizontal className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
+                    <RefreshCw className="h-4 w-4" />
+                </Button>
             </div>
-        )}
-        {!isLoading && filteredAds && filteredAds.length > 0 && (
-            filteredAds.map((ad) => (
-            <AdCard key={ad.id} ad={ad} />
-            ))
-        )}
-        {!isLoading && (!filteredAds || filteredAds.length === 0) && (
-            <div className="text-center py-10 border-2 border-dashed rounded-lg bg-card">
-                <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-semibold">No Ads Found</h3>
-                <p className="mt-1 text-sm text-muted-foreground">No ads match your current filter criteria. Try adjusting your filters.</p>
-            </div>
-        )}
+        </div>
+        
+        <div className="space-y-1">
+            {isLoading && (
+                <div className="space-y-1">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                </div>
+            )}
+            {!isLoading && filteredAds && filteredAds.length > 0 && (
+                filteredAds.map((ad) => (
+                <AdCard key={ad.id} ad={ad} />
+                ))
+            )}
+            {!isLoading && (!filteredAds || filteredAds.length === 0) && (
+                <div className="text-center py-10 border-2 border-dashed rounded-lg bg-muted">
+                    <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-semibold">No Ads Found</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">No ads match your current filter criteria. Try adjusting your filters.</p>
+                </div>
+            )}
+        </div>
       </div>
       
       <Sheet open={isFiltersSheetOpen} onOpenChange={setIsFiltersSheetOpen}>
@@ -620,11 +621,3 @@ export default function BuyPage() {
         </Suspense>
     );
 }
-
-    
-
-    
-
-    
-
-    
