@@ -359,7 +359,7 @@ export async function sendCoinToUser(
     throw new Error("Amount must be a positive number.");
   }
 
-  // 1. Find recipient by username OUTSIDE the transaction
+  // 1. Find recipient by username OUTSIDE the transaction for pre-checks
   const usersCollectionRef = collection(db, "users");
   const recipientQuery = query(
     usersCollectionRef,
@@ -372,6 +372,11 @@ export async function sendCoinToUser(
   }
   const recipientDoc = recipientSnapshot.docs[0];
   const recipient = { id: recipientDoc.id, ...(recipientDoc.data() as AppUser) };
+
+  // Pre-transaction check for recipient status
+  if (recipient.isBanned || recipient.isOnHold) {
+    throw new Error(`Cannot send coins to ${recipientUsername} as their account is not active.`);
+  }
 
   const senderWalletRef = doc(db, "users", sender.uid, "wallets", crypto);
   const recipientWalletRef = doc(db, "users", recipient.id, "wallets", crypto);
