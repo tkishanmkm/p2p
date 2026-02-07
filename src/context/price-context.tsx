@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { CryptoCurrency } from '@/lib/types';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 
@@ -23,81 +23,59 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const [fiatRates, setFiatRates] = useState<Record<string, number>>({ USD: 1 });
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const cryptoIdMap: Record<string, string> = {
-      BTC: 'bitcoin',
-      ETH: 'ethereum',
-      LTC: 'litecoin',
-      USDT: 'tether',
-    };
+  const cryptoIdMap: Record<string, string> = {
+    BTC: 'bitcoin',
+    ETH: 'ethereum',
+    LTC: 'litecoin',
+    USDT: 'tether',
+  };
     
-    const cryptoSymbols = SUPPORTED_CRYPTOS.map(c => cryptoIdMap[c.name]).filter(Boolean).join(',');
+  const cryptoSymbols = SUPPORTED_CRYPTOS.map(c => cryptoIdMap[c.name]).filter(Boolean).join(',');
 
-    const fetchPrices = async () => {
-      try {
-        const response = await fetch(`https://api.coincap.io/v2/assets?ids=${cryptoSymbols}`);
-        if (!response.ok) {
-            console.error("Failed to fetch crypto prices from CoinCap API.");
-            return;
-        }
-        const data = await response.json();
-        
+  const fetchAll = useCallback(async () => {
+    try {
+      const [cryptoRes, fiatRes] = await Promise.all([
+        fetch(`https://api.coincap.io/v2/assets?ids=${cryptoSymbols}`, { cache: 'no-store' }),
+        fetch('https://api.exchangerate.host/latest?base=USD', { cache: 'no-store' })
+      ]);
+      
+      if (cryptoRes.ok) {
+        const cryptoData = await cryptoRes.json();
         const newPrices: Partial<Record<CryptoCurrency, number>> = {};
-        
-        data.data.forEach((asset: any) => {
+        cryptoData.data.forEach((asset: any) => {
           const symbol = Object.keys(cryptoIdMap).find(key => cryptoIdMap[key] === asset.id) as CryptoCurrency | undefined;
           if (symbol) {
             newPrices[symbol] = parseFloat(asset.priceUsd);
           }
         });
-
-        // Ensure USDT is always 1, as API might fluctuate slightly
-        newPrices.USDT = 1.00;
-
-        setPrices(prev => ({ ...prev, ...newPrices }));
-        
-      } catch (error) {
-        console.error("Error fetching crypto prices:", error);
+        newPrices.USDT = 1.00; // Force USDT to be 1
+        setPrices(prev => ({...prev, ...newPrices}));
+      } else {
+         console.error("Failed to fetch crypto prices from CoinCap API.");
       }
-    };
+      
+      if (fiatRes.ok) {
+        const fiatData = await fiatRes.json();
+        setFiatRates({ USD: 1, ...fiatData.rates });
+      } else {
+        console.error("Failed to fetch fiat rates from exchangerate.host API.");
+      }
 
-    const fetchFiatRates = async () => {
-        try {
-          const response = await fetch(`https://api.coincap.io/v2/rates`);
-          if (!response.ok) {
-            console.error("Failed to fetch fiat rates from CoinCap API.");
-            return;
-          }
-          const data = await response.json();
-          const newRates: Record<string, number> = { USD: 1 };
-          data.data.forEach((rate: any) => {
-            if (rate.type === 'fiat') {
-              // The API gives rateUsd, which is how many USD 1 unit of the currency is.
-              // We need the rate against USD (how many units of currency for 1 USD).
-              newRates[rate.symbol] = 1 / parseFloat(rate.rateUsd);
-            }
-          });
-          setFiatRates(newRates);
-        } catch (error) {
-          console.error("Error fetching fiat rates:", error);
-        }
-    };
-
-    const fetchAllData = async () => {
-        await Promise.all([fetchPrices(), fetchFiatRates()]);
-        if (isLoading) {
+    } catch (error) {
+      console.error("Error fetching price data:", error);
+    } finally {
+        if(isLoading) {
             setIsLoading(false);
         }
-    };
-    
-    fetchAllData(); // Initial fetch
-    const interval = setInterval(fetchAllData, 15000); // Fetch every 15 seconds
+    }
+  }, [cryptoSymbols, isLoading]);
 
-    return () => {
-      clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array ensures this runs only once on mount.
+
+  useEffect(() => {
+    fetchAll();
+    const interval = setInterval(fetchAll, 15000);
+    return () => clearInterval(interval);
+  }, [fetchAll]);
 
   return (
     <PriceContext.Provider value={{ prices, fiatRates, isLoading }}>
