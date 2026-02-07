@@ -241,6 +241,12 @@ export default function AdDetailPage() {
                             <CardTitle>Offer Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                             {ad.offerLabel && (
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-sm">Offer Label</h4>
+                                    <Badge variant="default">{ad.offerLabel}</Badge>
+                                </div>
+                            )}
                             <div className="flex items-center justify-between text-sm p-3 bg-secondary rounded-md">
                                 <div className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" /> Payment Window</div>
                                 <div className="font-semibold">{ad.paymentTimeLimit} min</div>

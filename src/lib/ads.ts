@@ -62,6 +62,9 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
   if (adData.tags && adData.tags.length > 0) {
     newAdData.tags = adData.tags;
   }
+  if (adData.offerLabel) {
+    newAdData.offerLabel = adData.offerLabel;
+  }
   if (adData.targetedCountries && adData.targetedCountries.length > 0) {
     newAdData.targetedCountries = adData.targetedCountries;
   }

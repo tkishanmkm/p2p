@@ -69,6 +69,9 @@ export function AdCard({ ad }: AdCardProps) {
                     </div>
                 </div>
             </div>
+            {ad.offerLabel && (
+                <Badge>{ad.offerLabel}</Badge>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
                 {ad.paymentMethods.slice(0, 3).map(pm => (
                     <Badge key={pm} variant="outline">{pm}</Badge>
@@ -103,7 +106,7 @@ export function AdCard({ ad }: AdCardProps) {
                     <p className="text-sm font-medium">{ad.minAmount} - {ad.maxAmount} {ad.fiatCurrency}</p>
                 </div>
                 <Button asChild>
-                    <Link href={`/trade/initiate/${ad.id}`}>
+                    <Link href={`/ad/${ad.id}`}>
                         {ad.adType === 'buy' ? "Sell" : "Buy"} {ad.crypto}
                     </Link>
                 </Button>

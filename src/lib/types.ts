@@ -94,6 +94,7 @@ export type P2PAd = {
   paymentTimeLimit: number;
   terms: string;
   tags?: string[];
+  offerLabel?: string;
   active: boolean;
   createdAt: string; // TIMESTAMP
   targetedCountries?: string[];

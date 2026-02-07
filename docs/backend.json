@@ -380,6 +380,10 @@
           "type": "string",
           "description": "Terms and conditions of the ad."
         },
+        "offerLabel": {
+          "type": "string",
+          "description": "A short, custom label for the ad."
+        },
         "tags": {
           "type": "array",
           "description": "Optional tags for the ad.",

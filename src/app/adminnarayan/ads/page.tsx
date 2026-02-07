@@ -274,6 +274,7 @@ export default function AdminAdsPage() {
             {selectedAd && (
                  <div className="space-y-4 py-4 text-sm">
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedAd.user.userId}</span></div>
+                    {selectedAd.offerLabel && <div className="flex justify-between items-center"><span className="text-muted-foreground">Offer Label</span><Badge>{selectedAd.offerLabel}</Badge></div>}
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Type</span><Badge variant={selectedAd.adType === "sell" ? "secondary" : "outline"} className="capitalize">{selectedAd.adType}</Badge></div>
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Asset</span><span className="font-medium">{selectedAd.crypto} / {selectedAd.fiatCurrency}</span></div>
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Price</span><span className="font-medium">{selectedAd.rateType === 'fixed' ? `${selectedAd.fixedRate} ${selectedAd.fiatCurrency}` : `Market ${selectedAd.ratePercent}%`}</span></div>

@@ -87,6 +87,7 @@ const adFormSchema = z.object({
   minCompletedTrades: z.coerce.number().min(0).max(5).default(0),
   terms: z.string().min(10, "Terms must be at least 10 characters.").max(500, "Terms cannot exceed 500 characters."),
   tags: z.array(z.string()).optional(),
+  offerLabel: z.string().max(30, "Offer label cannot exceed 30 characters.").optional(),
 }).superRefine((data, ctx) => {
     if (data.rateType === 'market') {
         if (data.ratePercent === undefined || data.ratePercent === null || isNaN(data.ratePercent)) {
@@ -344,6 +345,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
         paymentTimeLimit: data.paymentTimeLimit,
         terms: data.terms,
         tags: data.tags,
+        offerLabel: data.offerLabel,
         active: ad?.active ?? true, // Preserve active status on edit, default to true on create
         targetedCountries: data.targetedCountries,
         blockedCountries: data.blockedCountries,
@@ -819,6 +821,21 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="offerLabel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Offer Label (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Best rate on the market!" {...field} value={field.value ?? ''} />
+                  </FormControl>
+                  <FormDescription>A short, eye-catching label for your ad (max 30 characters).</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
