@@ -222,7 +222,7 @@ function SellPageContent() {
     router.push(`/${page}`);
   }
 
-  const pageTitle = `Sell ${selectedCoin === 'BTC' ? 'Bitcoin' : selectedCoin === 'ETH' ? 'Ethereum' : selectedCoin === 'LTC' ? 'Litecoin' : 'Tether'}`;
+  const coinFullName = selectedCoin === 'BTC' ? 'Bitcoin' : selectedCoin === 'ETH' ? 'Ethereum' : selectedCoin === 'LTC' ? 'Litecoin' : 'Tether';
   const marketPrice = prices[selectedCoin] || 0;
   const marketPriceText = `1 ${selectedCoin} ≈ ${marketPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
 
@@ -230,7 +230,7 @@ function SellPageContent() {
     <>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <div>
-            <h1 className="text-2xl font-bold md:text-3xl">{pageTitle}</h1>
+            <h1 className="text-2xl font-bold md:text-3xl">Sell <span className="text-orange-500">{coinFullName}</span></h1>
             <p className="text-sm text-muted-foreground">{marketPriceText}</p>
         </div>
         <div className="flex items-center gap-4 text-sm font-medium">
@@ -285,53 +285,55 @@ function SellPageContent() {
       </div>
       
       {/* Mobile Filter UI */}
-      <div className="md:hidden space-y-4 mb-6">
-          <div className="grid grid-cols-2 gap-2">
-              <Button onClick={() => handleToggle('buy')} className={cn('h-12', pathname.includes('/buy') ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg' : 'bg-muted text-muted-foreground')}>
-                  <ArrowDown className="mr-2 h-4 w-4" /> Buy
-              </Button>
-              <Button onClick={() => handleToggle('sell')} className={cn('h-12', pathname.includes('/sell') ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg' : 'bg-muted text-muted-foreground')}>
-                  <ArrowUp className="mr-2 h-4 w-4" /> Sell
-              </Button>
-          </div>
+      <div className="md:hidden space-y-2 mb-6">
+        <div className="flex items-center gap-2 rounded-lg bg-card border p-2">
+            <div className="flex items-center bg-muted p-1 rounded-md flex-grow">
+                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
+                    <ArrowDown className="mr-1 h-4 w-4" /> Buy
+                </Button>
+                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-muted/50', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
+                    <ArrowUp className="mr-1 h-4 w-4" /> Sell
+                </Button>
+            </div>
 
-          <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
-              <SelectTrigger className="h-12 text-base">
-                  <SelectValue>
-                      <div className="flex items-center gap-2">
-                          <CryptoLogo crypto={selectedCoin} className="h-6 w-6" />
-                          <span className="font-semibold">{selectedCoin}</span>
-                      </div>
-                  </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                  {SUPPORTED_CRYPTOS.map(c => (
-                  <SelectItem key={c.name} value={c.name}>
-                      <div className="flex items-center gap-2">
-                          <CryptoLogo crypto={c.name} className="h-5 w-5" />
-                          <span className="font-medium">{c.name}</span>
-                      </div>
-                  </SelectItem>
-                  ))}
-              </SelectContent>
-          </Select>
+            <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
+                <SelectTrigger className="h-10 rounded-md border bg-background shadow-sm w-[130px]">
+                    <SelectValue>
+                        <div className="flex items-center gap-2">
+                            <CryptoLogo crypto={selectedCoin} className="h-5 w-5" />
+                            <span className="font-semibold">{selectedCoin}</span>
+                        </div>
+                    </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                    {SUPPORTED_CRYPTOS.map(c => (
+                        <SelectItem key={c.name} value={c.name}>
+                            <div className="flex items-center gap-2">
+                                <CryptoLogo crypto={c.name} className="h-5 w-5" />
+                                <span className="font-medium">{c.name}</span>
+                            </div>
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+        
+        <div className="text-center text-xs font-bold tracking-widest text-muted-foreground relative my-1">
+            <span className="bg-secondary/20 px-2 relative z-10">USING</span>
+            <div className="absolute left-0 top-1/2 w-full h-px bg-border -z-0"></div>
+        </div>
 
-          <div className="text-center text-xs font-bold tracking-widest text-muted-foreground relative">
-              <span className="bg-secondary/20 px-2 relative z-10">USING</span>
-              <div className="absolute left-0 top-1/2 w-full h-px bg-border -z-0"></div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-              <div className="relative flex items-center">
+        <div className="grid grid-cols-2 gap-2 rounded-lg bg-card border p-2">
+             <div className="relative flex items-center">
                   <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-16"/>
                   <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 rounded-md bg-muted hover:bg-muted/80" onClick={() => setIsFiatSheetOpen(true)}>
                       {selectedFiat}
                   </Button>
               </div>
-              <Button type="button" variant="outline" className="h-12 justify-start text-left font-normal" onClick={() => setIsPaymentSheetOpen(true)}>
+              <Button type="button" variant="outline" className="h-12 justify-start text-left font-normal truncate" onClick={() => setIsPaymentSheetOpen(true)}>
                   {paymentMethod || 'Payment method'}
               </Button>
-          </div>
+        </div>
       </div>
 
       <div className="md:hidden flex justify-between items-center mb-4">
@@ -582,3 +584,5 @@ export default function SellPage() {
         </Suspense>
     );
 }
+
+    
