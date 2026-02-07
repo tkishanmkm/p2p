@@ -21,7 +21,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { ListFilter, Search, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { countries } from "@/lib/countries";
@@ -85,79 +85,74 @@ function BuyPageContent() {
           <CardDescription>
             Filter through available ads to find the best offer for you.
           </CardDescription>
-          <div className="mt-4 flex flex-col sm:flex-row gap-4">
-            <div className="grid sm:grid-cols-2 gap-4 flex-1">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Amount" 
-                        className="pl-10" 
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                    />
-                </div>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Payment method" 
-                        className="pl-10" 
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                    />
-                </div>
+          <div className="mt-4 space-y-4">
+            {/* Coin Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Wallet className="mr-2 h-4 w-4 text-muted-foreground" />
+                  {selectedCoin || 'All Coins'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">
+                <DropdownMenuRadioGroup value={selectedCoin} onValueChange={setSelectedCoin}>
+                  <DropdownMenuRadioItem value="">All Coins</DropdownMenuRadioItem>
+                  <DropdownMenuSeparator />
+                  {SUPPORTED_CRYPTOS.map(c => <DropdownMenuRadioItem key={c.name} value={c.name}>{c.name}</DropdownMenuRadioItem>)}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Payment Method */}
+            <Input
+              placeholder="Payment method"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+            />
+
+            {/* Amount and Fiat */}
+            <div className="flex items-center">
+              <Input
+                placeholder="Amount"
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="rounded-r-none"
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="rounded-l-none border-l-0 min-w-[100px]">
+                    {selectedFiat || 'Fiat'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <ScrollArea className="h-64">
+                    <DropdownMenuRadioGroup value={selectedFiat} onValueChange={setSelectedFiat}>
+                      <DropdownMenuRadioItem value="">All Fiats</DropdownMenuRadioItem>
+                      <DropdownMenuSeparator />
+                      {currencies.map(c => <DropdownMenuRadioItem key={c.code} value={c.code}>{c.name}</DropdownMenuRadioItem>)}
+                    </DropdownMenuRadioGroup>
+                  </ScrollArea>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <div className="flex gap-2">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex-1 sm:flex-initial">
-                        <ListFilter className="mr-2 h-4 w-4" />
-                        {selectedCoin || 'Coin'}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuRadioGroup value={selectedCoin} onValueChange={setSelectedCoin}>
-                             <DropdownMenuRadioItem value="">All Coins</DropdownMenuRadioItem>
-                             <DropdownMenuSeparator/>
-                            {SUPPORTED_CRYPTOS.map(c => <DropdownMenuRadioItem key={c.name} value={c.name}>{c.name}</DropdownMenuRadioItem>)}
-                        </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex-1 sm:flex-initial">
-                        <ListFilter className="mr-2 h-4 w-4" />
-                        {selectedFiat || 'Fiat'}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <ScrollArea className="h-64">
-                            <DropdownMenuRadioGroup value={selectedFiat} onValueChange={setSelectedFiat}>
-                                <DropdownMenuRadioItem value="">All Fiats</DropdownMenuRadioItem>
-                                <DropdownMenuSeparator/>
-                                {currencies.map(c => <DropdownMenuRadioItem key={c.code} value={c.code}>{c.name}</DropdownMenuRadioItem>)}
-                            </DropdownMenuRadioGroup>
-                        </ScrollArea>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex-1 sm:flex-initial">
-                        <ListFilter className="mr-2 h-4 w-4" />
-                        {selectedCountry || 'Country'}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <ScrollArea className="h-64">
-                            <DropdownMenuRadioGroup value={selectedCountry} onValueChange={setSelectedCountry}>
-                                <DropdownMenuRadioItem value="">All Countries</DropdownMenuRadioItem>
-                                <DropdownMenuSeparator />
-                                {countries.map(c => <DropdownMenuRadioItem key={c.code} value={c.code}>{c.name}</DropdownMenuRadioItem>)}
-                            </DropdownMenuRadioGroup>
-                        </ScrollArea>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
+             {/* Country Filter - keeping it for now but separate */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    {selectedCountry ? countries.find(c=>c.code === selectedCountry)?.name : 'All Countries'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">
+                <ScrollArea className="h-64">
+                  <DropdownMenuRadioGroup value={selectedCountry} onValueChange={setSelectedCountry}>
+                    <DropdownMenuRadioItem value="">All Countries</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    {countries.map(c => <DropdownMenuRadioItem key={c.code} value={c.code}>{c.name}</DropdownMenuRadioItem>)}
+                  </DropdownMenuRadioGroup>
+                </ScrollArea>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
