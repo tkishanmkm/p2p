@@ -37,8 +37,8 @@ export function BuySellForm() {
         <CardContent className="p-4 sm:p-6">
             <Tabs defaultValue="buy" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-muted p-1 h-auto">
-                    <TabsTrigger value="buy" className="py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">I want to buy</TabsTrigger>
-                    <TabsTrigger value="sell" className="py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">I want to sell</TabsTrigger>
+                    <TabsTrigger value="buy" className="py-2 text-sm data-[state=active]:bg-green-600 data-[state=active]:text-primary-foreground">I want to buy</TabsTrigger>
+                    <TabsTrigger value="sell" className="py-2 text-sm data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">I want to sell</TabsTrigger>
                 </TabsList>
                 <TabsContent value="buy">
                     <FormContent type="buy" />
@@ -63,15 +63,6 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
 
     const currentPrice = prices[crypto] || 0; // Price of crypto in USD
 
-    useEffect(() => {
-        // Recalculate fiat amount when crypto amount or currency changes
-        if (cryptoAmount && !isNaN(parseFloat(cryptoAmount)) && currentPrice > 0) {
-            const usdAmount = parseFloat(cryptoAmount) * currentPrice;
-            const targetRate = fiatRates[fiatCurrency] || 1;
-            setFiatAmount((usdAmount * targetRate).toFixed(2));
-        }
-    }, [fiatCurrency, cryptoAmount, currentPrice, fiatRates]);
-
     const handleFiatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setFiatAmount(value);
@@ -84,18 +75,6 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
         }
     }
     
-    const handleCryptoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setCryptoAmount(value);
-        if (value && !isNaN(parseFloat(value)) && currentPrice > 0) {
-            const usdAmount = parseFloat(value) * currentPrice;
-            const targetRate = fiatRates[fiatCurrency] || 1;
-            setFiatAmount((usdAmount * targetRate).toFixed(2));
-        } else {
-            setFiatAmount('');
-        }
-    }
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         router.push(`/${type}`);
@@ -104,7 +83,7 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 pt-6">
         <div>
-            <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">All coins</Label>
+            <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Coin</Label>
             <Select value={crypto} onValueChange={(v) => setCrypto(v as CryptoCurrency)}>
                 <SelectTrigger className="bg-background h-12 text-base">
                     <SelectValue>
@@ -127,19 +106,8 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
             </Select>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-                <Label htmlFor="i-have-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">{type === 'buy' ? 'I have' : 'I want'}</Label>
-                <Input id="i-have-amount" value={cryptoAmount} onChange={handleCryptoChange} placeholder="Amount" className="bg-background h-12 text-base" />
-            </div>
-             <div>
-                <Label htmlFor="payment-method" className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment method</Label>
-                <Input id="payment-method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} placeholder="e.g. Bank transfer" className="bg-background h-12 text-base" />
-             </div>
-        </div>
-
         <div>
-            <Label htmlFor="fiat-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">Amount</Label>
+            <Label htmlFor="fiat-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">{type === 'buy' ? 'I have' : 'I want'}</Label>
             <div className='flex items-center'>
               <Input id="fiat-amount" value={fiatAmount} onChange={handleFiatChange} placeholder="Enter amount" className="bg-background h-12 text-base rounded-r-none" />
               <Select value={fiatCurrency} onValueChange={setFiatCurrency}>
@@ -151,6 +119,12 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
                   </SelectContent>
               </Select>
             </div>
+            {cryptoAmount && <p className="text-xs text-muted-foreground mt-1">You will {type === 'buy' ? 'get approx.' : 'pay approx.'} {cryptoAmount} {crypto}</p>}
+        </div>
+
+        <div>
+             <Label htmlFor="payment-method" className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment method</Label>
+             <Input id="payment-method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} placeholder="e.g. Bank transfer" className="bg-background h-12 text-base" />
         </div>
       
       <div>
