@@ -132,7 +132,7 @@ export function DashboardHeader() {
   // Loading State
   if (isUserLoading) {
     return (
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4 sm:px-6">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4 sm:px-6 lg:px-8">
         <Link href="/dashboard">
           <Logo />
         </Link>
@@ -148,7 +148,7 @@ export function DashboardHeader() {
   if (!authUser) {
     return (
        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-16 items-center justify-between px-4 md:px-6">
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/">
             <Logo />
           </Link>
@@ -163,7 +163,7 @@ export function DashboardHeader() {
   // Authenticated State
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center px-4 md:px-6">
+      <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8">
         
         {/* Mobile Header Left */}
         <div className="flex items-center gap-1 md:hidden">
