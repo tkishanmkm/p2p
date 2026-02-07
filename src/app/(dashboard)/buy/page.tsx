@@ -40,6 +40,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormItem, FormControl, FormLabel } from "@/components/ui/form";
+import { Card } from "@/components/ui/card";
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
@@ -229,151 +230,156 @@ function BuyPageContent() {
 
   return (
     <>
-      {/* Desktop Title & Header */}
-      <div className="hidden md:flex justify-between items-center mb-6">
-        <div>
-            <h1 className="text-2xl font-bold md:text-3xl text-primary-foreground">Buy <span className="text-orange-400">{coinFullName}</span></h1>
-            <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
-        </div>
-        <div className="flex items-center gap-2">
-            <Button variant="outline" asChild className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
-                <Link href="/academy"><BookOpen className="mr-2 h-4 w-4" /> Academy</Link>
-            </Button>
-            <Button variant="outline" asChild className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
-                <Link href="/guides"><HelpCircle className="mr-2 h-4 w-4" /> Take Tour</Link>
-            </Button>
-        </div>
-      </div>
-      
-      {/* Desktop Filter Bar */}
-      <div className="hidden md:block mb-6">
-        <div className="w-full flex flex-wrap items-center gap-2 rounded-lg bg-card text-card-foreground p-2 shadow-sm">
-            
-            <div className="flex items-center bg-muted p-1 rounded-md">
-                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-background/80', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
-                    <ArrowDown className="mr-2 h-3.5 w-3.5" /> Buy
-                </Button>
-                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-background/80', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
-                    <ArrowUp className="mr-2 h-3.5 w-3.5" /> Sell
-                </Button>
-            </div>
-
-            <div className="flex-grow sm:flex-grow-0 sm:w-40">
-              <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
-                  <SelectTrigger className="h-10 w-full rounded-md shadow-sm">
-                      <SelectValue>
-                          <div className="flex items-center gap-2">
-                              <CryptoLogo crypto={selectedCoin} className="h-5 w-5" />
-                              <span className="font-semibold">{selectedCoin}</span>
-                          </div>
-                      </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                      {SUPPORTED_CRYPTOS.map(c => (
-                          <SelectItem key={c.name} value={c.name}>
-                              <div className="flex items-center gap-2">
-                                  <CryptoLogo crypto={c.name} className="h-5 w-5" />
-                                  <span className="font-medium">{c.name}</span>
-                              </div>
-                          </SelectItem>
-                      ))}
-                  </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="relative flex items-center flex-1 min-w-[200px]">
-                <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 pl-3 pr-20"/>
-                <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground" onClick={() => setIsFiatSheetOpen(true)}>
-                    {selectedFiat}
-                    <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
-                </Button>
-            </div>
-            
-            <div className="flex-1 min-w-[200px]">
-              <Button type="button" variant="outline" className="h-10 w-full flex justify-between items-center text-left font-normal truncate" onClick={() => setIsPaymentSheetOpen(true)}>
-                  <span className="truncate">{paymentMethod || 'Payment method'}</span>
-                  <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-2 ml-auto">
-                <Button variant="outline" asChild>
-                    <Link href="/ads/create"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
-                </Button>
-                <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
-                    <SlidersHorizontal className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
-                    <RefreshCw className="h-4 w-4" />
-                </Button>
-            </div>
-        </div>
-      </div>
-      
-      {/* Mobile Filter UI */}
-      <div className="md:hidden bg-primary text-primary-foreground rounded-b-lg -mx-2 sm:-mx-4 -mt-2 sm:-mt-4 mb-6 shadow-lg">
-        <div className="p-4 sm:p-6">
-          <div className="flex items-center justify-between gap-4 mt-2 mb-4">
-            <div>
-              <h1 className="text-2xl font-bold">
-                Buy <span className="text-orange-400">{coinFullName}</span>
-              </h1>
-              <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" asChild>
-                <Link href="/guides"><BookOpen className="h-5 w-5" /></Link>
-              </Button>
-              <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" asChild>
-                <Link href="/faq"><HelpCircle className="h-5 w-5" /></Link>
-              </Button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 rounded-lg bg-primary-foreground/10 p-2">
-              <div className="flex items-center bg-primary-foreground/20 p-1 rounded-md flex-grow">
-                <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1 bg-transparent text-primary-foreground/80 hover:bg-primary-foreground/30', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
-                    <ArrowDown className="mr-1 h-4 w-4" /> Buy
-                </Button>
-                <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1 bg-transparent text-primary-foreground/80 hover:bg-primary-foreground/30', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
-                    <ArrowUp className="mr-1 h-4 w-4" /> Sell
-                </Button>
-              </div>
-              <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
-                  <SelectTrigger className="h-10 rounded-md border-primary-foreground/20 bg-primary-foreground/20 shadow-none w-[130px] text-white">
-                      <SelectValue>
-                          <div className="flex items-center gap-2 font-semibold">
-                              <CryptoLogo crypto={selectedCoin} className="h-6 w-6" />
-                              <span>{selectedCoin}</span>
-                          </div>
-                      </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                      {SUPPORTED_CRYPTOS.map(c => (
-                          <SelectItem key={c.name} value={c.name}>
-                              <div className="flex items-center gap-2">
-                                  <CryptoLogo crypto={c.name} className="h-5 w-5" />
-                                  <span className="font-medium">{c.name}</span>
-                              </div>
-                          </SelectItem>
-                      ))}
-                  </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-2 rounded-lg bg-primary-foreground/10 p-2">
-              <div className="relative flex items-center">
-                    <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-24 bg-primary-foreground/20 border-primary-foreground/30 text-white placeholder:text-primary-foreground/60 focus-visible:ring-offset-primary"/>
-                    <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 flex items-center gap-1 rounded-md text-white hover:bg-primary-foreground/20" onClick={() => setIsFiatSheetOpen(true)}>
-                        {selectedFiat}
-                        <ChevronDown className="h-4 w-4 opacity-50" />
+      <div className="bg-primary text-primary-foreground -mx-2 sm:-mx-4 lg:-mx-6 -mt-2 sm:-mt-4 lg:-mt-6 mb-6 shadow-lg">
+        <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+            {/* Desktop Title & Header */}
+            <div className="hidden md:flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold md:text-3xl text-primary-foreground">Buy <span className="text-orange-400">{coinFullName}</span></h1>
+                    <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" asChild className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
+                        <Link href="/academy"><BookOpen className="mr-2 h-4 w-4" /> Academy</Link>
+                    </Button>
+                    <Button variant="outline" asChild className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
+                        <Link href="/guides"><HelpCircle className="mr-2 h-4 w-4" /> Take Tour</Link>
                     </Button>
                 </div>
-                <Button type="button" variant="outline" className="h-12 flex justify-between items-center text-left font-normal truncate bg-primary-foreground/20 border-primary-foreground/30 text-white hover:bg-primary-foreground/30 hover:text-white" onClick={() => setIsPaymentSheetOpen(true)}>
-                    <span className="truncate">{paymentMethod || 'Payment method'}</span>
-                    <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
-                </Button>
             </div>
-          </div>
+
+            {/* Desktop Filter Bar */}
+            <div className="hidden md:block mt-6">
+              <Card>
+                <div className="flex flex-wrap items-center gap-2 p-2">
+                    <div className="flex items-center bg-muted p-1 rounded-md">
+                        <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-background/80', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
+                            <ArrowDown className="mr-2 h-3.5 w-3.5" /> Buy
+                        </Button>
+                        <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-background/80', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
+                            <ArrowUp className="mr-2 h-3.5 w-3.5" /> Sell
+                        </Button>
+                    </div>
+
+                    <div className="flex-grow sm:flex-grow-0 sm:w-40">
+                      <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
+                          <SelectTrigger className="h-10 w-full rounded-md shadow-sm">
+                              <SelectValue>
+                                  <div className="flex items-center gap-2">
+                                      <CryptoLogo crypto={selectedCoin} className="h-5 w-5" />
+                                      <span className="font-semibold">{selectedCoin}</span>
+                                  </div>
+                              </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                              {SUPPORTED_CRYPTOS.map(c => (
+                                  <SelectItem key={c.name} value={c.name}>
+                                      <div className="flex items-center gap-2">
+                                          <CryptoLogo crypto={c.name} className="h-5 w-5" />
+                                          <span className="font-medium">{c.name}</span>
+                                      </div>
+                                  </SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="relative flex items-center flex-1 min-w-[200px]">
+                        <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 pl-3 pr-20"/>
+                        <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground" onClick={() => setIsFiatSheetOpen(true)}>
+                            {selectedFiat}
+                            <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
+                        </Button>
+                    </div>
+                    
+                    <div className="flex-1 min-w-[200px]">
+                      <Button type="button" variant="outline" className="h-10 w-full flex justify-between items-center text-left font-normal truncate" onClick={() => setIsPaymentSheetOpen(true)}>
+                          <span className="truncate">{paymentMethod || 'Payment method'}</span>
+                          <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
+                      </Button>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 ml-auto">
+                        <Button variant="outline" asChild>
+                            <Link href="/ads/create"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
+                            <SlidersHorizontal className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
+                            <RefreshCw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+              </Card>
+            </div>
+            
+            {/* Mobile Filter UI */}
+            <div className="md:hidden">
+              <div className="flex items-center justify-between gap-4 mt-2 mb-4">
+                <div>
+                  <h1 className="text-2xl font-bold">
+                    Buy <span className="text-orange-400">{coinFullName}</span>
+                  </h1>
+                  <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" asChild>
+                    <Link href="/guides"><BookOpen className="h-5 w-5" /></Link>
+                  </Button>
+                  <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" asChild>
+                    <Link href="/faq"><HelpCircle className="h-5 w-5" /></Link>
+                  </Button>
+                </div>
+              </div>
+              <Card>
+                <div className="p-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-muted p-1 rounded-md flex-grow">
+                      <Button size="sm" onClick={() => handleToggle('buy')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-background/80', pathname.includes('/buy') && 'bg-green-600 hover:bg-green-700 text-white shadow-md')}>
+                          <ArrowDown className="mr-1 h-4 w-4" /> Buy
+                      </Button>
+                      <Button size="sm" onClick={() => handleToggle('sell')} className={cn('flex-1 bg-transparent text-muted-foreground hover:bg-background/80', pathname.includes('/sell') && 'bg-red-600 hover:bg-red-700 text-white shadow-md')}>
+                          <ArrowUp className="mr-1 h-4 w-4" /> Sell
+                      </Button>
+                    </div>
+                    <Select value={selectedCoin} onValueChange={(v) => setSelectedCoin(v as CryptoCurrency)}>
+                        <SelectTrigger className="h-10 rounded-md shadow-sm w-[130px]">
+                            <SelectValue>
+                                <div className="flex items-center gap-2 font-semibold">
+                                    <CryptoLogo crypto={selectedCoin} className="h-6 w-6" />
+                                    <span>{selectedCoin}</span>
+                                </div>
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            {SUPPORTED_CRYPTOS.map(c => (
+                                <SelectItem key={c.name} value={c.name}>
+                                    <div className="flex items-center gap-2">
+                                        <CryptoLogo crypto={c.name} className="h-5 w-5" />
+                                        <span className="font-medium">{c.name}</span>
+                                    </div>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative flex items-center">
+                          <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-24"/>
+                          <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 flex items-center gap-1 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground" onClick={() => setIsFiatSheetOpen(true)}>
+                              {selectedFiat}
+                              <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                      </div>
+                      <Button type="button" variant="outline" className="h-12 flex justify-between items-center text-left font-normal truncate" onClick={() => setIsPaymentSheetOpen(true)}>
+                          <span className="truncate">{paymentMethod || 'Payment method'}</span>
+                          <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+                      </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
         </div>
       </div>
       
