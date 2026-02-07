@@ -1,3 +1,4 @@
+
 import type { CryptoCurrency, SupportedCrypto } from './types';
 
 export const APP_NAME = 'TradeFlow';
@@ -19,13 +20,15 @@ export const CHAINS: Record<CryptoCurrency, string[]> = {
 
 export const LANGUAGES = [
   { code: 'en', name: 'English' },
-  { code: 'es', name: 'Spanish' },
+  { code: 'zh-CN', name: 'Simplified Chinese' },
+  { code: 'zh-TW', name: 'Traditional Chinese' },
+  { code: 'pt-BR', name: 'Brazilian Portuguese' },
+  { code: 'ko', name: 'Korean' },
   { code: 'fr', name: 'French' },
-  { code: 'pt', name: 'Portuguese' },
-  { code: 'ar', name: 'Arabic' },
+  { code: 'es', name: 'Spanish' },
   { code: 'ru', name: 'Russian' },
-  { code: 'zh', name: 'Chinese (Mandarin)' },
-  { code: 'hi', name: 'Hindi' },
+  { code: 'vi', name: 'Vietnamese' },
+  { code: 'ar', name: 'Arabic' },
 ];
 
 // In a real app, these would be in environment variables
@@ -39,3 +42,4 @@ export const SECURITY_QUESTIONS = [
     "In what city were you born?",
     "What is your favorite book?",
 ];
+
