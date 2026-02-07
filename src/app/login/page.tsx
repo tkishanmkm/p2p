@@ -71,7 +71,10 @@ function LoginFormComponent() {
       const userCredential = await signInWithEmailAndPassword(auth, dummyEmail, values.password);
 
       // Create session document
-      await createUserSession(firestore, userCredential.user);
+      const sessionId = await createUserSession(firestore, userCredential.user);
+      if (sessionId) {
+        sessionStorage.setItem('sessionId', sessionId);
+      }
 
       // Check if the user is an admin
       const adminDocRef = doc(firestore, "admins", userCredential.user.uid);

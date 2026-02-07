@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Smartphone, Monitor, LogOut, CheckCircle } from 'lucide-react';
+import { Smartphone, Monitor, LogOut, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, orderBy, query } from 'firebase/firestore';
@@ -13,15 +13,19 @@ import type { Session } from '@/lib/types';
 import { toDate } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { logoutSessions } from '@/lib/users';
 
 export function SessionManagement() {
   const [currentSessionId, setCurrentSessionId] = useState('');
   const { toast } = useToast();
   const { firestore, user: authUser } = useFirebase();
+  const [isLoggingOut, setIsLoggingOut] = useState<string | 'all' | null>(null);
 
-  // A simplified way to identify the "current" session. In a real app, this would be more robust.
   useEffect(() => {
-    setCurrentSessionId(navigator.userAgent);
+    const storedSessionId = sessionStorage.getItem('sessionId');
+    if (storedSessionId) {
+      setCurrentSessionId(storedSessionId);
+    }
   }, []);
   
   const sessionsQuery = useMemoFirebase(() => 
@@ -30,19 +34,47 @@ export function SessionManagement() {
   );
   const { data: sessions, isLoading } = useCollection<Session>(sessionsQuery);
 
-  const handleLogoutOtherSessions = () => {
-    toast({
-        title: "Feature Not Available",
-        description: "For security, logging out other sessions requires backend integration which is not available in this demo environment.",
-        duration: 8000,
-    });
-  }
+  const handleLogout = async (sessionIds: string[] | 'all_other') => {
+    if (!firestore || !authUser || !currentSessionId) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not log out. Please try again.",
+        });
+        return;
+    }
+
+    let idsToLogout: string[] = [];
+    if (sessionIds === 'all_other') {
+        setIsLoggingOut('all');
+        idsToLogout = sessions?.filter(s => s.id !== currentSessionId && s.isActive).map(s => s.id) || [];
+    } else {
+        setIsLoggingOut(sessionIds[0]);
+        idsToLogout = sessionIds;
+    }
+
+    if (idsToLogout.length === 0) {
+        toast({ title: "No Sessions", description: "No other active sessions to log out." });
+        setIsLoggingOut(null);
+        return;
+    }
+
+    try {
+        await logoutSessions(firestore, authUser.uid, idsToLogout);
+        toast({ title: "Success", description: "The selected session(s) have been marked as inactive." });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Failed to Logout", description: error.message });
+    } finally {
+        setIsLoggingOut(null);
+    }
+  };
+
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Sessions & Login History</CardTitle>
-        <CardDescription>Manage your active sessions and review recent login activity.</CardDescription>
+        <CardDescription>Manage your active sessions and review recent login activity. Logging out a session will prevent it from being used until the next login.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading && (
@@ -53,14 +85,16 @@ export function SessionManagement() {
         )}
         {!isLoading && sessions?.map(session => {
             const isMobile = /Mobi|Android/i.test(session.userAgent);
-            const isCurrent = session.userAgent === currentSessionId;
+            const isCurrent = session.id === currentSessionId;
+            const isLoggingOutThis = isLoggingOut === session.id;
+
             return (
-                 <Alert key={session.id} variant={isCurrent ? "default" : "destructive"} className={isCurrent ? 'border-primary' : ''}>
+                 <Alert key={session.id} variant={isCurrent ? "default" : "secondary"} className={isCurrent ? 'border-primary' : ''}>
                     <div className="flex items-center gap-4">
                         {isMobile ? <Smartphone className="h-6 w-6" /> : <Monitor className="h-6 w-6" />}
                         <div className="flex-grow">
                             <AlertTitle className="flex items-center gap-2">
-                                {isCurrent ? 'Current Session' : 'Past Session'}
+                                {isCurrent ? 'Current Session' : (session.isActive ? 'Active Session' : 'Inactive Session')}
                                 {isCurrent && <CheckCircle className="h-4 w-4 text-green-500" />}
                             </AlertTitle>
                             <AlertDescription className="text-xs break-all">
@@ -70,8 +104,10 @@ export function SessionManagement() {
                                 <span>IP: {session.ipAddress}</span> | <span>{toDate(session.lastLogin) ? formatDistanceToNow(toDate(session.lastLogin)!) + ' ago' : 'N/A'}</span>
                             </div>
                         </div>
-                        {!isCurrent && (
-                            <Button variant="ghost" size="sm" onClick={handleLogoutOtherSessions}>Logout</Button>
+                        {!isCurrent && session.isActive && (
+                            <Button variant="ghost" size="sm" onClick={() => handleLogout([session.id])} disabled={!!isLoggingOut}>
+                                {isLoggingOutThis ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Logout'}
+                            </Button>
                         )}
                     </div>
                 </Alert>
@@ -82,7 +118,8 @@ export function SessionManagement() {
          )}
       </CardContent>
       <CardFooter className="border-t px-6 py-4">
-        <Button variant="outline" onClick={handleLogoutOtherSessions}>
+        <Button variant="outline" onClick={() => handleLogout('all_other')} disabled={!!isLoggingOut}>
+            {isLoggingOut === 'all' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <LogOut className="mr-2 h-4 w-4" />
             Log out from all other devices
         </Button>

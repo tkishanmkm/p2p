@@ -1,6 +1,5 @@
-
 'use client';
-import { Firestore, doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { Firestore, doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc, writeBatch } from 'firebase/firestore';
 import type { User as AuthUser } from 'firebase/auth';
 
 /**
@@ -47,14 +46,13 @@ export async function unblockUser(db: Firestore, currentUserId: string, targetUs
  * Creates or updates a session document for a user upon login.
  * @param db - The Firestore instance.
  * @param user - The authenticated user object from Firebase Auth.
+ * @returns The ID of the newly created session document.
  */
-export async function createUserSession(db: Firestore, user: AuthUser) {
+export async function createUserSession(db: Firestore, user: AuthUser): Promise<string | undefined> {
   if (!user) return;
   
   const sessionsCollectionRef = collection(db, "users", user.uid, "sessions");
   
-  // In a real app, you would get this from a server-side function.
-  // For now, we'll simulate it.
   const simulatedIp = `192.168.1.${Math.floor(Math.random() * 254) + 1}`;
 
   const sessionData = {
@@ -62,8 +60,30 @@ export async function createUserSession(db: Firestore, user: AuthUser) {
     userAgent: navigator.userAgent,
     ipAddress: simulatedIp,
     lastLogin: new Date().toISOString(),
-    isActive: true, // This would be managed more robustly with logout logic
+    isActive: true,
   };
   
-  await addDoc(sessionsCollectionRef, sessionData);
+  const docRef = await addDoc(sessionsCollectionRef, sessionData);
+  return docRef.id;
+}
+
+/**
+ * Logs out specified sessions by marking them as inactive.
+ * @param db The Firestore instance.
+ * @param userId The UID of the user.
+ * @param sessionIdsToLogout An array of session document IDs to log out.
+ */
+export async function logoutSessions(db: Firestore, userId: string, sessionIdsToLogout: string[]) {
+  if (!userId || !sessionIdsToLogout || sessionIdsToLogout.length === 0) {
+    throw new Error("User ID and session IDs are required.");
+  }
+  const sessionsRef = collection(db, "users", userId, "sessions");
+  const batch = writeBatch(db);
+
+  sessionIdsToLogout.forEach(sessionId => {
+    const sessionRef = doc(sessionsRef, sessionId);
+    batch.update(sessionRef, { isActive: false });
+  });
+
+  await batch.commit();
 }
