@@ -21,13 +21,14 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Wallet, Landmark, CreditCard, Smartphone, Car, Search } from "lucide-react";
+import { Wallet, Landmark, CreditCard, Smartphone, Car, Search, Loader2 } from "lucide-react";
 import { SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
 import { countries } from "@/lib/countries";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { P2PAd } from "@/lib/types";
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -42,11 +43,12 @@ import {
 
 function SellPageContent() {
   const { firestore } = useFirebase();
+  const searchParams = useSearchParams();
 
-  const [amount, setAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [selectedCoin, setSelectedCoin] = useState("");
-  const [selectedFiat, setSelectedFiat] = useState("");
+  const [amount, setAmount] = useState(searchParams.get('amount') || "");
+  const [paymentMethod, setPaymentMethod] = useState(searchParams.get('paymentMethod') || "");
+  const [selectedCoin, setSelectedCoin] = useState(searchParams.get('coin') || "");
+  const [selectedFiat, setSelectedFiat] = useState(searchParams.get('fiat') || "");
   const [selectedCountry, setSelectedCountry] = useState("");
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
   const [paymentSearch, setPaymentSearch] = useState("");
@@ -260,5 +262,13 @@ function SellPageContent() {
 
 
 export default function SellPage() {
-    return <SellPageContent />;
+    return (
+         <Suspense fallback={
+            <div className="flex flex-1 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <SellPageContent />
+        </Suspense>
+    );
 }

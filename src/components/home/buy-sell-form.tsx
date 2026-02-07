@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,13 +14,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
-import { Search } from 'lucide-react';
+import { Search, Landmark, Wallet, Smartphone, Car, CreditCard } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import type { CryptoCurrency } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { currencies } from '@/lib/currencies';
 import { usePrices } from '@/context/price-context';
+import {
+    bankTransfers,
+    onlineWallets,
+    mobileMoney,
+    cashPayments,
+    giftCardPaymentMethods,
+} from '@/lib/payment-methods';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '../ui/sheet';
+import { ScrollArea } from '../ui/scroll-area';
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
     switch (crypto) {
@@ -61,6 +72,17 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
     const [paymentMethod, setPaymentMethod] = useState('');
     const { prices, fiatRates } = usePrices();
 
+    const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
+    const [paymentSearch, setPaymentSearch] = useState("");
+
+    const allPaymentMethods = useMemo(() => [
+      { category: 'Bank Transfers', methods: bankTransfers, icon: Landmark },
+      { category: 'Online Wallets', methods: onlineWallets, icon: Wallet },
+      { category: 'Mobile Money', methods: mobileMoney, icon: Smartphone },
+      { category: 'Cash Payments', methods: cashPayments, icon: Car },
+      { category: 'Gift Cards', methods: giftCardPaymentMethods, icon: CreditCard },
+    ], []);
+
     const currentPrice = prices[crypto] || 0; // Price of crypto in USD
 
     const handleFiatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,10 +99,17 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        router.push(`/${type}`);
+        const params = new URLSearchParams();
+        if (fiatAmount) params.set('amount', fiatAmount);
+        if (fiatCurrency) params.set('fiat', fiatCurrency);
+        if (crypto) params.set('coin', crypto);
+        if (paymentMethod) params.set('paymentMethod', paymentMethod);
+
+        router.push(`/${type}?${params.toString()}`);
     }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-4 pt-6">
         <div>
             <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Coin</Label>
@@ -124,7 +153,9 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
 
         <div>
              <Label htmlFor="payment-method" className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment method</Label>
-             <Input id="payment-method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} placeholder="e.g. Bank transfer" className="bg-background h-12 text-base" />
+             <Button type="button" variant="outline" className="w-full justify-start text-left font-normal bg-background h-12 text-base" onClick={() => setIsPaymentSheetOpen(true)}>
+                {paymentMethod || 'All Payment Methods'}
+            </Button>
         </div>
       
       <div>
@@ -134,5 +165,64 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
         </Button>
       </div>
     </form>
+     <Sheet open={isPaymentSheetOpen} onOpenChange={setIsPaymentSheetOpen}>
+        <SheetContent className="flex flex-col">
+            <SheetHeader>
+                <SheetTitle>Filter by Payment Method</SheetTitle>
+            </SheetHeader>
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search all methods..."
+                    value={paymentSearch}
+                    onChange={(e) => setPaymentSearch(e.target.value)}
+                    className="pl-10"
+                />
+            </div>
+            <ScrollArea className="flex-grow -mx-6">
+                <div className="px-6 py-4 space-y-1">
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => { setPaymentMethod(''); setIsPaymentSheetOpen(false); }}
+                    >
+                        All Payment Methods
+                    </Button>
+                    {allPaymentMethods.map(({ category, methods, icon: Icon }) => {
+                        const filteredMethods = methods.filter(m => m.toLowerCase().includes(paymentSearch.toLowerCase()));
+                        if (paymentSearch && filteredMethods.length === 0) return null;
+                        return (
+                            <Accordion type="single" collapsible key={category}>
+                                <AccordionItem value={category} className="border-b-0">
+                                    <AccordionTrigger className="hover:no-underline"><Icon className="mr-2 h-4 w-4" />{category}</AccordionTrigger>
+                                    <AccordionContent className="pl-4">
+                                        {filteredMethods.map(method => (
+                                            <Button
+                                                key={method}
+                                                variant="ghost"
+                                                className="w-full justify-start font-normal h-auto py-2"
+                                                onClick={() => { setPaymentMethod(method); setIsPaymentSheetOpen(false); }}
+                                            >
+                                                {method}
+                                            </Button>
+                                        ))}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
+                        );
+                    })}
+                </div>
+            </ScrollArea>
+            {paymentSearch && (
+                <SheetFooter>
+                    <Button className="w-full" onClick={() => { setPaymentMethod(paymentSearch); setIsPaymentSheetOpen(false); }}>
+                        <Search className="mr-2 h-4 w-4" />
+                        Search for "{paymentSearch}"
+                    </Button>
+                </SheetFooter>
+            )}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
