@@ -41,47 +41,88 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
-        <div className="mr-8 flex">
+      <div className="container flex h-16 items-center justify-between">
+        <div className="flex items-center gap-4">
+          {/* Mobile Menu Trigger */}
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="flex flex-col">
+                  <SheetHeader className="border-b pb-6 mb-6">
+                      <SheetTitle asChild>
+                          <Link href="/">
+                              <Logo />
+                          </Link>
+                      </SheetTitle>
+                      <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
+                  </SheetHeader>
+                <nav className="flex flex-col gap-4">
+                  {mobileNavLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="text-lg font-medium text-foreground hover:text-accent-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+                 <div className="mt-auto">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start">
+                            <Globe className="mr-2 h-4 w-4" />
+                            <span>{selectedLanguage.nativeName}</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {LANGUAGES.map((lang) =>
+                            lang.dialects ? (
+                                <DropdownMenuSub key={lang.code}>
+                                <DropdownMenuSubTrigger>
+                                    <div className="flex flex-col items-start">
+                                    <span className="font-medium">{lang.nativeName}</span>
+                                    </div>
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                    {lang.dialects.map((dialect) => (
+                                        <DropdownMenuItem key={dialect.code} onClick={() => handleLanguageSelect(dialect)}>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{dialect.nativeName}</span>
+                                        </div>
+                                        </DropdownMenuItem>
+                                    ))}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                            ) : (
+                                <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
+                                <div className="flex flex-col">
+                                    <span className="font-medium">{lang.nativeName}</span>
+                                </div>
+                                </DropdownMenuItem>
+                            )
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+          
+          {/* Logo */}
           <Link href="/">
             <Logo />
           </Link>
-        </div>
-
-        <div className="md:hidden">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-                <SheetHeader className="border-b pb-6 mb-6">
-                    <SheetTitle asChild>
-                        <Link href="/">
-                            <Logo />
-                        </Link>
-                    </SheetTitle>
-                    <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
-                </SheetHeader>
-              <nav className="flex flex-col gap-4">
-                {mobileNavLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="text-lg font-medium text-foreground hover:text-accent-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
-        </div>
-
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <nav className="hidden md:flex items-center gap-6 text-sm">
+          
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-6 text-sm ml-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                  <Button variant="ghost" className="font-medium text-foreground/80 transition-colors hover:text-foreground px-0">
@@ -161,7 +202,9 @@ export function Header() {
                 Support
               </Link>
           </nav>
-          <div className="flex items-center gap-2">
+        </div>
+
+        <div className="flex items-center gap-2">
             <ModeToggle />
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -185,8 +228,8 @@ export function Header() {
                           {lang.dialects.map(dialect => (
                             <DropdownMenuItem key={dialect.code} onClick={() => handleLanguageSelect(dialect)}>
                               <div className="flex flex-col">
-                                <span className="font-medium">{dialect.nativeName}</span>
-                                <span className="text-xs text-muted-foreground">{dialect.name}</span>
+                                  <span className="font-medium">{dialect.nativeName}</span>
+                                  <span className="text-xs text-muted-foreground">{dialect.name}</span>
                               </div>
                             </DropdownMenuItem>
                           ))}
@@ -210,7 +253,6 @@ export function Header() {
             <Button asChild>
               <Link href="/signup">Join us</Link>
             </Button>
-          </div>
         </div>
       </div>
     </header>
