@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
 import {
   Bell,
   LayoutDashboard,
@@ -20,17 +19,12 @@ import {
   Settings,
   Send,
   Globe,
-  ChevronDown,
-  BookOpen,
-  Shield,
-  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -76,7 +70,8 @@ export function DashboardHeader() {
   const { toast } = useToast();
   const { prices, fiatRates } = usePrices();
   const { language, setLanguage } = useI18n();
-  const selectedLanguage = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
+  const selectedLanguage = LANGUAGES.flatMap(l => l.dialects || l).find(l => l.code === language) || LANGUAGES[0];
+
 
   const userDocRef = useMemoFirebase(() => (authUser ? doc(firestore, 'users', authUser.uid) : null), [
     firestore,
@@ -135,8 +130,8 @@ export function DashboardHeader() {
   // Loading State
   if (isUserLoading) {
     return (
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6 justify-between">
-        <Link href="/buy" className="flex items-center gap-2 text-lg font-semibold md:text-base">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4 sm:px-6">
+        <Link href="/dashboard">
           <Logo />
         </Link>
         <div className="flex items-center gap-2">
@@ -150,35 +145,14 @@ export function DashboardHeader() {
   // Unauthenticated State
   if (!authUser) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center">
-          <div className="mr-8 flex">
-            <Link href="/buy">
-              <Logo />
-            </Link>
-          </div>
-          <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-            <nav className="hidden md:flex items-center gap-6 text-sm">
-              <Link href="/buy" className="font-medium text-foreground/80 transition-colors hover:text-foreground">
-                Buy
-              </Link>
-              <Link href="/sell" className="font-medium text-foreground/80 transition-colors hover:text-foreground">
-                Sell
-              </Link>
-              <Link href="/contact" className="font-medium text-foreground/80 transition-colors hover:text-foreground">
-                Support
-              </Link>
-            </nav>
-            <div className="flex items-center gap-2">
-              <ModeToggle />
-              <Button variant="ghost" asChild className="text-foreground/80 px-2 font-semibold">
-                <Link href="/login">Log in</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/signup">Join us</Link>
-              </Button>
-            </div>
-          </div>
+       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+          <Link href="/">
+            <Logo />
+          </Link>
+          <Button asChild>
+            <Link href="/login">Log In</Link>
+          </Button>
         </div>
       </header>
     );
@@ -186,80 +160,149 @@ export function DashboardHeader() {
 
   // Authenticated State
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6 justify-between">
-      {/* Left side */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold md:text-base">
-          <Logo />
-          <span className="sr-only">TradeFlow</span>
-        </Link>
-        {/* Desktop nav */}
-        <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-2 transition-colors hover:text-foreground',
-                pathname === item.href ? 'text-primary font-semibold' : 'text-muted-foreground'
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
+    <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+        {/* Left side */}
+        <div className="flex items-center gap-4">
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="flex flex-col">
+                <nav className="grid gap-6 text-lg font-medium mt-8">
+                  <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
+                    <Logo />
+                  </Link>
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-4 text-base transition-colors ${
+                        pathname === item.href
+                          ? 'text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+                 <div className="mt-auto">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start">
+                            <Globe className="mr-2 h-4 w-4" />
+                            <span>{selectedLanguage.nativeName}</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {LANGUAGES.map((lang) =>
+                            lang.dialects ? (
+                                <DropdownMenuSub key={lang.code}>
+                                <DropdownMenuSubTrigger>
+                                    <div className="flex flex-col items-start">
+                                    <span className="font-medium">{lang.nativeName}</span>
+                                    </div>
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                    {lang.dialects.map((dialect) => (
+                                        <DropdownMenuItem key={dialect.code} onClick={() => handleLanguageSelect(dialect)}>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{dialect.nativeName}</span>
+                                        </div>
+                                        </DropdownMenuItem>
+                                    ))}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                            ) : (
+                                <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
+                                <div className="flex flex-col">
+                                    <span className="font-medium">{lang.nativeName}</span>
+                                </div>
+                                </DropdownMenuItem>
+                            )
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+              </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+          <Link href="/dashboard">
+             <Logo />
+          </Link>
+          {/* Desktop nav */}
+          <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6 ml-4">
+             {navItems.slice(0, 5).map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'transition-colors hover:text-foreground',
+                  pathname.startsWith(item.href) ? 'text-primary font-semibold' : 'text-muted-foreground'
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
 
-      {/* Right side */}
-      <div className="flex items-center gap-2">
-        <ModeToggle />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="hidden sm:inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <Globe className="h-4 w-4" />
-              <span>{selectedLanguage.code.toUpperCase()}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            {LANGUAGES.map((lang) =>
-              lang.dialects ? (
-                <DropdownMenuSub key={lang.code}>
-                  <DropdownMenuSubTrigger>
-                    <div className="flex flex-col items-start">
+        {/* Right side */}
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="hidden sm:inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <Globe className="h-4 w-4" />
+                <span>{selectedLanguage.code.toUpperCase()}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {LANGUAGES.map((lang) =>
+                lang.dialects ? (
+                  <DropdownMenuSub key={lang.code}>
+                    <DropdownMenuSubTrigger>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{lang.nativeName}</span>
+                        <span className="text-xs text-muted-foreground">{lang.name}</span>
+                      </div>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {lang.dialects.map((dialect) => (
+                          <DropdownMenuItem key={dialect.code} onClick={() => handleLanguageSelect(dialect)}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{dialect.nativeName}</span>
+                              <span className="text-xs text-muted-foreground">{dialect.name}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                ) : (
+                  <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
+                    <div className="flex flex-col">
                       <span className="font-medium">{lang.nativeName}</span>
                       <span className="text-xs text-muted-foreground">{lang.name}</span>
                     </div>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      {lang.dialects.map((dialect) => (
-                        <DropdownMenuItem key={dialect.code} onClick={() => handleLanguageSelect(dialect)}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{dialect.nativeName}</span>
-                            <span className="text-xs text-muted-foreground">{dialect.name}</span>
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-              ) : (
-                <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{lang.nativeName}</span>
-                    <span className="text-xs text-muted-foreground">{lang.name}</span>
-                  </div>
-                </DropdownMenuItem>
-              )
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  </DropdownMenuItem>
+                )
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <div className="flex items-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full relative">
@@ -338,6 +381,12 @@ export function DashboardHeader() {
                   <span>Profile</span>
                 </Link>
               </DropdownMenuItem>
+               <DropdownMenuItem asChild>
+                <Link href="/my-ads">
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>My Ads</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/trades">
                   <ArrowLeftRight className="mr-2 h-4 w-4" />
@@ -358,80 +407,6 @@ export function DashboardHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        
-        {/* Mobile Nav Trigger */}
-        <div className="flex items-center md:hidden">
-            <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="flex flex-col">
-              <nav className="grid gap-6 text-lg font-medium mt-8">
-                <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
-                  <Logo />
-                </Link>
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-4 text-base transition-colors ${
-                      pathname === item.href
-                        ? 'text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-               <div className="mt-auto">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full justify-start">
-                            <Globe className="mr-2 h-4 w-4" />
-                            <span>{selectedLanguage.nativeName}</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            {LANGUAGES.map((lang) =>
-                            lang.dialects ? (
-                                <DropdownMenuSub key={lang.code}>
-                                <DropdownMenuSubTrigger>
-                                    <div className="flex flex-col items-start">
-                                    <span className="font-medium">{lang.nativeName}</span>
-                                    </div>
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuPortal>
-                                    <DropdownMenuSubContent>
-                                    {lang.dialects.map((dialect) => (
-                                        <DropdownMenuItem key={dialect.code} onClick={() => handleLanguageSelect(dialect)}>
-                                        <div className="flex flex-col">
-                                            <span className="font-medium">{dialect.nativeName}</span>
-                                        </div>
-                                        </DropdownMenuItem>
-                                    ))}
-                                    </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
-                                </DropdownMenuSub>
-                            ) : (
-                                <DropdownMenuItem key={lang.code} onClick={() => handleLanguageSelect(lang)}>
-                                <div className="flex flex-col">
-                                    <span className="font-medium">{lang.nativeName}</span>
-                                </div>
-                                </DropdownMenuItem>
-                            )
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-
       </div>
     </header>
   );
