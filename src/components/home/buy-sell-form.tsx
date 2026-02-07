@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -74,6 +73,8 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
 
     const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
     const [paymentSearch, setPaymentSearch] = useState("");
+    const [isFiatSheetOpen, setIsFiatSheetOpen] = useState(false);
+    const [fiatSearch, setFiatSearch] = useState("");
 
     const allPaymentMethods = useMemo(() => [
       { category: 'Bank Transfers', methods: bankTransfers, icon: Landmark },
@@ -82,6 +83,13 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
       { category: 'Cash Payments', methods: cashPayments, icon: Car },
       { category: 'Gift Cards', methods: giftCardPaymentMethods, icon: CreditCard },
     ], []);
+
+    const filteredFiats = useMemo(() => {
+        return currencies.filter(c => 
+            c.name.toLowerCase().includes(fiatSearch.toLowerCase()) || 
+            c.code.toLowerCase().includes(fiatSearch.toLowerCase())
+        );
+    }, [fiatSearch]);
 
     const currentPrice = prices[crypto] || 0; // Price of crypto in USD
 
@@ -139,14 +147,9 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
             <Label htmlFor="fiat-amount" className="text-xs font-medium text-muted-foreground mb-1.5 block">{type === 'buy' ? 'I have' : 'I want'}</Label>
             <div className='flex items-center'>
               <Input id="fiat-amount" value={fiatAmount} onChange={handleFiatChange} placeholder="Enter amount" className="bg-background h-12 text-base rounded-r-none" />
-              <Select value={fiatCurrency} onValueChange={setFiatCurrency}>
-                  <SelectTrigger className="bg-background h-12 w-32 rounded-l-none text-base">
-                      <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64">
-                      {currencies.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
-                  </SelectContent>
-              </Select>
+               <Button type="button" variant="outline" className="bg-background h-12 w-32 rounded-l-none text-base border-l-0" onClick={() => setIsFiatSheetOpen(true)}>
+                    {fiatCurrency}
+                </Button>
             </div>
             {cryptoAmount && <p className="text-xs text-muted-foreground mt-1">You will {type === 'buy' ? 'get approx.' : 'pay approx.'} {cryptoAmount} {crypto}</p>}
         </div>
@@ -221,6 +224,37 @@ function FormContent({ type }: { type: 'buy' | 'sell' }) {
                     </Button>
                 </SheetFooter>
             )}
+        </SheetContent>
+      </Sheet>
+    
+    <Sheet open={isFiatSheetOpen} onOpenChange={setIsFiatSheetOpen}>
+        <SheetContent className="flex flex-col">
+            <SheetHeader>
+                <SheetTitle>Select Fiat Currency</SheetTitle>
+            </SheetHeader>
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search currency or code..."
+                    value={fiatSearch}
+                    onChange={(e) => setFiatSearch(e.target.value)}
+                    className="pl-10"
+                />
+            </div>
+            <ScrollArea className="flex-grow -mx-6">
+                <div className="px-6 py-4 space-y-1">
+                    {filteredFiats.map(currency => (
+                        <Button
+                            key={currency.code}
+                            variant="ghost"
+                            className="w-full justify-start font-normal h-auto py-2"
+                            onClick={() => { setFiatCurrency(currency.code); setIsFiatSheetOpen(false); }}
+                        >
+                            {currency.name} ({currency.code})
+                        </Button>
+                    ))}
+                </div>
+            </ScrollArea>
         </SheetContent>
       </Sheet>
     </>
