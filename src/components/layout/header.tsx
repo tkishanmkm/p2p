@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Globe, Menu, ChevronDown, ArrowDownToLine, ArrowUpFromLine, PlusCircle, BookOpen, FileText, Shield, HelpCircle } from "lucide-react";
+import { Globe, Menu, ChevronDown, ArrowDownToLine, ArrowUpFromLine, PlusCircle, BookOpen, FileText, Shield, HelpCircle, User, Settings, LayoutDashboard, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import {
@@ -16,12 +16,21 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuPortal,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { LANGUAGES } from "@/lib/constants";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { ModeToggle } from "../mode-toggle";
 import { useI18n } from "@/context/i18n-context";
 import type { Language } from "@/lib/types";
+import { useFirebase } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { signOut } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { DefaultAvatar } from '@/components/icons';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 const mobileNavLinks = [
@@ -33,11 +42,25 @@ const mobileNavLinks = [
 
 export function Header() {
   const { language, setLanguage } = useI18n();
+  const { user, isUserLoading, auth } = useFirebase();
+  const router = useRouter();
+  const { toast } = useToast();
   const selectedLanguage = LANGUAGES.flatMap(l => l.dialects || l).find(l => l.code === language) || LANGUAGES[0];
 
 
   const handleLanguageSelect = (language: Language) => {
     setLanguage(language.code);
+  };
+  
+  const handleLogout = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      router.push('/login');
+    } catch (error) {
+      toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred during logout." });
+    }
   };
 
   return (
@@ -248,12 +271,61 @@ export function Header() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="ghost" asChild className="text-foreground/80 px-2 font-semibold">
-              <Link href="/login">Log in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/signup">Join us</Link>
-            </Button>
+            
+            {isUserLoading ? (
+              <Skeleton className="h-10 w-24" />
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" className="flex shrink-0 items-center gap-1.5 md:gap-2 p-1 h-auto rounded-md">
+                    <Avatar className="h-8 w-8 shrink-0">
+                      {user.photoURL ? (
+                        <AvatarImage src={user.photoURL} alt={user.displayName || 'User Avatar'} />
+                      ) : (
+                        <AvatarFallback className="bg-transparent">
+                          <DefaultAvatar />
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="hidden sm:block flex-shrink min-w-0 text-left">
+                        {user.displayName ? (
+                          <p className="font-semibold text-sm leading-tight truncate">{user.displayName}</p>
+                        ) : (
+                          <Skeleton className="h-4 w-16" />
+                        )}
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>{user.displayName || 'My Account'}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /><span>Dashboard</span></Link>
+                  </DropdownMenuItem>
+                   <DropdownMenuItem asChild>
+                    <Link href="/profile"><User className="mr-2 h-4 w-4" /><span>Profile</span></Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings"><Settings className="mr-2 h-4 w-4" /><span>Settings</span></Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Button variant="ghost" asChild className="text-foreground/80 px-2 font-semibold">
+                  <Link href="/login">Log in</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/signup">Join us</Link>
+                </Button>
+              </>
+            )}
+
         </div>
       </div>
     </header>
