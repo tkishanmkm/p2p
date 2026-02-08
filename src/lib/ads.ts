@@ -1,4 +1,3 @@
-
 'use client';
 import { Firestore, collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { P2PAd, CryptoCurrency } from './types';
@@ -51,7 +50,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       badges: user.badges || [],
       lastActive: user.lastActive || new Date().toISOString()
     },
-    createdAt: serverTimestamp()
+    createdAt: new Date().toISOString() // Use client-side timestamp
   };
 
   // Conditionally add optional fields to avoid sending 'undefined'
@@ -81,7 +80,8 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
   } catch (error) {
     console.error("Error creating P2P Ad: ", error);
     
-    const reportableData = { ...newAdData, createdAt: new Date().toISOString() };
+    // The reportable data now exactly matches what was sent
+    const reportableData = { ...newAdData };
     
     errorEmitter.emit(
         'permission-error',
