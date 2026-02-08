@@ -61,10 +61,7 @@ service cloud.firestore {
 
         // Ensure that ONLY balance is increased. All other properties must remain unchanged.
         return incoming.balance > existing.balance &&
-               incoming.lockedBalance == existing.lockedBalance &&
-               incoming.crypto == existing.crypto &&
-               incoming.userId == existing.userId &&
-               incoming.id == existing.id;
+               incoming.diff(existing).affectedKeys().hasOnly(['balance', 'updatedAt']);
     }
 
     // --- Global Catch-All Rule ---
@@ -108,8 +105,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /wallets/{walletId} {
-        // A user must be able to GET another user's wallet to perform a transfer transaction.
-        // LIST is restricted to owner only.
         allow get: if isSignedIn() || isAdmin();
         allow list: if isOwner(userId) || isAdmin();
         
@@ -154,7 +149,7 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 

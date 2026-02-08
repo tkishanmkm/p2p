@@ -50,7 +50,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       badges: user.badges || [],
       lastActive: user.lastActive || new Date().toISOString()
     },
-    createdAt: new Date().toISOString() // Use client-side timestamp
+    createdAt: serverTimestamp() // Use server-side timestamp
   };
 
   // Conditionally add optional fields to avoid sending 'undefined'
