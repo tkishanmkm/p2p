@@ -420,7 +420,7 @@ export function DashboardHeader() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex shrink-0 items-center gap-1.5 md:gap-2 p-1 h-auto rounded-md">
-                {userData?.country && <FlagIcon countryCode={userData.country} className="w-5 h-auto rounded-sm hidden sm:block" />}
+                {userData?.country && <FlagIcon countryCode={userData.country} className="w-5 h-auto rounded-sm" />}
                 <Avatar className="h-8 w-8 shrink-0">
                   {authUser?.photoURL ? (
                     <AvatarImage src={authUser.photoURL} alt={authUser.displayName || 'User Avatar'} />
@@ -430,7 +430,7 @@ export function DashboardHeader() {
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <div className="hidden sm:block flex-shrink min-w-0 text-left">
+                <div className="flex-shrink min-w-0 text-left">
                   {authUser?.displayName ? (
                     <p className="font-semibold text-[11px] md:text-sm leading-tight truncate">{authUser.displayName}</p>
                   ) : (
