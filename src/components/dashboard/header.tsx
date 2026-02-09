@@ -53,13 +53,29 @@ import { FlagIcon } from '../ui/flag-icon';
 import { useI18n } from '@/context/i18n-context';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
-const navItems = [
+type NavItem = {
+  href?: string;
+  label: string;
+  icon: React.ElementType;
+  isDropdown?: boolean;
+  items?: { href: string; label: string }[];
+};
+
+const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/wallets', label: 'Wallets', icon: Wallet },
   { href: '/buy', label: 'Buy Coin', icon: ArrowDownToLine },
   { href: '/sell', label: 'Sell Coin', icon: ArrowUpFromLine },
   { href: '/transfer', label: 'Transfer', icon: Send },
-  { href: '/ads/create', label: 'Create Ad', icon: PlusCircle },
+  { 
+    label: 'Create Ad', 
+    icon: PlusCircle,
+    isDropdown: true,
+    items: [
+        { href: '/ads/create-buy-ad', label: 'Create Buy Ad' },
+        { href: '/ads/create-sell-ad', label: 'Create Sell Ad' },
+    ]
+  },
   { href: '/my-ads', label: 'My Ads', icon: FileText },
   { href: '/trades', label: 'My Trades', icon: ArrowLeftRight },
   { href: '/contact', label: 'Support', icon: LifeBuoy },
@@ -180,18 +196,42 @@ export function DashboardHeader() {
                     <Logo />
                   </Link>
                   {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center gap-4 text-base transition-colors ${
-                        pathname.startsWith(item.href) && item.href !== '/dashboard' || pathname === item.href
-                          ? 'text-foreground'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.label}
-                    </Link>
+                    item.isDropdown ? (
+                        <div key={item.label} className="grid gap-4">
+                          <p className="flex items-center gap-4 text-base text-muted-foreground">
+                            <item.icon className="h-5 w-5" />
+                            {item.label}
+                          </p>
+                          <div className="grid gap-4 pl-9">
+                            {item.items?.map(subItem => (
+                              <Link
+                                key={subItem.href}
+                                href={subItem.href}
+                                className={`flex items-center gap-4 text-base transition-colors ${
+                                  pathname.startsWith(subItem.href)
+                                    ? 'text-foreground font-semibold'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                              >
+                                {subItem.label}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                      <Link
+                        key={item.href}
+                        href={item.href!}
+                        className={`flex items-center gap-4 text-base transition-colors ${
+                          (pathname.startsWith(item.href!) && item.href !== '/dashboard') || pathname === item.href
+                            ? 'text-foreground font-semibold'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <item.icon className="h-5 w-5" />
+                        {item.label}
+                      </Link>
+                    )
                   ))}
                 </nav>
                  <div className="mt-auto p-6">
@@ -249,22 +289,48 @@ export function DashboardHeader() {
             </Link>
             <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => (
-                <Button
-                  key={item.href}
-                  asChild
-                  variant="ghost"
-                  className={cn(
-                    'h-auto px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
-                    (pathname.startsWith(item.href) && item.href !== '/dashboard') || pathname === item.href
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'text-muted-foreground'
-                  )}
-                >
-                  <Link href={item.href} className="flex items-center gap-2">
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                </Button>
+                item.isDropdown ? (
+                  <DropdownMenu key={item.label}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          'h-auto px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground flex items-center gap-2',
+                          item.items?.some(subItem => pathname.startsWith(subItem.href))
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                            : 'text-muted-foreground'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {item.items?.map(subItem => (
+                        <DropdownMenuItem key={subItem.href} asChild>
+                          <Link href={subItem.href}>{subItem.label}</Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Button
+                    key={item.href}
+                    asChild
+                    variant="ghost"
+                    className={cn(
+                      'h-auto px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+                      (pathname.startsWith(item.href!) && item.href !== '/dashboard') || pathname === item.href
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    <Link href={item.href!} className="flex items-center gap-2">
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  </Button>
+                )
               ))}
             </nav>
         </div>
@@ -393,12 +459,18 @@ export function DashboardHeader() {
               <DropdownMenuLabel>{authUser?.displayName || 'My Account'}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
+                <Link href="/dashboard">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  <span>Dashboard</span>
+                </Link>
+              </DropdownMenuItem>
+               <DropdownMenuItem asChild>
                 <Link href="/profile">
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </Link>
               </DropdownMenuItem>
-               <DropdownMenuItem asChild>
+              <DropdownMenuItem asChild>
                 <Link href="/my-ads">
                   <FileText className="mr-2 h-4 w-4" />
                   <span>My Ads</span>
