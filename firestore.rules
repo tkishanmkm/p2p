@@ -149,10 +149,7 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        // On create, ensure ownership and that createdAt is being set by the server.
-        allow create: if isSignedIn() 
-                      && request.auth.uid == request.resource.data.userId
-                      && request.resource.data.createdAt == request.time;
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
