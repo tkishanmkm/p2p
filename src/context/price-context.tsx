@@ -1,9 +1,9 @@
-
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import type { CryptoCurrency } from '@/lib/types';
-import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 
 interface PriceContextType {
   prices: Record<CryptoCurrency, number>;
@@ -14,80 +14,22 @@ interface PriceContextType {
 const PriceContext = createContext<PriceContextType | undefined>(undefined);
 
 export function PriceProvider({ children }: { children: ReactNode }) {
-  const [prices, setPrices] = useState<Record<CryptoCurrency, number>>({
-    BTC: 0,
-    ETH: 0,
-    LTC: 0,
-    USDT: 1,
-  });
+  const { firestore } = useFirebase();
 
-  const [fiatRates, setFiatRates] = useState<Record<string, number>>({ USD: 1 });
-  const [isLoading, setIsLoading] = useState(true);
+  // Define the document reference for market data. This remains the same.
+  const marketDataRef = useMemoFirebase(() => (firestore ? doc(firestore, '_config', 'market_data') : null), [firestore]);
 
-  const cryptoSymbols = SUPPORTED_CRYPTOS.map(c => c.name);
+  // Use useDoc to listen for real-time updates from Firestore. This becomes the single source of truth.
+  // The component now only consumes data.
+  const { data: marketData, isLoading: isMarketDataLoading } = useDoc<any>(marketDataRef);
 
-  const fetchAll = useCallback(async () => {
-    const coingeckoIds: Record<CryptoCurrency, string> = {
-      BTC: 'bitcoin',
-      ETH: 'ethereum',
-      LTC: 'litecoin',
-      USDT: 'tether',
-    };
-    const ids = cryptoSymbols.map(s => coingeckoIds[s as CryptoCurrency]).join(',');
+  // The problematic useEffect with setInterval and fetchAndWritePrices has been removed to ensure client stability.
 
-    try {
-      const [cryptoRes, fiatRes] = await Promise.all([
-        fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`),
-        fetch('https://open.er-api.com/v6/latest/USD')
-      ]);
-      
-      if (cryptoRes.ok) {
-        const cryptoData = await cryptoRes.json();
-        const newPrices: Partial<Record<CryptoCurrency, number>> = {};
-        for (const symbol of cryptoSymbols) {
-            const coingeckoId = coingeckoIds[symbol as CryptoCurrency];
-            if (cryptoData[coingeckoId] && cryptoData[coingeckoId].usd) {
-                newPrices[symbol as CryptoCurrency] = cryptoData[coingeckoId].usd;
-            }
-        }
-        newPrices.USDT = 1.00; // Force USDT to be 1
-        setPrices(prev => ({...prev, ...newPrices}));
-      } else {
-         console.error("Failed to fetch crypto prices from CoinGecko.");
-      }
-      
-      if (fiatRes.ok) {
-        const fiatData = await fiatRes.json();
-        if (fiatData.result === 'success') {
-          setFiatRates({ USD: 1, ...fiatData.rates });
-        } else {
-          console.error("Failed to fetch fiat rates: API request was not successful.");
-        }
-      } else {
-        console.error("Failed to fetch fiat rates from API.");
-      }
-
-    } catch (error) {
-      console.error("Error fetching price data:", error);
-    }
-  }, [cryptoSymbols]);
-
-
-  useEffect(() => {
-    const initialFetch = async () => {
-        await fetchAll();
-        setIsLoading(false);
-    };
-
-    initialFetch();
-    
-    const interval = setInterval(fetchAll, 1);
-    
-    return () => clearInterval(interval);
-  }, [fetchAll]);
+  const prices = marketData?.prices || {};
+  const fiatRates = marketData?.fiatRates || {};
 
   return (
-    <PriceContext.Provider value={{ prices, fiatRates, isLoading }}>
+    <PriceContext.Provider value={{ prices, fiatRates, isLoading: isMarketDataLoading }}>
       {children}
     </PriceContext.Provider>
   );
