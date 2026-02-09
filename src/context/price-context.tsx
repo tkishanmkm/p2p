@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { CryptoCurrency } from '@/lib/types';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
-import { getPrices as getCryptoPrices } from '@/ai/flows/get-crypto-prices-flow';
 
 interface PriceContextType {
   prices: Record<CryptoCurrency, number>;
@@ -27,23 +26,33 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const cryptoSymbols = SUPPORTED_CRYPTOS.map(c => c.name);
 
   const fetchAll = useCallback(async () => {
+    const coingeckoIds: Record<CryptoCurrency, string> = {
+      BTC: 'bitcoin',
+      ETH: 'ethereum',
+      LTC: 'litecoin',
+      USDT: 'tether',
+    };
+    const ids = cryptoSymbols.map(s => coingeckoIds[s as CryptoCurrency]).join(',');
+
     try {
       const [cryptoRes, fiatRes] = await Promise.all([
-        getCryptoPrices({ symbols: cryptoSymbols }),
+        fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`),
         fetch('https://api.exchangerate.host/latest?base=USD', { cache: 'no-store' })
       ]);
       
-      if (cryptoRes && cryptoRes.prices) {
+      if (cryptoRes.ok) {
+        const cryptoData = await cryptoRes.json();
         const newPrices: Partial<Record<CryptoCurrency, number>> = {};
         for (const symbol of cryptoSymbols) {
-            if(cryptoRes.prices[symbol]) {
-                newPrices[symbol as CryptoCurrency] = cryptoRes.prices[symbol];
+            const coingeckoId = coingeckoIds[symbol as CryptoCurrency];
+            if (cryptoData[coingeckoId] && cryptoData[coingeckoId].usd) {
+                newPrices[symbol as CryptoCurrency] = cryptoData[coingeckoId].usd;
             }
         }
         newPrices.USDT = 1.00; // Force USDT to be 1
         setPrices(prev => ({...prev, ...newPrices}));
       } else {
-         console.error("Failed to fetch crypto prices from Gemini.");
+         console.error("Failed to fetch crypto prices from CoinGecko.");
       }
       
       if (fiatRes.ok) {
