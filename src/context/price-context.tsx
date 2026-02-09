@@ -1,9 +1,10 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { CryptoCurrency } from '@/lib/types';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { useFirebase } from '@/firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 interface PriceContextType {
   prices: Record<CryptoCurrency, number>;
@@ -14,6 +15,8 @@ interface PriceContextType {
 const PriceContext = createContext<PriceContextType | undefined>(undefined);
 
 export function PriceProvider({ children }: { children: ReactNode }) {
+  const { firestore } = useFirebase();
+
   const [prices, setPrices] = useState<Record<CryptoCurrency, number>>({
     BTC: 0,
     ETH: 0,
@@ -24,15 +27,16 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const [fiatRates, setFiatRates] = useState<Record<string, number>>({ USD: 1 });
   const [isLoading, setIsLoading] = useState(true);
 
-  const cryptoSymbols = SUPPORTED_CRYPTOS.map(c => c.name);
+  const fetchAndStorePrices = useCallback(async () => {
+    if (!firestore) return;
 
-  const fetchAll = useCallback(async () => {
     const coingeckoIds: Record<CryptoCurrency, string> = {
       BTC: 'bitcoin',
       ETH: 'ethereum',
       LTC: 'litecoin',
       USDT: 'tether',
     };
+    const cryptoSymbols = SUPPORTED_CRYPTOS.map(c => c.name);
     const ids = cryptoSymbols.map(s => coingeckoIds[s as CryptoCurrency]).join(',');
 
     try {
@@ -41,50 +45,73 @@ export function PriceProvider({ children }: { children: ReactNode }) {
         fetch('https://open.er-api.com/v6/latest/USD')
       ]);
       
+      const newPrices: Partial<Record<CryptoCurrency, number>> = {};
       if (cryptoRes.ok) {
         const cryptoData = await cryptoRes.json();
-        const newPrices: Partial<Record<CryptoCurrency, number>> = {};
         for (const symbol of cryptoSymbols) {
             const coingeckoId = coingeckoIds[symbol as CryptoCurrency];
             if (cryptoData[coingeckoId] && cryptoData[coingeckoId].usd) {
                 newPrices[symbol as CryptoCurrency] = cryptoData[coingeckoId].usd;
             }
         }
-        newPrices.USDT = 1.00; // Force USDT to be 1
-        setPrices(prev => ({...prev, ...newPrices}));
-      } else {
-         console.error("Failed to fetch crypto prices from CoinGecko.");
+        newPrices.USDT = 1.00;
       }
       
+      let newFiatRates: Record<string, number> | null = null;
       if (fiatRes.ok) {
         const fiatData = await fiatRes.json();
         if (fiatData.result === 'success') {
-          setFiatRates({ USD: 1, ...fiatData.rates });
-        } else {
-          console.error("Failed to fetch fiat rates: API request was not successful.");
+          newFiatRates = { USD: 1, ...fiatData.rates };
         }
-      } else {
-        console.error("Failed to fetch fiat rates from API.");
+      }
+
+      if (Object.keys(newPrices).length > 0 || newFiatRates) {
+        const marketDataRef = doc(firestore, '_config', 'market_data');
+        const dataToStore: any = {};
+        if(Object.keys(newPrices).length > 0) dataToStore.prices = newPrices;
+        if(newFiatRates) dataToStore.fiatRates = newFiatRates;
+        
+        await setDoc(marketDataRef, dataToStore, { merge: true });
       }
 
     } catch (error) {
-      console.error("Error fetching price data:", error);
+      console.error("Error fetching and storing price data:", error);
     }
-  }, [cryptoSymbols]);
+  }, [firestore]);
 
 
   useEffect(() => {
-    const initialFetch = async () => {
-        await fetchAll();
-        setIsLoading(false);
+    if (!firestore) {
+      setIsLoading(false);
+      return;
     };
 
-    initialFetch();
+    const marketDataRef = doc(firestore, '_config', 'market_data');
     
-    const interval = setInterval(fetchAll, 1);
-    
-    return () => clearInterval(interval);
-  }, [fetchAll]);
+    // Set up a real-time listener. This will also handle the initial data load.
+    const unsubscribe = onSnapshot(marketDataRef, (doc) => {
+        if (doc.exists()) {
+            const data = doc.data();
+            if (data.prices) setPrices(prev => ({...prev, ...data.prices}));
+            if (data.fiatRates) setFiatRates(data.fiatRates);
+        }
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error with price listener:", error);
+        setIsLoading(false);
+    });
+
+    // Set up a periodic fetch to update the data from the external API
+    const interval = setInterval(fetchAndStorePrices, 30000); // 30 seconds interval
+
+    // Initial fetch right away to get the latest data on first load.
+    fetchAndStorePrices();
+
+    return () => {
+        unsubscribe();
+        clearInterval(interval);
+    };
+  }, [firestore, fetchAndStorePrices]);
 
   return (
     <PriceContext.Provider value={{ prices, fiatRates, isLoading }}>
