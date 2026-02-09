@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -236,7 +237,16 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
     resolver: zodResolver(adFormSchema),
     shouldUnregister: false,
     defaultValues: ad 
-      ? { ...ad, ratePercent: ad.ratePercent ?? 5, paymentTimeLimit: ad.paymentTimeLimit || 30, minCompletedTrades: ad.minCompletedTrades || 0, adType } 
+      ? { 
+          ...ad, 
+          ratePercent: ad.ratePercent ?? 5, 
+          paymentTimeLimit: ad.paymentTimeLimit || 30, 
+          minCompletedTrades: ad.minCompletedTrades || 0, 
+          adType,
+          tags: ad.tags || [],
+          targetedCountries: ad.targetedCountries || [],
+          blockedCountries: ad.blockedCountries || [],
+        } 
       : {
           adType: adType,
           crypto: "BTC",
