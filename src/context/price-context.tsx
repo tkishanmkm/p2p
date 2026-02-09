@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -37,7 +38,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     try {
       const [cryptoRes, fiatRes] = await Promise.all([
         fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`),
-        fetch('https://api.exchangerate.host/latest?base=USD', { cache: 'no-store' })
+        fetch('https://open.er-api.com/v6/latest/USD')
       ]);
       
       if (cryptoRes.ok) {
@@ -57,9 +58,13 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       
       if (fiatRes.ok) {
         const fiatData = await fiatRes.json();
-        setFiatRates({ USD: 1, ...fiatData.rates });
+        if (fiatData.result === 'success') {
+          setFiatRates({ USD: 1, ...fiatData.rates });
+        } else {
+          console.error("Failed to fetch fiat rates: API request was not successful.");
+        }
       } else {
-        console.error("Failed to fetch fiat rates from exchangerate.host API.");
+        console.error("Failed to fetch fiat rates from API.");
       }
 
     } catch (error) {
