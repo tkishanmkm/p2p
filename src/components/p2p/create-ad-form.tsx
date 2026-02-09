@@ -121,6 +121,7 @@ type AdFormValues = z.infer<typeof adFormSchema>;
 interface CreateAdFormProps {
     ad?: P2PAd;
     isAdmin?: boolean;
+    adType: 'buy' | 'sell';
 }
 
 const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, field, addCustom, customValue, onCustomValueChange }: any) => {
@@ -181,7 +182,6 @@ const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, f
                 <FormItem key={pm} className="flex flex-row items-start space-x-3 space-y-0 py-2">
                   <FormControl>
                     <Checkbox
-                      id={`pm-sheet-${pm}`}
                       checked={field.value?.includes(pm)}
                       onCheckedChange={(checked) => {
                         if (field.value?.length >= 5 && checked) {
@@ -204,7 +204,7 @@ const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, f
     );
 };
 
-export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
+export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { firestore, user } = useFirebase();
@@ -237,18 +237,9 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
     resolver: zodResolver(adFormSchema),
     shouldUnregister: false,
     defaultValues: ad 
-      ? { 
-          ...ad, 
-          paymentMethods: ad.paymentMethods || [],
-          tags: ad.tags || [],
-          targetedCountries: ad.targetedCountries || [],
-          blockedCountries: ad.blockedCountries || [],
-          ratePercent: ad.ratePercent ?? 5, 
-          paymentTimeLimit: ad.paymentTimeLimit || 30, 
-          minCompletedTrades: ad.minCompletedTrades || 0 
-        } 
+      ? { ...ad, ratePercent: ad.ratePercent ?? 5, paymentTimeLimit: ad.paymentTimeLimit || 30, minCompletedTrades: ad.minCompletedTrades || 0 } 
       : {
-          adType: "sell",
+          adType: adType,
           crypto: "BTC",
           fiatCurrency: "USD",
           paymentMethods: [],
@@ -392,7 +383,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
       <CardHeader>
         <CardTitle>{ad ? 'Edit P2P Advertisement' : 'Create a P2P Advertisement'}</CardTitle>
         <CardDescription>
-          {ad ? `Editing ad ${ad.publicAdId}.` : 'Set up your ad to buy or sell coins. It will be visible to other users.'}
+          {ad ? `Editing ad ${ad.publicAdId}.` : `Set up your ad to ${adType === 'buy' ? 'buy' : 'sell'} coins. It will be visible to other users.`}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -407,10 +398,9 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                   <FormControl>
                     <Tabs
                       value={field.value}
-                      onValueChange={field.onChange}
                       className="w-full"
                     >
-                      <TabsList className="grid w-full grid-cols-2">
+                      <TabsList className="grid w-full grid-cols-2 pointer-events-none">
                         <TabsTrigger value="sell" className="data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">Sell</TabsTrigger>
                         <TabsTrigger value="buy" className="data-[state=active]:bg-green-600 data-[state=active]:text-primary-foreground">Buy</TabsTrigger>
                       </TabsList>
@@ -515,7 +505,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                   <FormLabel>Payment Methods</FormLabel>
                   <FormDescription>Select up to 5 methods. Add a custom method if yours isn't listed under a category.</FormDescription>
                   <div className="flex flex-wrap gap-2 pt-2 min-h-[2.5rem]">
-                    {field.value?.map((pm, index) => (
+                    {(field.value || []).map((pm, index) => (
                       <Badge key={index} variant="secondary">
                         {pm}
                         <button type="button" onClick={() => {
@@ -712,7 +702,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                             <FormLabel>Targeted Countries (Optional)</FormLabel>
                             <FormDescription>Only show this ad to users from these countries.</FormDescription>
                             <div className="flex flex-wrap gap-2 pt-2 min-h-[2.5rem]">
-                                {field.value?.map((code, index) => {
+                                {(field.value || []).map((code, index) => {
                                     const country = countries.find(c => c.code === code) || {name: code};
                                     return (
                                      <Badge key={index} variant="secondary">
@@ -771,7 +761,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
                             <FormLabel>Blocked Countries (Optional)</FormLabel>
                             <FormDescription>Hide this ad from users in these countries.</FormDescription>
                              <div className="flex flex-wrap gap-2 pt-2 min-h-[2.5rem]">
-                                {field.value?.map((code, index) => {
+                                {(field.value || []).map((code, index) => {
                                     const country = countries.find(c => c.code === code) || {name: code};
                                     return (
                                      <Badge key={index} variant="destructive">

@@ -104,21 +104,11 @@ export default function MyAdsPage() {
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold md:text-2xl">My P2P Ads</h1>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> Create New Ad
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem asChild>
-              <Link href="/ads/create-buy-ad">Create Buy Ad</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/ads/create-sell-ad">Create Sell Ad</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button asChild>
+          <Link href="/ads/create">
+            <PlusCircle className="mr-2 h-4 w-4" /> Create New Ad
+          </Link>
+        </Button>
       </div>
 
       <Card>

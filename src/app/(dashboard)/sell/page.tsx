@@ -344,7 +344,7 @@ function SellPageContent() {
                     
                     <div className="flex items-center gap-2 ml-auto">
                         <Button variant="outline" asChild>
-                            <Link href="/ads/create?type=buy"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
+                            <Link href="/ads/create-sell-ad"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
                         </Button>
                         <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
                             <SlidersHorizontal className="h-4 w-4" />
@@ -431,7 +431,7 @@ function SellPageContent() {
             <h2 className="text-2xl font-bold">Offers from Buyers</h2>
             <div className="md:hidden flex items-center gap-2">
                 <Button variant="outline" asChild size="icon">
-                    <Link href="/ads/create?type=buy"><PlusCircle className="h-4 w-4" /></Link>
+                    <Link href="/ads/create-sell-ad"><PlusCircle className="h-4 w-4" /></Link>
                 </Button>
                 <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
                     <SlidersHorizontal className="h-4 w-4" />

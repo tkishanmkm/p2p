@@ -67,15 +67,7 @@ const navItems: NavItem[] = [
   { href: '/buy', label: 'Buy Coin', icon: ArrowDownToLine },
   { href: '/sell', label: 'Sell Coin', icon: ArrowUpFromLine },
   { href: '/transfer', label: 'Transfer', icon: Send },
-  { 
-    label: 'Create Ad', 
-    icon: PlusCircle,
-    isDropdown: true,
-    items: [
-        { href: '/ads/create-buy-ad', label: 'Create Buy Ad' },
-        { href: '/ads/create-sell-ad', label: 'Create Sell Ad' },
-    ]
-  },
+  { href: '/ads/create', label: 'Create Ad', icon: PlusCircle },
   { href: '/my-ads', label: 'My Ads', icon: FileText },
   { href: '/trades', label: 'My Trades', icon: ArrowLeftRight },
   { href: '/contact', label: 'Support', icon: LifeBuoy },
@@ -438,7 +430,7 @@ export function DashboardHeader() {
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <div className="flex-shrink min-w-0 text-left">
+                <div className="hidden sm:block flex-shrink min-w-0 text-left">
                   {authUser?.displayName ? (
                     <p className="font-semibold text-[11px] md:text-sm leading-tight truncate">{authUser.displayName}</p>
                   ) : (
