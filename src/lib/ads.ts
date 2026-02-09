@@ -1,5 +1,5 @@
 'use client';
-import { Firestore, collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { Firestore, collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { P2PAd, CryptoCurrency } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -48,7 +48,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       photoURL: user.photoURL || "",
       badges: user.badges || [],
     },
-    createdAt: serverTimestamp()
+    createdAt: new Date().toISOString()
   };
 
   // Conditionally add optional fields to avoid sending 'undefined'
@@ -106,5 +106,5 @@ export async function updateAdStatus(db: Firestore, adId: string, active: boolea
 // Soft delete by marking as inactive
 export async function softDeleteAd(db: Firestore, adId: string) {
     const adRef = doc(db, 'p2p_ads', adId);
-    await updateDoc(adRef, { active: false, deletedAt: serverTimestamp() });
+    await updateDoc(adRef, { active: false, deletedAt: new Date().toISOString() });
 }
