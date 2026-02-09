@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { CryptoCurrency } from '@/lib/types';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { getPrices as getCryptoPrices } from '@/ai/flows/get-crypto-prices-flow';
 
 interface PriceContextType {
   prices: Record<CryptoCurrency, number>;
@@ -23,35 +24,26 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const [fiatRates, setFiatRates] = useState<Record<string, number>>({ USD: 1 });
   const [isLoading, setIsLoading] = useState(true);
 
-  const cryptoIdMap: Record<string, string> = {
-    BTC: 'bitcoin',
-    ETH: 'ethereum',
-    LTC: 'litecoin',
-    USDT: 'tether',
-  };
-    
-  const cryptoSymbols = SUPPORTED_CRYPTOS.map(c => cryptoIdMap[c.name]).filter(Boolean).join(',');
+  const cryptoSymbols = SUPPORTED_CRYPTOS.map(c => c.name);
 
   const fetchAll = useCallback(async () => {
     try {
       const [cryptoRes, fiatRes] = await Promise.all([
-        fetch(`https://api.coincap.io/v2/assets?ids=${cryptoSymbols}`, { cache: 'no-store' }),
+        getCryptoPrices({ symbols: cryptoSymbols }),
         fetch('https://api.exchangerate.host/latest?base=USD', { cache: 'no-store' })
       ]);
       
-      if (cryptoRes.ok) {
-        const cryptoData = await cryptoRes.json();
+      if (cryptoRes && cryptoRes.prices) {
         const newPrices: Partial<Record<CryptoCurrency, number>> = {};
-        cryptoData.data.forEach((asset: any) => {
-          const symbol = Object.keys(cryptoIdMap).find(key => cryptoIdMap[key] === asset.id) as CryptoCurrency | undefined;
-          if (symbol) {
-            newPrices[symbol] = parseFloat(asset.priceUsd);
-          }
-        });
+        for (const symbol of cryptoSymbols) {
+            if(cryptoRes.prices[symbol]) {
+                newPrices[symbol as CryptoCurrency] = cryptoRes.prices[symbol];
+            }
+        }
         newPrices.USDT = 1.00; // Force USDT to be 1
         setPrices(prev => ({...prev, ...newPrices}));
       } else {
-         console.error("Failed to fetch crypto prices from CoinCap API.");
+         console.error("Failed to fetch crypto prices from Gemini.");
       }
       
       if (fiatRes.ok) {
