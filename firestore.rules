@@ -152,7 +152,6 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        // The user creating the ad must be the owner, and the denormalized user data must match their auth token.
         allow create: if isSignedIn() && 
                       request.auth.uid == request.resource.data.userId &&
                       request.auth.token.name == request.resource.data.user.userId;
@@ -162,7 +161,7 @@ service cloud.firestore {
     match /trades/{tradeId} {
         allow get: if isTradeParticipant(resource.data) || isAdmin();
         allow list: if isSignedIn();
-        allow create: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.buyerId == request.auth.uid;
         allow update: if isTradeParticipant(resource.data) || isAdmin();
         allow delete: if false;
 

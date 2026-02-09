@@ -1,3 +1,4 @@
+
 'use client';
 import { Firestore, collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { P2PAd, CryptoCurrency } from './types';
@@ -48,7 +49,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       photoURL: user.photoURL || "",
       badges: user.badges || [],
     },
-    createdAt: serverTimestamp() // Use server-side timestamp
+    createdAt: new Date().toISOString() // Use client-side timestamp for rule validation
   };
 
   // Conditionally add optional fields to avoid sending 'undefined'
