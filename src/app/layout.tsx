@@ -32,15 +32,15 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <PriceProvider>
-            <FirebaseClientProvider>
+          <FirebaseClientProvider>
+            <PriceProvider>
                 <I18nProvider>
                   <BrandingProvider>
                     {children}
                   </BrandingProvider>
                 </I18nProvider>
-            </FirebaseClientProvider>
-          </PriceProvider>
+            </PriceProvider>
+          </FirebaseClientProvider>
           <Toaster />
         </ThemeProvider>
       </body>
