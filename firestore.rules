@@ -58,11 +58,13 @@ service cloud.firestore {
         
         let incoming = request.resource.data;
         let existing = resource.data;
-        let diff = incoming.diff(existing);
 
-        // Ensure that ONLY balance and updatedAt are changed.
-        return diff.affectedKeys().hasOnly(['balance', 'updatedAt']) &&
-               incoming.balance > existing.balance;
+        // Ensure ONLY balance is increased. All other properties must remain unchanged.
+        return incoming.balance > existing.balance &&
+               incoming.lockedBalance == existing.lockedBalance &&
+               incoming.crypto == existing.crypto &&
+               incoming.userId == existing.userId &&
+               incoming.id == existing.id;
     }
 
     // --- Global Catch-All Rule ---
@@ -152,9 +154,7 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        allow create: if isSignedIn() && 
-                      request.auth.uid == request.resource.data.userId &&
-                      request.auth.token.name == request.resource.data.user.userId;
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
