@@ -63,17 +63,20 @@ export function PriceProvider({ children }: { children: ReactNode }) {
 
     } catch (error) {
       console.error("Error fetching price data:", error);
-    } finally {
-        if(isLoading) {
-            setIsLoading(false);
-        }
     }
-  }, [cryptoSymbols, isLoading]);
+  }, [cryptoSymbols]);
 
 
   useEffect(() => {
-    fetchAll();
+    const initialFetch = async () => {
+        await fetchAll();
+        setIsLoading(false);
+    };
+
+    initialFetch();
+    
     const interval = setInterval(fetchAll, 15000);
+    
     return () => clearInterval(interval);
   }, [fetchAll]);
 
