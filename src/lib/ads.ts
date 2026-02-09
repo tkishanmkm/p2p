@@ -28,7 +28,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
   // Explicitly build the object to avoid sending undefined fields
   const newAdData: any = {
     adType: adData.adType,
-    crypto: adData.crypto,
+    crypto: adData.crypto as CryptoCurrency,
     fiatCurrency: adData.fiatCurrency,
     paymentMethods: adData.paymentMethods,
     rateType: adData.rateType,
@@ -36,7 +36,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     maxAmount: adData.maxAmount,
     paymentTimeLimit: adData.paymentTimeLimit,
     terms: adData.terms,
-    active: adData.active,
+    active: adData.active ?? true,
     minCompletedTrades: adData.minCompletedTrades,
     publicAdId: generatePublicAdId(),
     userId: user.id, // The UID of the user creating the ad

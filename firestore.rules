@@ -58,10 +58,11 @@ service cloud.firestore {
         
         let incoming = request.resource.data;
         let existing = resource.data;
+        let diff = incoming.diff(existing);
 
-        // Ensure that ONLY balance is increased. All other properties must remain unchanged.
-        return incoming.balance > existing.balance &&
-               incoming.diff(existing).affectedKeys().hasOnly(['balance', 'updatedAt']);
+        // Ensure that ONLY balance and updatedAt are changed.
+        return diff.affectedKeys().hasOnly(['balance', 'updatedAt']) &&
+               incoming.balance > existing.balance;
     }
 
     // --- Global Catch-All Rule ---
@@ -105,6 +106,8 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /wallets/{walletId} {
+        // A user must be able to GET another user's wallet to perform a transfer transaction.
+        // LIST is restricted to owner only.
         allow get: if isSignedIn() || isAdmin();
         allow list: if isOwner(userId) || isAdmin();
         
@@ -149,7 +152,10 @@ service cloud.firestore {
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        // The user creating the ad must be the owner, and the denormalized user data must match their auth token.
+        allow create: if isSignedIn() && 
+                      request.auth.uid == request.resource.data.userId &&
+                      request.auth.token.name == request.resource.data.user.userId;
         allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
