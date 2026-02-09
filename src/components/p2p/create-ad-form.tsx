@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -31,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SUPPORTED_CRYPTOS, AD_TAGS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
@@ -57,7 +57,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Wallet, Edit, Search, Globe, Landmark, CreditCard, Smartphone, Car } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { FlagIcon } from "../ui/flag-icon";
-import { Label } from "@/components/ui/label";
+import { Label } from "../ui/label";
 
 const adTags = AD_TAGS.map((label) => ({
   id: label.toLowerCase().replace(/ /g, '-'),
@@ -121,7 +121,6 @@ type AdFormValues = z.infer<typeof adFormSchema>;
 interface CreateAdFormProps {
     ad?: P2PAd;
     isAdmin?: boolean;
-    adType: 'buy' | 'sell';
 }
 
 const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, field, addCustom, customValue, onCustomValueChange }: any) => {
@@ -182,6 +181,7 @@ const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, f
                 <FormItem key={pm} className="flex flex-row items-start space-x-3 space-y-0 py-2">
                   <FormControl>
                     <Checkbox
+                      id={`pm-sheet-${pm}`}
                       checked={field.value?.includes(pm)}
                       onCheckedChange={(checked) => {
                         if (field.value?.length >= 5 && checked) {
@@ -194,7 +194,7 @@ const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, f
                       }}
                     />
                   </FormControl>
-                  <FormLabel className="font-normal w-full cursor-pointer">{pm}</FormLabel>
+                  <Label htmlFor={`pm-sheet-${pm}`} className="font-normal w-full cursor-pointer">{pm}</Label>
                 </FormItem>
               ))}
             </div>
@@ -204,7 +204,7 @@ const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, f
     );
 };
 
-export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps) {
+export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { firestore, user } = useFirebase();
@@ -239,16 +239,16 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
     defaultValues: ad 
       ? { 
           ...ad, 
-          ratePercent: ad.ratePercent ?? 5, 
-          paymentTimeLimit: ad.paymentTimeLimit || 30, 
-          minCompletedTrades: ad.minCompletedTrades || 0, 
-          adType,
+          paymentMethods: ad.paymentMethods || [],
           tags: ad.tags || [],
           targetedCountries: ad.targetedCountries || [],
           blockedCountries: ad.blockedCountries || [],
+          ratePercent: ad.ratePercent ?? 5, 
+          paymentTimeLimit: ad.paymentTimeLimit || 30, 
+          minCompletedTrades: ad.minCompletedTrades || 0 
         } 
       : {
-          adType: adType,
+          adType: "sell",
           crypto: "BTC",
           fiatCurrency: "USD",
           paymentMethods: [],
@@ -398,45 +398,29 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            
             <FormField
               control={form.control}
               name="adType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ad Type</FormLabel>
+                  <FormLabel>I want to</FormLabel>
                   <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
+                    <Tabs
                       value={field.value}
-                      className="grid grid-cols-2 gap-4"
-                      disabled={!!ad} // Disable if editing
+                      onValueChange={field.onChange}
+                      className="w-full"
                     >
-                      <FormItem>
-                        <RadioGroupItem value="buy" id="buy" className="peer sr-only" />
-                        <Label
-                          htmlFor="buy"
-                          className="flex cursor-pointer flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 font-bold text-lg transition-colors hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-green-600 peer-data-[state=checked]:bg-green-50/50 dark:peer-data-[state=checked]:bg-green-900/20"
-                        >
-                          I want to Buy Crypto
-                        </Label>
-                      </FormItem>
-                      <FormItem>
-                        <RadioGroupItem value="sell" id="sell" className="peer sr-only" />
-                        <Label
-                          htmlFor="sell"
-                          className="flex cursor-pointer flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 font-bold text-lg transition-colors hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-red-600 peer-data-[state=checked]:bg-red-50/50 dark:peer-data-[state=checked]:bg-red-900/20"
-                        >
-                          I want to Sell Crypto
-                        </Label>
-                      </FormItem>
-                    </RadioGroup>
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="sell" className="data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">Sell</TabsTrigger>
+                        <TabsTrigger value="buy" className="data-[state=active]:bg-green-600 data-[state=active]:text-primary-foreground">Buy</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <div className="space-y-8">
               <FormField
                 control={form.control}
