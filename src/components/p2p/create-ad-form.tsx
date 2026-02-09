@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -31,7 +30,6 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SUPPORTED_CRYPTOS, AD_TAGS } from "@/lib/constants";
 import { currencies } from "@/lib/currencies";
@@ -121,6 +119,7 @@ type AdFormValues = z.infer<typeof adFormSchema>;
 interface CreateAdFormProps {
     ad?: P2PAd;
     isAdmin?: boolean;
+    adType: 'buy' | 'sell';
 }
 
 const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, field, addCustom, customValue, onCustomValueChange }: any) => {
@@ -203,7 +202,7 @@ const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, f
     );
 };
 
-export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
+export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { firestore, user } = useFirebase();
@@ -236,9 +235,9 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
     resolver: zodResolver(adFormSchema),
     shouldUnregister: false,
     defaultValues: ad 
-      ? { ...ad, ratePercent: ad.ratePercent ?? 5, paymentTimeLimit: ad.paymentTimeLimit || 30, minCompletedTrades: ad.minCompletedTrades || 0 } 
+      ? { ...ad, ratePercent: ad.ratePercent ?? 5, paymentTimeLimit: ad.paymentTimeLimit || 30, minCompletedTrades: ad.minCompletedTrades || 0, adType } 
       : {
-          adType: "sell",
+          adType: adType,
           crypto: "BTC",
           fiatCurrency: "USD",
           paymentMethods: [],
@@ -303,8 +302,6 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
 
     if (price <= 0) return;
     
-    // The maximum amount of crypto the user wants to sell, in fiat value.
-    // We need to check if they have enough crypto to cover this.
     const requiredCryptoForMaxAmount = watchedMaxAmount / price;
     
     if (userBalance < requiredCryptoForMaxAmount) {
@@ -390,29 +387,7 @@ export function CreateAdForm({ ad, isAdmin = false }: CreateAdFormProps) {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <FormField
-              control={form.control}
-              name="adType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>I want to</FormLabel>
-                  <FormControl>
-                    <Tabs
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      className="w-full"
-                    >
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="sell" className="data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">Sell</TabsTrigger>
-                        <TabsTrigger value="buy" className="data-[state=active]:bg-green-600 data-[state=active]:text-primary-foreground">Buy</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            
             <div className="space-y-8">
               <FormField
                 control={form.control}

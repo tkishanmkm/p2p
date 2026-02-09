@@ -281,7 +281,7 @@ function BuyPageContent() {
             {/* Desktop Title & Header */}
             <div className="hidden md:flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold md:text-3xl text-primary-foreground">Buy <span className="text-orange-400">{coinFullName}</span></h1>
+                    <h1 className="text-2xl font-bold md:text-3xl text-primary-foreground">Buy {coinFullName} - Find Offers from Sellers</h1>
                     <p className="text-sm text-primary-foreground/80">{marketPriceText}</p>
                 </div>
                 <div className="flex items-center gap-4">
@@ -347,7 +347,7 @@ function BuyPageContent() {
                     
                     <div className="flex items-center gap-2 ml-auto">
                         <Button variant="outline" asChild>
-                            <Link href="/ads/create"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
+                            <Link href="/ads/create?type=sell"><PlusCircle className="mr-2 h-4 w-4" /> Create an offer</Link>
                         </Button>
                         <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
                             <SlidersHorizontal className="h-4 w-4" />
@@ -431,10 +431,10 @@ function BuyPageContent() {
       
       <div className="bg-card text-card-foreground rounded-lg p-4 sm:p-6">
         <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">Offers</h2>
+            <h2 className="text-2xl font-bold">Offers from Sellers</h2>
             <div className="md:hidden flex items-center gap-2">
                 <Button variant="outline" asChild size="icon">
-                    <Link href="/ads/create"><PlusCircle className="h-4 w-4" /></Link>
+                    <Link href="/ads/create?type=sell"><PlusCircle className="h-4 w-4" /></Link>
                 </Button>
                 <Button variant="outline" size="icon" onClick={() => setIsFiltersSheetOpen(true)}>
                     <SlidersHorizontal className="h-4 w-4" />
