@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
-import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
@@ -71,7 +71,7 @@ export function ProfileSettings({ user }: { user: User }) {
             const fileName = `avatar.${fileExtension}`;
             const storageRef = ref(storage, `avatars/${currentUserId}/${fileName}`);
             
-            const snapshot = await uploadString(storageRef, previewUrl, 'data_url');
+            const snapshot = await uploadBytes(storageRef, fileToUpload);
             const photoURL = await getDownloadURL(snapshot.ref);
 
             if (auth.currentUser) {
