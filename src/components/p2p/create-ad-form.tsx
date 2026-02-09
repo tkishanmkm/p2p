@@ -56,6 +56,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Wallet, Edit, Search, Globe, Landmark, CreditCard, Smartphone, Car } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { FlagIcon } from "../ui/flag-icon";
+import { Label } from "@/components/ui/label";
 
 const adTags = AD_TAGS.map((label) => ({
   id: label.toLowerCase().replace(/ /g, '-'),
@@ -387,6 +388,44 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            
+            <FormField
+              control={form.control}
+              name="adType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ad Type</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="grid grid-cols-2 gap-4"
+                      disabled={!!ad} // Disable if editing
+                    >
+                      <FormItem>
+                        <RadioGroupItem value="buy" id="buy" className="peer sr-only" />
+                        <Label
+                          htmlFor="buy"
+                          className="flex cursor-pointer flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 font-bold text-lg transition-colors hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-green-600 peer-data-[state=checked]:bg-green-50/50 dark:peer-data-[state=checked]:bg-green-900/20"
+                        >
+                          I want to Buy Crypto
+                        </Label>
+                      </FormItem>
+                      <FormItem>
+                        <RadioGroupItem value="sell" id="sell" className="peer sr-only" />
+                        <Label
+                          htmlFor="sell"
+                          className="flex cursor-pointer flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 font-bold text-lg transition-colors hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-red-600 peer-data-[state=checked]:bg-red-50/50 dark:peer-data-[state=checked]:bg-red-900/20"
+                        >
+                          I want to Sell Crypto
+                        </Label>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <div className="space-y-8">
               <FormField
