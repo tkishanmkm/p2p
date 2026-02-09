@@ -53,41 +53,70 @@ export function ProfileSettings({ user }: { user: User }) {
             toast({ variant: 'destructive', title: 'Error', description: 'User not authenticated or Firebase services not available.' });
             return;
         }
-
+    
         setIsUploading(true);
-        const currentUserId = user.id; 
-        
-        try {
-            const storage = getStorage(firebaseApp);
-            const fileExtension = fileToUpload.name.split('.').pop() || 'jpg';
-            const fileName = `avatar.${fileExtension}`;
-            const storageRef = ref(storage, `avatars/${currentUserId}/${fileName}`);
-            
-            // This is the robust way to handle the upload.
-            // We await the entire upload task.
-            const uploadTask = await uploadBytesResumable(storageRef, fileToUpload);
-
-            // Once the upload is complete, get the download URL.
-            const photoURL = await getDownloadURL(uploadTask.ref);
-
-            // Update Firebase Auth profile
-            await updateProfile(auth.currentUser, { photoURL });
-
-            // Update Firestore user document
-            const userDocRef = doc(firestore, 'users', currentUserId);
-            await updateDoc(userDocRef, { photoURL });
-
-            setFileToUpload(null); // Clear the file state after successful upload
-
-            toast({ title: 'Profile Updated', description: 'Your new profile picture has been saved.' });
-        } catch (error: any) {
-            console.error("Error updating profile picture:", error);
-            // Revert preview to original on failure
-            setPreviewUrl(user?.photoURL || null);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
-        } finally {
-            setIsUploading(false);
-        }
+        const currentUserId = user.id;
+    
+        const storage = getStorage(firebaseApp);
+        const fileExtension = fileToUpload.name.split('.').pop() || 'jpg';
+        const fileName = `avatar.${fileExtension}`;
+        const storageRef = ref(storage, `avatars/${currentUserId}/${fileName}`);
+    
+        const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
+    
+        // Listen for state changes, errors, and completion of the upload.
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                // Can be used to show progress, but for now we'll just keep the spinner
+            },
+            (error) => {
+                // A full list of error codes is available at
+                // https://firebase.google.com/docs/storage/web/handle-errors
+                console.error("Upload failed:", error);
+                let errorMessage = "Could not upload image. Please try again.";
+                switch (error.code) {
+                    case 'storage/unauthorized':
+                        errorMessage = "You do not have permission to upload this file.";
+                        break;
+                    case 'storage/canceled':
+                        errorMessage = "Upload was canceled.";
+                        break;
+                    case 'storage/unknown':
+                        errorMessage = "An unknown error occurred. Check the console for details.";
+                        break;
+                }
+                toast({ variant: 'destructive', title: 'Upload Failed', description: errorMessage });
+                setPreviewUrl(user?.photoURL || null); // Revert preview on error
+                setIsUploading(false);
+            },
+            () => {
+                // Upload completed successfully, now we can get the download URL
+                getDownloadURL(uploadTask.snapshot.ref).then(async (photoURL) => {
+                    try {
+                        // Update Firebase Auth profile
+                        if (auth.currentUser) {
+                           await updateProfile(auth.currentUser, { photoURL });
+                        }
+    
+                        // Update Firestore user document
+                        const userDocRef = doc(firestore, 'users', currentUserId);
+                        await updateDoc(userDocRef, { photoURL });
+    
+                        setFileToUpload(null); // Clear the file state after successful upload
+                        toast({ title: 'Profile Updated', description: 'Your new profile picture has been saved.' });
+                    } catch (dbError: any) {
+                        console.error("Error updating database:", dbError);
+                        toast({ variant: 'destructive', title: 'Save Failed', description: "Image uploaded, but failed to save to profile." });
+                    } finally {
+                        setIsUploading(false);
+                    }
+                }).catch((urlError) => {
+                    console.error("Error getting download URL:", urlError);
+                    toast({ variant: 'destructive', title: 'Upload Failed', description: "Could not get the image URL after upload." });
+                    setIsUploading(false);
+                });
+            }
+        );
     };
 
     return (
