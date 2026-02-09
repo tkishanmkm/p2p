@@ -67,11 +67,6 @@ service cloud.firestore {
                incoming.id == existing.id;
     }
 
-    // --- Global Catch-All Rule ---
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
     // --- Configuration Collections ---
     match /_config/{docId} {
         allow read: if true;
@@ -196,6 +191,11 @@ service cloud.firestore {
     match /{path=**}/disputes/{disputeId} {
         allow list: if isAdmin();
         allow get: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(resource.data.tradeId)).data) || isAdmin();
+    }
+
+    // --- Global Catch-All Rule ---
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
