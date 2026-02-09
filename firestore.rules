@@ -70,7 +70,7 @@ service cloud.firestore {
     // --- Configuration Collections ---
     match /_config/{docId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if (docId == 'market_data' && isSignedIn()) || isAdmin();
     }
     match /crypto_deposit_addresses/{addressId} {
         allow read: if isSignedIn();
