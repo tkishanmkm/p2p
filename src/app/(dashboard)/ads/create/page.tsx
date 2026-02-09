@@ -16,13 +16,13 @@ function CreateAdPageContent() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading && !authUser) {
+    if (!isAuthLoading && !authUser) {
       router.push(`/login?redirect=/ads/create`);
     }
-  }, [authUser, isUserLoading, router]);
+  }, [authUser, isAuthLoading, router]);
 
   const userRef = useMemoFirebase(() => (authUser ? doc(firestore, "users", authUser.uid) : null), [firestore, authUser]);
-  const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
+  const { data: user, isLoading: isUserDocLoading } = useDoc<User>(userRef);
 
   if (isAuthLoading || !authUser) {
     return (
@@ -35,8 +35,8 @@ function CreateAdPageContent() {
   return (
     <>
       <div className="flex-1 rounded-lg">
-        {isUserLoading && <Skeleton className="h-[600px] w-full" />}
-        {!isUserLoading && user && (user.isBanned || user.isOnHold) ? (
+        {isUserDocLoading && <Skeleton className="h-[600px] w-full" />}
+        {!isUserDocLoading && user && (user.isBanned || user.isOnHold) ? (
             <div className="mt-4">
                  <AccountStatusAlert user={user} />
             </div>
