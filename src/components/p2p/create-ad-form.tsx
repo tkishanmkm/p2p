@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -378,6 +377,7 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
           completedTrades: userData.completedTrades ?? 0,
           photoURL: userData.photoURL,
           badges: userData.badges,
+          lastActive: userData.lastActive,
         });
         toast({ title: "Ad Created", description: "Your ad has been successfully posted." });
         router.push(data.adType === 'sell' ? '/buy' : '/sell');
@@ -954,5 +954,3 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
     </Card>
   );
 }
-
-    
