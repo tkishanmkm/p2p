@@ -28,6 +28,7 @@ import {
   Database,
   Send,
   DollarSign,
+  Beaker,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,6 +44,7 @@ const settingsItems = [
     { href: "/adminnarayan/appearance", label: "Appearance", icon: Brush },
     { href: "/adminnarayan/settings/wallet", label: "Wallet Settings", icon: Wallet },
     { href: "/adminnarayan/settings/data", label: "Data Management", icon: Database },
+    { href: "/adminnarayan/settings/seed", label: "Seed Data", icon: Beaker },
     { href: "#", label: "Security Logs", icon: FileText },
 ]
 
