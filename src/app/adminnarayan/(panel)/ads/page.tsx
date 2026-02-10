@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useFirebase } from "@/firebase";
-import { collection, query, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, where } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -27,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import type { P2PAd } from "@/lib/types";
+import type { P2PAd, Trade } from "@/lib/types";
 import { cn, toDate } from "@/lib/utils";
 import Link from "next/link";
 import { useAdminStatus } from "@/hooks/use-admin-status";
@@ -37,6 +36,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Edit, PlusCircle, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminAdsPage() {
   const { firestore } = useFirebase();
@@ -49,6 +50,16 @@ export default function AdminAdsPage() {
 
   const [selectedAd, setSelectedAd] = useState<P2PAd | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  const [selectedAdStats, setSelectedAdStats] = useState<{
+    totalTrades: number;
+    completedTrades: number;
+    cancelledTrades: number;
+    expiredTrades: number;
+    disputedTrades: number;
+  } | null>(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
+
 
   useEffect(() => {
     if (isAdminLoading) return;
@@ -87,9 +98,35 @@ export default function AdminAdsPage() {
     );
   }, [ads, searchTerm]);
   
+  const fetchAdStats = async (adId: string) => {
+    if (!firestore) return;
+    setIsStatsLoading(true);
+    setSelectedAdStats(null); // Reset stats
+    try {
+      const tradesQuery = query(collection(firestore, "trades"), where("adId", "==", adId));
+      const snapshot = await getDocs(tradesQuery);
+      const trades = snapshot.docs.map(doc => doc.data() as Trade);
+
+      const stats = {
+        totalTrades: trades.length,
+        completedTrades: trades.filter(t => t.status === 'released').length,
+        cancelledTrades: trades.filter(t => t.status === 'cancelled').length,
+        expiredTrades: trades.filter(t => t.status === 'expired').length,
+        disputedTrades: trades.filter(t => t.status === 'disputed').length,
+      };
+      setSelectedAdStats(stats);
+    } catch (error) {
+      console.error("Error fetching ad stats:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not fetch ad statistics." });
+    } finally {
+      setIsStatsLoading(false);
+    }
+  };
+
   const handleRowClick = (ad: P2PAd) => {
     setSelectedAd(ad);
     setIsDetailsOpen(true);
+    fetchAdStats(ad.id);
   };
 
   return (
@@ -236,6 +273,7 @@ export default function AdminAdsPage() {
             {selectedAd && (
                  <div className="space-y-4 py-4 text-sm">
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedAd.user.userId}</span></div>
+                    {selectedAd.offerLabel && <div className="flex justify-between items-center"><span className="text-muted-foreground">Offer Label</span><Badge>{selectedAd.offerLabel}</Badge></div>}
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Type</span><Badge variant={selectedAd.adType === "sell" ? "secondary" : "outline"} className="capitalize">{selectedAd.adType}</Badge></div>
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Asset</span><span className="font-medium">{selectedAd.crypto} / {selectedAd.fiatCurrency}</span></div>
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Price</span><span className="font-medium">{selectedAd.rateType === 'fixed' ? `${selectedAd.fixedRate} ${selectedAd.fiatCurrency}` : `Market ${selectedAd.ratePercent}%`}</span></div>
@@ -246,6 +284,30 @@ export default function AdminAdsPage() {
                         <span className="text-muted-foreground">Terms</span>
                         <p className="p-2 bg-muted rounded-md text-xs">{selectedAd.terms}</p>
                     </div>
+
+                    <Separator />
+
+                    <h4 className="font-medium text-base">Ad Statistics</h4>
+                    {isStatsLoading && (
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-4 w-full" />
+                        </div>
+                    )}
+                    {!isStatsLoading && selectedAdStats && (
+                        <div className="space-y-3 p-4 border rounded-md bg-secondary/50">
+                            <div className="flex justify-between"><span>Total Trades Initiated:</span><span className="font-bold">{selectedAdStats.totalTrades}</span></div>
+                            <div className="flex justify-between"><span>Completed:</span><span className="font-bold text-green-600">{selectedAdStats.completedTrades}</span></div>
+                            <div className="flex justify-between"><span>Cancelled:</span><span className="font-bold text-muted-foreground">{selectedAdStats.cancelledTrades}</span></div>
+                            <div className="flex justify-between"><span>Expired:</span><span className="font-bold text-amber-600">{selectedAdStats.expiredTrades}</span></div>
+                            <div className="flex justify-between"><span>Disputed:</span><span className="font-bold text-red-600">{selectedAdStats.disputedTrades}</span></div>
+                        </div>
+                    )}
+                     {!isStatsLoading && !selectedAdStats && (
+                        <p className="text-muted-foreground text-center text-xs py-4">Could not load statistics.</p>
+                     )}
+
                 </div>
             )}
         </DialogContent>
