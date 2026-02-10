@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -370,7 +371,7 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
       } else { // Creating new ad
         await createP2PAd(firestore, adData, {
           id: user.uid,
-          userId: userData.userId,
+          username: userData.userId,
           country: userData.country,
           feedbackScore: userData.feedbackScore ?? 100,
           completedTrades: userData.completedTrades ?? 0,

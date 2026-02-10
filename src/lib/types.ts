@@ -1,3 +1,4 @@
+
 // All IDs are string (UUID)
 // Amounts are string to handle DECIMAL(36,18) precision
 
@@ -102,7 +103,7 @@ export type P2PAd = {
   blockedCountries?: string[];
   minCompletedTrades?: number;
   user: {
-      userId: string;
+      username: string;
       country?: string;
       feedbackScore?: number;
       completedTrades?: number;

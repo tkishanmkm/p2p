@@ -1,3 +1,4 @@
+
 'use client';
 import { Firestore, collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { P2PAd, CryptoCurrency } from './types';
@@ -16,7 +17,7 @@ function generatePublicAdId() {
 
 export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'>, user: {
     id: string;
-    userId: string;
+    username: string;
     country?: string;
     feedbackScore: number;
     completedTrades: number;
@@ -32,7 +33,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     publicAdId: generatePublicAdId(),
     userId: user.id, // The UID of the user creating the ad
     user: { // The denormalized public user data
-      userId: user.userId,
+      username: user.username,
       country: user.country,
       feedbackScore: user.feedbackScore,
       completedTrades: user.completedTrades,
