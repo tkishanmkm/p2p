@@ -1,4 +1,5 @@
 
+
 'use client';
 import { Firestore, collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { P2PAd, CryptoCurrency } from './types';
@@ -20,6 +21,8 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     username: string;
     country?: string;
     feedbackScore: number;
+    positiveFeedback: number;
+    negativeFeedback: number;
     completedTrades: number;
     photoURL?: string;
     badges?: string[];
@@ -36,6 +39,8 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       username: user.username,
       country: user.country,
       feedbackScore: user.feedbackScore,
+      positiveFeedback: user.positiveFeedback,
+      negativeFeedback: user.negativeFeedback,
       completedTrades: user.completedTrades,
       photoURL: user.photoURL || "",
       badges: user.badges || [],

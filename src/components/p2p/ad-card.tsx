@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { usePrices } from "@/context/price-context";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Skeleton } from "../ui/skeleton";
-import { ThumbsUp, Info, Power } from "lucide-react";
+import { ThumbsUp, Info, Power, ThumbsDown } from "lucide-react";
 import { toDate, cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { FlagIcon } from "../ui/flag-icon";
@@ -59,7 +60,10 @@ export function AdCard({ ad }: AdCardProps) {
                     <div className="text-xs text-muted-foreground flex items-center gap-4">
                         <span>{adCreator.completedTrades} trades</span>
                         <div className="h-2 w-px bg-muted-foreground/30" />
-                        <span><ThumbsUp className="h-3 w-3 inline-block mr-1 text-green-500" />{adCreator.feedbackScore?.toFixed(0) ?? 100}%</span>
+                        <div className="flex items-center gap-2">
+                           <span className="flex items-center gap-1"><ThumbsUp className="h-3 w-3 text-green-500" /> {adCreator.positiveFeedback ?? 0}</span>
+                           <span className="flex items-center gap-1"><ThumbsDown className="h-3 w-3 text-red-500" /> {adCreator.negativeFeedback ?? 0}</span>
+                        </div>
                          <div className="h-2 w-px bg-muted-foreground/30" />
                         <div className={cn("flex items-center gap-1.5", wasActiveRecently ? 'text-green-600' : '')}>
                            <div className={cn("h-1.5 w-1.5 rounded-full", wasActiveRecently ? "bg-green-500" : "bg-muted-foreground/50")} />

@@ -1,4 +1,5 @@
 
+
 // All IDs are string (UUID)
 // Amounts are string to handle DECIMAL(36,18) precision
 
@@ -106,6 +107,8 @@ export type P2PAd = {
       username: string;
       country?: string;
       feedbackScore?: number;
+      positiveFeedback?: number;
+      negativeFeedback?: number;
       completedTrades?: number;
       photoURL?: string;
       badges?: string[];

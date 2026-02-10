@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams, useRouter } from "next/navigation";
@@ -30,8 +31,8 @@ import { CheckCircle, Phone, CreditCard, Clock, ThumbsUp, ThumbsDown, MessageSqu
 import { FlagIcon } from "@/components/ui/flag-icon";
 
 function TraderProfileCard({ user, ad, feedback }: { user: User, ad: P2PAd, feedback: Feedback[] | null }) {
-    const positiveFeedback = feedback?.filter(f => f.rating === 'positive').length || 0;
-    const negativeFeedback = feedback?.filter(f => f.rating === 'negative').length || 0;
+    const positiveFeedback = user.positiveFeedback || 0;
+    const negativeFeedback = user.negativeFeedback || 0;
 
     return (
         <Card className="mb-8">

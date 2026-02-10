@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -374,6 +375,8 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
           username: userData.userId,
           country: userData.country,
           feedbackScore: userData.feedbackScore ?? 100,
+          positiveFeedback: userData.positiveFeedback ?? 0,
+          negativeFeedback: userData.negativeFeedback ?? 0,
           completedTrades: userData.completedTrades ?? 0,
           photoURL: userData.photoURL,
           badges: userData.badges,
