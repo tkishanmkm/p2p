@@ -18,7 +18,7 @@ function generatePublicAdId() {
 
 export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'>, user: {
     id: string;
-    username: string;
+    userId: string;
     country?: string;
     feedbackScore: number;
     positiveFeedback: number;
@@ -30,13 +30,12 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
 }) {
   const adsCollection = collection(db, 'p2p_ads');
   
-  // Combine base ad data with generated/user data into a single object
   const dataToCreate = {
     ...adData,
     publicAdId: generatePublicAdId(),
-    userId: user.id, // The UID of the user creating the ad
-    user: { // The denormalized public user data
-      username: user.username,
+    userId: user.id,
+    user: {
+      userId: user.userId,
       country: user.country,
       feedbackScore: user.feedbackScore,
       positiveFeedback: user.positiveFeedback,
@@ -55,7 +54,6 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
   } catch (error) {
     console.error("Error creating P2P Ad: ", error);
     
-    // The reportable data now exactly matches what was sent
     errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({

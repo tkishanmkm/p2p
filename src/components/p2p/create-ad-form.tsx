@@ -1,6 +1,6 @@
 
 
-"use client";
+'use client';
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -372,7 +372,7 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
       } else { // Creating new ad
         await createP2PAd(firestore, adData, {
           id: user.uid,
-          username: userData.userId,
+          userId: userData.userId,
           country: userData.country,
           feedbackScore: userData.feedbackScore ?? 100,
           positiveFeedback: userData.positiveFeedback ?? 0,
