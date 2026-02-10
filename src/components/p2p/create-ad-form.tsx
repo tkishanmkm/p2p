@@ -120,7 +120,6 @@ type AdFormValues = z.infer<typeof adFormSchema>;
 
 interface CreateAdFormProps {
   ad?: P2PAd;
-  isAdmin?: boolean;
   adType: 'buy' | 'sell';
 }
 
@@ -204,7 +203,7 @@ const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, f
   );
 };
 
-export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps) {
+export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { firestore, user } = useFirebase();
@@ -338,7 +337,7 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
       toast({ variant: "destructive", title: "Error", description: "You must be logged in." });
       return;
     }
-    if (balanceError && !isAdmin) {
+    if (balanceError) {
       toast({ variant: "destructive", title: "Cannot Create Ad", description: "Please resolve the balance issue first." });
       return;
     }
@@ -367,7 +366,7 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
       if (ad) { // Editing existing ad
         await updateAd(firestore, ad.id, adData);
         toast({ title: "Ad Updated", description: "Your ad has been successfully updated." });
-        router.push(isAdmin ? '/adminnarayan/ads' : '/my-ads');
+        router.push('/my-ads');
       } else { // Creating new ad
         await createP2PAd(firestore, adData, {
           id: user.uid,
@@ -931,7 +930,7 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
               />
             </div>
 
-            {balanceError && !isAdmin && (
+            {balanceError && (
               <Alert variant="destructive">
                 <Wallet className="h-4 w-4" />
                 <AlertTitle>Insufficient Balance</AlertTitle>
@@ -944,7 +943,7 @@ export function CreateAdForm({ ad, isAdmin = false, adType }: CreateAdFormProps)
               </Alert>
             )}
 
-            <Button type="submit" size="lg" className="w-full md:w-auto" disabled={(!!balanceError && !isAdmin) || form.formState.isSubmitting}>
+            <Button type="submit" size="lg" className="w-full md:w-auto" disabled={(!!balanceError) || form.formState.isSubmitting}>
               {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {ad ? 'Save Changes' : 'Create Ad'}
             </Button>

@@ -133,16 +133,12 @@ export default function AdminAdsPage() {
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold md:text-2xl">P2P Ads Management</h1>
-         <Button onClick={() => router.push('/adminnarayan/ads/create')}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create Ad
-        </Button>
       </div>
       <Card>
         <CardHeader>
           <CardTitle>All User Ads</CardTitle>
           <CardDescription>
-            View all ads on the platform. Click a row to see details or edit.
+            View all ads on the platform. Click a row to see details.
           </CardDescription>
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -164,13 +160,12 @@ export default function AdminAdsPage() {
                     <TableHead>Type</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
                 {isLoading && (
                     <TableRow>
-                    <TableCell colSpan={6} className="text-center">
+                    <TableCell colSpan={5} className="text-center">
                         Loading ads...
                     </TableCell>
                     </TableRow>
@@ -203,19 +198,11 @@ export default function AdminAdsPage() {
                         {ad.active ? "Active" : "Inactive"}
                         </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/adminnarayan/ads/${ad.id}`);
-                            }}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                            </Button>
-                    </TableCell>
                     </TableRow>
                 ))}
                 {!isLoading && !filteredAds?.length && (
                     <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                         No ads found.
                     </TableCell>
                     </TableRow>
@@ -250,14 +237,6 @@ export default function AdminAdsPage() {
                             </Badge>
                           </div>
                       </CardContent>
-                      <CardFooter>
-                         <Button variant="outline" size="sm" className="w-full" onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/adminnarayan/ads/${ad.id}`);
-                            }}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Ad
-                            </Button>
-                      </CardFooter>
                   </Card>
               ))}
                {!isLoading && !filteredAds?.length && <p className="text-center text-sm text-muted-foreground py-8">No ads found.</p>}
