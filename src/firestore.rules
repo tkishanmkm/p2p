@@ -148,9 +148,9 @@ service cloud.firestore {
     }
 
     match /p2p_ads/{adId} {
-        allow get, list: if true;
-        allow create: if request.auth.uid == request.resource.data.userId || isAdmin();
-        allow update, delete: if resource.data.userId == request.auth.uid || isAdmin();
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
     }
 
     match /trades/{tradeId} {
