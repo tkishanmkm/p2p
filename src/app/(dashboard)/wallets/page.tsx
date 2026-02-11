@@ -27,6 +27,7 @@ import { cancelWithdrawal } from "@/lib/wallet";
 import { useRouter } from 'next/navigation';
 import { usePrices } from "@/context/price-context";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
@@ -75,11 +76,21 @@ export default function WalletsPage() {
   const walletsCollectionRef = useMemoFirebase(() => authUser ? collection(firestore, "users", authUser.uid, "wallets") : null, [firestore, authUser]);
   const { data: wallets, isLoading: isWalletsLoading } = useCollection<UserWallet>(walletsCollectionRef);
   
-  const [deposits, setDeposits] = useState<Deposit[] | null>(null);
-  const [isDepositsLoading, setIsDepositsLoading] = useState(true);
+  const depositsQuery = useMemoFirebase(() => 
+    authUser 
+      ? query(collection(firestore, "deposits"), where("userId", "==", authUser.uid), orderBy("createdAt", "desc")) 
+      : null,
+    [authUser, firestore]
+  );
+  const { data: deposits, isLoading: isDepositsLoading, error: depositsError } = useCollection<Deposit>(depositsQuery);
 
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null);
-  const [isWithdrawalsLoading, setIsWithdrawalsLoading] = useState(true);
+  const withdrawalsQuery = useMemoFirebase(() => 
+    authUser 
+      ? query(collection(firestore, "users", authUser.uid, "withdrawals"), orderBy("createdAt", "desc"))
+      : null,
+    [authUser, firestore]
+  );
+  const { data: withdrawals, isLoading: isWithdrawalsLoading, error: withdrawalsError } = useCollection<Withdrawal>(withdrawalsQuery);
   
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -96,58 +107,12 @@ export default function WalletsPage() {
   const exchangeRate = fiatRates[preferredCurrency] || 1;
   const totalWalletValueConverted = totalWalletValueUSD * exchangeRate;
 
-
-
-  useEffect(() => {
-    if (!authUser || !firestore) {
-      setIsDepositsLoading(false);
-      setIsWithdrawalsLoading(false);
-      return;
-    }
-
-    const fetchTransactions = async () => {
-      setIsDepositsLoading(true);
-      setIsWithdrawalsLoading(true);
-
-      try {
-        // Fetch Deposits, ordered by most recent
-        const depositsRef = collection(firestore, "deposits");
-        const depositQuery = query(depositsRef, where("userId", "==", authUser.uid), orderBy("createdAt", "desc"));
-        const depositSnapshot = await getDocs(depositQuery);
-        const depositsData = depositSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
-        setDeposits(depositsData);
-
-        // Fetch Withdrawals, ordered by most recent
-        const withdrawalsRef = collection(firestore, "users", authUser.uid, "withdrawals");
-        const withdrawalQuery = query(withdrawalsRef, orderBy("createdAt", "desc"));
-        const withdrawalSnapshot = await getDocs(withdrawalQuery);
-        const withdrawalsData = withdrawalSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Withdrawal));
-        setWithdrawals(withdrawalsData);
-      } catch (error) {
-        console.error("Failed to fetch transaction history:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not fetch your transaction history.",
-        });
-      } finally {
-        setIsDepositsLoading(false);
-        setIsWithdrawalsLoading(false);
-      }
-    };
-
-    fetchTransactions();
-  }, [authUser, firestore, toast]);
-
-
   const handleCancelWithdrawal = async (withdrawal: Withdrawal) => {
     if (!firestore || !authUser) return;
     if (!confirm("Are you sure you want to cancel this withdrawal request?")) return;
     try {
       await cancelWithdrawal(firestore, withdrawal);
       toast({ title: "Withdrawal Cancelled", description: "Your funds have been returned to your available balance." });
-      // Optimistically update UI
-      setWithdrawals(current => current?.map(w => w.id === withdrawal.id ? {...w, status: 'cancelled'} : w) || null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Cancellation Failed", description: e.message });
     }
@@ -280,14 +245,20 @@ export default function WalletsPage() {
             </CardHeader>
             <CardContent>
                 {isDepositsLoading && <p>Loading history...</p>}
-                {!isDepositsLoading && (!deposits || deposits.length === 0) && (
+                {depositsError && (
+                  <Alert variant="destructive">
+                    <AlertTitle>Error Loading Deposits</AlertTitle>
+                    <AlertDescription>{depositsError.message}</AlertDescription>
+                  </Alert>
+                )}
+                {!isDepositsLoading && !depositsError && (!deposits || deposits.length === 0) && (
                     <div className="text-center py-10 border-2 border-dashed rounded-lg">
                         <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
                         <h3 className="mt-4 text-lg font-semibold">No Deposits Found</h3>
                         <p className="mt-1 text-sm text-muted-foreground">Click "Deposit" to get started.</p>
                     </div>
                 )}
-                 {!isDepositsLoading && deposits && deposits.length > 0 && (
+                 {!isDepositsLoading && !depositsError && deposits && deposits.length > 0 && (
                    <>
                     {/* Desktop Table */}
                     <Table className="hidden md:table">
@@ -347,14 +318,20 @@ export default function WalletsPage() {
             </CardHeader>
             <CardContent>
                 {isWithdrawalsLoading && <p>Loading history...</p>}
-                {!isWithdrawalsLoading && (!withdrawals || withdrawals.length === 0) && (
+                {withdrawalsError && (
+                  <Alert variant="destructive">
+                    <AlertTitle>Error Loading Withdrawals</AlertTitle>
+                    <AlertDescription>{withdrawalsError.message}</AlertDescription>
+                  </Alert>
+                )}
+                {!isWithdrawalsLoading && !withdrawalsError && (!withdrawals || withdrawals.length === 0) && (
                     <div className="text-center py-10 border-2 border-dashed rounded-lg">
                         <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
                         <h3 className="mt-4 text-lg font-semibold">No Withdrawals Found</h3>
                         <p className="mt-1 text-sm text-muted-foreground">Click "Withdraw" to get started.</p>
                     </div>
                 )}
-                 {!isWithdrawalsLoading && withdrawals && withdrawals.length > 0 && (
+                 {!isWithdrawalsLoading && !withdrawalsError && withdrawals && withdrawals.length > 0 && (
                     <>
                       {/* Desktop Table */}
                       <Table className="hidden md:table">
@@ -430,3 +407,5 @@ export default function WalletsPage() {
     </>
   );
 }
+
+    
