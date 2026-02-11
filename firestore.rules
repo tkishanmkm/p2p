@@ -15,8 +15,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
     
     function isTradeParticipant(tradeData) {
@@ -116,7 +115,7 @@ service cloud.firestore {
         allow read, write: if isOwner(userId) || isAdmin();
       }
        match /sessions/{sessionId} {
-        allow read, create: if isOwner(userId) || isAdmin();
+        allow read, list, create: if isOwner(userId) || isAdmin();
         allow update, delete: if isOwner(userId) || isAdmin();
       }
     }
