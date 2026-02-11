@@ -81,7 +81,7 @@ export default function MyTradesPage() {
     const headers = "Crypto,Amount,Date (GMT),Buyer,Seller,Status\n";
     const csvContent = allTrades.map(t => {
         const date = toDate(t.createdAt)?.toUTCString() ?? 'N/A';
-        return `${t.crypto},${t.amount},"${date}",${t.buyer.userId},${t.seller.userId},${t.status}`;
+        return `${t.crypto},${t.amount},"${date}",${t.buyer.username},${t.seller.username},${t.status}`;
     }).join('\n');
     
     const blob = new Blob([headers + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -187,7 +187,7 @@ export default function MyTradesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {partner.userId}
+                        {partner.username}
                         {partner.country && <FlagIcon countryCode={partner.country} />}
                       </div>
                     </TableCell>

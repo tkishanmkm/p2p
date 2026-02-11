@@ -34,13 +34,13 @@ function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { l
   )
 }
 
-function ParticipantRow({ label, user }: { label: string, user: { userId: string, country?: string } }) {
+function ParticipantRow({ label, user }: { label: string, user: { username: string, country?: string } }) {
   return (
      <div className="flex justify-between items-center text-sm">
       <p className="text-muted-foreground">{label}</p>
         <Button variant="link" asChild className="p-0 h-auto font-medium">
-            <Link href={`/users/${user.userId}`} className="flex items-center gap-2">
-                {user.userId}
+            <Link href={`/users/${user.username}`} className="flex items-center gap-2">
+                {user.username}
                 {user.country && <FlagIcon countryCode={user.country} />}
             </Link>
         </Button>

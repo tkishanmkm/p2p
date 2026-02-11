@@ -84,8 +84,8 @@ export default function AdminTradesPage() {
     const lower = searchTerm.toLowerCase();
     return trades.filter(t => 
         t.tradeId.toLowerCase().includes(lower) ||
-        t.buyer.userId.toLowerCase().includes(lower) ||
-        t.seller.userId.toLowerCase().includes(lower) ||
+        t.buyer.username.toLowerCase().includes(lower) ||
+        t.seller.username.toLowerCase().includes(lower) ||
         t.crypto.toLowerCase().includes(lower)
     );
   }, [trades, searchTerm]);
@@ -137,13 +137,13 @@ export default function AdminTradesPage() {
                     <TableRow key={trade.id} onClick={() => router.push(`/trade/${trade.id}`)} className="cursor-pointer">
                     <TableCell className="font-mono text-xs">{trade.tradeId}</TableCell>
                     <TableCell>
-                        <Link href={`/users/${trade.buyer.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                            {trade.buyer.userId}
+                        <Link href={`/users/${trade.buyer.username}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                            {trade.buyer.username}
                         </Link>
                     </TableCell>
                     <TableCell>
-                        <Link href={`/users/${trade.seller.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                            {trade.seller.userId}
+                        <Link href={`/users/${trade.seller.username}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                            {trade.seller.username}
                         </Link>
                     </TableCell>
                     <TableCell>{trade.amount.toFixed(6)} {trade.crypto}</TableCell>
@@ -181,11 +181,11 @@ export default function AdminTradesPage() {
                       <CardContent className="text-sm space-y-2">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Buyer</span>
-                            <span className="font-medium">{trade.buyer.userId}</span>
+                            <span className="font-medium">{trade.buyer.username}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Seller</span>
-                            <span className="font-medium">{trade.seller.userId}</span>
+                            <span className="font-medium">{trade.seller.username}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Date</span>

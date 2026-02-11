@@ -15,6 +15,7 @@ import {
   limit,
   getDocs,
   setDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User as AppUser } from './types';
 import { add } from 'date-fns';

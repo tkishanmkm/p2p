@@ -1,7 +1,7 @@
 
 
 'use client';
-import { Firestore, collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { Firestore, collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { P2PAd, CryptoCurrency } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -18,7 +18,7 @@ function generatePublicAdId() {
 
 export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'>, user: {
     id: string;
-    userId: string;
+    username: string;
     country?: string;
     feedbackScore: number;
     positiveFeedback: number;
@@ -35,7 +35,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     publicAdId: generatePublicAdId(),
     userId: user.id,
     user: {
-      userId: user.userId,
+      username: user.username,
       feedbackScore: user.feedbackScore,
       positiveFeedback: user.positiveFeedback,
       negativeFeedback: user.negativeFeedback,
@@ -45,7 +45,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       lastActive: user.lastActive,
       country: user.country,
     },
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   };
 
   try {

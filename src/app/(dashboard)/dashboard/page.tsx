@@ -214,7 +214,7 @@ export default function DashboardPage() {
                                         <TableRow key={trade.id}>
                                             <TableCell>
                                               <div className="flex items-center gap-2 font-medium">
-                                                {partner.userId}
+                                                {partner.username}
                                                 {partner.country && <FlagIcon countryCode={partner.country} />}
                                               </div>
                                             </TableCell>
