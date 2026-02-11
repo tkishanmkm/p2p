@@ -3,11 +3,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /* ==============================
-       Helper Functions
-    ============================== */
-
+    
+    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -17,110 +14,173 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == "admin";
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
-
+    
     function isTradeParticipant(tradeData) {
-      return isSignedIn() &&
-        (tradeData.buyerId == request.auth.uid ||
-         tradeData.sellerId == request.auth.uid);
+      return isSignedIn() && (tradeData.buyerId == request.auth.uid || tradeData.sellerId == request.auth.uid);
+    }
+    
+    // Validates a wallet creation as part of a user-to-user transfer.
+    function isValidTransferCreation(recipientId, walletId) {
+      let senderId = request.auth.uid;
+      if (senderId == recipientId) { return false; } // No self-transfer
+
+      let senderIsActive = get(/databases/$(database)/documents/users/$(senderId)).data.isBanned == false &&
+                           get(/databases/$(database)/documents/users/$(senderId)).data.isOnHold == false;
+      let recipientIsActive = get(/databases/$(database)/documents/users/$(recipientId)).data.isBanned == false &&
+                              get(/databases/$(database)/documents/users/$(recipientId)).data.isOnHold == false;
+      if (!senderIsActive || !recipientIsActive) { return false; }
+      
+      let data = request.resource.data;
+      let allowedKeys = ['balance', 'lockedBalance', 'crypto', 'userId', 'id', 'updatedAt'];
+      // On create, ensure balance is positive, locked is 0, and all required fields are set correctly by the sender.
+      return data.balance > 0 &&
+             data.lockedBalance == 0 &&
+             data.userId == recipientId &&
+             data.id == walletId &&
+             data.crypto == walletId &&
+             data.keys().hasOnly(allowedKeys);
+    }
+    
+    // Validates a wallet update as part of a user-to-user transfer.
+    function isValidTransferUpdate(recipientId) {
+        let senderId = request.auth.uid;
+        if (senderId == recipientId) { return false; }
+
+        let senderIsActive = get(/databases/$(database)/documents/users/$(senderId)).data.isBanned == false &&
+                           get(/databases/$(database)/documents/users/$(senderId)).data.isOnHold == false;
+        let recipientIsActive = get(/databases/$(database)/documents/users/$(recipientId)).data.isBanned == false &&
+                              get(/databases/$(database)/documents/users/$(recipientId)).data.isOnHold == false;
+        if (!senderIsActive || !recipientIsActive) { return false; }
+        
+        let incoming = request.resource.data;
+        let existing = resource.data;
+
+        // Ensure ONLY balance is increased. All other properties must remain unchanged.
+        return incoming.balance > existing.balance &&
+               incoming.lockedBalance == existing.lockedBalance &&
+               incoming.crypto == existing.crypto &&
+               incoming.userId == existing.userId &&
+               incoming.id == existing.id;
     }
 
-    /* ==============================
-       USERS
-    ============================== */
+    // --- Configuration Collections ---
+    match /_config/{docId} {
+        allow read: if true;
+        allow write: if (docId == 'market_data' && isSignedIn()) || isAdmin();
+    }
+    match /crypto_deposit_addresses/{addressId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
+    }
 
+    // --- Admin-Specific Collections ---
+    match /admins/{adminId} {
+        allow get: if isSignedIn();
+        allow list: if isAdmin();
+        allow create: if isOwner(adminId); // Allows self-bootstrapping
+        allow update, delete: if false;
+    }
+    match /admin_logs/{logId} {
+        allow read, write: if isAdmin();
+    }
+    match /escrow_ledger/{ledgerId} {
+      allow read, list: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    // --- User-Centric Collections ---
     match /users/{userId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isSignedIn();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
-    }
 
-    /* ==============================
-       P2P ADS
-    ============================== */
+      match /wallets/{walletId} {
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId, walletId);
+        allow update: if isOwner(userId) || isAdmin() || isValidTransferUpdate(userId);
+        allow delete: if isAdmin();
+      }
+      match /withdrawals/{withdrawalId} {
+        allow read, create, update: if isOwner(userId) || isAdmin();
+        allow delete: if isAdmin();
+      }
+      match /notifications/{notificationId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+       match /sessions/{sessionId} {
+        allow read, list, create, update: if isOwner(userId) || isAdmin();
+        allow delete: if isAdmin();
+      }
+    }
+    
+    // --- Top-Level Data Collections ---
+    match /deposits/{depositId} {
+      allow get: if isOwner(resource.data.userId) || isAdmin();
+      allow list: if isSignedIn();
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isAdmin() || (
+        isOwner(resource.data.userId) &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status == 'awaiting_confirmation'
+      );
+      allow delete: if isAdmin();
+    }
 
     match /p2p_ads/{adId} {
-
-      // Public can view ads
-      allow get, list: if true;
-
-      // Create ad → must be logged in and owner
-      allow create: if isSignedIn() &&
-                    request.resource.data.userId == request.auth.uid &&
-                    request.resource.data.minAmount > 0 &&
-                    request.resource.data.maxAmount >= request.resource.data.minAmount;
-
-      // Update/Delete → only owner or admin
-      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
+        allow get, list: if true;
+        allow create: if request.auth.uid == request.resource.data.userId || isAdmin();
+        allow update, delete: if resource.data.userId == request.auth.uid || isAdmin();
     }
-
-    /* ==============================
-       TRADES
-    ============================== */
 
     match /trades/{tradeId} {
+        allow get: if isTradeParticipant(resource.data) || isAdmin();
+        allow list: if isSignedIn();
+        // Allow trade creation only for the buyer.
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.buyerId;
+        allow update: if isTradeParticipant(resource.data) || isAdmin();
+        allow delete: if false;
 
-      // Only buyer or seller can read
-      allow get: if isTradeParticipant(resource.data) || isAdmin();
+        match /messages/{messageId} {
+            allow read, write: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(tradeId)).data) || isAdmin();
+        }
+        match /disputes/{disputeId} {
+            allow read, write: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(tradeId)).data) || isAdmin();
+        }
+        match /feedback/{feedbackId} {
+            allow read, write: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(tradeId)).data) || isAdmin();
+        }
+    }
+
+    match /transfers/{transferId} {
+      allow get: if isSignedIn() && (isOwner(resource.data.senderId) || isOwner(resource.data.recipientId) || isAdmin());
       allow list: if isSignedIn();
-
-      // Only buyer can create trade
-      allow create: if isSignedIn() &&
-                    request.resource.data.buyerId == request.auth.uid;
-
-      // Only trade participants or admin can update
-      allow update: if isTradeParticipant(resource.data) || isAdmin();
-
-      allow delete: if false;
-
-      // Subcollections
-      match /messages/{messageId} {
-        allow read, write: if isTradeParticipant(
-          get(/databases/$(database)/documents/trades/$(tradeId)).data
-        ) || isAdmin();
-      }
-
-      match /disputes/{disputeId} {
-        allow read, write: if isTradeParticipant(
-          get(/databases/$(database)/documents/trades/$(tradeId)).data
-        ) || isAdmin();
-      }
-
-      match /feedback/{feedbackId} {
-        allow read, write: if isTradeParticipant(
-          get(/databases/$(database)/documents/trades/$(tradeId)).data
-        ) || isAdmin();
-      }
+      allow create: if isSignedIn() && isOwner(request.resource.data.senderId);
+      allow update, delete: if false;
     }
 
-    /* ==============================
-       CONFIGURATION
-    ============================== */
-    match /_config/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
+    match /support_tickets/{ticketId} {
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        allow read, list, update: if isAdmin();
+        allow delete: if false;
+    }
+    
+    // --- Collection Group Rules for Admin Panel ---
+    match /{path=**}/withdrawals/{withdrawalId} {
+        allow list, get: if isAdmin();
+    }
+    match /{path=**}/disputes/{disputeId} {
+        allow list: if isAdmin();
     }
 
-    /* ==============================
-       ADMIN COLLECTION
-    ============================== */
-
-    match /admins/{adminId} {
-      allow read: if isOwner(adminId);
-      allow write: if false;
-    }
-
-    /* ==============================
-       GLOBAL BLOCK (SECURITY)
-    ============================== */
-
+    // --- Global Catch-All Rule ---
     match /{document=**} {
       allow read, write: if false;
     }
-
   }
 }

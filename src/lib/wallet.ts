@@ -15,6 +15,7 @@ import {
   limit,
   getDocs,
   setDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User as AppUser } from './types';
 import { add } from 'date-fns';
@@ -32,26 +33,21 @@ function generateId(prefix: string, length: number) {
 
 /**
  * Initiates a trade by locking the seller's funds and creating the trade document.
- * This can be called by a buyer (on a SELL ad) or a seller (on a BUY ad).
+ * This function should be called by the buyer.
  */
 export async function initiateTrade(
   db: Firestore,
-  initiatorId: string, // The user clicking the "Trade" button
+  buyerId: string,
   ad: P2PAd,
   cryptoAmount: number,
   fiatAmount: number,
   paymentMethod: string
 ): Promise<string> {
-    const isInitiatorTheBuyer = ad.adType === 'sell';
-    
-    const buyerId = isInitiatorTheBuyer ? initiatorId : ad.userId;
-    const sellerId = isInitiatorTheBuyer ? ad.userId : initiatorId;
-
-    if (buyerId === sellerId) {
+    if (ad.userId === buyerId) {
         throw new Error("You cannot trade with yourself.");
     }
 
-  const sellerWalletRef = doc(db, 'users', sellerId, 'wallets', ad.crypto);
+  const sellerWalletRef = doc(db, 'users', ad.userId, 'wallets', ad.crypto);
   const buyerDocRef = doc(db, 'users', buyerId);
   const newTradeRef = doc(collection(db, 'trades'));
 
@@ -89,7 +85,7 @@ export async function initiateTrade(
         tradeId: generateId("T-", 8),
         adId: ad.id,
         buyerId: buyerId,
-        sellerId: sellerId,
+        sellerId: ad.userId,
         crypto: ad.crypto,
         amount: cryptoAmount,
         escrowFee: cryptoFee,
@@ -115,9 +111,9 @@ export async function initiateTrade(
           createdAt: new Date().toISOString(),
       });
 
-      const sellerNotificationRef = doc(collection(db, 'users', sellerId, 'notifications'));
+      const sellerNotificationRef = doc(collection(db, 'users', ad.userId, 'notifications'));
       transaction.set(sellerNotificationRef, {
-          userId: sellerId,
+          userId: ad.userId,
           message: `${buyerData.userId} has started a new trade (${newTrade.tradeId}) with you.`,
           link: `/trade/${newTradeRef.id}`,
           isRead: false,
@@ -240,7 +236,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
 /**
  * Cancels an active trade and returns locked funds to the seller.
  */
-export async function cancelTrade(db: Firestore, tradeId: string, options?: { adIdToDeactivate?: string }) {
+export async function cancelTrade(db: Firestore, tradeId: string) {
     const tradeRef = doc(db, 'trades', tradeId);
 
     await runTransaction(db, async (transaction) => {
@@ -269,11 +265,6 @@ export async function cancelTrade(db: Firestore, tradeId: string, options?: { ad
             lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
             updatedAt: new Date().toISOString(),
         });
-
-        if (options?.adIdToDeactivate) {
-            const adRef = doc(db, 'p2p_ads', options.adIdToDeactivate);
-            transaction.update(adRef, { active: false });
-        }
 
         // Mark trade as cancelled
         transaction.update(tradeRef, { status: 'cancelled' });
