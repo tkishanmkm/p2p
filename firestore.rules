@@ -107,8 +107,8 @@ service cloud.firestore {
       // This is the fix for user data not loading.
       // Subcollections need their own explicit rules.
       match /wallets/{walletId} {
-        allow get: if isSignedIn() || isAdmin(); // Allow reads for transfers
-        allow list: if isOwner(userId) || isAdmin(); // But only owner can list all their wallets
+        allow get: if isOwner(userId) || isAdmin();
+        allow list: if isOwner(userId) || isAdmin();
         
         // CREATE is allowed for wallet owner, admin, or as part of a valid transfer.
         allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId, walletId);
