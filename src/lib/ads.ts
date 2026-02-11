@@ -1,7 +1,7 @@
 
 
 'use client';
-import { Firestore, collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { Firestore, collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { P2PAd, CryptoCurrency } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -18,7 +18,7 @@ function generatePublicAdId() {
 
 export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'>, user: {
     id: string;
-    username: string;
+    userId: string;
     country?: string;
     feedbackScore: number;
     positiveFeedback: number;
@@ -35,7 +35,8 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     publicAdId: generatePublicAdId(),
     userId: user.id,
     user: {
-      username: user.username,
+      userId: user.userId,
+      country: user.country,
       feedbackScore: user.feedbackScore,
       positiveFeedback: user.positiveFeedback,
       negativeFeedback: user.negativeFeedback,
@@ -43,29 +44,22 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       photoURL: user.photoURL || "",
       badges: user.badges || [],
       lastActive: user.lastActive,
-      country: user.country,
     },
-    createdAt: new Date().toISOString(),
+    createdAt: new Date().toISOString()
   };
 
   try {
     const docRef = await addDoc(adsCollection, dataToCreate);
     return docRef;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating P2P Ad: ", error);
-    
-    // Create a reportable version of the data
-    const reportableData = {
-      ...dataToCreate,
-      createdAt: new Date().toISOString(), // Replace serverTimestamp with a string for the error log
-    };
     
     errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
           path: adsCollection.path,
           operation: 'create',
-          requestResourceData: reportableData,
+          requestResourceData: dataToCreate,
         })
       )
     throw error;

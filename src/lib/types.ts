@@ -104,7 +104,7 @@ export type P2PAd = {
   blockedCountries?: string[];
   minCompletedTrades?: number;
   user: {
-      username: string;
+      userId: string;
       country?: string;
       feedbackScore?: number;
       positiveFeedback?: number;
@@ -138,8 +138,8 @@ export type Trade = {
   paidAt?: string; // TIMESTAMP
   releasedAt?: string; // TIMESTAMP
   createdAt: string; // TIMESTAMP;
-  buyer: { username: string; country?: string; };
-  seller: { username: string; country?: string; };
+  buyer: { userId: string; country?: string; };
+  seller: { userId: string; country?: string; };
 };
 
 export type EscrowLedger = {

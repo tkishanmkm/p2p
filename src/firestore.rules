@@ -10,9 +10,11 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
+    // Use exists() instead of get() for performance and stability.
+    // This is the primary fix for the admin login and internal assertion errors.
     function isAdmin() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/admins/$(request.auth.uid));
@@ -78,21 +80,23 @@ service cloud.firestore {
 
     // --- Admin-Specific Collections ---
     match /admins/{adminId} {
-        allow get: if isSignedIn();
-        allow list: if isAdmin();
-        allow create: if isOwner(adminId); // Allows self-bootstrapping
-        allow update, delete: if false;
+        allow get, create: if isOwner(adminId);
+        allow list, update, delete: if false;
     }
     match /admin_logs/{logId} {
         allow read, write: if isAdmin();
     }
     match /escrow_ledger/{ledgerId} {
       allow read, list: if isAdmin();
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() &&
+                    request.resource.data.tradeId != null &&
+                    get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.buyerId == request.auth.uid &&
+                    get(/databases/$(database)/documents/trades/$(request.resource.data.tradeId)).data.status == 'released';
       allow update, delete: if false;
     }
 
     // --- User-Centric Collections ---
+    // Rules on subcollections require the parent match.
     match /users/{userId} {
       allow get: if true;
       allow list: if isSignedIn();
@@ -100,10 +104,18 @@ service cloud.firestore {
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
 
+      // This is the fix for user data not loading.
+      // Subcollections need their own explicit rules.
       match /wallets/{walletId} {
-        allow get, list: if isOwner(userId) || isAdmin();
+        allow get: if isSignedIn() || isAdmin(); // Allow reads for transfers
+        allow list: if isOwner(userId) || isAdmin(); // But only owner can list all their wallets
+        
+        // CREATE is allowed for wallet owner, admin, or as part of a valid transfer.
         allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId, walletId);
+
+        // UPDATE is allowed for wallet owner, admin, or as part of a valid transfer.
         allow update: if isOwner(userId) || isAdmin() || isValidTransferUpdate(userId);
+
         allow delete: if isAdmin();
       }
       match /withdrawals/{withdrawalId} {
@@ -114,8 +126,8 @@ service cloud.firestore {
         allow read, write: if isOwner(userId) || isAdmin();
       }
        match /sessions/{sessionId} {
-        allow read, list, create, update: if isOwner(userId) || isAdmin();
-        allow delete: if isAdmin();
+        allow read, list, create: if isOwner(userId) || isAdmin();
+        allow update, delete: if isOwner(userId) || isAdmin();
       }
     }
     
@@ -127,14 +139,19 @@ service cloud.firestore {
       allow update: if isAdmin() || (
         isOwner(resource.data.userId) &&
         resource.data.status == 'pending' &&
-        request.resource.data.status == 'awaiting_confirmation'
+        request.resource.data.status == 'awaiting_confirmation' &&
+        request.resource.data.txId != null &&
+        request.resource.data.amount == resource.data.amount &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.crypto == resource.data.crypto &&
+        request.resource.data.chain == resource.data.chain
       );
       allow delete: if isAdmin();
     }
 
     match /p2p_ads/{adId} {
         allow get, list: if true;
-        allow create: if request.auth.uid == request.resource.data.userId || isAdmin();
+        allow create: if request.auth.uid == request.resource.data.userId;
         allow update, delete: if resource.data.userId == request.auth.uid || isAdmin();
     }
 
@@ -176,6 +193,7 @@ service cloud.firestore {
     }
     match /{path=**}/disputes/{disputeId} {
         allow list: if isAdmin();
+        allow get: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(resource.data.tradeId)).data) || isAdmin();
     }
 
     // --- Global Catch-All Rule ---
