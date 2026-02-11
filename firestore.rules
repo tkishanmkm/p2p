@@ -98,6 +98,14 @@ service cloud.firestore {
     }
 
     /* ==============================
+       CONFIGURATION
+    ============================== */
+    match /_config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ==============================
        ADMIN COLLECTION
     ============================== */
 

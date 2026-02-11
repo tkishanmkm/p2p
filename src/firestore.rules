@@ -96,6 +96,14 @@ service cloud.firestore {
         ) || isAdmin();
       }
     }
+    
+    /* ==============================
+       CONFIGURATION
+    ============================== */
+    match /_config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
 
     /* ==============================
        ADMIN COLLECTION
