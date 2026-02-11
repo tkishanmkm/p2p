@@ -110,20 +110,18 @@ export default function WalletsPage() {
       setIsWithdrawalsLoading(true);
 
       try {
-        // Fetch Deposits
+        // Fetch Deposits, ordered by most recent
         const depositsRef = collection(firestore, "deposits");
-        const depositQuery = query(depositsRef, where("userId", "==", authUser.uid));
+        const depositQuery = query(depositsRef, where("userId", "==", authUser.uid), orderBy("createdAt", "desc"));
         const depositSnapshot = await getDocs(depositQuery);
         const depositsData = depositSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
-        depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
         setDeposits(depositsData);
 
-        // Fetch Withdrawals
+        // Fetch Withdrawals, ordered by most recent
         const withdrawalsRef = collection(firestore, "users", authUser.uid, "withdrawals");
-        const withdrawalQuery = query(withdrawalsRef);
+        const withdrawalQuery = query(withdrawalsRef, orderBy("createdAt", "desc"));
         const withdrawalSnapshot = await getDocs(withdrawalQuery);
         const withdrawalsData = withdrawalSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Withdrawal));
-        withdrawalsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
         setWithdrawals(withdrawalsData);
       } catch (error) {
         console.error("Failed to fetch transaction history:", error);
