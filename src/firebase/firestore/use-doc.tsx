@@ -72,17 +72,22 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'get',
-          path: memoizedDocRef.path,
-        })
-
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
-
-        // trigger global error propagation
-        errorEmitter.emit('permission-error', contextualError);
+        // Check if the error is specifically a permission error
+        if (error.code === 'permission-denied') {
+          const contextualError = new FirestorePermissionError({
+            operation: 'get',
+            path: memoizedDocRef.path,
+          });
+          setError(contextualError);
+          // For permission errors, we still want the global overlay for debugging rules
+          errorEmitter.emit('permission-error', contextualError);
+        } else {
+          // For other errors (like internal assertions), just log it and set local state
+          console.error("useDoc onSnapshot error:", error);
+          setError(error);
+        }
+        setData(null);
+        setIsLoading(false);
       }
     );
 
