@@ -150,7 +150,7 @@ service cloud.firestore {
     match /p2p_ads/{adId} {
         allow get, list: if true;
         allow create: if request.auth.uid == request.resource.data.userId || isAdmin();
-        allow update, delete: if request.auth.uid == resource.data.userId || isAdmin();
+        allow update, delete: if resource.data.userId == request.auth.uid || isAdmin();
     }
 
     match /trades/{tradeId} {
