@@ -186,10 +186,10 @@ export default function AdminWithdrawalsPage() {
         const snapshot = await getDocs(q);
         
         let withdrawalsData = snapshot.docs.map(doc => {
-            const data = doc.data() as Withdrawal;
+            const data = doc.data() as Omit<Withdrawal, 'id' | 'userId'>;
             const pathParts = doc.ref.path.split('/');
-            const userId = pathParts[1];
-            return { ...data, id: doc.id, userId: userId, userDisplayName: data.userDisplayName || 'Unknown' };
+            const userId = pathParts[1]; // Assumes path is users/{userId}/withdrawals/{withdrawalId}
+            return { ...data, id: doc.id, userId: userId };
         });
         
         setAllWithdrawals(withdrawalsData);

@@ -103,21 +103,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /wallets/{walletId} {
-        allow get, list: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId, walletId);
         allow update: if isOwner(userId) || isAdmin() || isValidTransferUpdate(userId);
         allow delete: if isAdmin();
       }
       match /withdrawals/{withdrawalId} {
-        allow get, list: if isOwner(userId) || isAdmin();
-        allow create, update: if isOwner(userId) || isAdmin();
+        allow read, create, update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
       }
       match /notifications/{notificationId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
        match /sessions/{sessionId} {
-        allow read, list, create: if isOwner(userId) || isAdmin();
+        allow read, create: if isOwner(userId) || isAdmin();
         allow update, delete: if isOwner(userId) || isAdmin();
       }
     }
@@ -125,7 +124,7 @@ service cloud.firestore {
     // --- Top-Level Data Collections ---
     match /deposits/{depositId} {
       allow get: if isOwner(resource.data.userId) || isAdmin();
-      allow list: if isSignedIn(); // This is insecure but necessary for client query
+      allow list: if isSignedIn();
       allow create: if isOwner(request.resource.data.userId);
       allow update: if isAdmin() || (
         isOwner(resource.data.userId) &&
@@ -149,7 +148,6 @@ service cloud.firestore {
     match /trades/{tradeId} {
         allow get: if isTradeParticipant(resource.data) || isAdmin();
         allow list: if isSignedIn();
-        // Allow trade creation only for the buyer.
         allow create: if isSignedIn() && request.auth.uid == request.resource.data.buyerId;
         allow update: if isTradeParticipant(resource.data) || isAdmin();
         allow delete: if false;
