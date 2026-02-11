@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useFirebase } from "@/firebase";
-import { collectionGroup, query, getDocs } from "firebase/firestore";
+import { collection, query, getDocs, orderBy, collectionGroup } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -182,7 +182,7 @@ export default function AdminWithdrawalsPage() {
       setIsLoading(true);
       try {
         const withdrawalsRef = collectionGroup(firestore, "withdrawals");
-        const q = query(withdrawalsRef);
+        const q = query(withdrawalsRef, orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
         
         let withdrawalsData = snapshot.docs.map(doc => {
@@ -191,8 +191,6 @@ export default function AdminWithdrawalsPage() {
             const userId = pathParts[1];
             return { ...data, id: doc.id, userId: userId, userDisplayName: data.userDisplayName || 'Unknown' };
         });
-
-        withdrawalsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
         
         setAllWithdrawals(withdrawalsData);
 

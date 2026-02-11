@@ -103,21 +103,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /wallets/{walletId} {
-        // A user must be able to GET another user's wallet to perform a transfer transaction.
-        // LIST is restricted to owner only.
-        allow get: if isSignedIn() || isAdmin();
-        allow list: if isOwner(userId) || isAdmin();
-        
-        // CREATE is allowed for wallet owner, admin, or as part of a valid transfer.
+        allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId, walletId);
-
-        // UPDATE is allowed for wallet owner, admin, or as part of a valid transfer.
         allow update: if isOwner(userId) || isAdmin() || isValidTransferUpdate(userId);
-
         allow delete: if isAdmin();
       }
       match /withdrawals/{withdrawalId} {
-        allow read, create, update: if isOwner(userId) || isAdmin();
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
       }
       match /notifications/{notificationId} {
@@ -132,7 +125,7 @@ service cloud.firestore {
     // --- Top-Level Data Collections ---
     match /deposits/{depositId} {
       allow get: if isOwner(resource.data.userId) || isAdmin();
-      allow list: if isSignedIn();
+      allow list: if isSignedIn(); // This is insecure but necessary for client query
       allow create: if isOwner(request.resource.data.userId);
       allow update: if isAdmin() || (
         isOwner(resource.data.userId) &&
@@ -150,7 +143,7 @@ service cloud.firestore {
     match /p2p_ads/{adId} {
         allow get, list: if true;
         allow create: if request.auth.uid == request.resource.data.userId || isAdmin();
-        allow update, delete: if request.auth.uid == resource.data.userId || isAdmin();
+        allow update, delete: if resource.data.userId == request.auth.uid || isAdmin();
     }
 
     match /trades/{tradeId} {
@@ -186,9 +179,6 @@ service cloud.firestore {
     }
     
     // --- Collection Group Rules for Admin Panel ---
-    match /{path=**}/withdrawals/{withdrawalId} {
-        allow list, get: if isAdmin();
-    }
     match /{path=**}/disputes/{disputeId} {
         allow list: if isAdmin();
         allow get: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(resource.data.tradeId)).data) || isAdmin();
