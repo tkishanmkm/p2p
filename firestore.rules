@@ -147,6 +147,7 @@ service cloud.firestore {
     match /trades/{tradeId} {
         allow get: if isTradeParticipant(resource.data) || isAdmin();
         allow list: if isSignedIn();
+        // Allow trade creation only for the buyer.
         allow create: if isSignedIn() && request.auth.uid == request.resource.data.buyerId;
         allow update: if isTradeParticipant(resource.data) || isAdmin();
         allow delete: if false;
