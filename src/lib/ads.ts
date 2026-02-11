@@ -1,7 +1,7 @@
 
 
 'use client';
-import { Firestore, collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { Firestore, collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import type { P2PAd, CryptoCurrency } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -80,6 +80,11 @@ export async function updateAd(db: Firestore, adId: string, adData: Partial<Omit
 export async function updateAdStatus(db: Firestore, adId: string, active: boolean) {
     const adRef = doc(db, 'p2p_ads', adId);
     await updateDoc(adRef, { active });
+}
+
+export async function deleteAd(db: Firestore, adId: string) {
+    const adRef = doc(db, 'p2p_ads', adId);
+    await deleteDoc(adRef);
 }
 
 // Soft delete by marking as inactive

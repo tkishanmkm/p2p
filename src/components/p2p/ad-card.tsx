@@ -1,6 +1,6 @@
 
 
-"use client";
+'use client';
 
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,9 +24,6 @@ interface AdCardProps {
 export function AdCard({ ad }: AdCardProps) {
   const { firestore } = useFirebase();
   const { prices, fiatRates } = usePrices();
-
-  // The ad object already contains denormalized user data.
-  // We can use this directly to avoid extra database reads on list views.
   const adCreator = ad.user;
 
   const marketPriceUsd = prices[ad.crypto] || 0;
@@ -41,9 +38,30 @@ export function AdCard({ ad }: AdCardProps) {
   
   const lastActiveDate = adCreator.lastActive ? toDate(adCreator.lastActive) : null;
   const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 15 * 60 * 1000;
+  
+  const sellerWalletRef = useMemoFirebase(() => (firestore && ad.adType === 'sell') ? doc(firestore, 'users', ad.userId, 'wallets', ad.crypto) : null, [firestore, ad]);
+  const { data: sellerWallet, isLoading: isSellerWalletLoading } = useDoc<UserWallet>(sellerWalletRef);
+
+  let effectiveMaxAmount = ad.maxAmount;
+  let isOffline = false;
+  let availableFiat = ad.maxAmount;
+
+  if (ad.adType === 'sell') {
+      if (!isSellerWalletLoading && sellerWallet && adPrice > 0) {
+          const balanceInFiat = sellerWallet.balance * adPrice;
+          availableFiat = Math.floor(Math.min(ad.maxAmount, balanceInFiat));
+          if (availableFiat < ad.minAmount) {
+              isOffline = true;
+          }
+      } else if (!isSellerWalletLoading && !sellerWallet) {
+          isOffline = true;
+          availableFiat = 0;
+      }
+  }
+
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className={cn("hover:shadow-md transition-shadow", isOffline && "opacity-50 bg-secondary")}>
       <div className="p-4 flex flex-col sm:flex-row justify-between items-start gap-4">
         {/* Left Side */}
         <div className="flex-grow space-y-3">
@@ -105,12 +123,12 @@ export function AdCard({ ad }: AdCardProps) {
             </div>
             <div className="flex justify-between sm:justify-end gap-4">
                  <div>
-                    <p className="text-xs text-muted-foreground">Limits</p>
-                    <p className="text-sm font-medium">{ad.minAmount} - {ad.maxAmount} {ad.fiatCurrency}</p>
+                    <p className="text-xs text-muted-foreground">Limits (Available)</p>
+                    <p className="text-sm font-medium">{ad.minAmount} - {availableFiat.toLocaleString()} {ad.fiatCurrency}</p>
                 </div>
-                <Button asChild>
+                <Button asChild disabled={isOffline}>
                     <Link href={`/trade/initiate/${ad.id}`}>
-                        {ad.adType === 'buy' ? "Sell" : "Buy"} {ad.crypto}
+                        {ad.adType === 'buy' ? "Sell" : "Buy"}{isOffline ? ' (Offline)' : ''}
                     </Link>
                 </Button>
             </div>

@@ -59,10 +59,11 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   // Effect for handling expired trades
   useEffect(() => {
-    if (trade && trade.status === 'active' && toDate(trade.expiresAt) && new Date() > toDate(trade.expiresAt)!) {
+    if (trade && ad && trade.status === 'active' && toDate(trade.expiresAt) && new Date() > toDate(trade.expiresAt)!) {
         if (tradeRef && trade.status === 'active') {
              console.log("Trade is expired, attempting to cancel...");
-            cancelTrade(firestore, trade.id)
+            const isSellerNonResponsive = ad.adType === 'sell'; // Ad goes offline if it's a sell ad and it expires
+            cancelTrade(firestore, trade.id, { adIdToDeactivate: isSellerNonResponsive ? ad.id : undefined })
                 .then(() => {
                     toast({ title: "Trade Expired", description: "The trade was automatically cancelled and funds returned to the seller." });
                 })
@@ -71,7 +72,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 });
         }
     }
-  }, [trade, firestore, toast, tradeRef]);
+  }, [trade, firestore, toast, tradeRef, ad]);
 
   // Effect for buyer to auto-claim funds
   useEffect(() => {
