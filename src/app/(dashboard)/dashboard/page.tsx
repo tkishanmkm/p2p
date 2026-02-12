@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -149,42 +150,74 @@ export default function DashboardPage() {
                 {areWalletsLoading ? (
                 <Skeleton className="h-40 w-full" />
                 ) : (
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Asset</TableHead>
-                        <TableHead>Available Balance</TableHead>
-                        <TableHead className="text-right">{preferredCurrency} Value (est.)</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {wallets?.map((wallet) => {
-                        const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
-                        const valueConverted = valueUSD * exchangeRate;
-                        return (
-                        <TableRow key={wallet.crypto}>
-                            <TableCell>
-                            <div className="flex items-center gap-3">
-                                <CryptoLogo crypto={wallet.crypto} />
-                                <span className="font-medium">{wallet.crypto}</span>
-                            </div>
-                            </TableCell>
-                            <TableCell>{(wallet.balance || 0).toFixed(8)}</TableCell>
-                            <TableCell className="text-right">
-                            {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </TableCell>
-                        </TableRow>
-                        );
-                    })}
-                    {(!wallets || wallets.length === 0) && (
+                <>
+                    <Table className="hidden md:table">
+                        <TableHeader>
                         <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
-                            No wallets created yet.
-                        </TableCell>
+                            <TableHead>Asset</TableHead>
+                            <TableHead>Available Balance</TableHead>
+                            <TableHead className="text-right">{preferredCurrency} Value (est.)</TableHead>
                         </TableRow>
-                    )}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                        {wallets?.map((wallet) => {
+                            const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
+                            const valueConverted = valueUSD * exchangeRate;
+                            return (
+                            <TableRow key={wallet.crypto}>
+                                <TableCell>
+                                <div className="flex items-center gap-3">
+                                    <CryptoLogo crypto={wallet.crypto} />
+                                    <span className="font-medium">{wallet.crypto}</span>
+                                </div>
+                                </TableCell>
+                                <TableCell>{(wallet.balance || 0).toFixed(8)}</TableCell>
+                                <TableCell className="text-right">
+                                {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </TableCell>
+                            </TableRow>
+                            );
+                        })}
+                        {(!wallets || wallets.length === 0) && (
+                            <TableRow>
+                            <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
+                                No wallets created yet.
+                            </TableCell>
+                            </TableRow>
+                        )}
+                        </TableBody>
+                    </Table>
+                    <div className="md:hidden space-y-4">
+                        {wallets?.map((wallet) => {
+                            const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
+                            const valueConverted = valueUSD * exchangeRate;
+                            return (
+                                <Card key={wallet.crypto}>
+                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                        <div className="flex items-center gap-2">
+                                            <CryptoLogo crypto={wallet.crypto} />
+                                            <CardTitle className="text-lg">{wallet.crypto}</CardTitle>
+                                        </div>
+                                        <div className="font-semibold text-right">
+                                            {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="space-y-1 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Available</span>
+                                            <span>{(wallet.balance || 0).toFixed(8)}</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
+                         {(!wallets || wallets.length === 0) && (
+                            <div className="text-center text-muted-foreground py-10">
+                                No wallets created yet.
+                            </div>
+                        )}
+                    </div>
+                </>
                 )}
             </CardContent>
             </Card>
@@ -197,41 +230,68 @@ export default function DashboardPage() {
                 <CardContent>
                      {isLoadingActiveTrades && <Skeleton className="h-24 w-full" />}
                      {!isLoadingActiveTrades && activeTrades.length > 0 && (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Partner</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
+                        <>
+                            <Table className="hidden md:table">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Partner</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {activeTrades.map(trade => {
+                                        const isBuyer = trade.buyerId === authUser?.uid;
+                                        const partner = isBuyer ? trade.seller : trade.buyer;
+                                        return (
+                                            <TableRow key={trade.id}>
+                                                <TableCell>
+                                                <div className="flex items-center gap-2 font-medium">
+                                                    {partner.username}
+                                                    {partner.country && <FlagIcon countryCode={partner.country} />}
+                                                </div>
+                                                </TableCell>
+                                                <TableCell>{trade.amount.toFixed(6)} {trade.crypto}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade.status}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button asChild variant="outline" size="sm">
+                                                        <Link href={`/trade/${trade.id}`}>View Trade <ArrowRight className="ml-2 h-3 w-3" /></Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
+                                </TableBody>
+                            </Table>
+                             <div className="grid gap-4 md:hidden">
                                 {activeTrades.map(trade => {
                                     const isBuyer = trade.buyerId === authUser?.uid;
                                     const partner = isBuyer ? trade.seller : trade.buyer;
                                     return (
-                                        <TableRow key={trade.id}>
-                                            <TableCell>
-                                              <div className="flex items-center gap-2 font-medium">
-                                                {partner.username}
-                                                {partner.country && <FlagIcon countryCode={partner.country} />}
-                                              </div>
-                                            </TableCell>
-                                            <TableCell>{trade.amount.toFixed(6)} {trade.crypto}</TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade.status}</Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button asChild variant="outline" size="sm">
-                                                    <Link href={`/trade/${trade.id}`}>View Trade <ArrowRight className="ml-2 h-3 w-3" /></Link>
+                                        <Card key={trade.id}>
+                                            <CardHeader>
+                                                <div className="flex items-center justify-between">
+                                                    <CardTitle className="text-base">{trade.amount.toFixed(4)} {trade.crypto}</CardTitle>
+                                                    <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade.status}</Badge>
+                                                </div>
+                                                <CardDescription>
+                                                    Partner: {partner.username}
+                                                    {partner.country && <FlagIcon countryCode={partner.country} className="inline ml-2"/>}
+                                                    </CardDescription>
+                                            </CardHeader>
+                                            <CardFooter>
+                                                <Button asChild variant="secondary" className="w-full">
+                                                    <Link href={`/trade/${trade.id}`}>View Trade</Link>
                                                 </Button>
-                                            </TableCell>
-                                        </TableRow>
+                                            </CardFooter>
+                                        </Card>
                                     )
                                 })}
-                            </TableBody>
-                        </Table>
+                            </div>
+                        </>
                      )}
                      {!isLoadingActiveTrades && activeTrades.length === 0 && (
                          <div className="text-center text-muted-foreground py-10 border-2 border-dashed rounded-lg">

@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy, where, getDocs } from "firebase/firestore";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
@@ -296,7 +296,7 @@ export default function WalletsPage() {
                       {deposits.map(deposit => (
                         <Card key={deposit.id}>
                           <CardHeader className="flex flex-row items-center justify-between pb-2">
-                              <CardTitle className="text-base">{deposit.amount} {deposit.crypto}</CardTitle>
+                              <CardTitle className="text-base">{(deposit.finalAmount ?? deposit.amount).toFixed(4)} {deposit.crypto}</CardTitle>
                               <Badge variant="outline" className={cn("capitalize", depositStatusColors[deposit.status])}>{deposit.status.replace(/_/g, ' ')}</Badge>
                           </CardHeader>
                           <CardContent className="space-y-1 text-sm">
@@ -413,5 +413,3 @@ export default function WalletsPage() {
     </>
   );
 }
-
-    
