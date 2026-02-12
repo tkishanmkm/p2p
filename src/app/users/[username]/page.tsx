@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -6,7 +7,7 @@ import Image from 'next/image';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, limit, doc } from 'firebase/firestore';
 import type { User, P2PAd } from '@/lib/types';
-import { format, formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -151,7 +152,7 @@ export default function PublicProfilePage() {
   }
   const createdDate = toDate(user.createdAt);
   const lastActiveDate = user.lastActive ? toDate(user.lastActive) : null;
-  const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 15 * 60 * 1000;
+  const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 5 * 60 * 1000;
   const isOwnProfile = authUser?.uid === user.id;
   const countryName = countries.find(c => c.code === user.country)?.name;
 
@@ -189,7 +190,7 @@ export default function PublicProfilePage() {
                             </Badge>
                         ) : (
                             <p className="text-sm text-muted-foreground">
-                                {lastActiveDate ? `Active ${formatDistanceToNowStrict(lastActiveDate)} ago` : 'Activity unknown'}
+                                {lastActiveDate ? `Active ${formatDistanceToNow(lastActiveDate)} ago` : 'Activity unknown'}
                             </p>
                         )}
                     </div>

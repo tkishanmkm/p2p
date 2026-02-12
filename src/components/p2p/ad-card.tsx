@@ -14,7 +14,7 @@ import { doc } from "firebase/firestore";
 import { Skeleton } from "../ui/skeleton";
 import { ThumbsUp, Info, Power, ThumbsDown } from "lucide-react";
 import { toDate, cn } from "@/lib/utils";
-import { formatDistanceToNowStrict } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { FlagIcon } from "../ui/flag-icon";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
@@ -41,7 +41,7 @@ export function AdCard({ ad }: AdCardProps) {
   const pricePremium = marketPriceInFiat > 0 ? (adPrice - marketPriceInFiat) / marketPriceInFiat : 0;
   
   const lastActiveDate = adCreator.lastActive ? toDate(adCreator.lastActive) : null;
-  const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 15 * 60 * 1000;
+  const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 5 * 60 * 1000;
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -68,7 +68,7 @@ export function AdCard({ ad }: AdCardProps) {
                          <div className="h-2 w-px bg-muted-foreground/30" />
                         <div className={cn("flex items-center gap-1.5", wasActiveRecently ? 'text-green-600' : '')}>
                            <div className={cn("h-1.5 w-1.5 rounded-full", wasActiveRecently ? "bg-green-500" : "bg-muted-foreground/50")} />
-                           {lastActiveDate ? formatDistanceToNowStrict(lastActiveDate) : 'Offline'}
+                           {wasActiveRecently ? 'Active now' : (lastActiveDate ? `${formatDistanceToNow(lastActiveDate)} ago` : 'Offline')}
                         </div>
                     </div>
                 </div>

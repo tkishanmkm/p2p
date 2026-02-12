@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -24,7 +25,7 @@ import { addReceiptToTrade } from '@/lib/wallet';
 import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
-import { formatDistanceToNowStrict } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { FlagIcon } from '../ui/flag-icon';
 import { countries } from '@/lib/countries';
 
@@ -82,11 +83,11 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const opponentLastActive = opponent?.lastActive ? toDate(opponent.lastActive) : null;
-  const opponentIsActiveNow = opponentLastActive && (new Date().getTime() - opponentLastActive.getTime()) < 15 * 60 * 1000;
+  const opponentIsActiveNow = opponentLastActive && (new Date().getTime() - opponentLastActive.getTime()) < 5 * 60 * 1000;
   const opponentStatus = opponentIsActiveNow 
       ? 'Active now' 
       : opponentLastActive 
-      ? `Active ${formatDistanceToNowStrict(opponentLastActive)} ago` 
+      ? `Active ${formatDistanceToNow(opponentLastActive)} ago` 
       : 'Offline';
   const opponentCountry = countries.find(c => c.code === opponent?.country)?.name;
 
