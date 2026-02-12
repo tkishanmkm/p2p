@@ -1,5 +1,4 @@
 import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 
 export default function AdPageLayout({
   children,
@@ -7,14 +6,11 @@ export default function AdPageLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen bg-secondary/30">
+    <div className="flex flex-col min-h-screen bg-background">
       <Header />
-      <main className="flex-grow py-8 md:py-12">
-        <div className="container mx-auto px-4 md:px-6">
-          {children}
-        </div>
+      <main className="flex-grow flex items-center justify-center bg-secondary/30 p-4">
+        {children}
       </main>
-      <Footer />
     </div>
   );
 }

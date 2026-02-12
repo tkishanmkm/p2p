@@ -138,13 +138,13 @@ export function AdCard({ ad }: AdCardProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-                    <Link href={`/ad/${ad.id}`}>
+                    <Link href={`/users/${ad.user.username}`}>
                       <Info className="h-5 w-5" />
                     </Link>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>View ad details</p>
+                  <p>View user profile</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
