@@ -21,16 +21,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, Trash2, Loader2 } from "lucide-react";
+import { Edit, PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { softDeleteAd, updateAdStatus } from "@/lib/ads";
 import Link from "next/link";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -152,6 +146,11 @@ export default function MyAdsPage() {
                         onCheckedChange={() => handleStatusToggle(ad.id, ad.active)}
                         aria-label="Toggle ad status"
                       />
+                      <Button asChild variant="ghost" size="icon">
+                        <Link href={`/ads/edit/${ad.id}`}>
+                          <Edit className="h-4 w-4" />
+                        </Link>
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                            <Button variant="ghost" size="icon" className="text-destructive">
