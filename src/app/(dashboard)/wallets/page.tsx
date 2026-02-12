@@ -187,6 +187,7 @@ export default function WalletsPage() {
                     <TableRow>
                       <TableHead>Asset</TableHead>
                       <TableHead>Available Balance</TableHead>
+                      <TableHead>Locked Balance</TableHead>
                       <TableHead className="text-right">Value ({preferredCurrency})</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -203,6 +204,7 @@ export default function WalletsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">{(wallet.balance || 0).toFixed(8)}</TableCell>
+                        <TableCell className="font-medium">{(wallet.lockedBalance || 0).toFixed(8)}</TableCell>
                         <TableCell className="text-right font-medium">{valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     )})}
@@ -228,6 +230,10 @@ export default function WalletsPage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Available</span>
                           <span className="font-medium">{(wallet.balance || 0).toFixed(8)}</span>
+                        </div>
+                         <div className="flex justify-between">
+                          <span className="text-muted-foreground">Locked</span>
+                          <span className="font-medium">{(wallet.lockedBalance || 0).toFixed(8)}</span>
                         </div>
                       </CardContent>
                     </Card>
