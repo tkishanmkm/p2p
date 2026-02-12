@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -16,7 +14,7 @@ import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, CheckCircle, Clock, DollarSign, ThumbsUp, ThumbsDown, FileText, UserX, UserCheck, ShieldOff } from 'lucide-react';
-import { toDate } from '@/lib/utils';
+import { toDate, cn } from '@/lib/utils';
 import { blockUser, unblockUser } from '@/lib/users';
 import { useToast } from '@/hooks/use-toast';
 import { FlagIcon } from '@/components/ui/flag-icon';
@@ -151,8 +149,25 @@ export default function PublicProfilePage() {
     );
   }
   const createdDate = toDate(user.createdAt);
+  
   const lastActiveDate = user.lastActive ? toDate(user.lastActive) : null;
-  const wasActiveRecently = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 5 * 60 * 1000;
+  let activity = { text: 'Activity unknown', dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
+
+  if (lastActiveDate) {
+    const diffMinutes = (new Date().getTime() - lastActiveDate.getTime()) / (1000 * 60);
+    const formattedDistance = formatDistanceToNow(lastActiveDate);
+
+    if (diffMinutes < 5) {
+      activity = { text: 'Active now', dotClass: 'bg-green-500', textClass: 'text-green-600' };
+    } else if (diffMinutes < 60) {
+      activity = { text: `${formattedDistance} ago`, dotClass: 'bg-green-500', textClass: 'text-green-600' };
+    } else if (diffMinutes < 24 * 60) {
+      activity = { text: `${formattedDistance} ago`, dotClass: 'bg-yellow-600', textClass: 'text-yellow-600' };
+    } else {
+      activity = { text: `${formattedDistance} ago`, dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
+    }
+  }
+
   const isOwnProfile = authUser?.uid === user.id;
   const countryName = countries.find(c => c.code === user.country)?.name;
 
@@ -183,16 +198,10 @@ export default function PublicProfilePage() {
                     </div>
                     
                     <div className="flex items-center justify-center gap-2 mt-2">
-                        {wasActiveRecently ? (
-                            <Badge variant="secondary" className="border-green-500/50 bg-green-50 text-green-700">
-                                <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />
-                                Active now
-                            </Badge>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">
-                                {lastActiveDate ? `Active ${formatDistanceToNow(lastActiveDate)} ago` : 'Activity unknown'}
-                            </p>
-                        )}
+                        <div className={cn("h-2 w-2 rounded-full", activity.dotClass)} />
+                        <p className={cn("text-sm", activity.textClass)}>
+                            {activity.text}
+                        </p>
                     </div>
                     
                     <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">

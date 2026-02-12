@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -81,16 +80,23 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
   const [showUsernames, setShowUsernames] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const opponentLastActive = opponent?.lastActive ? toDate(opponent.lastActive) : null;
-  const opponentIsActiveNow = opponentLastActive && (new Date().getTime() - opponentLastActive.getTime()) < 5 * 60 * 1000;
-  const opponentStatus = opponentIsActiveNow 
-      ? 'Active now' 
-      : opponentLastActive 
-      ? `Active ${formatDistanceToNow(opponentLastActive)} ago` 
-      : 'Offline';
-  const opponentCountry = countries.find(c => c.code === opponent?.country)?.name;
 
+  const opponentLastActive = opponent?.lastActive ? toDate(opponent.lastActive) : null;
+  let activity = { text: 'Offline', dotClass: 'bg-muted-foreground/50', textClass: 'text-muted-foreground' };
+
+  if (opponentLastActive) {
+    const diffMinutes = (new Date().getTime() - opponentLastActive.getTime()) / (1000 * 60);
+    const formattedDistance = formatDistanceToNow(opponentLastActive);
+    if (diffMinutes < 5) {
+        activity = { text: 'Active now', dotClass: 'bg-green-500', textClass: 'text-green-600' };
+    } else if (diffMinutes < 60) {
+        activity = { text: `${formattedDistance} ago`, dotClass: 'bg-green-500', textClass: 'text-green-600' };
+    } else if (diffMinutes < 24 * 60) {
+        activity = { text: `${formattedDistance} ago`, dotClass: 'bg-yellow-600', textClass: 'text-yellow-600' };
+    } else {
+        activity = { text: `${formattedDistance} ago`, dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
+    }
+  }
 
   useEffect(() => {
     // Auto-scroll to bottom
@@ -163,16 +169,16 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
           <div>
             <CardTitle>Trade Chat</CardTitle>
             <CardDescription>
-                {opponent ? (
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <div className={cn("h-2.5 w-2.5 rounded-full", opponentIsActiveNow ? "bg-green-500" : "bg-muted-foreground/50")} />
-                        <span>{opponent.userId}</span>
-                        {opponent.country && <FlagIcon countryCode={opponent.country} />}
-                        <span>- {opponentStatus}</span>
-                    </div>
-                ) : (
-                    "Communicate with the other party."
-                )}
+              {opponent ? (
+                <div className="flex items-center gap-2 mt-1 text-xs">
+                  <div className={cn('h-2.5 w-2.5 rounded-full', activity.dotClass)} />
+                  <span className="text-muted-foreground">{opponent.userId}</span>
+                  {opponent.country && <FlagIcon countryCode={opponent.country} />}
+                  <span className={cn(activity.textClass)}>- {activity.text}</span>
+                </div>
+              ) : (
+                'Communicate with the other party.'
+              )}
             </CardDescription>
           </div>
           <TooltipProvider>
@@ -213,8 +219,8 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
                 : showUsernames
                 ? msg.senderUsername
                 : trade.buyerId === msg.senderId
-                ? trade.buyer.userId
-                : trade.seller.userId;
+                ? trade.buyer.username
+                : trade.seller.username;
 
               if (msg.isModerator) {
                 senderName = 'Moderator';
