@@ -6,13 +6,24 @@ import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { P2PAd } from '@/lib/types';
+import type { P2PAd, CryptoCurrency } from '@/lib/types';
 import { usePrices } from '@/context/price-context';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { toDate, cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { FlagIcon } from '../ui/flag-icon';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
+
+const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
+    switch (crypto) {
+        case 'BTC': return <BtcLogo className={className} />;
+        case 'ETH': return <EthLogo className={className} />;
+        case 'LTC': return <LtcLogo className={className} />;
+        case 'USDT': return <UsdtLogo className={className} />;
+        default: return null;
+    }
+}
 
 interface AdCardProps {
   ad: P2PAd;
@@ -31,7 +42,7 @@ export function AdCard({ ad }: AdCardProps) {
 
   const pricePremium = marketPriceInFiat > 0 ? (adPrice - marketPriceInFiat) / marketPriceInFiat : 0;
   
-  const isForBuyingPage = ad.adType === 'sell'; // On buy page, we see 'sell' ads
+  const isForBuyingPage = ad.adType === 'sell';
   
   const priceColorClass = isForBuyingPage 
     ? (pricePremium >= 0 ? 'text-red-600' : 'text-green-600') 
@@ -53,7 +64,7 @@ export function AdCard({ ad }: AdCardProps) {
       activity = { text: 'Active now', dotClass: 'bg-green-500', textClass: 'text-green-600' };
     } else if (diffMinutes < 60) {
       activity = { text: `${formattedDistance} ago`, dotClass: 'bg-green-500', textClass: 'text-green-600' };
-    } else if (diffMinutes < 24 * 60) {
+    } else if ((diffMinutes / 60) < 24) {
       activity = { text: `${formattedDistance} ago`, dotClass: 'bg-yellow-600', textClass: 'text-yellow-600' };
     } else {
       activity = { text: `${formattedDistance} ago`, dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
@@ -109,37 +120,41 @@ export function AdCard({ ad }: AdCardProps) {
         <div className="flex-shrink-0 w-full sm:w-auto text-left sm:text-right space-y-2">
           <div>
             <p className="text-xs text-muted-foreground">Price</p>
-            <p className="font-bold text-lg text-primary">
-              {adPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-              {ad.fiatCurrency}
-            </p>
-            {marketPriceInFiat > 0 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <p className={cn('text-xs cursor-help', priceColorClass)}>
-                      {pricePremium >= 0 ? '+' : ''}{(pricePremium * 100).toFixed(2)}%
-                    </p>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>
-                      Market price: {marketPriceInFiat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                      {ad.fiatCurrency}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+            <div className="flex items-center justify-start sm:justify-end gap-2">
+                <p className="font-bold text-lg text-primary">
+                {adPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                {ad.fiatCurrency}
+                </p>
+                {marketPriceInFiat > 0 && (
+                <TooltipProvider>
+                    <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className={cn('text-xs font-semibold cursor-help', priceColorClass)}>
+                        ({pricePremium >= 0 ? '+' : ''}{(pricePremium * 100).toFixed(2)}%)
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>
+                        Market price: {marketPriceInFiat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                        {ad.fiatCurrency}
+                        </p>
+                    </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+                )}
+            </div>
           </div>
-          <div className="flex justify-between sm:justify-end gap-4">
+          <div className="flex justify-between sm:justify-end gap-4 items-center">
             <div>
               <p className="text-xs text-muted-foreground">Limits</p>
               <p className="text-sm font-medium">
                 {ad.minAmount} - {ad.maxAmount} {ad.fiatCurrency}
               </p>
             </div>
-            <Button asChild className={buttonColorClass}>
-              <Link href={`/trade/initiate/${ad.id}`}>{buttonLabel} {ad.crypto}</Link>
+            <Button asChild className={cn(buttonColorClass, "gap-2")}>
+              <Link href={`/trade/initiate/${ad.id}`}>
+                {buttonLabel} <CryptoLogo crypto={ad.crypto as CryptoCurrency} className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
         </div>
