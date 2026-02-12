@@ -17,10 +17,11 @@ import { usePrices } from "@/context/price-context";
 import { initiateTrade } from "@/lib/wallet";
 import { cn, toDate } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { Clock, ThumbsUp, X, Loader2, Lock, Award, CheckShield } from "lucide-react";
+import { Clock, ThumbsUp, X, Loader2, Lock, Award, CheckShield, ArrowLeftRight } from "lucide-react";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
 import { FlagIcon } from "@/components/ui/flag-icon";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Label } from "@/components/ui/label";
 
 const CryptoLogo = ({ crypto, className }: { crypto: string; className?: string }) => {
     switch (crypto) {
