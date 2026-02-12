@@ -27,7 +27,7 @@ import { initiateTrade } from "@/lib/wallet";
 
 import { cn, toDate } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
-import { CheckCircle, Phone, CreditCard, Clock, ThumbsUp, ThumbsDown, MessageSquare, Shield, Loader2, UserCheck, Power, AlertTriangle, Lock } from "lucide-react";
+import { Clock, ThumbsUp, ThumbsDown, Loader2, AlertTriangle, Lock, UserCheck, Power } from "lucide-react";
 import { FlagIcon } from "@/components/ui/flag-icon";
 
 const CryptoLogo = ({ crypto, className }: { crypto: string; className?: string }) => {
@@ -63,16 +63,20 @@ function TraderProfileCard({ user, ad, feedback }: { user: User, ad: P2PAd, feed
                         </div>
                     </div>
                 </div>
-                 <div className="flex items-center gap-2 mt-4 md:mt-0">
-                    <Badge variant="outline" className="text-green-600 border-green-500/50 bg-green-50">
-                        <CheckCircle className="mr-2 h-4 w-4" /> ID Verified
-                    </Badge>
-                     <Badge variant="outline" className="text-green-600 border-green-500/50 bg-green-50">
-                        <Phone className="mr-2 h-4 w-4" /> Phone Verified
-                    </Badge>
+                 <div className="flex items-center gap-2 mt-4 md:mt-0 flex-wrap">
+                    {user.badges?.includes('verified') && (
+                        <Badge variant="outline" className="text-green-600 border-green-500/50 bg-green-50">
+                            <UserCheck className="mr-2 h-4 w-4" /> ID Verified
+                        </Badge>
+                    )}
+                     {user.badges?.includes('power') && (
+                        <Badge variant="outline" className="text-amber-600 border-amber-500/50 bg-amber-50">
+                            <Power className="mr-2 h-4 w-4" /> Power Trader
+                        </Badge>
+                    )}
                 </div>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-6">
                 <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground">Feedback</span>
                     <span className="font-semibold">{user.feedbackScore?.toFixed(1)}%</span>
