@@ -97,8 +97,14 @@ export async function initiateTrade(
         claimedByBuyer: false,
         createdAt: new Date().toISOString(),
         expiresAt: add(new Date(), { minutes: ad.paymentTimeLimit || 30 }).toISOString(),
-        buyer: { username: buyerData.userId, country: buyerData.country },
-        seller: { username: ad.user.username, country: ad.user.country }
+        buyer: { 
+          username: buyerData.userId, 
+          ...(buyerData.country && { country: buyerData.country })
+        },
+        seller: { 
+            username: ad.user.username, 
+            ...(ad.user.country && { country: ad.user.country })
+        }
       };
 
       // Create notifications for both users

@@ -30,13 +30,9 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
 }) {
   const adsCollection = collection(db, 'p2p_ads');
   
-  const dataToCreate = {
-    ...adData,
-    publicAdId: generatePublicAdId(),
-    userId: user.id,
-    user: {
+  const userPayload = {
       username: user.username,
-      country: user.country,
+      ...(user.country && { country: user.country }),
       feedbackScore: user.feedbackScore,
       positiveFeedback: user.positiveFeedback,
       negativeFeedback: user.negativeFeedback,
@@ -44,7 +40,13 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       photoURL: user.photoURL || "",
       badges: user.badges || [],
       lastActive: user.lastActive || new Date().toISOString(),
-    },
+  }
+
+  const dataToCreate = {
+    ...adData,
+    publicAdId: generatePublicAdId(),
+    userId: user.id,
+    user: userPayload,
     createdAt: new Date().toISOString()
   };
 
