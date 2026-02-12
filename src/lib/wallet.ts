@@ -1,5 +1,3 @@
-
-
 'use client';
 import {
   Firestore,
@@ -15,13 +13,11 @@ import {
   limit,
   getDocs,
   setDoc,
-  serverTimestamp,
 } from 'firebase/firestore';
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User as AppUser } from './types';
 import { add } from 'date-fns';
 import type { User as AuthUser } from 'firebase/auth';
 
-// A simple utility for generating short, random IDs
 function generateId(prefix: string, length: number) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
@@ -31,17 +27,12 @@ function generateId(prefix: string, length: number) {
   return prefix + result;
 }
 
-/**
- * Initiates a trade by locking the seller's funds and creating the trade document.
- * This function should be called by the buyer.
- */
 export async function initiateTrade(
   db: Firestore,
   buyerId: string,
   ad: P2PAd,
   cryptoAmount: number,
   fiatAmount: number,
-  paymentMethod: string
 ): Promise<string> {
     if (ad.userId === buyerId) {
         throw new Error("You cannot trade with yourself.");
@@ -91,7 +82,7 @@ export async function initiateTrade(
         escrowFee: cryptoFee,
         fiatCurrency: ad.fiatCurrency,
         fiatAmount: fiatAmount,
-        paymentMethod: paymentMethod,
+        paymentMethod: ad.paymentMethods[0],
         price: fiatAmount / cryptoAmount,
         status: 'active',
         claimedByBuyer: false,
@@ -136,15 +127,12 @@ export async function initiateTrade(
   }
 }
 
-/**
- * Updates a trade's status to 'paid'. Called by the buyer.
- */
 export async function markTradeAsPaid(db: Firestore, tradeId: string) {
-  const tradeRef = doc(db, 'trades', tradeId);
-  await updateDoc(tradeRef, {
-      status: 'paid',
-      paidAt: new Date().toISOString()
-  });
+    const tradeRef = doc(db, 'trades', tradeId);
+    await updateDoc(tradeRef, {
+        status: 'paid',
+        paidAt: new Date().toISOString()
+    });
 }
 
 export async function addReceiptToTrade(db: Firestore, tradeId: string, receiptUrl: string) {
@@ -154,10 +142,6 @@ export async function addReceiptToTrade(db: Firestore, tradeId: string, receiptU
     });
 }
 
-
-/**
- * Seller releases funds. This moves funds from locked to available for the buyer to claim.
- */
 export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
   const tradeRef = doc(db, 'trades', tradeId);
   
@@ -177,9 +161,8 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
         throw new Error("Seller has insufficient locked funds. Critical error.");
     }
     
-    // Decrement seller's locked balance, preserving available balance
+    // Decrement seller's locked balance
     transaction.update(sellerWalletRef, {
-        balance: sellerWallet.balance || 0, // Preserve available balance
         lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
         updatedAt: new Date().toISOString(),
     });
@@ -192,9 +175,6 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
   });
 }
 
-/**
- * Buyer claims the released funds.
- */
 export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId: string) {
   const tradeRef = doc(db, 'trades', tradeId);
 
@@ -219,7 +199,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     
     transaction.set(buyerWalletRef, {
         balance: currentBalance + amountToBuyer,
-        lockedBalance: currentLockedBalance, // Ensure locked balance is preserved
+        lockedBalance: currentLockedBalance,
         crypto: trade.crypto,
         userId: buyerId,
         id: trade.crypto,
@@ -238,10 +218,6 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
   });
 }
 
-
-/**
- * Cancels an active trade and returns locked funds to the seller.
- */
 export async function cancelTrade(db: Firestore, tradeId: string) {
     const tradeRef = doc(db, 'trades', tradeId);
 
@@ -277,9 +253,6 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
     });
 }
 
-/**
- * Creates a withdrawal request and moves funds to locked balance.
- */
 export async function requestWithdrawal(
   db: Firestore,
   user: AuthUser,
@@ -306,7 +279,7 @@ export async function requestWithdrawal(
 
     // Create withdrawal request
     const withdrawalCollectionRef = collection(db, "users", user.uid, "withdrawals");
-    const newWithdrawalRef = doc(withdrawalCollectionRef); // Create a reference for the new document
+    const newWithdrawalRef = doc(withdrawalCollectionRef); 
 
     const newWithdrawalData = {
       userId: user.uid,
@@ -348,10 +321,6 @@ export async function cancelWithdrawal(db: Firestore, withdrawal: Withdrawal): P
     });
 }
 
-
-/**
- * Sends coins from one user to another in a single transaction.
- */
 export async function sendCoinToUser(
   db: Firestore,
   sender: { uid: string; displayName: string | null },
