@@ -86,21 +86,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           auth,
           (firebaseUser) => { // Auth state determined
             setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
-
-            // Update last active status on user detection
-            if (firebaseUser && firestore) {
-              const now = Date.now();
-              const lastUpdate = sessionStorage.getItem('lastActiveUpdate');
-              // Update every 5 minutes to avoid excessive writes
-              if (!lastUpdate || now - parseInt(lastUpdate, 10) > 5 * 60 * 1000) {
-                const userRef = doc(firestore, 'users', firebaseUser.uid);
-                updateDoc(userRef, { lastActive: new Date().toISOString() })
-                  .then(() => {
-                    sessionStorage.setItem('lastActiveUpdate', String(now));
-                  })
-                  .catch(e => console.error("Failed to update last active status", e));
-              }
-            }
           },
           (error) => { // Auth listener error
             console.error("FirebaseProvider: onAuthStateChanged error:", error);
