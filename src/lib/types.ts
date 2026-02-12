@@ -104,7 +104,7 @@ export type P2PAd = {
   blockedCountries?: string[];
   minCompletedTrades?: number;
   user: {
-      userId: string;
+      username: string;
       country?: string;
       feedbackScore?: number;
       positiveFeedback?: number;

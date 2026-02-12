@@ -18,7 +18,7 @@ function generatePublicAdId() {
 
 export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'>, user: {
     id: string;
-    userId: string;
+    username: string;
     country?: string;
     feedbackScore: number;
     positiveFeedback: number;
@@ -35,7 +35,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
     publicAdId: generatePublicAdId(),
     userId: user.id,
     user: {
-      userId: user.userId,
+      username: user.username,
       country: user.country,
       feedbackScore: user.feedbackScore,
       positiveFeedback: user.positiveFeedback,
@@ -43,7 +43,7 @@ export async function createP2PAd(db: Firestore, adData: Omit<P2PAd, 'id' | 'cre
       completedTrades: user.completedTrades,
       photoURL: user.photoURL || "",
       badges: user.badges || [],
-      lastActive: user.lastActive,
+      lastActive: user.lastActive || new Date().toISOString(),
     },
     createdAt: new Date().toISOString()
   };

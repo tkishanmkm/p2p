@@ -372,7 +372,7 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
       } else { // Creating new ad
         await createP2PAd(firestore, adData, {
           id: user.uid,
-          userId: userData.userId,
+          username: userData.userId,
           country: userData.country,
           feedbackScore: userData.feedbackScore ?? 100,
           positiveFeedback: userData.positiveFeedback ?? 0,
@@ -380,14 +380,14 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
           completedTrades: userData.completedTrades ?? 0,
           photoURL: userData.photoURL,
           badges: userData.badges,
-          lastActive: userData.lastActive || new Date().toISOString(),
+          lastActive: userData.lastActive,
         });
         toast({ title: "Ad Created", description: "Your ad has been successfully posted." });
         router.push(data.adType === 'sell' ? '/buy' : '/sell');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast({ variant: "destructive", title: "Operation Failed", description: "An error occurred." });
+      toast({ variant: "destructive", title: "Operation Failed", description: error.message || "An unexpected error occurred. Please check the console." });
     }
   }
 

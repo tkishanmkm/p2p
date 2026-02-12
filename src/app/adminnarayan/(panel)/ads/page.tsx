@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useFirebase } from "@/firebase";
@@ -92,7 +93,7 @@ export default function AdminAdsPage() {
     const lower = searchTerm.toLowerCase();
     return ads.filter(ad => 
         ad.publicAdId.toLowerCase().includes(lower) ||
-        ad.user.userId.toLowerCase().includes(lower) ||
+        ad.user.username.toLowerCase().includes(lower) ||
         ad.crypto.toLowerCase().includes(lower) ||
         ad.fiatCurrency.toLowerCase().includes(lower)
     );
@@ -174,8 +175,8 @@ export default function AdminAdsPage() {
                     <TableRow key={ad.id} onClick={() => handleRowClick(ad)} className="cursor-pointer">
                     <TableCell className="font-mono text-xs">{ad.publicAdId}</TableCell>
                     <TableCell>
-                        <Link href={`/users/${ad.user.userId}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                            {ad.user.userId}
+                        <Link href={`/users/${ad.user.username}`} className="hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                            {ad.user.username}
                         </Link>
                     </TableCell>
                     <TableCell>
@@ -224,7 +225,7 @@ export default function AdminAdsPage() {
                       <CardContent className="text-sm space-y-2">
                            <div className="flex justify-between">
                             <span className="text-muted-foreground">User</span>
-                            <span className="font-medium">{ad.user.userId}</span>
+                            <span className="font-medium">{ad.user.username}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Price</span>
@@ -251,7 +252,7 @@ export default function AdminAdsPage() {
             </DialogHeader>
             {selectedAd && (
                  <div className="space-y-4 py-4 text-sm">
-                    <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedAd.user.userId}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedAd.user.username}</span></div>
                     {selectedAd.offerLabel && <div className="flex justify-between items-center"><span className="text-muted-foreground">Offer Label</span><Badge>{selectedAd.offerLabel}</Badge></div>}
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Type</span><Badge variant={selectedAd.adType === "sell" ? "secondary" : "outline"} className="capitalize">{selectedAd.adType}</Badge></div>
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Asset</span><span className="font-medium">{selectedAd.crypto} / {selectedAd.fiatCurrency}</span></div>

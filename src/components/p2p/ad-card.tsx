@@ -50,11 +50,11 @@ export function AdCard({ ad }: AdCardProps) {
             <div className="flex items-center gap-3">
                 <Avatar>
                     <AvatarImage src={adCreator.photoURL} />
-                    <AvatarFallback>{adCreator.userId.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{adCreator.username.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div>
-                     <Link href={`/users/${adCreator.userId}`} className="font-semibold hover:underline flex items-center gap-2">
-                        {adCreator.userId}
+                     <Link href={`/users/${adCreator.username}`} className="font-semibold hover:underline flex items-center gap-2">
+                        {adCreator.username}
                         {adCreator.country && <FlagIcon countryCode={adCreator.country} />}
                      </Link>
                     <div className="text-xs text-muted-foreground flex items-center gap-4">

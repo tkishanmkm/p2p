@@ -231,7 +231,7 @@ export default function AdDetailPage() {
                     {user.country ? <Link href={`/buy?country=${user.country}`} className="hover:underline">{user.country}</Link> : 'Global'} / <Link href={`/${ad.adType === 'sell' ? 'buy' : 'sell'}`} className="hover:underline">{titleAction} {ad.crypto}</Link> / {ad.paymentMethods[0]}
                 </p>
                 <h1 className="text-3xl md:text-4xl font-bold mt-1">
-                    {titleAction} {ad.crypto} with {ad.paymentMethods[0]} from {user.userId}
+                    {titleAction} {ad.crypto} with {ad.paymentMethods[0]} from {ad.user.username}
                 </h1>
             </div>
 
