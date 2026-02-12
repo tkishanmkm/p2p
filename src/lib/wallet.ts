@@ -188,16 +188,18 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     if (trade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
     if (trade.claimedByBuyer) throw new Error("Funds have already been claimed.");
 
+    // Construct the wallet ref INSIDE the transaction
     const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
     const buyerWalletDoc = await transaction.get(buyerWalletRef);
     
     const fee = trade.escrowFee || (trade.amount * 0.01);
     const amountToBuyer = trade.amount - fee;
-    
+
     const walletData = buyerWalletDoc.data() as UserWallet | undefined;
     const currentBalance = walletData?.balance || 0;
     const currentLockedBalance = walletData?.lockedBalance || 0;
     
+    // Use set with merge to create or update the wallet
     transaction.set(buyerWalletRef, {
         balance: currentBalance + amountToBuyer,
         lockedBalance: currentLockedBalance,
@@ -209,6 +211,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
 
     transaction.update(tradeRef, { claimedByBuyer: true });
 
+    // Log the fee to the escrow ledger
     const ledgerRef = doc(collection(db, "escrow_ledger"));
     transaction.set(ledgerRef, {
         tradeId: trade.tradeId,
@@ -225,17 +228,17 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
   await runTransaction(db, async (transaction) => {
     const tradeDoc = await transaction.get(tradeRef);
     if (!tradeDoc.exists()) {
-      throw new Error("Trade does not exist.");
+      // If trade doesn't exist, it might have been deleted, so we can consider this a "success" for cancellation.
+      return;
     }
+    
     const trade = tradeDoc.data() as Trade;
     
-    // Allow cancellation of 'active' or 'paid' trades (e.g. by admin or timeout)
     if (trade.status !== 'active' && trade.status !== 'paid') {
-      // Don't throw error if already cancelled, just exit.
-      if (trade.status === 'cancelled' || trade.status === 'expired') return;
-      throw new Error("Only active or paid trades can be cancelled.");
+      // If it's already cancelled, released, etc., there's nothing to do.
+      return;
     }
-    
+
     const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', trade.crypto);
     const sellerWalletDoc = await transaction.get(sellerWalletRef);
     if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
@@ -423,5 +426,3 @@ export async function sendCoinToUser(
 
   return transferId;
 }
-
-    
