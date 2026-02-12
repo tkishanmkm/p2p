@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -81,7 +82,6 @@ function BuyPageContent() {
   const [selectedTags, setSelectedTags] = useState<string[]>(searchParams.get('tags')?.split(',').filter(Boolean) || []);
   const [showTopRated, setShowTopRated] = useState(searchParams.get('topRated') === 'true');
   const [showVerified, setShowVerified] = useState(searchParams.get('verified') === 'true');
-  const [showRecentlyActive, setShowRecentlyActive] = useState(searchParams.get('recentlyActive') === 'true');
   const [showAcceptable, setShowAcceptable] = useState(searchParams.get('acceptable') === 'true');
   const [isOfferTagsSheetOpen, setIsOfferTagsSheetOpen] = useState(false);
 
@@ -97,7 +97,6 @@ function BuyPageContent() {
     setSelectedTags([]);
     setShowTopRated(false);
     setShowVerified(false);
-    setShowRecentlyActive(false);
     setShowAcceptable(false);
     setIsFiltersSheetOpen(false);
   };
@@ -113,10 +112,9 @@ function BuyPageContent() {
     if(selectedTags.length > 0) params.set('tags', selectedTags.join(',')); else params.delete('tags');
     if(showTopRated) params.set('topRated', 'true'); else params.delete('topRated');
     if(showVerified) params.set('verified', 'true'); else params.delete('verified');
-    if(showRecentlyActive) params.set('recentlyActive', 'true'); else params.delete('recentlyActive');
     if(showAcceptable) params.set('acceptable', 'true'); else params.delete('acceptable');
     router.replace(`${pathname}?${params.toString()}`);
-  }, [amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, sortBy, selectedTags, showTopRated, showVerified, showRecentlyActive, showAcceptable, pathname, router, searchParams]);
+  }, [amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, sortBy, selectedTags, showTopRated, showVerified, showAcceptable, pathname, router, searchParams]);
 
 
   const allPaymentMethods = useMemo(() => [
@@ -229,13 +227,6 @@ function BuyPageContent() {
       if (showVerified) {
         if (!ad.user.badges?.includes('verified')) return false;
       }
-      if (showRecentlyActive) {
-        if (!ad.user.lastActive) return false;
-        const lastActiveDate = toDate(ad.user.lastActive);
-        if (!lastActiveDate || (new Date().getTime() - lastActiveDate.getTime()) > 30 * 60 * 1000) {
-            return false;
-        }
-      }
       if (selectedTags.length > 0) {
           if (!ad.tags || !selectedTags.every(tag => ad.tags!.includes(tag))) {
               return false;
@@ -253,9 +244,23 @@ function BuyPageContent() {
       }
       return true;
     });
+    
+    // Sort ads: prioritize active users, then apply user's selected sort
+    const recentlyActiveAds: P2PAd[] = [];
+    const otherAds: P2PAd[] = [];
 
-    ads.sort((a, b) => {
-        if (sortBy === 'price') {
+    for (const ad of ads) {
+      const lastActiveDate = ad.user.lastActive ? toDate(ad.user.lastActive) : null;
+      const isRecent = lastActiveDate && (new Date().getTime() - lastActiveDate.getTime()) < 30 * 60 * 1000;
+      if (isRecent) {
+        recentlyActiveAds.push(ad);
+      } else {
+        otherAds.push(ad);
+      }
+    }
+
+    const sortFunction = (a: P2PAd, b: P2PAd) => {
+      if (sortBy === 'price') {
             const marketPriceA = (prices[a.crypto] || 0) * exchangeRate;
             const marketPriceB = (prices[b.crypto] || 0) * exchangeRate;
             const priceA = a.rateType === 'fixed' ? a.fixedRate! : marketPriceA * (1 + (a.ratePercent || 0) / 100);
@@ -269,10 +274,14 @@ function BuyPageContent() {
             return (b.user.completedTrades || 0) - (a.user.completedTrades || 0);
         }
         return 0;
-    });
+    };
     
-    return ads;
-  }, [sellAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, showTopRated, showVerified, showRecentlyActive, showAcceptable, selectedTags, currentUserData, sortBy, prices, fiatRates, adCreators]);
+    recentlyActiveAds.sort(sortFunction);
+    otherAds.sort(sortFunction);
+    
+    return [...recentlyActiveAds, ...otherAds];
+
+  }, [sellAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, showTopRated, showVerified, showAcceptable, selectedTags, currentUserData, sortBy, prices, fiatRates, adCreators]);
   
   const handleToggle = (page: 'buy' | 'sell') => {
     router.push(`/${page}`);
@@ -554,13 +563,6 @@ function BuyPageContent() {
                             <p className="text-xs text-muted-foreground">Show offers from ID-verified users</p>
                         </div>
                         <Switch id="verified-switch" checked={showVerified} onCheckedChange={setShowVerified} />
-                    </div>
-                    <div className="flex items-center justify-between py-2">
-                        <div>
-                            <Label htmlFor="active-switch" className="cursor-pointer">Recently active</Label>
-                            <p className="text-xs text-muted-foreground">Last seen 30 mins ago</p>
-                        </div>
-                        <Switch id="active-switch" checked={showRecentlyActive} onCheckedChange={setShowRecentlyActive} />
                     </div>
                     <div className="flex items-center justify-between py-2">
                         <div>
