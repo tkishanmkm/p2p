@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -151,7 +152,7 @@ export default function PublicProfilePage() {
   const createdDate = toDate(user.createdAt);
   
   const lastActiveDate = user.lastActive ? toDate(user.lastActive) : null;
-  let activity = { text: 'Activity unknown', dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
+  let activity = { text: 'Offline', dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
 
   if (lastActiveDate) {
     const diffMinutes = (new Date().getTime() - lastActiveDate.getTime()) / (1000 * 60);

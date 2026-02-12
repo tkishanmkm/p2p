@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -29,6 +30,17 @@ export function AdCard({ ad }: AdCardProps) {
     ad.rateType === 'fixed' ? ad.fixedRate! : marketPriceInFiat * (1 + (ad.ratePercent || 0) / 100);
 
   const pricePremium = marketPriceInFiat > 0 ? (adPrice - marketPriceInFiat) / marketPriceInFiat : 0;
+  
+  const isForBuyingPage = ad.adType === 'sell'; // On buy page, we see 'sell' ads
+  
+  const priceColorClass = isForBuyingPage 
+    ? (pricePremium >= 0 ? 'text-red-600' : 'text-green-600') 
+    : (pricePremium >= 0 ? 'text-green-600' : 'text-red-600');
+
+  const buttonLabel = ad.adType === 'buy' ? 'Sell' : 'Buy';
+  const buttonColorClass = buttonLabel === 'Buy'
+    ? 'bg-green-600 hover:bg-green-700 text-white'
+    : 'bg-red-600 hover:bg-red-700 text-white';
 
   const lastActiveDate = adCreator.lastActive ? toDate(adCreator.lastActive) : null;
   let activity = { text: 'Offline', dotClass: 'bg-muted-foreground/50', textClass: 'text-muted-foreground' };
@@ -105,8 +117,8 @@ export function AdCard({ ad }: AdCardProps) {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <p className={cn('text-xs cursor-help', pricePremium >= 0 ? 'text-green-600' : 'text-red-600')}>
-                      {Math.abs(pricePremium * 100).toFixed(2)}% {pricePremium >= 0 ? 'above' : 'below'} market
+                    <p className={cn('text-xs cursor-help', priceColorClass)}>
+                      {pricePremium >= 0 ? '+' : ''}{(pricePremium * 100).toFixed(2)}%
                     </p>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -126,8 +138,8 @@ export function AdCard({ ad }: AdCardProps) {
                 {ad.minAmount} - {ad.maxAmount} {ad.fiatCurrency}
               </p>
             </div>
-            <Button asChild>
-              <Link href={`/trade/initiate/${ad.id}`}>{ad.adType === 'buy' ? 'Sell' : 'Buy'} {ad.crypto}</Link>
+            <Button asChild className={buttonColorClass}>
+              <Link href={`/trade/initiate/${ad.id}`}>{buttonLabel} {ad.crypto}</Link>
             </Button>
           </div>
         </div>

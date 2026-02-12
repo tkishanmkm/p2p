@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { FeedbackCard } from "@/components/p2p/feedback-card";
-import { DefaultAvatar } from "@/components/icons";
+import { DefaultAvatar, BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
 
 import { useToast } from "@/hooks/use-toast";
 import { usePrices } from "@/context/price-context";
@@ -29,6 +29,17 @@ import { cn, toDate } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { CheckCircle, Phone, CreditCard, Clock, ThumbsUp, ThumbsDown, MessageSquare, Shield, Loader2, UserCheck, Power, AlertTriangle, Lock } from "lucide-react";
 import { FlagIcon } from "@/components/ui/flag-icon";
+
+const CryptoLogo = ({ crypto, className }: { crypto: string; className?: string }) => {
+    switch (crypto) {
+        case 'BTC': return <BtcLogo className={className} />;
+        case 'ETH': return <EthLogo className={className} />;
+        case 'LTC': return <LtcLogo className={className} />;
+        case 'USDT': return <UsdtLogo className={className} />;
+        default: return null;
+    }
+}
+
 
 function TraderProfileCard({ user, ad, feedback }: { user: User, ad: P2PAd, feedback: Feedback[] | null }) {
     const positiveFeedback = user.positiveFeedback || 0;
@@ -223,6 +234,7 @@ export default function AdDetailPage() {
     }
 
     const titleAction = ad.adType === 'buy' ? 'Sell' : 'Buy';
+    const actionColor = titleAction === 'Buy' ? 'text-green-500' : 'text-red-500';
     
     return (
         <div className="space-y-8">
@@ -230,8 +242,10 @@ export default function AdDetailPage() {
                  <p className="text-sm text-primary-foreground/80">
                     {user.country ? <Link href={`/buy?country=${user.country}`} className="hover:underline">{user.country}</Link> : 'Global'} / <Link href={`/${ad.adType === 'sell' ? 'buy' : 'sell'}`} className="hover:underline">{titleAction} {ad.crypto}</Link> / {ad.paymentMethods[0]}
                 </p>
-                <h1 className="text-3xl md:text-4xl font-bold mt-1">
-                    {titleAction} {ad.crypto} with {ad.paymentMethods[0]} from {ad.user.username}
+                <h1 className="text-3xl md:text-4xl font-bold mt-2 flex items-center gap-2 flex-wrap">
+                    <span className={actionColor}>{titleAction}</span>
+                    <CryptoLogo crypto={ad.crypto} className="h-8 w-8" />
+                    <span>{ad.crypto} with {ad.paymentMethods[0]} from {ad.user.username}</span>
                 </h1>
             </div>
 

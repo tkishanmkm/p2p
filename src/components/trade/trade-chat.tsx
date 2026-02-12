@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -161,6 +162,8 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
   };
 
   const isBuyer = currentUserId === trade.buyerId;
+  const opponentCountryName = countries.find(c => c.code === opponent?.country)?.name;
+  const opponentIpCountryName = countries.find(c => c.code === opponent?.ipBasedCountry)?.name;
 
   return (
     <Card className="flex flex-col h-full">
@@ -184,12 +187,18 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setShowUsernames(!showUsernames)}>
+                <Button variant="ghost" size="icon" onMouseOver={() => setShowUsernames(true)} onMouseLeave={() => setShowUsernames(false)}>
                   <Info className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{showUsernames ? 'Hide full usernames' : 'Show full usernames'}</p>
+                 {opponent && (
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p><strong>Username:</strong> {opponent.userId}</p>
+                      <p><strong>Country:</strong> {opponentCountryName || 'N/A'}</p>
+                      <p><strong>IP-based Country:</strong> {opponentIpCountryName || 'N/A'}</p>
+                    </div>
+                  )}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
