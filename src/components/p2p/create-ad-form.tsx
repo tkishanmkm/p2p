@@ -380,7 +380,7 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
           completedTrades: userData.completedTrades ?? 0,
           photoURL: userData.photoURL,
           badges: userData.badges,
-          lastActive: userData.lastActive,
+          lastActive: userData.lastActive || new Date().toISOString(),
         });
         toast({ title: "Ad Created", description: "Your ad has been successfully posted." });
         router.push(data.adType === 'sell' ? '/buy' : '/sell');
@@ -957,5 +957,3 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
     </Card>
   );
 }
-
-    

@@ -138,8 +138,8 @@ export type Trade = {
   paidAt?: string; // TIMESTAMP
   releasedAt?: string; // TIMESTAMP
   createdAt: string; // TIMESTAMP;
-  buyer: { userId: string; country?: string; };
-  seller: { userId: string; country?: string; };
+  buyer: { username: string; country?: string; };
+  seller: { username: string; country?: string; };
 };
 
 export type EscrowLedger = {
