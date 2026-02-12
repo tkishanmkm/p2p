@@ -2,7 +2,8 @@
 'use client';
 
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, useMemo } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
+import { useMemo } from 'react';
 import type { Trade } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ChevronRight } from 'lucide-react';
@@ -87,4 +88,3 @@ export function ActiveTradesList() {
         </div>
     );
 }
-
