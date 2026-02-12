@@ -96,8 +96,8 @@ service cloud.firestore {
 
     // --- User-Centric Collections ---
     match /users/{userId} {
-      // Users can get their own profile, admins can get any. Public profile data is queried via list.
-      allow get: if isOwner(userId) || isAdmin(); 
+      // Users can get their own profile, admins can get any.
+      allow get: if isOwner(userId) || isAdmin();
       // Any signed-in user can query for public user profiles.
       allow list: if isSignedIn();
       allow create: if isOwner(userId);
@@ -105,21 +105,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /wallets/{walletId} {
-        allow get: if isOwner(userId) || isAdmin();
-        allow list: if isOwner(userId) || isAdmin();
+        allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) || isAdmin() || isValidTransferCreation(userId, walletId);
         allow update: if isOwner(userId) || isAdmin() || isValidTransferUpdate(userId);
         allow delete: if isAdmin();
       }
       match /withdrawals/{withdrawalId} {
-        allow read, create, update: if isOwner(userId) || isAdmin();
+        allow read, create, update, list: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
       }
       match /notifications/{notificationId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
       match /sessions/{sessionId} {
-        // Sessions are private to the user. Admins do not manage them directly.
+        // Sessions are private to the user.
         allow read, list, create, update, delete: if isOwner(userId);
       }
     }
@@ -179,6 +178,12 @@ service cloud.firestore {
         allow delete: if false;
     }
     
+    // --- Collection Group Rules for Admin Panel ---
+    match /{path=**}/disputes/{disputeId} {
+        allow list: if isAdmin();
+        allow get: if isTradeParticipant(get(/databases/$(database)/documents/trades/$(resource.data.tradeId)).data) || isAdmin();
+    }
+
     // --- Global Catch-All Rule ---
     match /{document=**} {
       allow read, write: if false;
