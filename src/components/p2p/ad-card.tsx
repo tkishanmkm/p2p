@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -9,10 +8,11 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import type { P2PAd, CryptoCurrency } from '@/lib/types';
 import { usePrices } from '@/context/price-context';
 import { ThumbsUp, ThumbsDown, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, toDate } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo, DefaultAvatar } from '@/components/icons';
 import { FlagIcon } from '../ui/flag-icon';
+import { formatDistanceToNow } from 'date-fns';
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
@@ -53,6 +53,24 @@ export function AdCard({ ad }: AdCardProps) {
     ? 'bg-green-600 hover:bg-green-700 text-white'
     : 'bg-red-600 hover:bg-red-700 text-white';
 
+  const adCreatorLastActive = adCreator.lastActive ? toDate(adCreator.lastActive) : null;
+  let activity = { text: 'Offline', dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
+
+  if (adCreatorLastActive) {
+    const diffMinutes = (new Date().getTime() - adCreatorLastActive.getTime()) / (1000 * 60);
+    const formattedDistance = formatDistanceToNow(adCreatorLastActive);
+
+    if (diffMinutes < 5) {
+      activity = { text: 'Active now', dotClass: 'bg-green-500', textClass: 'text-green-600' };
+    } else if (diffMinutes < 60) {
+      activity = { text: `${formattedDistance} ago`, dotClass: 'bg-green-500', textClass: 'text-green-600' };
+    } else if (diffMinutes < 24 * 60) {
+      activity = { text: `${formattedDistance} ago`, dotClass: 'bg-yellow-600', textClass: 'text-yellow-600' };
+    } else {
+      activity = { text: `${formattedDistance} ago`, dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
+    }
+  }
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <div className="p-4 flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -76,6 +94,12 @@ export function AdCard({ ad }: AdCardProps) {
                 <div className="flex items-center gap-1">
                   <ThumbsDown className="h-3 w-3 text-red-500" /> {adCreator.negativeFeedback || 0}
                 </div>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                  <div className={cn('h-2 w-2 rounded-full', activity.dotClass)} />
+                  <p className={cn("text-xs", activity.textClass)}>
+                      {activity.text}
+                  </p>
               </div>
             </div>
           </div>
