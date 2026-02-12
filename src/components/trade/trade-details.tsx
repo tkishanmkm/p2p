@@ -68,37 +68,37 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
         <div className="flex justify-between items-start">
             <div>
                 <CardTitle>Trade Details</CardTitle>
-                <CardDescription>ID: {trade.tradeId}</CardDescription>
+                <CardDescription>ID: {trade?.tradeId || 'N/A'}</CardDescription>
             </div>
-            <Badge variant="outline" className="capitalize">{trade.status}</Badge>
+            <Badge variant="outline" className="capitalize">{trade?.status || 'unknown'}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2 rounded-md border p-4">
-            <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade.amount} ${trade.crypto}`} />
-            <DetailRow label="Price" value={`1 ${trade.crypto} = ${trade.price.toLocaleString()} ${trade.fiatCurrency}`} />
+            <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade?.amount ?? 0} ${trade?.crypto ?? ''}`} />
+            <DetailRow label="Price" value={`1 ${trade?.crypto ?? ''} = ${(trade?.price ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} />
             {trade.escrowFee && <DetailRow label="Escrow Fee" value={`${trade.escrowFee.toFixed(8)} ${trade.crypto}`} />}
             <hr className="my-2 border-dashed" />
             <DetailRow 
                 label={isBuying ? "You will pay" : "You will receive"} 
-                value={`${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}`} 
+                value={`${(trade?.fiatAmount ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} 
                 valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} 
             />
         </div>
 
         <div className="space-y-2">
             <h4 className="font-semibold">Participants & Payment</h4>
-            <ParticipantRow label="Buyer" user={trade.buyer} />
-            <ParticipantRow label="Seller" user={trade.seller} />
-            {trade.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}
+            <ParticipantRow label="Buyer" user={trade?.buyer} />
+            <ParticipantRow label="Seller" user={trade?.seller} />
+            {trade?.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}
         </div>
         
         <div className="space-y-2">
             <h4 className="font-semibold">Timestamps</h4>
-            <DetailRow label="Created At" value={toDate(trade.createdAt)?.toLocaleString() ?? 'N/A'} />
-            {trade.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}
-            {trade.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}
-            <DetailRow label="Expires At" value={toDate(trade.expiresAt)?.toLocaleString() ?? 'N/A'} valueClass="text-destructive" />
+            <DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString() ?? 'N/A'} />
+            {trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}
+            {trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}
+            <DetailRow label="Expires At" value={toDate(trade?.expiresAt)?.toLocaleString() ?? 'N/A'} valueClass="text-destructive" />
         </div>
 
          {sellerTerms && <div className="space-y-2">

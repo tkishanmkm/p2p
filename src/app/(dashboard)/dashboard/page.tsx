@@ -248,8 +248,8 @@ export default function DashboardPage() {
                                             <TableRow key={trade.id}>
                                                 <TableCell>
                                                 <div className="flex items-center gap-2 font-medium">
-                                                    {partner.username}
-                                                    {partner.country && <FlagIcon countryCode={partner.country} />}
+                                                    {partner?.username}
+                                                    {partner?.country && <FlagIcon countryCode={partner.country} />}
                                                 </div>
                                                 </TableCell>
                                                 <TableCell>{trade.amount.toFixed(6)} {trade.crypto}</TableCell>
@@ -278,8 +278,8 @@ export default function DashboardPage() {
                                                     <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade.status}</Badge>
                                                 </div>
                                                 <CardDescription>
-                                                    Partner: {partner.username}
-                                                    {partner.country && <FlagIcon countryCode={partner.country} className="inline ml-2"/>}
+                                                    Partner: {partner?.username}
+                                                    {partner?.country && <FlagIcon countryCode={partner.country} className="inline ml-2"/>}
                                                     </CardDescription>
                                             </CardHeader>
                                             <CardFooter>

@@ -51,11 +51,33 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
+  
+  if (isLoading) {
+    return <Skeleton className="w-full h-96" />;
+  }
 
-  const opponentProfile = user?.uid === trade?.buyerId ? sellerProfile : buyerProfile;
+  if (error) {
+    return <div className="text-red-500">Error loading trade: {error.message}</div>;
+  }
 
+  if (!trade || !user) {
+    return <div>Trade not found or user not loaded.</div>;
+  }
 
-  const currentUserRole = user?.uid === trade?.buyerId ? "buy" : "sell";
+  // Data Integrity Check: Ensure critical nested objects exist to prevent crashes
+  if (!trade.buyer || !trade.seller) {
+    return (
+        <Card>
+            <CardHeader><CardTitle>Incomplete Trade Data</CardTitle></CardHeader>
+            <CardContent>
+                <p>This trade document is missing critical participant information and cannot be displayed. This may be due to old data. Please contact support if this is a recent trade.</p>
+            </CardContent>
+        </Card>
+    );
+  }
+  
+  const opponentProfile = user.uid === trade.buyerId ? sellerProfile : buyerProfile;
+  const currentUserRole = user.uid === trade.buyerId ? "buy" : "sell";
 
   useEffect(() => {
     if (trade && trade.status === 'active' && toDate(trade.expiresAt) && new Date() > toDate(trade.expiresAt)!) {
@@ -83,18 +105,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
         });
     }
   }, [trade, currentUserRole, firestore, user?.uid, toast]);
-
-  if (isLoading) {
-    return <Skeleton className="w-full h-96" />;
-  }
-
-  if (error) {
-    return <div className="text-red-500">Error loading trade: {error.message}</div>;
-  }
-
-  if (!trade || !user) {
-    return <div>Trade not found or user not loaded.</div>;
-  }
 
   const handleMarkAsPaid = async () => {
     if (!firestore) return;
@@ -251,7 +261,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
             </div>
             <div className="h-[60vh] lg:h-auto">
-                <TradeChat currentUserId={user?.uid || ""} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
+                <TradeChat currentUserId={user.uid || ""} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
             </div>
         </div>
       </div>
@@ -268,7 +278,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                     <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
                 </div>
                 <div className="h-[calc(100vh-22rem)]">
-                   <TradeChat currentUserId={user?.uid || ""} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
+                   <TradeChat currentUserId={user.uid || ""} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
                 </div>
             </TabsContent>
             <TabsContent value="details" className="mt-4 space-y-4">
