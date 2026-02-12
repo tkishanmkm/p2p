@@ -3,8 +3,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import type { P2PAd, User, CryptoCurrency } from "@/lib/types";
+import { doc, getDoc } from "firebase/firestore";
+import type { P2PAd, User, CryptoCurrency, User as AppUser } from "@/lib/types";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -20,6 +20,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Clock, ThumbsUp, X, Loader2, Lock, Award, CheckShield } from "lucide-react";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
 import { FlagIcon } from "@/components/ui/flag-icon";
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const CryptoLogo = ({ crypto, className }: { crypto: string; className?: string }) => {
     switch (crypto) {
@@ -42,10 +43,10 @@ function StatItem({ icon, value, label }: { icon: React.ReactNode, value: string
 }
 
 function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: number, isForBuyingPage: boolean }) {
-    const { user: authUser } = useFirebase();
+    const { user: authUser, firestore } = useFirebase();
     const router = useRouter();
     const { toast } = useToast();
-    const { firestore } = useFirebase();
+    
     const [fiatAmount, setFiatAmount] = useState('');
     const [cryptoAmount, setCryptoAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +60,15 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
             setCryptoAmount('');
         }
     };
+
+     const onCryptoChange = (value: string) => {
+        setCryptoAmount(value);
+        if (value && adPrice > 0) {
+            setFiatAmount((parseFloat(value) * adPrice).toFixed(2));
+        } else {
+            setFiatAmount('');
+        }
+    };
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,11 +76,13 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
              router.push(`/login?redirect=/ad/${ad.id}`);
              return;
         }
-        if (!fiatAmount || !ad || !firestore) return;
+        if (!fiatAmount || !cryptoAmount || !ad || !firestore) return;
         
         setIsSubmitting(true);
         try {
-            const tradeId = await initiateTrade(firestore, authUser.uid, ad, parseFloat(cryptoAmount), parseFloat(fiatAmount), ad.paymentMethods[0]);
+            // Using the first payment method as specified in the logic
+            const paymentMethod = ad.paymentMethods[0];
+            const tradeId = await initiateTrade(firestore, authUser.uid, ad, parseFloat(cryptoAmount), parseFloat(fiatAmount));
             toast({ title: "Trade Initiated!", description: "You are being redirected to the trade room." });
             router.push(`/trade/${tradeId}`);
         } catch (error: any) {
@@ -83,33 +95,40 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
     return (
         <form onSubmit={handleSubmit}>
             <div className="space-y-4">
-                <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Amount to {isForBuyingPage ? 'receive' : 'sell'}</p>
-                    <div className="relative">
-                        <Input 
-                            value={fiatAmount} 
-                            onChange={(e) => onFiatChange(e.target.value)} 
-                            placeholder="0.00" 
-                            className="h-12 pr-24 text-lg" 
-                        />
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                            <Button type="button" variant="ghost" size="sm" onClick={() => onFiatChange(ad.maxAmount.toString())}>MAX</Button>
-                            <Badge variant="secondary">{ad.fiatCurrency}</Badge>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <Label htmlFor="pay-amount" className="text-sm text-muted-foreground">You pay</Label>
+                        <div className="relative">
+                            <Input 
+                                id="pay-amount"
+                                value={isForBuyingPage ? fiatAmount : cryptoAmount} 
+                                onChange={(e) => isForBuyingPage ? onFiatChange(e.target.value) : onCryptoChange(e.target.value)}
+                                placeholder="0.00" 
+                                className="h-12 pr-24 text-lg" 
+                            />
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                <Badge variant="secondary">{isForBuyingPage ? ad.fiatCurrency : ad.crypto}</Badge>
+                            </div>
                         </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">Range: {ad.minAmount.toLocaleString()} - {ad.maxAmount.toLocaleString()} {ad.fiatCurrency}</p>
-                </div>
-
-                <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg">
-                    <div>
-                        <p className="text-sm text-muted-foreground">{isForBuyingPage ? 'You receive' : 'You pay'}</p>
-                        <p className="text-lg font-bold">{fiatAmount || '0'} {ad.fiatCurrency}</p>
+                    <div className="space-y-1">
+                        <Label htmlFor="receive-amount" className="text-sm text-muted-foreground">You receive</Label>
+                         <div className="relative">
+                            <Input 
+                                id="receive-amount"
+                                value={isForBuyingPage ? cryptoAmount : fiatAmount} 
+                                onChange={(e) => isForBuyingPage ? onCryptoChange(e.target.value) : onFiatChange(e.target.value)}
+                                placeholder="0.00" 
+                                className="h-12 pr-24 text-lg" 
+                            />
+                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                <Button type="button" variant="ghost" size="sm" onClick={() => onFiatChange(ad.maxAmount.toString())}>MAX</Button>
+                                <Badge variant="secondary">{isForBuyingPage ? ad.crypto : ad.fiatCurrency}</Badge>
+                            </div>
+                        </div>
                     </div>
-                    <div className="text-right">
-                        <p className="text-sm text-muted-foreground">{isForBuyingPage ? 'You pay' : 'You receive'}</p>
-                        <p className="text-lg font-bold">{cryptoAmount || '0.00'} {ad.crypto}</p>
-                    </div>
                 </div>
+                 <p className="text-xs text-muted-foreground">Range: {ad.minAmount.toLocaleString()} - {ad.maxAmount.toLocaleString()} {ad.fiatCurrency}</p>
 
                 {ad.offerLabel && <div className="space-y-1 rounded-lg bg-muted/50 p-4">
                     <p className="text-sm text-muted-foreground">Offer label</p>
@@ -130,7 +149,7 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
             <div className="mt-6 space-y-4">
                 <Button type="submit" size="lg" className="w-full h-12 text-lg" disabled={isSubmitting || !fiatAmount || parseFloat(fiatAmount) < ad.minAmount || parseFloat(fiatAmount) > ad.maxAmount}>
                      {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {authUser ? 'Trade' : 'Join & Trade'}
+                    {authUser ? (isForBuyingPage ? 'Buy' : 'Sell') : 'Join & Trade'}
                 </Button>
                 <div className="text-xs text-muted-foreground flex items-center justify-center gap-2">
                     <Lock className="h-3 w-3" />
@@ -221,7 +240,7 @@ export default function AdDetailPage() {
                 <div className="text-right">
                     <span className="text-sm text-muted-foreground">Rate: </span>
                     <CryptoLogo crypto={ad.crypto} className="h-4 w-4 inline-block mx-1" />
-                    <span className="font-bold">{adPrice.toLocaleString()} {ad.fiatCurrency}</span>
+                    <span className="font-bold">{adPrice.toLocaleString(undefined, {style: 'currency', currency: ad.fiatCurrency, minimumFractionDigits: 2})}</span>
                     {marketPriceInFiat > 0 && (
                         <Badge className={cn('ml-2 font-semibold', priceBadgeClass)}>
                             {pricePremium >= 0 ? '+' : ''}{(pricePremium * 100).toFixed(2)}%
@@ -234,3 +253,4 @@ export default function AdDetailPage() {
         </div>
     );
 }
+

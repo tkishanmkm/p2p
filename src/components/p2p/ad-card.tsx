@@ -144,7 +144,7 @@ export function AdCard({ ad }: AdCardProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>View user profile</p>
+                  <p>View user profile and all ads</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
