@@ -1,3 +1,4 @@
+
 "use client"
 
 import { cn } from "@/lib/utils"
@@ -37,7 +38,7 @@ export function TradeStatusStepper({ currentStatus, tradeType }: StepperProps) {
   
   if (currentStepInfo.index === -1) {
     return (
-      <div className={cn("flex items-center gap-2 p-4 rounded-lg bg-secondary", currentStepInfo.color)}>
+      <div className={cn("flex items-center gap-2 p-2 sm:p-4 rounded-lg bg-secondary", currentStepInfo.color)}>
         {currentStepInfo.icon}
         <span className="font-semibold capitalize">{currentStatus}</span>
       </div>
@@ -81,7 +82,7 @@ export function TradeStatusStepper({ currentStatus, tradeType }: StepperProps) {
                 </div>
               </>
             )}
-            <div className="absolute -bottom-6 w-max text-center sm:w-auto sm:bottom-auto sm:top-10 sm:left-1/2 sm:-translate-x-1/2">
+            <div className="absolute pt-2 -bottom-10 w-max text-center sm:w-auto sm:bottom-auto sm:top-10 sm:left-1/2 sm:-translate-x-1/2">
                 <span className={cn("text-xs text-muted-foreground", currentStepInfo.index >= stepIdx && "font-semibold text-foreground")}>{step.name}</span>
             </div>
           </li>
