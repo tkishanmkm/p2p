@@ -272,6 +272,12 @@ export default function AdDetailPage() {
                                 <div className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" /> Payment Window</div>
                                 <div className="font-semibold">{ad.paymentTimeLimit} min</div>
                             </div>
+                            <div className="space-y-2">
+                                <h4 className="font-semibold text-sm">Payment Methods</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {ad.paymentMethods.map(pm => <Badge key={pm} variant="secondary">{pm}</Badge>)}
+                                </div>
+                            </div>
                             <div className="space-y-1">
                                 <h4 className="font-semibold text-sm">Offer Info</h4>
                                 <div className="flex flex-wrap gap-2">
