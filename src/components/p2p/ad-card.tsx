@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -107,7 +108,7 @@ export function AdCard({ ad }: AdCardProps) {
             <p className="font-medium text-sm">{ad.minAmount.toLocaleString()} - {ad.maxAmount.toLocaleString()} {ad.fiatCurrency}</p>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2 mt-2 w-full sm:w-auto">
+          <div className="flex items-center justify-end gap-1 sm:gap-2 mt-2 w-full sm:w-auto">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -123,7 +124,7 @@ export function AdCard({ ad }: AdCardProps) {
               </Tooltip>
             </TooltipProvider>
 
-            <Button asChild className={cn(buttonColorClass, "gap-2", "flex-grow")}>
+            <Button asChild className={cn(buttonColorClass, "gap-2")}>
               <Link href={`/trade/initiate/${ad.id}`}>
                 {buttonLabel} <CryptoLogo crypto={ad.crypto as CryptoCurrency} className="h-4 w-4" />
               </Link>
@@ -134,3 +135,4 @@ export function AdCard({ ad }: AdCardProps) {
     </Card>
   );
 }
+    
