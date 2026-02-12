@@ -210,7 +210,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
 
     const ledgerRef = doc(collection(db, "escrow_ledger"));
     transaction.set(ledgerRef, {
-        tradeId: trade.id,
+        tradeId: tradeId,
         feeAmount: fee,
         crypto: trade.crypto,
         createdAt: new Date().toISOString()
