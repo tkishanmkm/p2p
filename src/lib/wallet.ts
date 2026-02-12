@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Firestore,
@@ -210,7 +211,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
 
     const ledgerRef = doc(collection(db, "escrow_ledger"));
     transaction.set(ledgerRef, {
-        tradeId: tradeId,
+        tradeId: trade.tradeId,
         feeAmount: fee,
         crypto: trade.crypto,
         createdAt: new Date().toISOString()
@@ -219,38 +220,41 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
 }
 
 export async function cancelTrade(db: Firestore, tradeId: string) {
-    const tradeRef = doc(db, 'trades', tradeId);
+  const tradeRef = doc(db, 'trades', tradeId);
 
-    await runTransaction(db, async (transaction) => {
-        const tradeDoc = await transaction.get(tradeRef);
-        if (!tradeDoc.exists()) {
-          throw new Error("Trade does not exist.");
-        }
-        
-        const trade = tradeDoc.data() as Trade;
-        if (trade.status !== 'active' && trade.status !== 'paid') {
-          throw new Error("Only active or paid trades can be cancelled.");
-        }
-        
-        const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', trade.crypto);
-        const sellerWalletDoc = await transaction.get(sellerWalletRef);
-        if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
+  await runTransaction(db, async (transaction) => {
+    const tradeDoc = await transaction.get(tradeRef);
+    if (!tradeDoc.exists()) {
+      throw new Error("Trade does not exist.");
+    }
+    const trade = tradeDoc.data() as Trade;
+    
+    // Allow cancellation of 'active' or 'paid' trades (e.g. by admin or timeout)
+    if (trade.status !== 'active' && trade.status !== 'paid') {
+      // Don't throw error if already cancelled, just exit.
+      if (trade.status === 'cancelled' || trade.status === 'expired') return;
+      throw new Error("Only active or paid trades can be cancelled.");
+    }
+    
+    const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', trade.crypto);
+    const sellerWalletDoc = await transaction.get(sellerWalletRef);
+    if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
 
-        const sellerWallet = sellerWalletDoc.data() as UserWallet;
-        if ((sellerWallet.lockedBalance || 0) < trade.amount) {
-            throw new Error("Seller has insufficient locked funds to return. Critical error.");
-        }
+    const sellerWallet = sellerWalletDoc.data() as UserWallet;
+    if ((sellerWallet.lockedBalance || 0) < trade.amount) {
+        throw new Error("Seller has insufficient locked funds to return. This is a critical error, as funds should have been locked.");
+    }
 
-        // Return funds to seller's main balance
-        transaction.update(sellerWalletRef, {
-            balance: (sellerWallet.balance || 0) + trade.amount,
-            lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-            updatedAt: new Date().toISOString(),
-        });
-
-        // Mark trade as cancelled
-        transaction.update(tradeRef, { status: 'cancelled' });
+    // Return funds to seller's main balance
+    transaction.update(sellerWalletRef, {
+        balance: (sellerWallet.balance || 0) + trade.amount,
+        lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
+        updatedAt: new Date().toISOString(),
     });
+
+    // Mark trade as cancelled
+    transaction.update(tradeRef, { status: 'cancelled' });
+  });
 }
 
 export async function requestWithdrawal(
@@ -419,3 +423,5 @@ export async function sendCoinToUser(
 
   return transferId;
 }
+
+    

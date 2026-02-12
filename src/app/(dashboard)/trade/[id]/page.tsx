@@ -46,7 +46,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const { data: resolvedDisputes } = useCollection<Dispute>(disputeQuery);
   const resolvedDispute = resolvedDisputes?.[0];
 
-  // Fetch full user profiles for opponent status
   const buyerRef = useMemoFirebase(() => (firestore && trade?.buyerId ? doc(firestore, 'users', trade.buyerId) : null), [firestore, trade]);
   const { data: buyerProfile } = useDoc<User>(buyerRef);
 
@@ -58,11 +57,9 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   const currentUserRole = user?.uid === trade?.buyerId ? "buy" : "sell";
 
-  // Effect for handling expired trades
   useEffect(() => {
     if (trade && trade.status === 'active' && toDate(trade.expiresAt) && new Date() > toDate(trade.expiresAt)!) {
         if (tradeRef && trade.status === 'active' && firestore) {
-             console.log("Trade is expired, attempting to cancel...");
             cancelTrade(firestore, trade.id)
                 .then(() => {
                     toast({ title: "Trade Expired", description: "The trade was automatically cancelled and funds returned to the seller." });
@@ -74,10 +71,8 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     }
   }, [trade, firestore, toast, tradeRef]);
 
-  // Effect for buyer to auto-claim funds
   useEffect(() => {
     if (trade?.status === "released" && currentUserRole === "buy" && !trade.claimedByBuyer && user?.uid && firestore) {
-      console.log("Attempting to claim funds...");
       claimFundsForTrade(firestore, trade.id, user.uid)
         .then(() => {
           toast({ title: "Funds Claimed", description: "The crypto has been added to your wallet." });
@@ -132,8 +127,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   }
   
   const toggleView = () => setIsDetailsLeft(prev => !prev);
-  
-  const isTradeClosed = ['released', 'cancelled', 'expired', 'disputed'].includes(trade.status);
   
   const ActionButtons = () => (
     <div className="space-y-2">
@@ -258,7 +251,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
             </div>
             <div className="h-[60vh] lg:h-auto">
-                <TradeChat currentUserId={user?.uid || ""} trade={trade} opponent={opponentProfile} isAdmin={isAdmin} />
+                <TradeChat currentUserId={user?.uid || ""} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
             </div>
         </div>
       </div>
@@ -275,7 +268,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                     <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
                 </div>
                 <div className="h-[calc(100vh-22rem)]">
-                   <TradeChat currentUserId={user?.uid || ""} trade={trade} opponent={opponentProfile} isAdmin={isAdmin} />
+                   <TradeChat currentUserId={user?.uid || ""} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
                 </div>
             </TabsContent>
             <TabsContent value="details" className="mt-4 space-y-4">
@@ -292,3 +285,5 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 export default function TradePage({ params }: { params: { id: string } }) {
     return <TradePageContent tradeId={params.id} />
 }
+
+    

@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Paperclip, Info, Loader2, Shield, AlertTriangle } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
-import type { TradeChatMessage, Trade, User } from '@/lib/types';
+import type { TradeChatMessage, Trade, User, P2PAd } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { addReceiptToTrade } from '@/lib/wallet';
@@ -34,6 +34,7 @@ interface TradeChatProps {
   trade: Trade;
   opponent: User | null | undefined;
   isAdmin: boolean;
+  ad: P2PAd | null | undefined;
 }
 
 const blockedWords = [
@@ -66,7 +67,7 @@ const checkMessageForBlockedWords = (message: string): boolean => {
   return blockedWords.some((word) => lowerCaseMessage.includes(word));
 };
 
-export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChatProps) {
+export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: TradeChatProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -203,11 +204,23 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
             </Tooltip>
           </TooltipProvider>
         </div>
-        <div className="mt-2 text-xs p-2 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded-r-md">
-          <p>
-            <strong>Safety Notice:</strong> Only trade on the TradeFlow platform. Do not contact users outside of this
-            chat.
-          </p>
+        <div className="p-3 bg-secondary rounded-lg text-sm mt-2">
+            <div className="flex justify-between items-center font-medium">
+                <span>{isBuyer ? "You Pay" : "You Receive"}</span>
+                <span>{trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</span>
+            </div>
+            <div className="flex justify-between items-center text-muted-foreground">
+                <span>{isBuyer ? "You Get" : "You Sell"}</span>
+                <span>{trade.amount.toFixed(8)} {trade.crypto}</span>
+            </div>
+            {ad?.terms && (
+              <>
+                <hr className="my-2" />
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  <strong>Terms: </strong>{ ad.terms }
+                </p>
+              </>
+            )}
         </div>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
@@ -346,3 +359,5 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin }: TradeChat
     </Card>
   );
 }
+
+    

@@ -21,7 +21,7 @@ interface TradeDetailsProps {
 
 function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { label: string, value: string | React.ReactNode, valueClass?: string, isLink?: boolean, href?: string }) {
   const valueContent = isLink ? (
-    <Button variant="link" asChild className="p-0 h-auto font-medium">
+    <Button variant="link" asChild className="p-0 h-auto font-medium text-right">
         <Link href={href}>{value}</Link>
     </Button>
   ) : (
@@ -36,7 +36,7 @@ function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { l
   )
 }
 
-function ParticipantRow({ label, user }: { label: string, user: { username: string, country?: string } }) {
+function ParticipantRow({ label, user }: { label: string, user: { username: string; country?: string } }) {
   return (
      <div className="flex justify-between items-center text-sm">
       <p className="text-muted-foreground">{label}</p>
@@ -68,9 +68,11 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
         <div className="space-y-2 rounded-md border p-4">
             <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade.amount} ${trade.crypto}`} />
             <DetailRow label="Price" value={`1 ${trade.crypto} = ${trade.price.toLocaleString()} ${trade.fiatCurrency}`} />
+            {trade.escrowFee && <DetailRow label="Escrow Fee" value={`${trade.escrowFee.toFixed(8)} ${trade.crypto}`} />}
+            <hr className="my-2 border-dashed" />
             <DetailRow 
                 label={isBuying ? "You will pay" : "You will receive"} 
-                value={`${trade.fiatAmount} ${trade.fiatCurrency}`} 
+                value={`${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}`} 
                 valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} 
             />
         </div>
@@ -92,7 +94,7 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
 
          {sellerTerms && <div className="space-y-2">
             <h4 className="font-semibold">Seller's Terms</h4>
-            <div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground">
+            <div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground whitespace-pre-wrap">
                 <p>{sellerTerms}</p>
             </div>
         </div>}
@@ -101,3 +103,5 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
     </Card>
   );
 }
+
+    
