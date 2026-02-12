@@ -42,6 +42,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormItem, FormControl, FormLabel } from "@/components/ui/form";
 import { Card } from "@/components/ui/card";
+import { ActiveTradesList } from "@/components/p2p/active-trades-list";
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
@@ -443,6 +444,8 @@ function SellPageContent() {
             </div>
         </div>
       </div>
+
+      <ActiveTradesList />
 
       <div className="bg-card text-card-foreground rounded-lg p-4 sm:p-6">
         <div className="flex justify-between items-center mb-4">

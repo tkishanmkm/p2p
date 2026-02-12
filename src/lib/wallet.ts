@@ -131,9 +131,29 @@ export async function initiateTrade(
 
 export async function markTradeAsPaid(db: Firestore, tradeId: string) {
     const tradeRef = doc(db, 'trades', tradeId);
-    await updateDoc(tradeRef, {
-        status: 'paid',
-        paidAt: new Date().toISOString()
+    
+    await runTransaction(db, async (transaction) => {
+        const tradeDoc = await transaction.get(tradeRef);
+        if (!tradeDoc.exists()) throw new Error("Trade not found.");
+
+        const tradeData = tradeDoc.data() as Trade;
+        if (tradeData.status !== 'active') throw new Error("Trade is not active.");
+
+        // Update trade status
+        transaction.update(tradeRef, {
+            status: 'paid',
+            paidAt: new Date().toISOString()
+        });
+
+        // Notify seller
+        const sellerNotificationRef = doc(collection(db, 'users', tradeData.sellerId, 'notifications'));
+        transaction.set(sellerNotificationRef, {
+            userId: tradeData.sellerId,
+            message: `Buyer has marked trade ${tradeData.tradeId} as paid. Please confirm payment and release funds.`,
+            link: `/trade/${tradeId}`,
+            isRead: false,
+            createdAt: new Date().toISOString(),
+        });
     });
 }
 
@@ -174,6 +194,16 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
       status: 'released',
       releasedAt: new Date().toISOString()
     });
+
+     // Notify buyer
+    const buyerNotificationRef = doc(collection(db, 'users', trade.buyerId, 'notifications'));
+    transaction.set(buyerNotificationRef, {
+        userId: trade.buyerId,
+        message: `Seller has released crypto for trade ${trade.tradeId}. Funds are on their way to your wallet.`,
+        link: `/trade/${tradeId}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+    });
   });
 }
 
@@ -189,9 +219,17 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     if (trade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
     if (trade.claimedByBuyer) throw new Error("Funds have already been claimed.");
 
-    // Construct the wallet ref INSIDE the transaction
+    // Construct refs inside the transaction
     const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
-    const buyerWalletDoc = await transaction.get(buyerWalletRef);
+    const buyerUserRef = doc(db, 'users', buyerId);
+    const sellerUserRef = doc(db, 'users', trade.sellerId);
+    const sellerNotificationRef = doc(collection(db, 'users', trade.sellerId, 'notifications'));
+
+    const [buyerWalletDoc, buyerUserDoc, sellerUserDoc] = await Promise.all([
+      transaction.get(buyerWalletRef),
+      transaction.get(buyerUserRef),
+      transaction.get(sellerUserRef),
+    ]);
     
     const fee = trade.escrowFee || (trade.amount * 0.01);
     const amountToBuyer = trade.amount - fee;
@@ -212,6 +250,24 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
 
     transaction.update(tradeRef, { claimedByBuyer: true });
 
+    // Update user stats
+    if (buyerUserDoc.exists()) {
+        const buyerData = buyerUserDoc.data() as AppUser;
+        transaction.update(buyerUserRef, {
+            completedTrades: (buyerData.completedTrades || 0) + 1,
+            tradeVolume: (buyerData.tradeVolume || 0) + trade.fiatAmount,
+            lastTradeAt: new Date().toISOString(),
+        });
+    }
+     if (sellerUserDoc.exists()) {
+        const sellerData = sellerUserDoc.data() as AppUser;
+        transaction.update(sellerUserRef, {
+            completedTrades: (sellerData.completedTrades || 0) + 1,
+            tradeVolume: (sellerData.tradeVolume || 0) + trade.fiatAmount,
+            lastTradeAt: new Date().toISOString(),
+        });
+    }
+
     // Log the fee to the escrow ledger
     const ledgerRef = doc(collection(db, "escrow_ledger"));
     transaction.set(ledgerRef, {
@@ -219,6 +275,15 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         feeAmount: fee,
         crypto: trade.crypto,
         createdAt: new Date().toISOString()
+    });
+
+    // Notify seller of completion
+    transaction.set(sellerNotificationRef, {
+        userId: trade.sellerId,
+        message: `Trade ${trade.tradeId} is complete. Funds have been claimed by the buyer.`,
+        link: `/trade/${tradeId}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
     });
   });
 }
@@ -229,14 +294,12 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
   await runTransaction(db, async (transaction) => {
     const tradeDoc = await transaction.get(tradeRef);
     if (!tradeDoc.exists()) {
-      // If trade doesn't exist, it might have been deleted, so we can consider this a "success" for cancellation.
       return;
     }
     
     const trade = tradeDoc.data() as Trade;
     
     if (trade.status !== 'active' && trade.status !== 'paid') {
-      // If it's already cancelled, released, etc., there's nothing to do.
       return;
     }
 
@@ -258,6 +321,24 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
 
     // Mark trade as cancelled
     transaction.update(tradeRef, { status: 'cancelled' });
+
+    // Notify both users
+    const buyerNotificationRef = doc(collection(db, 'users', trade.buyerId, 'notifications'));
+    transaction.set(buyerNotificationRef, {
+        userId: trade.buyerId,
+        message: `Trade ${trade.tradeId} has been cancelled.`,
+        link: `/trade/${tradeId}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+    });
+    const sellerNotificationRef = doc(collection(db, 'users', trade.sellerId, 'notifications'));
+    transaction.set(sellerNotificationRef, {
+        userId: trade.sellerId,
+        message: `Trade ${trade.tradeId} has been cancelled. Your funds have been returned.`,
+        link: `/trade/${tradeId}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+    });
   });
 }
 
