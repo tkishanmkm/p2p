@@ -99,7 +99,35 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       });
 
     return () => unsubscribe(); // Cleanup on unmount
-  }, [auth, firestore]); // Depends on the auth instance and firestore
+  }, [auth]);
+
+  // Effect for last active heartbeat
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (userAuthState.user && firestore) {
+      const userDocRef = doc(firestore, 'users', userAuthState.user.uid);
+
+      const updateLastActive = () => {
+        updateDoc(userDocRef, { lastActive: new Date().toISOString() }).catch((error) => {
+          // Don't show toast, just log it. This is a background task.
+          console.warn("Failed to update last active time:", error.message);
+        });
+      };
+
+      // Update immediately on user becoming available
+      updateLastActive();
+
+      // And then update every 60 seconds
+      intervalId = setInterval(updateLastActive, 60 * 1000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [userAuthState.user, firestore]);
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
