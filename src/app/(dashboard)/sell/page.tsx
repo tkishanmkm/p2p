@@ -178,9 +178,18 @@ function SellPageContent() {
 
   const filteredAds = useMemo(() => {
     if (!buyAds) return [];
+    
+    const updatedAds = buyAds.map(ad => {
+      const liveCreatorData = adCreators[ad.userId];
+      if (liveCreatorData) {
+        return { ...ad, user: { ...ad.user, ...liveCreatorData } };
+      }
+      return ad;
+    });
+
     const exchangeRate = fiatRates[selectedFiat] || 1;
 
-    let ads = buyAds.filter(ad => {
+    let ads = updatedAds.filter(ad => {
       if (currentUserData) {
         // Hide if I have blocked the ad creator
         if (currentUserData.blockedUsers?.includes(ad.userId)) {
