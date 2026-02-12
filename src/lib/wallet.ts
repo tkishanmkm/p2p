@@ -197,7 +197,7 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
  */
 export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId: string) {
   const tradeRef = doc(db, 'trades', tradeId);
-  
+
   await runTransaction(db, async (transaction) => {
     const tradeDoc = await transaction.get(tradeRef);
     if (!tradeDoc.exists()) throw new Error("Trade not found.");
@@ -219,7 +219,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     
     transaction.set(buyerWalletRef, {
         balance: currentBalance + amountToBuyer,
-        lockedBalance: currentLockedBalance,
+        lockedBalance: currentLockedBalance, // Ensure locked balance is preserved
         crypto: trade.crypto,
         userId: buyerId,
         id: trade.crypto,

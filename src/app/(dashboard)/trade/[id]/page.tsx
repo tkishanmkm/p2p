@@ -60,7 +60,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   // Effect for handling expired trades
   useEffect(() => {
     if (trade && trade.status === 'active' && toDate(trade.expiresAt) && new Date() > toDate(trade.expiresAt)!) {
-        if (tradeRef && trade.status === 'active') {
+        if (tradeRef && trade.status === 'active' && firestore) {
              console.log("Trade is expired, attempting to cancel...");
             cancelTrade(firestore, trade.id)
                 .then(() => {
@@ -75,7 +75,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   // Effect for buyer to auto-claim funds
   useEffect(() => {
-    if (trade?.status === "released" && currentUserRole === "buy" && !trade.claimedByBuyer) {
+    if (trade?.status === "released" && currentUserRole === "buy" && !trade.claimedByBuyer && user?.uid && firestore) {
       console.log("Attempting to claim funds...");
       claimFundsForTrade(firestore, trade.id, user.uid)
         .then(() => {
@@ -101,6 +101,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   }
 
   const handleMarkAsPaid = async () => {
+    if (!firestore) return;
     try {
       await markTradeAsPaid(firestore, trade.id);
       toast({ title: "Success", description: "Seller has been notified that you've paid." });
@@ -110,6 +111,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   };
 
   const handleReleaseCrypto = async () => {
+    if (!firestore) return;
     try {
       await releaseFundsFromEscrow(firestore, trade.id);
       toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." });
@@ -119,6 +121,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   };
 
   const handleCancelTrade = async () => {
+     if (!firestore) return;
      try {
       await cancelTrade(firestore, trade.id);
       toast({ title: "Trade Cancelled", description: "The funds have been returned to the seller." });
@@ -164,7 +167,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
       <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
         
         <div className={cn("lg:col-span-1 grid gap-4 auto-rows-min", { "lg:order-last": !isDetailsLeft })}>
-          <TradeDetails trade={trade} sellerTerms={ad?.terms}/>
+          <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole}/>
           <div className="space-y-2">
             {currentUserRole === "buy" && trade.status === "active" && (
               <AlertDialog>

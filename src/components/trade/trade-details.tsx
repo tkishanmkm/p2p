@@ -10,12 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import type { Trade } from "@/lib/types";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import { toDate } from "@/lib/utils";
+import { toDate, cn } from "@/lib/utils";
 import { FlagIcon } from "../ui/flag-icon";
 
 interface TradeDetailsProps {
   trade: Trade;
-  sellerTerms?: string; // Made optional as we might not have it right away
+  sellerTerms?: string;
+  currentUserRole: 'buy' | 'sell';
 }
 
 function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { label: string, value: string | React.ReactNode, valueClass?: string, isLink?: boolean, href?: string }) {
@@ -24,7 +25,7 @@ function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { l
         <Link href={href}>{value}</Link>
     </Button>
   ) : (
-    <p className={`font-medium text-right ${valueClass}`}>{value}</p>
+    <p className={cn(`font-medium text-right`, valueClass)}>{value}</p>
   );
   
   return (
@@ -50,7 +51,8 @@ function ParticipantRow({ label, user }: { label: string, user: { username: stri
 }
 
 
-export function TradeDetails({ trade, sellerTerms }: TradeDetailsProps) {
+export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetailsProps) {
+  const isBuying = currentUserRole === 'buy';
   return (
     <Card>
       <CardHeader>
@@ -64,9 +66,13 @@ export function TradeDetails({ trade, sellerTerms }: TradeDetailsProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2 rounded-md border p-4">
-            <DetailRow label="You are selling" value={`${trade.amount} ${trade.crypto}`} />
+            <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade.amount} ${trade.crypto}`} />
             <DetailRow label="Price" value={`1 ${trade.crypto} = ${trade.price.toLocaleString()} ${trade.fiatCurrency}`} />
-            <DetailRow label="To receive" value={`${trade.fiatAmount} ${trade.fiatCurrency}`} valueClass="text-lg font-bold text-green-600" />
+            <DetailRow 
+                label={isBuying ? "You will pay" : "You will receive"} 
+                value={`${trade.fiatAmount} ${trade.fiatCurrency}`} 
+                valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} 
+            />
         </div>
 
         <div className="space-y-2">
