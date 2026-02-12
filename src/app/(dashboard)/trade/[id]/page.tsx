@@ -285,5 +285,3 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 export default function TradePage({ params }: { params: { id: string } }) {
     return <TradePageContent tradeId={params.id} />
 }
-
-    

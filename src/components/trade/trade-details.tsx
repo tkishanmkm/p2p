@@ -81,7 +81,7 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
             <h4 className="font-semibold">Participants & Payment</h4>
             <ParticipantRow label="Buyer" user={trade.buyer} />
             <ParticipantRow label="Seller" user={trade.seller} />
-            <DetailRow label="Payment Method" value={trade.paymentMethod} />
+            {trade.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}
         </div>
         
         <div className="space-y-2">
@@ -103,5 +103,3 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
     </Card>
   );
 }
-
-    
