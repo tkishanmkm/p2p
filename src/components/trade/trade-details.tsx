@@ -36,7 +36,16 @@ function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { l
   )
 }
 
-function ParticipantRow({ label, user }: { label: string, user: { username: string; country?: string } }) {
+function ParticipantRow({ label, user }: { label: string, user?: { username: string; country?: string } }) {
+  if (!user || !user.username) {
+    return (
+        <div className="flex justify-between items-center text-sm">
+            <p className="text-muted-foreground">{label}</p>
+            <p className="font-medium text-right text-muted-foreground">Unknown</p>
+        </div>
+    );
+  }
+  
   return (
      <div className="flex justify-between items-center text-sm">
       <p className="text-muted-foreground">{label}</p>
