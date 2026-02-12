@@ -4,6 +4,7 @@ import { ProfileSettings } from "@/components/settings/profile-settings";
 import { ChangeUsernameForm } from "@/components/settings/change-username-form";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { ChangeCurrencyForm } from "@/components/settings/change-currency-form";
+import { ChangeCountryForm } from "@/components/settings/change-country-form";
 import { SessionManagement } from "@/components/settings/session-management";
 import { BlockedUsersManagement } from "@/components/settings/blocked-users-management";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
@@ -56,6 +57,7 @@ export default function SettingsPage() {
         <ProfileSettings user={userData} />
         <ChangeUsernameForm user={userData} />
         <ChangePasswordForm />
+        <ChangeCountryForm user={userData} />
         <ChangeCurrencyForm user={userData} />
         <SessionManagement />
         <BlockedUsersManagement user={userData} />
