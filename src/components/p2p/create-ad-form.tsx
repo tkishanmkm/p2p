@@ -344,7 +344,7 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
       return;
     }
 
-    const adData: Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'> = {
+    const adPayload: any = {
       adType: data.adType,
       crypto: data.crypto as CryptoCurrency,
       fiatCurrency: data.fiatCurrency,
@@ -358,11 +358,21 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
       terms: data.terms,
       tags: data.tags,
       offerLabel: data.offerLabel,
-      active: ad?.active ?? true, // Preserve active status on edit, default to true on create
+      active: ad?.active ?? true,
       targetedCountries: data.targetedCountries,
       blockedCountries: data.blockedCountries,
       minCompletedTrades: data.minCompletedTrades,
     };
+    
+    // Remove undefined keys to prevent Firestore errors
+    Object.keys(adPayload).forEach(key => {
+      if (adPayload[key] === undefined) {
+        delete adPayload[key];
+      }
+    });
+
+    const adData = adPayload as Omit<P2PAd, 'id' | 'createdAt' | 'user' | 'userId' | 'publicAdId'>;
+
 
     try {
       if (ad) { // Editing existing ad
