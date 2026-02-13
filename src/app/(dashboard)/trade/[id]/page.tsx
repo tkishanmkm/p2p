@@ -32,22 +32,23 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const { toast } = useToast();
   const { isAdmin } = useAdminStatus();
 
-  const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
-  const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
-
-  // Hooks must be called at the top level and in the same order.
+  // All hooks at the top level
   const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
-  
+
   const adRef = useMemoFirebase(() => (firestore && trade?.adId ? doc(firestore, 'p2p_ads', trade.adId) : null), [firestore, trade]);
   const { data: ad } = useDoc<P2PAd>(adRef);
-  
+
   const buyerRef = useMemoFirebase(() => (firestore && trade?.buyerId ? doc(firestore, 'users', trade.buyerId) : null), [firestore, trade]);
   const { data: buyerProfile } = useDoc<User>(buyerRef);
 
   const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
 
+  const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
+  const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
+
+  // useEffect hooks
   useEffect(() => {
     if (trade && trade.status === 'active' && firestore && tradeRef) {
         const expiresAtDate = toDate(trade.expiresAt);
@@ -76,7 +77,16 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   }
 
   if (error) {
-    return <Card><CardHeader><CardTitle>Error</CardTitle><CardContent>{error.message}</CardContent></CardHeader></Card>;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Error</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>{error.message}</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!trade || !user) {
