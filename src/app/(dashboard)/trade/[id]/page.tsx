@@ -6,16 +6,6 @@ import { TradeDetails } from '@/components/trade/trade-details';
 import { TradeChat } from '@/components/trade/trade-chat';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Shield, MessageSquare, ListDetails } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { cancelTrade } from '@/lib/wallet';
@@ -172,3 +162,4 @@ export default function TradePage({ params }: { params: { id: string } }) {
       </div>
     )
 }
+

@@ -249,7 +249,8 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
                 )}
             </CardContent>
         </Card>
-        <ActionButtons trade={trade} currentUserRole={currentUserRole} />
+        {(trade.status === 'active' || trade.status === 'paid') && <ActionButtons trade={trade} currentUserRole={currentUserRole} />}
     </div>
   );
 }
+

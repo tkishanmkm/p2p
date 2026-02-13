@@ -128,7 +128,7 @@ const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean })
     const roleText = isBuyer ? 'Buying' : 'Selling';
 
     return (
-        <div className={`p-3 rounded-lg text-sm font-medium text-center ${bgColor} ${textColor}`}>
+        <div className={cn('p-3 rounded-lg text-sm font-medium text-center', bgColor, textColor)}>
             {roleText} {trade.amount} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency} – {trade.paymentMethod}
         </div>
     )
@@ -380,3 +380,4 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
     </Card>
   );
 }
+
