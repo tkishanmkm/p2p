@@ -81,6 +81,7 @@ export async function initiateTrade(
         amount: cryptoAmount,
         escrowFee: cryptoFee,
         fiatCurrency: ad.fiatCurrency,
+        fiatAmount: fiatAmount,
         paymentMethod: ad.paymentMethods[0],
         price: fiatAmount / cryptoAmount,
         status: 'active',

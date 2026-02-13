@@ -123,11 +123,11 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow">
-            <div className={cn("lg:col-span-1 space-y-6", mobileView === 'details' ? 'block' : 'hidden lg:block')}>
+            <div className={cn("lg:col-span-1 space-y-6", "block lg:block")}>
                 <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
             </div>
             
-            <div className={cn("lg:col-span-2 flex-grow flex flex-col", mobileView === 'chat' ? 'flex' : 'hidden lg:flex')}>
+            <div className={cn("lg:col-span-2 flex-grow flex flex-col", "flex")}>
                 <TradeChat 
                     currentUserId={user.uid} 
                     trade={trade} 
@@ -137,17 +137,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 />
             </div>
         </div>
-
-        <div className="sticky bottom-0 left-0 right-0 md:hidden bg-background border-t p-2 flex gap-2">
-            <Button variant={mobileView === 'chat' ? 'default' : 'outline'} className="flex-1" onClick={() => setMobileView('chat')}>
-                <MessageSquare className="mr-2 h-4 w-4" /> Chat
-            </Button>
-            <Button variant={mobileView === 'details' ? 'default' : 'outline'} className="flex-1" onClick={() => setMobileView('details')}>
-                <ListDetails className="mr-2 h-4 w-4" /> Actions
-            </Button>
-        </div>
-
-
+        
         <CounterpartyInfoPanel 
             user={opponentProfile}
             open={isInfoPanelOpen}
