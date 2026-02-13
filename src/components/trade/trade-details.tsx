@@ -7,11 +7,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Trade } from "@/lib/types";
+import type { P2PAd, Trade } from "@/lib/types";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { toDate, cn } from "@/lib/utils";
 import { FlagIcon } from "../ui/flag-icon";
+import { RefreshCw } from "lucide-react";
 
 interface TradeDetailsProps {
   trade: Trade;
@@ -62,6 +63,8 @@ function ParticipantRow({ label, user }: { label: string, user?: { username: str
 
 export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetailsProps) {
   const isBuying = currentUserRole === 'buy';
+  const showReopen = ['cancelled', 'expired'].includes(trade.status);
+
   return (
     <Card>
       <CardHeader>
@@ -98,7 +101,7 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
             <DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString() ?? 'N/A'} />
             {trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}
             {trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}
-            <DetailRow label="Expires At" value={toDate(trade?.expiresAt)?.toLocaleString() ?? 'N/A'} valueClass="text-destructive" />
+            {trade.status === 'active' && <DetailRow label="Expires At" value={toDate(trade?.expiresAt)?.toLocaleString() ?? 'N/A'} valueClass="text-destructive" />}
         </div>
 
          {sellerTerms && <div className="space-y-2">
@@ -107,6 +110,12 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
                 <p>{sellerTerms}</p>
             </div>
         </div>}
+        
+        {showReopen && (
+             <Button asChild variant="outline" className="w-full">
+                <Link href={`/ad/${trade.adId}`}><RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade</Link>
+             </Button>
+        )}
 
       </CardContent>
     </Card>

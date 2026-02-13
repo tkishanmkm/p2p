@@ -9,8 +9,6 @@ import {
   CardContent,
   CardFooter,
   CardHeader,
-  CardTitle,
-  CardDescription,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -25,17 +23,9 @@ import { addReceiptToTrade } from '@/lib/wallet';
 import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
-import { formatDistanceToNow } from 'date-fns';
-import { FlagIcon } from '../ui/flag-icon';
 import { countries } from '@/lib/countries';
-
-interface TradeChatProps {
-  currentUserId: string;
-  trade: Trade;
-  opponent: User | null | undefined;
-  isAdmin: boolean;
-  ad: P2PAd | null | undefined;
-}
+import { TradeHeader } from './trade-header';
+import { TradeStatusAlert } from './trade-status-alert';
 
 const blockedWords = [
   'telegram',
@@ -67,6 +57,14 @@ const checkMessageForBlockedWords = (message: string): boolean => {
   return blockedWords.some((word) => lowerCaseMessage.includes(word));
 };
 
+interface TradeChatProps {
+  currentUserId: string;
+  trade: Trade;
+  opponent: User | null | undefined;
+  isAdmin: boolean;
+  ad: P2PAd | null | undefined;
+}
+
 export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: TradeChatProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
@@ -79,29 +77,13 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
   const { data: messages, isLoading: areMessagesLoading } = useCollection<TradeChatMessage>(messagesQuery);
 
   const [newMessage, setNewMessage] = useState('');
-  const [showUsernames, setShowUsernames] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const opponentLastActive = opponent?.lastActive ? toDate(opponent.lastActive) : null;
-  let activity = { text: 'Offline', dotClass: 'bg-muted-foreground/50', textClass: 'text-muted-foreground' };
-
-  if (opponentLastActive) {
-    const diffMinutes = (new Date().getTime() - opponentLastActive.getTime()) / (1000 * 60);
-    const formattedDistance = formatDistanceToNow(opponentLastActive);
-    if (diffMinutes < 5) {
-        activity = { text: 'Active now', dotClass: 'bg-green-500', textClass: 'text-green-600' };
-    } else if (diffMinutes < 60) {
-        activity = { text: `${formattedDistance} ago`, dotClass: 'bg-green-500', textClass: 'text-green-600' };
-    } else if (diffMinutes < 24 * 60) {
-        activity = { text: `${formattedDistance} ago`, dotClass: 'bg-yellow-600', textClass: 'text-yellow-600' };
-    } else {
-        activity = { text: `${formattedDistance} ago`, dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
-    }
-  }
+  const opponentCountryName = countries.find(c => c.code === opponent?.country)?.name;
+  const opponentIpCountryName = countries.find(c => c.code === opponent?.ipBasedCountry)?.name;
 
   useEffect(() => {
-    // Auto-scroll to bottom
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (viewport) {
@@ -110,29 +92,30 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
     }
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent, mediaUrl?: string, mediaType?: 'image') => {
+  const handleSendMessage = async (e: React.FormEvent, mediaUrl?: string, mediaType?: 'image' | 'video' | 'audio') => {
     e.preventDefault();
     if ((!newMessage.trim() && !mediaUrl) || !firestore || !user) return;
 
     const messageToSend = newMessage;
     setNewMessage('');
 
-    const tempMessage: Omit<TradeChatMessage, 'id' | 'createdAt'> = {
+    const messageData: any = {
       tradeId: trade.id,
       senderId: currentUserId,
       senderUsername: user.displayName || 'User',
       message: messageToSend,
-      mediaUrl,
-      mediaType,
       isModerator: isAdmin,
+      createdAt: new Date().toISOString(),
     };
+
+    if (mediaUrl && mediaType) {
+        messageData.mediaUrl = mediaUrl;
+        messageData.mediaType = mediaType;
+    }
 
     try {
       const messagesCollection = collection(firestore, 'trades', trade.id, 'messages');
-      await addDoc(messagesCollection, {
-        ...tempMessage,
-        createdAt: new Date().toISOString(),
-      });
+      await addDoc(messagesCollection, messageData);
 
       if (mediaUrl) {
         await addReceiptToTrade(firestore, trade.id, mediaUrl);
@@ -149,13 +132,14 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
     if (!file) return;
     setIsUploading(true);
 
-    // In a real app, you'd upload to Firebase Storage here.
-    // For this demo, we'll use a data URL as a placeholder.
     const reader = new FileReader();
     reader.onload = (event) => {
       const result = event.target?.result as string;
       if (result) {
-        handleSendMessage(new Event('submit'), result, 'image');
+        let mediaType: 'image' | 'video' | 'audio' = 'image';
+        if (file.type.startsWith('video/')) mediaType = 'video';
+        if (file.type.startsWith('audio/')) mediaType = 'audio';
+        handleSendMessage(new Event('submit'), result, mediaType);
       }
       setIsUploading(false);
     };
@@ -163,32 +147,18 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
   };
 
   const isBuyer = currentUserId === trade.buyerId;
-  const opponentCountryName = countries.find(c => c.code === opponent?.country)?.name;
-  const opponentIpCountryName = countries.find(c => c.code === opponent?.ipBasedCountry)?.name;
 
   return (
     <Card className="flex flex-col h-full">
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle>Trade Chat</CardTitle>
-            <CardDescription>
-              {opponent ? (
-                <div className="flex items-center gap-2 mt-1 text-xs">
-                  <div className={cn('h-2.5 w-2.5 rounded-full', activity.dotClass)} />
-                  <span className="text-muted-foreground">{opponent.userId}</span>
-                  {opponent.country && <FlagIcon countryCode={opponent.country} />}
-                  <span className={cn(activity.textClass)}>- {activity.text}</span>
-                </div>
-              ) : (
-                'Communicate with the other party.'
-              )}
-            </CardDescription>
+            <TradeHeader trade={trade} ad={ad} opponent={opponent} currentUserRole={isBuyer ? 'buy' : 'sell'} />
           </div>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onMouseOver={() => setShowUsernames(true)} onMouseLeave={() => setShowUsernames(false)}>
+                <Button variant="ghost" size="icon">
                   <Info className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
@@ -204,31 +174,12 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
             </Tooltip>
           </TooltipProvider>
         </div>
-        <div className="p-3 bg-secondary rounded-lg text-sm mt-2">
-            <div className="flex justify-between items-center font-medium">
-                <span>{isBuyer ? "You Pay" : "You Receive"}</span>
-                <span>{trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</span>
-            </div>
-            <div className="flex justify-between items-center text-muted-foreground">
-                <span>{isBuyer ? "You Get" : "You Sell"}</span>
-                <span>{trade.amount.toFixed(8)} {trade.crypto}</span>
-            </div>
-            {ad?.terms && (
-              <>
-                <hr className="my-2" />
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  <strong>Terms: </strong>{ ad.terms }
-                </p>
-              </>
-            )}
-        </div>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
-        <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
+        <ScrollArea className="h-[40vh] lg:h-full pr-4" ref={scrollAreaRef}>
           {areMessagesLoading && (
             <div className="space-y-4">
-              <Skeleton className="h-16" />
-              <Skeleton className="h-12" />
+              <Skeleton className="h-16" /><Skeleton className="h-12" />
             </div>
           )}
           <div className="space-y-4">
@@ -238,29 +189,20 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
 
               let senderName: string | React.ReactNode = isCurrentUser
                 ? 'You'
-                : showUsernames
-                ? msg.senderUsername
                 : trade.buyerId === msg.senderId
                 ? trade.buyer.username
                 : trade.seller.username;
 
-              if (msg.isModerator) {
-                senderName = 'Moderator';
-              }
+              if (msg.isModerator) senderName = 'Moderator';
 
               const senderAvatar = (
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={`https://picsum.photos/seed/${msg.senderId}/100/100`} />
-                  <AvatarFallback>{msg.senderUsername.substring(0, 2)}</AvatarFallback>
-                </Avatar>
+                <Avatar className="h-8 w-8"><AvatarImage src={`https://picsum.photos/seed/${msg.senderId}/100/100`} /><AvatarFallback>{msg.senderUsername.substring(0, 2)}</AvatarFallback></Avatar>
               );
 
               return (
                 <div key={msg.id} className={cn('flex items-end gap-2', isCurrentUser ? 'justify-end' : 'justify-start')}>
                   {!isCurrentUser && !msg.isModerator && (
-                    <Link href={`/users/${msg.senderUsername}`} className="self-end">
-                      {senderAvatar}
-                    </Link>
+                    <Link href={`/users/${msg.senderUsername}`} className="self-end">{senderAvatar}</Link>
                   )}
                   {!isCurrentUser && msg.isModerator && <div className="self-end">{senderAvatar}</div>}
                   <div
@@ -275,12 +217,8 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
                       {msg.isModerator && <Shield className="h-4 w-4 text-amber-600" />}
                       <p className="font-bold">
                         {!isCurrentUser && !msg.isModerator ? (
-                          <Link href={`/users/${msg.senderUsername}`} className="hover:underline">
-                            {senderName}
-                          </Link>
-                        ) : (
-                          senderName
-                        )}
+                          <Link href={`/users/${msg.senderUsername}`} className="hover:underline">{senderName}</Link>
+                        ) : ( senderName )}
                       </p>
                     </div>
 
@@ -289,9 +227,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
                         <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                         <div>
                           <p className="font-bold text-xs">Message Blocked</p>
-                          <p className="text-xs">
-                            This message violates chat policy (e.g., sharing contact info, abusive language).
-                          </p>
+                          <p className="text-xs">This message violates chat policy.</p>
                         </div>
                       </div>
                     ) : (
@@ -299,18 +235,14 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
                         {msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}
                         {msg.mediaUrl && msg.mediaType === 'image' && (
                           <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer">
-                            <Image
-                              src={msg.mediaUrl}
-                              alt="Uploaded receipt"
-                              width={200}
-                              height={200}
-                              className="rounded-md mt-2 max-w-full h-auto"
-                            />
+                            <Image src={msg.mediaUrl} alt="Uploaded receipt" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" />
                           </a>
                         )}
+                         {/* Basic placeholders for other media types */}
+                        {msg.mediaUrl && msg.mediaType === 'video' && <p className="text-xs">[Video Attached]</p>}
+                        {msg.mediaUrl && msg.mediaType === 'audio' && <p className="text-xs">[Audio Attached]</p>}
                       </>
                     )}
-
                     <p className="text-xs mt-1 opacity-70 text-right w-full">
                       {toDate(msg.createdAt)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'sending...'}
                     </p>
@@ -318,46 +250,42 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
                 </div>
               );
             })}
+             <TradeStatusAlert trade={trade} />
           </div>
         </ScrollArea>
       </CardContent>
-      <CardFooter>
-        <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
-          {isBuyer && (
-            <>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleFileChange}
-                accept="image/*"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
+      {['active', 'paid'].includes(trade.status) && (
+          <CardFooter>
+            <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                    accept="image/*,video/*,audio/*"
+                />
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                >
+                    {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+                </Button>
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type your message..."
+                autoComplete="off"
                 disabled={isUploading}
-              >
-                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+              />
+              <Button type="submit" size="icon" disabled={isUploading || !newMessage.trim()}>
+                <Send className="h-5 w-5" /><span className="sr-only">Send</span>
               </Button>
-            </>
-          )}
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            autoComplete="off"
-            disabled={isUploading}
-          />
-          <Button type="submit" size="icon" disabled={isUploading || !newMessage.trim()}>
-            <Send className="h-5 w-5" />
-            <span className="sr-only">Send</span>
-          </Button>
-        </form>
-      </CardFooter>
+            </form>
+          </CardFooter>
+      )}
     </Card>
   );
 }
-
-    

@@ -1,5 +1,6 @@
 
 
+
 // All IDs are string (UUID)
 // Amounts are string to handle DECIMAL(36,18) precision
 
@@ -169,7 +170,7 @@ export type TradeChatMessage = {
   senderUsername: string;
   message: string;
   mediaUrl?: string;
-  mediaType?: 'image' | 'video';
+  mediaType?: 'image' | 'video' | 'audio';
   isModerator: boolean;
   createdAt: string; // TIMESTAMP
 };

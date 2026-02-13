@@ -6,7 +6,7 @@ import { TradeDetails } from "@/components/trade/trade-details";
 import { TradeChat } from "@/components/trade/trade-chat";
 import { TradeStatusStepper } from "@/components/trade/trade-status";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ShieldCheck, Flag, ArrowLeftRight, Award, Shield } from "lucide-react";
+import { AlertCircle, Shield, Award } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,17 +28,15 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OpenDisputeDialog } from "@/components/trade/open-dispute-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
-  const [isDetailsLeft, setIsDetailsLeft] = useState(true);
   const { isAdmin } = useAdminStatus();
 
   const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
-  
+
   const adRef = useMemoFirebase(() => (firestore && trade?.adId ? doc(firestore, 'p2p_ads', trade.adId) : null), [firestore, trade]);
   const { data: ad } = useDoc<P2PAd>(adRef);
   
@@ -51,16 +49,15 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
-  
-  const currentUserRole = user && trade ? (user.uid === trade.buyerId ? "buy" : "sell") : null;
 
+  // This ensures the hooks are always called
   useEffect(() => {
     if (trade && trade.status === 'active' && firestore && tradeRef) {
         const expiresAtDate = toDate(trade.expiresAt);
         if (expiresAtDate && new Date() > expiresAtDate) {
             cancelTrade(firestore, trade.id)
                 .then(() => {
-                    toast({ title: "Trade Expired", description: "The trade was automatically cancelled and funds returned to the seller." });
+                    toast({ title: "Trade Expired", description: "The trade was automatically cancelled." });
                 })
                 .catch((e) => {
                     console.error("Auto-cancellation of expired trade failed:", e);
@@ -70,17 +67,14 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   }, [trade, firestore, toast, tradeRef]);
 
   useEffect(() => {
-    if (trade?.status === "released" && currentUserRole === "buy" && !trade.claimedByBuyer && user?.uid && firestore) {
+    if (trade?.status === "released" && user?.uid === trade.buyerId && !trade.claimedByBuyer && firestore) {
       claimFundsForTrade(firestore, trade.id, user.uid)
-        .then(() => {
-          toast({ title: "Funds Claimed", description: "The crypto has been added to your wallet." });
-        })
         .catch((e) => {
           console.error("Claiming funds failed:", e);
           toast({ variant: "destructive", title: "Claiming Failed", description: e.message });
         });
     }
-  }, [trade, currentUserRole, firestore, user?.uid, toast]);
+  }, [trade, firestore, user?.uid, toast]);
 
   if (isLoading) {
     return <Skeleton className="w-full h-96" />;
@@ -90,11 +84,10 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     return <div className="text-red-500">Error loading trade: {error.message}</div>;
   }
 
-  if (!trade || !user || !currentUserRole) {
+  if (!trade || !user) {
     return <div>Trade not found or user not loaded.</div>;
   }
-
-  // Data Integrity Check: Ensure critical nested objects exist to prevent crashes
+  
   if (!trade.buyer || !trade.seller) {
     return (
         <Card>
@@ -106,9 +99,8 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     );
   }
   
+  const currentUserRole = user.uid === trade.buyerId ? "buy" : "sell";
   const opponentProfile = user.uid === trade.buyerId ? sellerProfile : buyerProfile;
-  
-  const toggleView = () => setIsDetailsLeft(prev => !prev);
   
   const handleMarkAsPaid = async () => {
     if (!firestore) return;
@@ -134,7 +126,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
      if (!firestore) return;
      try {
       await cancelTrade(firestore, trade.id);
-      toast({ title: "Trade Cancelled", description: "The funds have been returned to the seller." });
+      toast({ title: "Trade Cancelled" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     }
@@ -151,7 +143,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             <AlertDialogHeader>
               <AlertDialogTitle>Confirm Payment</AlertDialogTitle>
               <AlertDialogDescription>
-                Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Only confirm after you have fully sent the payment. Falsely confirming payment may result in a dispute and suspension of your account.
+                Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Only confirm after you have fully sent the payment.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -164,13 +156,13 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
       {currentUserRole === "sell" && trade.status === "paid" && (
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button className="w-full" size="lg"><ShieldCheck className="mr-2 h-4 w-4" /> Release Crypto</Button>
+            <Button className="w-full" size="lg">Release Crypto</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Release Cryptocurrency?</AlertDialogTitle>
               <AlertDialogDescription>
-                Confirm that you have received <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> in your account. This action is irreversible.
+                Confirm you have received <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span>. This action is irreversible.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -180,7 +172,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
           </AlertDialogContent>
         </AlertDialog>
       )}
-      {trade.status === 'active' && currentUserRole !== 'sell' && (
+      {trade.status === 'active' && currentUserRole === 'buy' && (
           <AlertDialog>
               <AlertDialogTrigger asChild>
                   <Button variant="outline" className="w-full">Cancel Trade</Button>
@@ -188,7 +180,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
               <AlertDialogContent>
                   <AlertDialogHeader>
                       <AlertDialogTitle>Cancel Trade?</AlertDialogTitle>
-                      <AlertDialogDescription>Are you sure you want to cancel? This cannot be undone.</AlertDialogDescription>
+                      <AlertDialogDescription>Are you sure? This cannot be undone.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                       <AlertDialogCancel>No</AlertDialogCancel>
@@ -207,7 +199,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
       <div className="text-xs p-3 bg-red-100 border-l-4 border-red-500 text-red-900 rounded-r-md flex gap-2 items-start">
         <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
         <p>
-          <strong>Warning:</strong> If the other party asks you to cancel the trade for any reason, it may be an attempt to scam.
+          <strong>Warning:</strong> To avoid scams, never communicate or trade outside of this platform.
         </p>
       </div>
        {resolvedDispute && (
@@ -226,10 +218,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     <>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold md:text-2xl">Trade {trade.tradeId}</h1>
-        <Button variant="outline" size="sm" onClick={toggleView} className="hidden lg:flex">
-            <ArrowLeftRight className="mr-2 h-4 w-4" />
-            Switch View
-        </Button>
       </div>
 
        {isAdmin && (
@@ -251,43 +239,20 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             </CardContent>
         </Card>
       )}
-
-      {/* Desktop Layout */}
-      <div className="hidden lg:grid gap-4 md:gap-8 lg:grid-cols-3">
-        <div className={cn("lg:col-span-1 grid gap-4 auto-rows-min", { "lg:order-last": !isDetailsLeft })}>
-          <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole}/>
-          <ActionButtons />
-        </div>
-        <div className={cn("lg:col-span-2 grid gap-4", { "lg:order-first": !isDetailsLeft })}>
-            <div className="p-6 bg-background rounded-lg border">
-                <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
-            </div>
-            <div className="h-[60vh] lg:h-auto">
-                <TradeChat currentUserId={user.uid || ""} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
-            </div>
-        </div>
+      
+      <div className="p-4 bg-background rounded-lg border mb-4">
+        <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
       </div>
 
-      {/* Mobile Layout */}
-      <div className="lg:hidden">
-        <Tabs defaultValue="chat" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="chat">Chat</TabsTrigger>
-                <TabsTrigger value="details">Details</TabsTrigger>
-            </TabsList>
-            <TabsContent value="chat" className="mt-4 space-y-4">
-                 <div className="p-4 bg-background rounded-lg border">
-                    <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
-                </div>
-                <div className="h-[calc(100vh-22rem)]">
-                   <TradeChat currentUserId={user.uid || ""} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
-                </div>
-            </TabsContent>
-            <TabsContent value="details" className="mt-4 space-y-4">
-                <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole}/>
-                <ActionButtons />
-            </TabsContent>
-        </Tabs>
+      {/* Main Layout: Desktop is grid, mobile is flex-col */}
+      <div className="grid lg:grid-cols-3 lg:gap-8 space-y-8 lg:space-y-0">
+        <div className="lg:col-span-2">
+            <TradeChat currentUserId={user.uid} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
+        </div>
+        <div className="lg:col-span-1 space-y-6">
+            <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole}/>
+            <ActionButtons />
+        </div>
       </div>
     </>
   );
