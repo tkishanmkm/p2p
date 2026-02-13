@@ -13,6 +13,7 @@ import { Button } from "../ui/button";
 import { toDate, cn } from "@/lib/utils";
 import { FlagIcon } from "../ui/flag-icon";
 import { RefreshCw } from "lucide-react";
+import { statusColors } from "@/lib/status-colors";
 
 interface TradeDetailsProps {
   trade: Trade;
@@ -73,7 +74,7 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
                 <CardTitle>Trade Details</CardTitle>
                 <CardDescription>ID: {trade?.tradeId || 'N/A'}</CardDescription>
             </div>
-            <Badge variant="outline" className="capitalize">{trade?.status || 'unknown'}</Badge>
+            <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade?.status || 'unknown'}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -36,7 +36,7 @@ export function TradeHeader({ trade, ad, opponent, currentUserRole }: TradeHeade
       case 'paid':
         return isBuying
           ? 'You have marked the trade as paid. Waiting for seller to confirm.'
-          : `Buyer has paid. Please confirm receipt and release crypto within ${timeRemaining}.`;
+          : `Buyer has paid. Please confirm receipt and release crypto.`;
       case 'released':
         return 'Trade complete. Funds have been released to the buyer.';
       default:
@@ -49,7 +49,7 @@ export function TradeHeader({ trade, ad, opponent, currentUserRole }: TradeHeade
       <div className="flex items-center gap-2">
         <CryptoLogo crypto={trade.crypto} className="h-6 w-6" />
         <p className="font-bold text-lg">
-          {isBuying ? 'Buy' : 'Sell'} {trade.amount} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}
+          {isBuying ? 'You are buying' : 'You are selling'} {trade.amount} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}
         </p>
       </div>
       <p className="text-sm text-primary/80">{renderStatusLine()}</p>

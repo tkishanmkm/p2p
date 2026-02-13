@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,8 +6,7 @@ import { TradeDetails } from '@/components/trade/trade-details';
 import { TradeChat } from '@/components/trade/trade-chat';
 import { TradeStatusStepper } from '@/components/trade/trade-status';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Shield, Award } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertCircle, Shield, Award, Tabs, TabsList, TabsTrigger } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +37,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
 
   const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
+  
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
 
   useEffect(() => {
@@ -86,7 +85,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   }
 
   if (!trade || !user) {
-    return <div>Trade not found or user not loaded.</div>;
+    return <Card><CardHeader><CardTitle>Trade Not Found</CardTitle><CardDescription>This trade may have been completed or does not exist.</CardDescription></CardHeader></Card>;
   }
   
   if (!trade.buyer || !trade.seller) {

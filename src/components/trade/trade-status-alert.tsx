@@ -91,7 +91,7 @@ export function TradeStatusAlert({ trade }: TradeStatusAlertProps) {
                     <CheckCircle className="h-8 w-8 text-green-600"/>
                     <div>
                         <h3 className="font-bold text-green-800">Trade Completed</h3>
-                        <p className="text-sm text-green-700">Congratulations! The trade was successful.</p>
+                        <p className="text-sm text-green-700">Congratulations! The trade was successful. Coin has been released by seller.</p>
                     </div>
                 </div>
                 <FeedbackForm trade={trade} />
@@ -108,7 +108,7 @@ export function TradeStatusAlert({ trade }: TradeStatusAlertProps) {
                     <XCircle className="h-8 w-8 text-red-600"/>
                     <div>
                         <h3 className="font-bold text-red-800">Trade Cancelled</h3>
-                        <p className="text-sm text-red-700">The buyer has cancelled this trade. Do not send any payment.</p>
+                        <p className="text-sm text-red-700">The buyer has cancelled this trade. Do not send any payment. If you have already paid, please reopen the trade.</p>
                     </div>
                 </div>
             </CardContent>
@@ -124,7 +124,7 @@ export function TradeStatusAlert({ trade }: TradeStatusAlertProps) {
                     <AlertTriangle className="h-8 w-8 text-gray-600"/>
                     <div>
                         <h3 className="font-bold text-gray-800">Trade Expired</h3>
-                        <p className="text-sm text-gray-700">The payment window for this trade has expired. Please do not send any payment.</p>
+                        <p className="text-sm text-gray-700">The payment window for this trade has expired. Please do not send any payment. If you have already paid, please reopen the trade.</p>
                     </div>
                 </div>
             </CardContent>
