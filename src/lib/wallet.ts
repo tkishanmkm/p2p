@@ -296,18 +296,20 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
     const tradeDoc = await transaction.get(tradeRef);
     if (!tradeDoc.exists()) {
       console.warn(`Trade ${tradeId} not found for cancellation.`);
-      return;
+      return; // Exit if trade doesn't exist
     }
 
     const trade = tradeDoc.data() as Trade;
+    // Only allow cancellation of active or paid trades to prevent race conditions
     if (trade.status !== "active" && trade.status !== "paid") {
-      // Trade is already finalized or disputed, do nothing.
+      console.warn(`Trade ${tradeId} is not in a cancellable state (current: ${trade.status}).`);
       return;
     }
 
     const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
     const sellerWalletDoc = await transaction.get(sellerWalletRef);
 
+    // Only return funds if the seller's wallet exists and has enough locked balance
     if (sellerWalletDoc.exists()) {
         const sellerWallet = sellerWalletDoc.data() as UserWallet;
         if ((sellerWallet.lockedBalance || 0) >= trade.amount) {
@@ -317,14 +319,15 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
                 updatedAt: new Date().toISOString(),
             });
         } else {
+            // This is a critical error state and should be logged.
             console.error(`Attempted to cancel trade ${tradeId}, but seller's locked balance was insufficient.`);
         }
     }
 
-    // Update trade status to 'cancelled'
+    // Always mark the trade as cancelled
     transaction.update(tradeRef, { status: "cancelled" });
 
-    // Send notifications
+    // Send notifications to both parties
     const buyerNotificationRef = doc(collection(db, 'users', trade.buyerId, 'notifications'));
     transaction.set(buyerNotificationRef, {
         userId: trade.buyerId,

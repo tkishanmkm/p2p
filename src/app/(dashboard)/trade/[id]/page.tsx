@@ -27,9 +27,10 @@ import { useAdminStatus } from '@/hooks/use-admin-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { OpenDisputeDialog } from '@/components/trade/open-dispute-dialog';
 import { CounterpartyInfoPanel } from '@/components/trade/counterparty-info-panel';
+import ErrorBoundary from '@/components/ErrorBoundary';
+
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
-  // Hooks must be called at the top level and in the same order.
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const { isAdmin } = useAdminStatus();
@@ -48,8 +49,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
-
-  // useEffect hooks for side effects
+  
   useEffect(() => {
     if (trade && trade.status === 'active' && firestore) {
         const expiresAtDate = toDate(trade.expiresAt);
@@ -77,7 +77,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     return <div className="grid lg:grid-cols-3 gap-8"><Skeleton className="lg:col-span-1 h-96" /><Skeleton className="lg:col-span-2 h-[600px]" /></div>;
   }
 
-  // Error state
   if (error) {
     return (
       <Card className="border-destructive">
@@ -99,7 +98,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     );
   }
 
-  // Not found states
   if (!trade || !user) {
     return <Card><CardHeader><CardTitle>Trade Not Found</CardTitle><CardDescription>This trade may have been completed or does not exist.</CardDescription></CardHeader></Card>;
   }
@@ -118,7 +116,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     );
   }
   
-  // Derived state and handlers
   const currentUserRole = user.uid === trade.buyerId ? "buy" : "sell";
   const opponentProfile = user.uid === trade.buyerId ? sellerProfile : buyerProfile;
   
@@ -152,7 +149,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     }
   }
   
-  // ActionButtons sub-component
   const ActionButtons = () => (
     <div className="space-y-2">
       {currentUserRole === "buy" && trade.status === "active" && (
@@ -248,15 +244,12 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             </Card>
         )}
 
-        {/* Simplified Layout for Stability */}
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow">
-            {/* Details (Left on Desktop, conditional on mobile) */}
             <div className={cn("lg:col-span-1 space-y-6", mobileView === 'details' ? 'block' : 'hidden lg:block')}>
                 <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
                 <ActionButtons />
             </div>
             
-            {/* Chat (Right on Desktop, conditional on mobile) */}
             <div className={cn("lg:col-span-2 flex-grow flex flex-col", mobileView === 'chat' ? 'flex' : 'hidden lg:flex')}>
                 <TradeChat 
                     currentUserId={user.uid} 
@@ -269,8 +262,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             </div>
         </div>
 
-
-        {/* Mobile bottom nav */}
         <div className="sticky bottom-0 left-0 right-0 md:hidden bg-background border-t p-2 flex gap-2">
             <Button variant={mobileView === 'chat' ? 'default' : 'outline'} className="flex-1" onClick={() => setMobileView('chat')}>
                 <MessageSquare className="mr-2 h-4 w-4" /> Chat
@@ -294,7 +285,9 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 export default function TradePage({ params }: { params: { id: string } }) {
     return (
       <div className="flex flex-col h-full">
-         <TradePageContent tradeId={params.id} />
+        <ErrorBoundary>
+            <TradePageContent tradeId={params.id} />
+        </ErrorBoundary>
       </div>
     )
 }
