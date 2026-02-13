@@ -308,6 +308,7 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
     if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
 
     const sellerWallet = sellerWalletDoc.data() as UserWallet;
+
     if ((sellerWallet.lockedBalance || 0) < trade.amount) {
         console.error("Critical Error: Insufficient locked funds to return on trade cancellation.", { tradeId: trade.id, sellerId: trade.sellerId });
     } else {
@@ -324,7 +325,7 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
     transaction.set(buyerNotificationRef, {
         userId: trade.buyerId,
         message: `Trade ${trade.tradeId} has been cancelled.`,
-        link: `/trade/${tradeId}`,
+        link: `/trade/${trade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),
     });
@@ -332,7 +333,7 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
     transaction.set(sellerNotificationRef, {
         userId: trade.sellerId,
         message: `Trade ${trade.tradeId} has been cancelled. Your funds have been returned.`,
-        link: `/trade/${tradeId}`,
+        link: `/trade/${trade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),
     });
