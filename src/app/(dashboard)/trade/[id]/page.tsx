@@ -36,7 +36,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const [isDetailsLeft, setIsDetailsLeft] = useState(true);
   const { isAdmin } = useAdminStatus();
 
-  const tradeRef = firestore && tradeId ? doc(firestore, "trades", tradeId) : null;
+  const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
   
   const adRef = useMemoFirebase(() => (firestore && trade?.adId ? doc(firestore, 'p2p_ads', trade.adId) : null), [firestore, trade]);
@@ -52,36 +52,12 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
   
-  if (isLoading) {
-    return <Skeleton className="w-full h-96" />;
-  }
-
-  if (error) {
-    return <div className="text-red-500">Error loading trade: {error.message}</div>;
-  }
-
-  if (!trade || !user) {
-    return <div>Trade not found or user not loaded.</div>;
-  }
-
-  // Data Integrity Check: Ensure critical nested objects exist to prevent crashes
-  if (!trade.buyer || !trade.seller) {
-    return (
-        <Card>
-            <CardHeader><CardTitle>Incomplete Trade Data</CardTitle></CardHeader>
-            <CardContent>
-                <p>This trade document is missing critical participant information and cannot be displayed. This may be due to old data. Please contact support if this is a recent trade.</p>
-            </CardContent>
-        </Card>
-    );
-  }
-  
-  const opponentProfile = user.uid === trade.buyerId ? sellerProfile : buyerProfile;
-  const currentUserRole = user.uid === trade.buyerId ? "buy" : "sell";
+  const currentUserRole = user && trade ? (user.uid === trade.buyerId ? "buy" : "sell") : null;
 
   useEffect(() => {
-    if (trade && trade.status === 'active' && toDate(trade.expiresAt) && new Date() > toDate(trade.expiresAt)!) {
-        if (tradeRef && trade.status === 'active' && firestore) {
+    if (trade && trade.status === 'active' && firestore && tradeRef) {
+        const expiresAtDate = toDate(trade.expiresAt);
+        if (expiresAtDate && new Date() > expiresAtDate) {
             cancelTrade(firestore, trade.id)
                 .then(() => {
                     toast({ title: "Trade Expired", description: "The trade was automatically cancelled and funds returned to the seller." });
@@ -106,6 +82,34 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     }
   }, [trade, currentUserRole, firestore, user?.uid, toast]);
 
+  if (isLoading) {
+    return <Skeleton className="w-full h-96" />;
+  }
+
+  if (error) {
+    return <div className="text-red-500">Error loading trade: {error.message}</div>;
+  }
+
+  if (!trade || !user || !currentUserRole) {
+    return <div>Trade not found or user not loaded.</div>;
+  }
+
+  // Data Integrity Check: Ensure critical nested objects exist to prevent crashes
+  if (!trade.buyer || !trade.seller) {
+    return (
+        <Card>
+            <CardHeader><CardTitle>Incomplete Trade Data</CardTitle></CardHeader>
+            <CardContent>
+                <p>This trade document is missing critical participant information and cannot be displayed. This may be due to old data. Please contact support if this is a recent trade.</p>
+            </CardContent>
+        </Card>
+    );
+  }
+  
+  const opponentProfile = user.uid === trade.buyerId ? sellerProfile : buyerProfile;
+  
+  const toggleView = () => setIsDetailsLeft(prev => !prev);
+  
   const handleMarkAsPaid = async () => {
     if (!firestore) return;
     try {
@@ -135,8 +139,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     }
   }
-  
-  const toggleView = () => setIsDetailsLeft(prev => !prev);
   
   const ActionButtons = () => (
     <div className="space-y-2">
