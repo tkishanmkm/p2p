@@ -30,13 +30,18 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
 
-  const adRef = useMemoFirebase(() => (firestore && trade?.adId ? doc(firestore, 'p2p_ads', trade.adId) : null), [firestore, trade]);
+  // Stabilize dependencies by extracting IDs from the trade object
+  const adId = trade?.adId;
+  const buyerId = trade?.buyerId;
+  const sellerId = trade?.sellerId;
+
+  const adRef = useMemoFirebase(() => (firestore && adId ? doc(firestore, 'p2p_ads', adId) : null), [firestore, adId]);
   const { data: ad } = useDoc<P2PAd>(adRef);
 
-  const buyerRef = useMemoFirebase(() => (firestore && trade?.buyerId ? doc(firestore, 'users', trade.buyerId) : null), [firestore, trade]);
+  const buyerRef = useMemoFirebase(() => (firestore && buyerId ? doc(firestore, 'users', buyerId) : null), [firestore, buyerId]);
   const { data: buyerProfile } = useDoc<User>(buyerRef);
 
-  const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
+  const sellerRef = useMemoFirebase(() => (firestore && sellerId ? doc(firestore, 'users', sellerId) : null), [firestore, sellerId]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
   
   // Loading state
