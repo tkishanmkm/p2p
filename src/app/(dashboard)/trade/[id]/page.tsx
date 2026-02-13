@@ -6,7 +6,8 @@ import { TradeDetails } from '@/components/trade/trade-details';
 import { TradeChat } from '@/components/trade/trade-chat';
 import { TradeStatusStepper } from '@/components/trade/trade-status';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Shield, Award, Tabs, TabsList, TabsTrigger } from 'lucide-react';
+import { AlertCircle, Shield, Award } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,19 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
   
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
+  
+  const adRef = useMemoFirebase(() => (firestore && trade?.adId ? doc(firestore, 'p2p_ads', trade.adId) : null), [firestore, trade]);
+  const { data: ad } = useDoc<P2PAd>(adRef);
+  
+  const disputeQuery = useMemoFirebase(() => firestore && tradeId ? query(collection(firestore, `trades/${tradeId}/disputes`), where('status', '==', 'resolved'), limit(1)) : null, [firestore, tradeId]);
+  const { data: resolvedDisputes } = useCollection<Dispute>(disputeQuery);
+  const resolvedDispute = resolvedDisputes?.[0];
+
+  const buyerRef = useMemoFirebase(() => (firestore && trade?.buyerId ? doc(firestore, 'users', trade.buyerId) : null), [firestore, trade]);
+  const { data: buyerProfile } = useDoc<User>(buyerRef);
+
+  const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
+  const { data: sellerProfile } = useDoc<User>(sellerRef);
 
   useEffect(() => {
     if (trade && trade.status === 'active' && firestore && tradeRef) {
@@ -61,20 +75,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
         });
     }
   }, [trade, firestore, user?.uid, toast]);
-  
-  const adRef = useMemoFirebase(() => (firestore && trade?.adId ? doc(firestore, 'p2p_ads', trade.adId) : null), [firestore, trade]);
-  const { data: ad } = useDoc<P2PAd>(adRef);
-  
-  const disputeQuery = useMemoFirebase(() => firestore && tradeId ? query(collection(firestore, `trades/${tradeId}/disputes`), where('status', '==', 'resolved'), limit(1)) : null, [firestore, tradeId]);
-  const { data: resolvedDisputes } = useCollection<Dispute>(disputeQuery);
-  const resolvedDispute = resolvedDisputes?.[0];
-
-  const buyerRef = useMemoFirebase(() => (firestore && trade?.buyerId ? doc(firestore, 'users', trade.buyerId) : null), [firestore, trade]);
-  const { data: buyerProfile } = useDoc<User>(buyerRef);
-
-  const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
-  const { data: sellerProfile } = useDoc<User>(sellerRef);
-
 
   if (isLoading) {
     return <Skeleton className="w-full h-96" />;
