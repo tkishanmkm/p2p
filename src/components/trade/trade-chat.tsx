@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -96,6 +95,15 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
     e.preventDefault();
     if ((!newMessage.trim() && !mediaUrl) || !firestore || !user) return;
 
+    if (checkMessageForBlockedWords(newMessage)) {
+      toast({
+        variant: 'destructive',
+        title: 'Message Blocked',
+        description: 'Your message contains content that violates our chat policy. Please remove any contact information or offensive language.',
+      });
+      return;
+    }
+
     const messageToSend = newMessage;
     setNewMessage('');
 
@@ -111,7 +119,11 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
     if (mediaUrl && mediaType) {
         messageData.mediaUrl = mediaUrl;
         messageData.mediaType = mediaType;
+    } else {
+        messageData.mediaUrl = null;
+        messageData.mediaType = 'none';
     }
+
 
     try {
       const messagesCollection = collection(firestore, 'trades', trade.id, 'messages');
