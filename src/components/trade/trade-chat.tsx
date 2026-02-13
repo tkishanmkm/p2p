@@ -266,38 +266,36 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
           </div>
         </ScrollArea>
       </CardContent>
-      {['active', 'paid'].includes(trade.status) && (
-          <CardFooter>
-            <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={handleFileChange}
-                    accept="image/*,video/*,audio/*"
-                />
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                >
-                    {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
-                </Button>
-              <Input
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
-                autoComplete="off"
+      <CardFooter>
+        <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileChange}
+                accept="image/*,video/*,audio/*"
+            />
+            <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-              />
-              <Button type="submit" size="icon" disabled={isUploading || !newMessage.trim()}>
-                <Send className="h-5 w-5" /><span className="sr-only">Send</span>
-              </Button>
-            </form>
-          </CardFooter>
-      )}
+            >
+                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+            </Button>
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your message..."
+            autoComplete="off"
+            disabled={isUploading}
+          />
+          <Button type="submit" size="icon" disabled={isUploading || !newMessage.trim()}>
+            <Send className="h-5 w-5" /><span className="sr-only">Send</span>
+          </Button>
+        </form>
+      </CardFooter>
     </Card>
   );
 }

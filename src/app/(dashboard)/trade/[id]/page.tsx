@@ -1,12 +1,12 @@
 
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { TradeDetails } from "@/components/trade/trade-details";
-import { TradeChat } from "@/components/trade/trade-chat";
-import { TradeStatusStepper } from "@/components/trade/trade-status";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, Shield, Award } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { TradeDetails } from '@/components/trade/trade-details';
+import { TradeChat } from '@/components/trade/trade-chat';
+import { TradeStatusStepper } from '@/components/trade/trade-status';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Shield, Award, Tabs, TabsList, TabsTrigger } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,27 +16,51 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useDoc, useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection, query, where, limit } from "firebase/firestore";
-import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow, claimFundsForTrade } from "@/lib/wallet";
-import { useToast } from "@/hooks/use-toast";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { Trade, Dispute, P2PAd, User } from "@/lib/types";
-import { cn, toDate } from "@/lib/utils";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { useAdminStatus } from "@/hooks/use-admin-status";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { OpenDisputeDialog } from "@/components/trade/open-dispute-dialog";
+} from '@/components/ui/alert-dialog';
+import { useDoc, useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where, limit } from 'firebase/firestore';
+import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow, claimFundsForTrade } from '@/lib/wallet';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { Trade, Dispute, P2PAd, User } from '@/lib/types';
+import { cn, toDate } from '@/lib/utils';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useAdminStatus } from '@/hooks/use-admin-status';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { OpenDisputeDialog } from '@/components/trade/open-dispute-dialog';
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const { isAdmin } = useAdminStatus();
 
+  const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
+
   const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
 
+  useEffect(() => {
+    if (trade && trade.status === 'active' && firestore && tradeRef) {
+        const expiresAtDate = toDate(trade.expiresAt);
+        if (expiresAtDate && new Date() > expiresAtDate) {
+            cancelTrade(firestore, trade.id)
+                .catch((e) => {
+                    console.error("Auto-cancellation of expired trade failed:", e);
+                });
+        }
+    }
+  }, [trade, firestore, tradeRef]);
+
+  useEffect(() => {
+    if (trade?.status === "released" && user?.uid === trade.buyerId && !trade.claimedByBuyer && firestore) {
+      claimFundsForTrade(firestore, trade.id, user.uid)
+        .catch((e) => {
+          console.error("Claiming funds failed:", e);
+          toast({ variant: "destructive", title: "Claiming Failed", description: e.message });
+        });
+    }
+  }, [trade, firestore, user?.uid, toast]);
+  
   const adRef = useMemoFirebase(() => (firestore && trade?.adId ? doc(firestore, 'p2p_ads', trade.adId) : null), [firestore, trade]);
   const { data: ad } = useDoc<P2PAd>(adRef);
   
@@ -50,31 +74,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
 
-  // This ensures the hooks are always called
-  useEffect(() => {
-    if (trade && trade.status === 'active' && firestore && tradeRef) {
-        const expiresAtDate = toDate(trade.expiresAt);
-        if (expiresAtDate && new Date() > expiresAtDate) {
-            cancelTrade(firestore, trade.id)
-                .then(() => {
-                    toast({ title: "Trade Expired", description: "The trade was automatically cancelled." });
-                })
-                .catch((e) => {
-                    console.error("Auto-cancellation of expired trade failed:", e);
-                });
-        }
-    }
-  }, [trade, firestore, toast, tradeRef]);
-
-  useEffect(() => {
-    if (trade?.status === "released" && user?.uid === trade.buyerId && !trade.claimedByBuyer && firestore) {
-      claimFundsForTrade(firestore, trade.id, user.uid)
-        .catch((e) => {
-          console.error("Claiming funds failed:", e);
-          toast({ variant: "destructive", title: "Claiming Failed", description: e.message });
-        });
-    }
-  }, [trade, firestore, user?.uid, toast]);
 
   if (isLoading) {
     return <Skeleton className="w-full h-96" />;
@@ -244,15 +243,35 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
         <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
       </div>
 
-      {/* Main Layout: Desktop is grid, mobile is flex-col */}
-      <div className="grid lg:grid-cols-3 lg:gap-8 space-y-8 lg:space-y-0">
-        <div className="lg:col-span-2">
-            <TradeChat currentUserId={user.uid} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
-        </div>
-        <div className="lg:col-span-1 space-y-6">
-            <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole}/>
-            <ActionButtons />
-        </div>
+      {/* Mobile Tabs */}
+      <div className="md:hidden sticky top-16 bg-background z-10 py-2">
+        <Tabs value={mobileView} onValueChange={(value) => setMobileView(value as any)} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="chat">Chat</TabsTrigger>
+            <TabsTrigger value="details">Details</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div className="grid lg:grid-cols-3 lg:gap-8 mt-4">
+          {/* Desktop: Details on left */}
+          <div className="hidden lg:block lg:col-span-1 space-y-6">
+              <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole}/>
+              <ActionButtons />
+          </div>
+
+          {/* Mobile: Conditional rendering for Details */}
+          <div className={cn("lg:hidden", mobileView !== 'details' && 'hidden')}>
+              <div className="space-y-6">
+                  <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole}/>
+                  <ActionButtons />
+              </div>
+          </div>
+
+          {/* Chat: Always on right for desktop, conditional for mobile */}
+          <div className={cn("lg:col-span-2", mobileView !== 'chat' && 'hidden lg:block')}>
+              <TradeChat currentUserId={user.uid} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
+          </div>
       </div>
     </>
   );
