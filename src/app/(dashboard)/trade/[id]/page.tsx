@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -28,11 +29,14 @@ import { OpenDisputeDialog } from '@/components/trade/open-dispute-dialog';
 import { CounterpartyInfoPanel } from '@/components/trade/counterparty-info-panel';
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
+  // Hooks must be called at the top level and in the same order.
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const { isAdmin } = useAdminStatus();
+  const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
+  const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
 
-  // All hooks at the top level
+  // Memoized Firestore references
   const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
 
@@ -45,12 +49,9 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
 
-  const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
-  const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
-
-  // useEffect hooks
+  // useEffect hooks for side effects
   useEffect(() => {
-    if (trade && trade.status === 'active' && firestore && tradeRef) {
+    if (trade && trade.status === 'active' && firestore) {
         const expiresAtDate = toDate(trade.expiresAt);
         if (expiresAtDate && new Date() > expiresAtDate) {
             cancelTrade(firestore, trade.id)
@@ -59,7 +60,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 });
         }
     }
-  }, [trade, firestore, tradeRef]);
+  }, [trade, firestore]);
 
   useEffect(() => {
     if (trade?.status === "released" && user?.uid === trade.buyerId && !trade.claimedByBuyer && firestore) {
@@ -71,43 +72,53 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     }
   }, [trade, firestore, user?.uid, toast]);
 
-
+  // Loading state
   if (isLoading) {
     return <div className="grid lg:grid-cols-3 gap-8"><Skeleton className="lg:col-span-1 h-96" /><Skeleton className="lg:col-span-2 h-[600px]" /></div>;
   }
 
+  // Error state
   if (error) {
     return (
-      <Card>
+      <Card className="border-destructive">
         <CardHeader>
-          <CardTitle>Error</CardTitle>
-          <CardDescription>There was a problem loading the trade.</CardDescription>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+             <AlertCircle /> Error Loading Trade
+          </CardTitle>
+          <CardDescription className="text-destructive">
+            There was a problem loading the trade data. This could be due to a network issue or a problem with the trade document itself.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-destructive">{error.message}</p>
+            <h3 className="font-semibold">Error Details:</h3>
+            <pre className="mt-2 w-full whitespace-pre-wrap rounded-md bg-muted p-4 font-mono text-sm text-muted-foreground">
+                {error.message}
+            </pre>
         </CardContent>
       </Card>
     );
   }
 
+  // Not found states
   if (!trade || !user) {
     return <Card><CardHeader><CardTitle>Trade Not Found</CardTitle><CardDescription>This trade may have been completed or does not exist.</CardDescription></CardHeader></Card>;
   }
   
   if (!trade.buyer || !trade.seller) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Incomplete Trade Data</CardTitle>
-                <CardDescription>This trade document is missing critical participant information and cannot be displayed.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p>This may be due to old data. Please contact support if this is a recent trade.</p>
-            </CardContent>
-        </Card>
+      <Card>
+          <CardHeader>
+              <CardTitle>Incomplete Trade Data</CardTitle>
+              <CardDescription>This trade document is missing critical participant information and cannot be displayed.</CardDescription>
+          </CardHeader>
+          <CardContent>
+              <p>This may be due to old data. Please contact support if this is a recent trade.</p>
+          </CardContent>
+      </Card>
     );
   }
   
+  // Derived state and handlers
   const currentUserRole = user.uid === trade.buyerId ? "buy" : "sell";
   const opponentProfile = user.uid === trade.buyerId ? sellerProfile : buyerProfile;
   
@@ -141,6 +152,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
     }
   }
   
+  // ActionButtons sub-component
   const ActionButtons = () => (
     <div className="space-y-2">
       {currentUserRole === "buy" && trade.status === "active" && (
@@ -236,6 +248,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             </Card>
         )}
 
+        {/* Simplified Layout for Stability */}
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow">
             {/* Details (Left on Desktop, conditional on mobile) */}
             <div className={cn("lg:col-span-1 space-y-6", mobileView === 'details' ? 'block' : 'hidden lg:block')}>
@@ -256,7 +269,8 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             </div>
         </div>
 
-        {/* Bottom Nav for Mobile */}
+
+        {/* Mobile bottom nav */}
         <div className="sticky bottom-0 left-0 right-0 md:hidden bg-background border-t p-2 flex gap-2">
             <Button variant={mobileView === 'chat' ? 'default' : 'outline'} className="flex-1" onClick={() => setMobileView('chat')}>
                 <MessageSquare className="mr-2 h-4 w-4" /> Chat
@@ -265,6 +279,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                 <ListDetails className="mr-2 h-4 w-4" /> Details
             </Button>
         </div>
+
 
         <CounterpartyInfoPanel 
             user={opponentProfile}

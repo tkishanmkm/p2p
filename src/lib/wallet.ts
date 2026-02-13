@@ -16,7 +16,7 @@ import {
   getDocs,
   setDoc,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, Withdrawal, User as AppUser } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser } from './types';
 import { add } from 'date-fns';
 import type { User as AuthUser } from 'firebase/auth';
 
@@ -305,7 +305,6 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
       return;
     }
 
-    // Only return funds if they were locked.
     const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
     const sellerWalletDoc = await transaction.get(sellerWalletRef);
 
