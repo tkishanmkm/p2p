@@ -51,18 +51,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const { data: sellerProfile } = useDoc<User>(sellerRef);
   
   useEffect(() => {
-    if (trade && trade.status === 'active' && firestore) {
-        const expiresAtDate = toDate(trade.expiresAt);
-        if (expiresAtDate && new Date() > expiresAtDate) {
-            cancelTrade(firestore, trade.id)
-                .catch((e) => {
-                    console.error("Auto-cancellation of expired trade failed:", e);
-                });
-        }
-    }
-  }, [trade, firestore]);
-
-  useEffect(() => {
+    // This effect handles the auto-claiming of funds for the buyer once they are released.
     if (trade?.status === "released" && user?.uid === trade.buyerId && !trade.claimedByBuyer && firestore) {
       claimFundsForTrade(firestore, trade.id, user.uid)
         .catch((e) => {
