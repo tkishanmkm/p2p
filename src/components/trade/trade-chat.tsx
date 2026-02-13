@@ -14,42 +14,23 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, Paperclip, Info, Loader2, Shield, AlertTriangle } from 'lucide-react';
+import { Send, Paperclip, Info, Loader2, Shield, AlertTriangle, Flag, ThumbsUp, XCircle, CheckCircle, RotateCcw } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import type { TradeChatMessage, Trade, User, P2PAd } from '@/lib/types';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { addReceiptToTrade } from '@/lib/wallet';
 import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
-import { countries } from '@/lib/countries';
-import { TradeHeader } from './trade-header';
-import { TradeStatusAlert } from './trade-status-alert';
+import { formatDistanceToNow } from 'date-fns';
+import { FeedbackForm } from './feedback-form';
+import { DefaultAvatar } from '../icons';
+import { FlagIcon } from '../ui/flag-icon';
 
 const blockedWords = [
-  'telegram',
-  'whatsapp',
-  'instagram',
-  'ig',
-  'signal',
-  'discord',
-  'skype',
-  'snapchat',
-  'facebook',
-  'fb',
-  'phone',
-  'contact',
-  'number',
-  'email',
-  'gmail',
-  'fucking',
-  'bitch',
-  'asshole',
-  'dick',
-  'pussy',
-  'cunt',
-  'motherfucker',
+  'telegram', 'whatsapp', 'instagram', 'ig', 'signal', 'discord', 'skype',
+  'snapchat', 'facebook', 'fb', 'phone', 'contact', 'number', 'email', 'gmail',
+  'fucking', 'bitch', 'asshole', 'dick', 'pussy', 'cunt', 'motherfucker',
 ];
 
 const checkMessageForBlockedWords = (message: string): boolean => {
@@ -63,9 +44,67 @@ interface TradeChatProps {
   opponent: User | null | undefined;
   isAdmin: boolean;
   ad: P2PAd | null | undefined;
+  onInfoClick: () => void;
 }
 
-export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: TradeChatProps) {
+const FinalStatusMessage = ({ trade }: { trade: Trade }) => {
+    if (trade.status === 'active' || trade.status === 'paid' || trade.status === 'disputed') {
+        return null;
+    }
+    
+    if (trade.status === 'released') {
+        return (
+            <Card className="mt-4 border-green-500 bg-green-50 text-center">
+                <CardContent className="pt-6 space-y-4">
+                    <div className="flex flex-col items-center gap-3">
+                        <CheckCircle className="h-10 w-10 text-green-600"/>
+                        <div>
+                            <h3 className="font-bold text-green-800">Congratulations! Trade Completed</h3>
+                            <p className="text-sm text-green-700">The coin has been released by the seller and sent to the buyer's wallet.</p>
+                        </div>
+                    </div>
+                    <FeedbackForm trade={trade} />
+                </CardContent>
+            </Card>
+        )
+    }
+
+    if (trade.status === 'cancelled') {
+        return (
+            <Card className="mt-4 border-red-500 bg-red-50 text-center">
+                <CardContent className="pt-6">
+                    <div className="flex flex-col items-center gap-3">
+                        <XCircle className="h-10 w-10 text-red-600"/>
+                        <div>
+                            <h3 className="font-bold text-red-800">Trade Cancelled</h3>
+                            <p className="text-sm text-red-700">This trade was cancelled. Kindly do not pay. If you have already paid, please reopen the trade immediately.</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    if (trade.status === 'expired') {
+        return (
+            <Card className="mt-4 border-gray-400 bg-gray-50 text-center">
+                <CardContent className="pt-6">
+                    <div className="flex flex-col items-center gap-3">
+                        <AlertTriangle className="h-10 w-10 text-gray-600"/>
+                        <div>
+                            <h3 className="font-bold text-gray-800">Trade Expired</h3>
+                            <p className="text-sm text-gray-700">The payment window has expired. Kindly do not pay. If you already paid, please open a new trade from the ad page.</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    return null;
+}
+
+export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: TradeChatProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -79,9 +118,6 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
   const [newMessage, setNewMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const opponentCountryName = countries.find(c => c.code === opponent?.country)?.name;
-  const opponentIpCountryName = countries.find(c => c.code === opponent?.ipBasedCountry)?.name;
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -115,22 +151,15 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
       message: messageToSend,
       isModerator: isAdmin,
       createdAt: new Date().toISOString(),
+      mediaUrl: mediaUrl || null,
+      mediaType: mediaType || 'none',
     };
-
-    if (mediaUrl && mediaType) {
-        messageData.mediaUrl = mediaUrl;
-        messageData.mediaType = mediaType;
-    } else {
-        messageData.mediaUrl = null;
-        messageData.mediaType = 'none';
-    }
-
 
     try {
       const messagesCollection = collection(firestore, 'trades', trade.id, 'messages');
       await addDoc(messagesCollection, messageData);
 
-      if (mediaUrl) {
+      if (mediaUrl && trade.status === 'active') {
         await addReceiptToTrade(firestore, trade.id, mediaUrl);
         toast({ title: 'Receipt Uploaded', description: 'The seller has been notified.' });
       }
@@ -139,8 +168,8 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
       toast({ variant: 'destructive', title: 'Send Failed', description: error.message });
     }
   };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  
+   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
@@ -149,43 +178,58 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
     reader.onload = (event) => {
       const result = event.target?.result as string;
       if (result) {
-        let mediaType: 'image' | 'video' | 'audio' = 'image';
+        let mediaType: 'image' | 'video' | 'audio' = 'image'; // default
         if (file.type.startsWith('video/')) mediaType = 'video';
         if (file.type.startsWith('audio/')) mediaType = 'audio';
-        handleSendMessage(new Event('submit'), result, mediaType);
+        
+        handleSendMessage(new Event('submit'), result, mediaType).finally(() => {
+          setIsUploading(false);
+          if(fileInputRef.current) fileInputRef.current.value = "";
+        });
+      } else {
+        setIsUploading(false);
       }
-      setIsUploading(false);
+    };
+     reader.onerror = () => {
+        setIsUploading(false);
+        toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the selected file.' });
     };
     reader.readAsDataURL(file);
   };
 
   const isBuyer = currentUserId === trade.buyerId;
+  const opponentLastActive = opponent?.lastActive ? toDate(opponent.lastActive) : null;
+  let activityText = 'Offline';
+  if (opponentLastActive) {
+      activityText = `Active ${formatDistanceToNow(opponentLastActive)} ago`;
+  }
 
   return (
     <Card className="flex flex-col h-full">
       <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <TradeHeader trade={trade} ad={ad} opponent={opponent} currentUserRole={isBuyer ? 'buy' : 'sell'} />
-          </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Info className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                 {opponent && (
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p><strong>Username:</strong> {opponent.userId}</p>
-                      <p><strong>Country:</strong> {opponentCountryName || 'N/A'}</p>
-                      <p><strong>IP-based Country:</strong> {opponentIpCountryName || 'N/A'}</p>
+        <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                    <AvatarImage src={opponent?.photoURL} />
+                    <AvatarFallback><DefaultAvatar /></AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="font-semibold">{opponent?.userId}</p>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                        {opponent?.country && <FlagIcon countryCode={opponent.country} />}
+                        <span>{activityText}</span>
                     </div>
-                  )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onInfoClick}>
+                <Info className="h-5 w-5" />
+            </Button>
+        </div>
+        <div className="mt-4 bg-primary/10 text-primary p-3 rounded-lg text-sm font-medium text-center">
+          {isBuyer 
+            ? `You are buying ${trade.amount} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}. Pay the seller to continue.`
+            : `You are selling ${trade.amount} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}. Wait for the buyer's payment.`
+          }
         </div>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
@@ -251,7 +295,6 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
                             <Image src={msg.mediaUrl} alt="Uploaded receipt" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" />
                           </a>
                         )}
-                         {/* Basic placeholders for other media types */}
                         {msg.mediaUrl && msg.mediaType === 'video' && <p className="text-xs">[Video Attached]</p>}
                         {msg.mediaUrl && msg.mediaType === 'audio' && <p className="text-xs">[Audio Attached]</p>}
                       </>
@@ -263,7 +306,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, ad }: Trade
                 </div>
               );
             })}
-             <TradeStatusAlert trade={trade} />
+             <FinalStatusMessage trade={trade} />
           </div>
         </ScrollArea>
       </CardContent>

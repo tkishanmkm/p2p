@@ -4,10 +4,8 @@
 import { useState, useEffect } from 'react';
 import { TradeDetails } from '@/components/trade/trade-details';
 import { TradeChat } from '@/components/trade/trade-chat';
-import { TradeStatusStepper } from '@/components/trade/trade-status';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Shield, Award } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertCircle, Shield, MessageSquare, ListDetails } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,10 +23,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Trade, Dispute, P2PAd, User } from '@/lib/types';
 import { cn, toDate } from '@/lib/utils';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { OpenDisputeDialog } from '@/components/trade/open-dispute-dialog';
+import { CounterpartyInfoPanel } from '@/components/trade/counterparty-info-panel';
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
@@ -36,6 +34,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const { isAdmin } = useAdminStatus();
 
   const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
+  const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
 
   const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
   
@@ -54,7 +53,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
 
-  useEffect(() => {
+ useEffect(() => {
     if (trade && trade.status === 'active' && firestore && tradeRef) {
         const expiresAtDate = toDate(trade.expiresAt);
         if (expiresAtDate && new Date() > expiresAtDate) {
@@ -77,11 +76,11 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   }, [trade, firestore, user?.uid, toast]);
 
   if (isLoading) {
-    return <Skeleton className="w-full h-96" />;
+    return <div className="grid lg:grid-cols-3 gap-8"><Skeleton className="lg:col-span-1 h-96" /><Skeleton className="lg:col-span-2 h-[600px]" /></div>;
   }
 
   if (error) {
-    return <div className="text-red-500">Error loading trade: {error.message}</div>;
+    return <Card><CardHeader><CardTitle>Error</CardTitle><CardContent>{error.message}</CardContent></CardHeader></Card>;
   }
 
   if (!trade || !user) {
@@ -202,83 +201,76 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
           <strong>Warning:</strong> To avoid scams, never communicate or trade outside of this platform.
         </p>
       </div>
-       {resolvedDispute && (
-          <Alert className="border-green-500 text-green-700">
-              <Award className="h-4 w-4" />
-              <AlertTitle>Dispute Resolved</AlertTitle>
-              <AlertDescription>
-                  A moderator has awarded this trade to the <span className="font-bold">{resolvedDispute.winnerId === trade.buyerId ? 'Buyer' : 'Seller'}</span>.
-              </AlertDescription>
-          </Alert>
-      )}
     </div>
   );
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold md:text-2xl">Trade {trade.tradeId}</h1>
-      </div>
+    <div className="flex flex-col h-full w-full">
+        <div className="flex items-center justify-between mb-4">
+            <h1 className="text-lg font-semibold md:text-2xl">Trade {trade.tradeId}</h1>
+        </div>
 
-       {isAdmin && (
-        <Card className="my-4 border-amber-500">
-            <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                <Shield className="h-6 w-6 text-amber-500" />
-                <div className="grid gap-1">
-                    <CardTitle>Admin Controls</CardTitle>
-                    <CardDescription>You are viewing this trade as an administrator.</CardDescription>
-                </div>
-            </CardHeader>
-            <CardContent className="flex gap-4">
-                 {trade.status === "paid" && (
-                     <Button variant="outline" onClick={handleReleaseCrypto}>Admin: Force Release</Button>
-                 )}
-                 {(trade.status === "active" || trade.status === "paid") && (
-                     <Button variant="destructive" onClick={handleCancelTrade}>Admin: Cancel Trade</Button>
-                 )}
-            </CardContent>
-        </Card>
-      )}
-      
-      <div className="p-4 bg-background rounded-lg border mb-4">
-        <TradeStatusStepper currentStatus={trade.status} tradeType={currentUserRole} />
-      </div>
+        {isAdmin && (
+            <Card className="mb-4 border-amber-500">
+                <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                    <Shield className="h-6 w-6 text-amber-500" />
+                    <div className="grid gap-1">
+                        <CardTitle>Admin Controls</CardTitle>
+                        <CardDescription>You are viewing this trade as an administrator.</CardDescription>
+                    </div>
+                </CardHeader>
+                <CardContent className="flex gap-4">
+                    {trade.status === "paid" && <Button variant="outline" onClick={handleReleaseCrypto}>Admin: Force Release</Button>}
+                    {(trade.status === "active" || trade.status === "paid") && <Button variant="destructive" onClick={handleCancelTrade}>Admin: Cancel Trade</Button>}
+                </CardContent>
+            </Card>
+        )}
 
-      {/* Mobile Tabs */}
-      <div className="md:hidden sticky top-16 bg-background z-10 py-2">
-        <Tabs value={mobileView} onValueChange={(value) => setMobileView(value as any)} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="details">Details</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow">
+            {/* Details (Left on Desktop, conditional on mobile) */}
+            <div className={cn("lg:col-span-1 space-y-6", mobileView === 'details' ? 'block' : 'hidden lg:block')}>
+                <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
+                <ActionButtons />
+            </div>
+            
+            {/* Chat (Right on Desktop, conditional on mobile) */}
+            <div className={cn("lg:col-span-2 flex-grow flex flex-col", mobileView === 'chat' ? 'flex' : 'hidden lg:flex')}>
+                <TradeChat 
+                    currentUserId={user.uid} 
+                    trade={trade} 
+                    ad={ad} 
+                    opponent={opponentProfile} 
+                    isAdmin={isAdmin} 
+                    onInfoClick={() => setIsInfoPanelOpen(true)}
+                />
+            </div>
+        </div>
 
-      <div className="grid lg:grid-cols-3 lg:gap-8 mt-4">
-          {/* Desktop: Details on left */}
-          <div className="hidden lg:block lg:col-span-1 space-y-6">
-              <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole}/>
-              <ActionButtons />
-          </div>
+        {/* Bottom Nav for Mobile */}
+        <div className="sticky bottom-0 left-0 right-0 md:hidden bg-background border-t p-2 flex gap-2">
+            <Button variant={mobileView === 'chat' ? 'default' : 'outline'} className="flex-1" onClick={() => setMobileView('chat')}>
+                <MessageSquare className="mr-2 h-4 w-4" /> Chat
+            </Button>
+            <Button variant={mobileView === 'details' ? 'default' : 'outline'} className="flex-1" onClick={() => setMobileView('details')}>
+                <ListDetails className="mr-2 h-4 w-4" /> Details
+            </Button>
+        </div>
 
-          {/* Mobile: Conditional rendering for Details */}
-          <div className={cn("lg:hidden", mobileView !== 'details' && 'hidden')}>
-              <div className="space-y-6">
-                  <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole}/>
-                  <ActionButtons />
-              </div>
-          </div>
-
-          {/* Chat: Always on right for desktop, conditional for mobile */}
-          <div className={cn("lg:col-span-2", mobileView !== 'chat' && 'hidden lg:block')}>
-              <TradeChat currentUserId={user.uid} trade={trade} ad={ad} opponent={opponentProfile} isAdmin={isAdmin} />
-          </div>
-      </div>
-    </>
+        {/* Info Panel Sheet */}
+        <CounterpartyInfoPanel 
+            user={opponentProfile}
+            open={isInfoPanelOpen}
+            onOpenChange={setIsInfoPanelOpen}
+        />
+    </div>
   );
 }
 
 
 export default function TradePage({ params }: { params: { id: string } }) {
-    return <TradePageContent tradeId={params.id} />
+    return (
+      <div className="flex flex-col h-full">
+         <TradePageContent tradeId={params.id} />
+      </div>
+    )
 }

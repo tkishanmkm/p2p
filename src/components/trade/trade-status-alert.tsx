@@ -5,75 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Trade } from "@/lib/types";
 import { CheckCircle, Flag, RotateCcw, ThumbsUp, XCircle, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { useState } from 'react';
-import { useFirebase } from '@/firebase';
-import { useToast } from '@/hooks/use-toast';
-import { collection, addDoc } from 'firebase/firestore';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
+import { FeedbackForm } from './feedback-form';
+
 
 interface TradeStatusAlertProps {
   trade: Trade;
-}
-
-const FeedbackForm = ({ trade }: { trade: Trade }) => {
-    const { firestore, user } = useFirebase();
-    const { toast } = useToast();
-    const [rating, setRating] = useState<'positive' | 'negative' | null>(null);
-    const [comment, setComment] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!rating || !comment.trim() || !firestore || !user) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please select a rating and write a comment.' });
-            return;
-        }
-
-        setIsSubmitting(true);
-        const opponentId = user.uid === trade.buyerId ? trade.sellerId : trade.buyerId;
-
-        try {
-            const feedbackRef = collection(firestore, 'trades', trade.id, 'feedback');
-            await addDoc(feedbackRef, {
-                tradeId: trade.id,
-                fromUser: user.uid,
-                fromUsername: user.displayName,
-                toUser: opponentId,
-                rating,
-                comment,
-                createdAt: new Date().toISOString(),
-            });
-            toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
-            // Here you'd ideally mark the trade as "feedback_left" to hide the form
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit feedback.' });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-    
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <RadioGroup onValueChange={(v) => setRating(v as any)} value={rating || ''} className="flex gap-4">
-                <Label htmlFor="rating-positive" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
-                    <RadioGroupItem value="positive" id="rating-positive" />
-                    <ThumbsUp className="h-5 w-5 text-green-600" /> Positive
-                </Label>
-                <Label htmlFor="rating-negative" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
-                    <RadioGroupItem value="negative" id="rating-negative" />
-                    <ThumbsDown className="h-5 w-5 text-red-600" /> Negative
-                </Label>
-            </RadioGroup>
-            <Textarea 
-                placeholder="Leave a comment about your trading experience..." 
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-            />
-            <Button type="submit" size="sm" disabled={isSubmitting}>Submit Feedback</Button>
-        </form>
-    );
 }
 
 export function TradeStatusAlert({ trade }: TradeStatusAlertProps) {
@@ -124,7 +60,7 @@ export function TradeStatusAlert({ trade }: TradeStatusAlertProps) {
                     <AlertTriangle className="h-8 w-8 text-gray-600"/>
                     <div>
                         <h3 className="font-bold text-gray-800">Trade Expired</h3>
-                        <p className="text-sm text-gray-700">The payment window for this trade has expired. Please do not send any payment. If you have already paid, please reopen the trade.</p>
+                        <p className="text-sm text-gray-700">The payment window for this trade has expired. Please do not send any payment. If you have already paid, please open a new trade from the ad page.</p>
                     </div>
                 </div>
             </CardContent>
