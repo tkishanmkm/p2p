@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -380,4 +381,3 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
     </Card>
   );
 }
-

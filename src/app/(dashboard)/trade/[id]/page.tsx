@@ -162,4 +162,3 @@ export default function TradePage({ params }: { params: { id: string } }) {
       </div>
     )
 }
-

@@ -253,4 +253,3 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
     </div>
   );
 }
-
