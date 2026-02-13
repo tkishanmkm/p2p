@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,7 +7,8 @@ import { TradeDetails } from '@/components/trade/trade-details';
 import { TradeChat } from '@/components/trade/trade-chat';
 import { TradeStatusStepper } from '@/components/trade/trade-status';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Shield, Award, Tabs, TabsList, TabsTrigger } from 'lucide-react';
+import { AlertCircle, Shield, Award } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
