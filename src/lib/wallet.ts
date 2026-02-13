@@ -288,39 +288,44 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
   });
 }
 
+
 export async function cancelTrade(db: Firestore, tradeId: string) {
-  const tradeRef = doc(db, 'trades', tradeId);
+  const tradeRef = doc(db, "trades", tradeId);
 
   await runTransaction(db, async (transaction) => {
     const tradeDoc = await transaction.get(tradeRef);
     if (!tradeDoc.exists()) {
+      console.warn(`Trade ${tradeId} not found for cancellation.`);
       return;
     }
-    
+
     const trade = tradeDoc.data() as Trade;
-    
-    if (trade.status !== 'active' && trade.status !== 'paid') {
+    if (trade.status !== "active" && trade.status !== "paid") {
+      // Trade is already finalized or disputed, do nothing.
       return;
     }
 
-    const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', trade.crypto);
+    // Only return funds if they were locked.
+    const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
     const sellerWalletDoc = await transaction.get(sellerWalletRef);
-    if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
 
-    const sellerWallet = sellerWalletDoc.data() as UserWallet;
-
-    if ((sellerWallet.lockedBalance || 0) < trade.amount) {
-        console.error("Critical Error: Insufficient locked funds to return on trade cancellation.", { tradeId: trade.id, sellerId: trade.sellerId });
-    } else {
-        transaction.update(sellerWalletRef, {
-            balance: (sellerWallet.balance || 0) + trade.amount,
-            lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-            updatedAt: new Date().toISOString(),
-        });
+    if (sellerWalletDoc.exists()) {
+        const sellerWallet = sellerWalletDoc.data() as UserWallet;
+        if ((sellerWallet.lockedBalance || 0) >= trade.amount) {
+             transaction.update(sellerWalletRef, {
+                balance: (sellerWallet.balance || 0) + trade.amount,
+                lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
+                updatedAt: new Date().toISOString(),
+            });
+        } else {
+            console.error(`Attempted to cancel trade ${tradeId}, but seller's locked balance was insufficient.`);
+        }
     }
 
-    transaction.update(tradeRef, { status: 'cancelled' });
+    // Update trade status to 'cancelled'
+    transaction.update(tradeRef, { status: "cancelled" });
 
+    // Send notifications
     const buyerNotificationRef = doc(collection(db, 'users', trade.buyerId, 'notifications'));
     transaction.set(buyerNotificationRef, {
         userId: trade.buyerId,

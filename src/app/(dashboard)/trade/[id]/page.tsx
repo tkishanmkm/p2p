@@ -81,9 +81,10 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
       <Card>
         <CardHeader>
           <CardTitle>Error</CardTitle>
+          <CardDescription>There was a problem loading the trade.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p>{error.message}</p>
+          <p className="text-sm text-destructive">{error.message}</p>
         </CardContent>
       </Card>
     );
@@ -96,9 +97,12 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   if (!trade.buyer || !trade.seller) {
     return (
         <Card>
-            <CardHeader><CardTitle>Incomplete Trade Data</CardTitle></CardHeader>
+            <CardHeader>
+                <CardTitle>Incomplete Trade Data</CardTitle>
+                <CardDescription>This trade document is missing critical participant information and cannot be displayed.</CardDescription>
+            </CardHeader>
             <CardContent>
-                <p>This trade document is missing critical participant information and cannot be displayed. This may be due to old data. Please contact support if this is a recent trade.</p>
+                <p>This may be due to old data. Please contact support if this is a recent trade.</p>
             </CardContent>
         </Card>
     );
