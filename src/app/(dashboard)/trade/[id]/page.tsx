@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -53,7 +52,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const sellerRef = useMemoFirebase(() => (firestore && trade?.sellerId ? doc(firestore, 'users', trade.sellerId) : null), [firestore, trade]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
 
- useEffect(() => {
+  useEffect(() => {
     if (trade && trade.status === 'active' && firestore && tradeRef) {
         const expiresAtDate = toDate(trade.expiresAt);
         if (expiresAtDate && new Date() > expiresAtDate) {
