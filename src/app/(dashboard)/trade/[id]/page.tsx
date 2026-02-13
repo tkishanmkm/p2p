@@ -10,6 +10,7 @@ import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { cancelTrade } from '@/lib/wallet';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Trade, P2PAd, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -102,40 +103,82 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full w-full">
-        <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg font-semibold md:text-2xl">Trade {trade.tradeId}</h1>
+    <>
+        <div className="flex-grow flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-4">
+                <h1 className="text-lg font-semibold md:text-2xl">Trade {trade.tradeId}</h1>
+            </div>
+
+            {isAdmin && (
+                <Card className="mb-4 border-amber-500">
+                    <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                        <Shield className="h-6 w-6 text-amber-500" />
+                        <div className="grid gap-1">
+                            <CardTitle>Admin Controls</CardTitle>
+                            <CardDescription>You are viewing this trade as an administrator.</CardDescription>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="flex gap-4">
+                        {(trade.status === "active" || trade.status === "paid") && <Button variant="destructive" onClick={handleAdminCancelTrade}>Admin: Cancel Trade</Button>}
+                    </CardContent>
+                </Card>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow min-h-0">
+                {/* Desktop: Details on left */}
+                <div className="lg:col-span-1 space-y-6 hidden lg:block">
+                    <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
+                </div>
+
+                {/* Desktop: Chat on right */}
+                <div className="lg:col-span-2 flex-grow flex-col min-h-0 hidden lg:flex">
+                    <TradeChat 
+                        currentUserId={user.uid} 
+                        trade={trade} 
+                        opponent={opponentProfile} 
+                        isAdmin={isAdmin} 
+                        onInfoClick={() => setIsInfoPanelOpen(true)}
+                    />
+                </div>
+                
+                {/* Mobile View */}
+                <div className="lg:hidden flex-grow flex flex-col min-h-0">
+                    {mobileView === 'chat' ? (
+                        <TradeChat 
+                            currentUserId={user.uid} 
+                            trade={trade} 
+                            opponent={opponentProfile} 
+                            isAdmin={isAdmin} 
+                            onInfoClick={() => setIsInfoPanelOpen(true)}
+                        />
+                    ) : (
+                         <ScrollArea className="flex-grow">
+                            <div className="space-y-6 pr-4">
+                                <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
+                            </div>
+                        </ScrollArea>
+                    )}
+                </div>
+            </div>
         </div>
-
-        {isAdmin && (
-            <Card className="mb-4 border-amber-500">
-                <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                    <Shield className="h-6 w-6 text-amber-500" />
-                    <div className="grid gap-1">
-                        <CardTitle>Admin Controls</CardTitle>
-                        <CardDescription>You are viewing this trade as an administrator.</CardDescription>
-                    </div>
-                </CardHeader>
-                <CardContent className="flex gap-4">
-                    {(trade.status === "active" || trade.status === "paid") && <Button variant="destructive" onClick={handleAdminCancelTrade}>Admin: Cancel Trade</Button>}
-                </CardContent>
-            </Card>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow">
-            <div className={cn("lg:col-span-1 space-y-6", "block lg:block")}>
-                <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
-            </div>
-            
-            <div className={cn("lg:col-span-2 flex-grow flex flex-col", "flex")}>
-                <TradeChat 
-                    currentUserId={user.uid} 
-                    trade={trade} 
-                    opponent={opponentProfile} 
-                    isAdmin={isAdmin} 
-                    onInfoClick={() => setIsInfoPanelOpen(true)}
-                />
-            </div>
+        
+        <div className="sticky bottom-0 mt-auto grid grid-cols-2 gap-2 lg:hidden bg-background p-2 border-t -mx-2 sm:-mx-4 -mb-2 sm:-mb-4 md:-mb-6">
+            <Button
+                variant={mobileView === 'details' ? 'default' : 'outline'}
+                onClick={() => setMobileView('details')}
+                className="flex items-center gap-2"
+            >
+                <ListDetails className="h-4 w-4" />
+                Details
+            </Button>
+            <Button
+                variant={mobileView === 'chat' ? 'default' : 'outline'}
+                onClick={() => setMobileView('chat')}
+                className="flex items-center gap-2"
+            >
+                <MessageSquare className="h-4 w-4" />
+                Chat
+            </Button>
         </div>
         
         <CounterpartyInfoPanel 
@@ -143,7 +186,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             open={isInfoPanelOpen}
             onOpenChange={setIsInfoPanelOpen}
         />
-    </div>
+    </>
   );
 }
 
