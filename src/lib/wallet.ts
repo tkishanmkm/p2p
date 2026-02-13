@@ -309,20 +309,17 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
 
     const sellerWallet = sellerWalletDoc.data() as UserWallet;
     if ((sellerWallet.lockedBalance || 0) < trade.amount) {
-        throw new Error("Seller has insufficient locked funds to return. This is a critical error, as funds should have been locked.");
+        console.error("Critical Error: Insufficient locked funds to return on trade cancellation.", { tradeId: trade.id, sellerId: trade.sellerId });
+    } else {
+        transaction.update(sellerWalletRef, {
+            balance: (sellerWallet.balance || 0) + trade.amount,
+            lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
+            updatedAt: new Date().toISOString(),
+        });
     }
 
-    // Return funds to seller's main balance
-    transaction.update(sellerWalletRef, {
-        balance: (sellerWallet.balance || 0) + trade.amount,
-        lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-        updatedAt: new Date().toISOString(),
-    });
-
-    // Mark trade as cancelled
     transaction.update(tradeRef, { status: 'cancelled' });
 
-    // Notify both users
     const buyerNotificationRef = doc(collection(db, 'users', trade.buyerId, 'notifications'));
     transaction.set(buyerNotificationRef, {
         userId: trade.buyerId,
