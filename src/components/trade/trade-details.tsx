@@ -14,7 +14,7 @@ import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from '@/lib/wall
 import { openDispute } from '@/lib/disputes';
 import { cn, toDate } from '@/lib/utils';
 import { statusColors } from '@/lib/status-colors';
-import type { Trade, TradeStatus } from '@/lib/types';
+import type { P2PAd, Trade, TradeStatus } from '@/lib/types';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -131,7 +131,7 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 
     const handleMarkAsPaid = async () => { if (!firestore) return; try { await markTradeAsPaid(firestore, trade.id); toast({ title: "Success", description: "Seller has been notified that you've paid." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
     const handleReleaseCrypto = async () => { if (!firestore) return; try { await releaseFundsFromEscrow(firestore, trade.id); toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
-    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id, trade.sellerId, trade.crypto, trade.amount); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
+    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
 
     const canBuyerCancel = currentUserRole === 'buy' && (trade.status === 'active' || trade.status === 'disputed');
     const canSellerRelease = currentUserRole === 'sell' && (trade.status === 'paid' || trade.status === 'disputed');
@@ -155,13 +155,13 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     );
 };
 
-export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: Trade; sellerTerms?: string; currentUserRole: 'buy' | 'sell'; }) {
+export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?: P2PAd | null; currentUserRole: 'buy' | 'sell'; }) {
   const isBuying = currentUserRole === 'buy';
   const showReopen = ['cancelled', 'expired', 'released'].includes(trade.status);
   const showActions = ['active', 'paid', 'disputed'].includes(trade.status);
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col h-full shadow-none border-0 rounded-none">
         <CardHeader>
             <div className="flex justify-between items-start">
                 <div><CardTitle>Trade Details</CardTitle><CardDescription>ID: {trade?.tradeId || 'N/A'}</CardDescription></div>
@@ -183,7 +183,28 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: T
             </div>
             <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{trade?.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}</div>
             <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString() ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}</div>
-            {sellerTerms && <div className="space-y-2"><h4 className="font-semibold">Seller's Terms</h4><div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground whitespace-pre-wrap"><p>{sellerTerms}</p></div></div>}
+            
+            <div className="space-y-2">
+                <h4 className="font-semibold">Ad Details</h4>
+                {ad?.offerLabel && <DetailRow label="Offer Label" value={ad.offerLabel} />}
+                {ad?.tags && ad.tags.length > 0 && (
+                    <div className="flex justify-between items-start text-sm">
+                        <p className="text-muted-foreground">Tags</p>
+                        <div className="flex flex-wrap gap-1 justify-end max-w-[70%]">
+                            {ad.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                        </div>
+                    </div>
+                )}
+                {ad?.terms && (
+                    <div className="space-y-1 pt-2">
+                        <p className="text-muted-foreground text-sm">Seller's Terms</p>
+                        <div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground whitespace-pre-wrap">
+                            <p>{ad.terms}</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+            
              {showReopen && (
                 <Button asChild variant="outline" className="w-full !mt-6">
                     <Link href={`/ad/${trade.adId}`}>
