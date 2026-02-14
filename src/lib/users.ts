@@ -1,6 +1,7 @@
 'use client';
 import { Firestore, doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc, writeBatch, limit } from 'firebase/firestore';
 import type { User as AuthUser } from 'firebase/auth';
+import { countries } from './countries';
 
 /**
  * Blocks a target user by adding their UID to the current user's block list.
@@ -43,7 +44,7 @@ export async function unblockUser(db: Firestore, currentUserId: string, targetUs
 
 
 /**
- * Creates or updates a session document for a user upon login.
+ * Creates a session document for a user and updates their IP-based country.
  * @param db - The Firestore instance.
  * @param user - The authenticated user object from Firebase Auth.
  * @returns The ID of the newly created session document.
@@ -51,7 +52,11 @@ export async function unblockUser(db: Firestore, currentUserId: string, targetUs
 export async function createUserSession(db: Firestore, user: AuthUser): Promise<string | undefined> {
   if (!user) return;
   
+  const batch = writeBatch(db);
+
+  // 1. Create session document
   const sessionsCollectionRef = collection(db, "users", user.uid, "sessions");
+  const sessionDocRef = doc(sessionsCollectionRef);
   
   const simulatedIp = `192.168.1.${Math.floor(Math.random() * 254) + 1}`;
 
@@ -62,9 +67,16 @@ export async function createUserSession(db: Firestore, user: AuthUser): Promise<
     lastLogin: new Date().toISOString(),
     isActive: true,
   };
-  
-  const docRef = await addDoc(sessionsCollectionRef, sessionData);
-  return docRef.id;
+  batch.set(sessionDocRef, sessionData);
+
+  // 2. Update user's IP-based country to simulate real-time detection
+  const userDocRef = doc(db, "users", user.uid);
+  const randomIpCountry = countries[Math.floor(Math.random() * countries.length)].code;
+  batch.update(userDocRef, { ipBasedCountry: randomIpCountry });
+
+  await batch.commit();
+
+  return sessionDocRef.id;
 }
 
 /**
