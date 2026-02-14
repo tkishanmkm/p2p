@@ -23,13 +23,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, RefreshCw, Clock, Loader2, Flag, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { add } from 'date-fns';
 import { Input } from '../ui/input';
-import { collection } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { label: string, value: string | React.ReactNode, valueClass?: string, isLink?: boolean, href?: string }) {
@@ -219,22 +220,18 @@ function FeedbackForm({ trade }: { trade: Trade }) {
         <form onSubmit={handleSubmit} className="space-y-4 pt-4 border-t">
             <h4 className="font-semibold text-center text-sm text-foreground">Leave Feedback</h4>
             <RadioGroup onValueChange={(v) => setRating(v as any)} value={rating || ''} className="flex gap-4 justify-center">
-                <FormItem>
-                    <FormControl>
-                        <RadioGroupItem value="positive" id="rating-positive" className="sr-only" />
-                    </FormControl>
-                    <FormLabel htmlFor="rating-positive" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-green-500 has-[:checked]:bg-green-100 dark:has-[:checked]:bg-green-900/30">
+                <div>
+                    <RadioGroupItem value="positive" id="rating-positive" className="sr-only" />
+                    <Label htmlFor="rating-positive" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-green-500 has-[:checked]:bg-green-100 dark:has-[:checked]:bg-green-900/30 font-normal">
                         <ThumbsUp className="h-5 w-5 text-green-600" /> Positive
-                    </FormLabel>
-                </FormItem>
-                <FormItem>
-                     <FormControl>
-                        <RadioGroupItem value="negative" id="rating-negative" className="sr-only" />
-                    </FormControl>
-                    <FormLabel htmlFor="rating-negative" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-red-500 has-[:checked]:bg-red-100 dark:has-[:checked]:bg-red-900/30">
+                    </Label>
+                </div>
+                <div>
+                    <RadioGroupItem value="negative" id="rating-negative" className="sr-only" />
+                    <Label htmlFor="rating-negative" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-red-500 has-[:checked]:bg-red-100 dark:has-[:checked]:bg-red-900/30 font-normal">
                         <ThumbsDown className="h-5 w-5 text-red-600" /> Negative
-                    </FormLabel>
-                </FormItem>
+                    </Label>
+                </div>
             </RadioGroup>
             <Textarea 
                 placeholder="Leave a comment about your trading experience..." 
@@ -260,66 +257,65 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
   const hasUserGivenFeedback = feedbacks?.some(f => f.fromUser === user?.uid);
   const showFeedbackForm = trade.status === 'released' && !hasUserGivenFeedback;
 
-
   return (
     <Card className="flex flex-col h-full shadow-none border-0 rounded-none">
-        <CardHeader>
-            <div className="flex justify-between items-start">
-                <div><CardTitle>Trade Details</CardTitle><CardDescription>ID: {trade?.tradeId || 'N/A'}</CardDescription></div>
-                <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade?.status || 'unknown'}</Badge>
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div><CardTitle>Trade Details</CardTitle><CardDescription>ID: {trade?.tradeId || 'N/A'}</CardDescription></div>
+          <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade?.status || 'unknown'}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-1 overflow-y-auto space-y-4">
+        <div className="space-y-2 rounded-md border p-4">
+          <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade?.amount ?? 0} ${trade?.crypto ?? ''}`} />
+          <DetailRow label="Price" value={`1 ${trade?.crypto ?? ''} = ${(trade?.price ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} />
+          {trade.escrowFee && <DetailRow label="Escrow Fee" value={`${trade.escrowFee.toFixed(8)} ${trade.crypto}`} />}
+          <hr className="my-2 border-dashed" />
+          <DetailRow label={isBuying ? "You will pay" : "You will receive"} value={`${(trade?.fiatAmount ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} />
+        </div>
+        <div className="space-y-2">
+          <h4 className="font-semibold">Time Remaining</h4>
+          <div className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4 text-muted-foreground" /><CountdownDisplay targetDate={trade.expiresAt} tradeStatus={trade.status} /></div>
+          <p className="text-xs text-muted-foreground">Time for buyer to make payment.</p>
+        </div>
+        <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{ad?.paymentMethods && <DetailRow label="Payment Method" value={ad.paymentMethods.join(', ')} />}</div>
+        <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}</div>
+        
+        <div className="space-y-2">
+          <h4 className="font-semibold">Ad Details</h4>
+          {ad?.offerLabel && <DetailRow label="Offer Label" value={ad.offerLabel} />}
+          {ad?.tags && ad.tags.length > 0 && (
+            <div className="flex justify-between items-start text-sm">
+              <p className="text-muted-foreground">Tags</p>
+              <div className="flex flex-wrap gap-1 justify-end max-w-[70%]">
+                {ad.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+              </div>
             </div>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto space-y-4">
-            <div className="space-y-2 rounded-md border p-4">
-                <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade?.amount ?? 0} ${trade?.crypto ?? ''}`} />
-                <DetailRow label="Price" value={`1 ${trade?.crypto ?? ''} = ${(trade?.price ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} />
-                {trade.escrowFee && <DetailRow label="Escrow Fee" value={`${trade.escrowFee.toFixed(8)} ${trade.crypto}`} />}
-                <hr className="my-2 border-dashed" />
-                <DetailRow label={isBuying ? "You will pay" : "You will receive"} value={`${(trade?.fiatAmount ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} />
+          )}
+          {ad?.terms && (
+            <div className="space-y-1 pt-2">
+              <p className="text-muted-foreground text-sm">Seller's Terms</p>
+              <div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground whitespace-pre-wrap">
+                <p>{ad.terms}</p>
+              </div>
             </div>
-             <div className="space-y-2">
-                <h4 className="font-semibold">Time Remaining</h4>
-                <div className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4 text-muted-foreground" /><CountdownDisplay targetDate={trade.expiresAt} tradeStatus={trade.status} /></div>
-                <p className="text-xs text-muted-foreground">Time for buyer to make payment.</p>
-            </div>
-            <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{ad?.paymentMethods && <DetailRow label="Payment Method" value={ad.paymentMethods.join(', ')} />}</div>
-            <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}</div>
-            
-            <div className="space-y-2">
-                <h4 className="font-semibold">Ad Details</h4>
-                {ad?.offerLabel && <DetailRow label="Offer Label" value={ad.offerLabel} />}
-                {ad?.tags && ad.tags.length > 0 && (
-                    <div className="flex justify-between items-start text-sm">
-                        <p className="text-muted-foreground">Tags</p>
-                        <div className="flex flex-wrap gap-1 justify-end max-w-[70%]">
-                            {ad.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                        </div>
-                    </div>
-                )}
-                {ad?.terms && (
-                    <div className="space-y-1 pt-2">
-                        <p className="text-muted-foreground text-sm">Seller's Terms</p>
-                        <div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground whitespace-pre-wrap">
-                            <p>{ad.terms}</p>
-                        </div>
-                    </div>
-                )}
-            </div>
-            
-             {showReopen && (
-                <Button asChild variant="outline" className="w-full !mt-6">
-                    <Link href={`/ad/${trade.adId}`}>
-                        <RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade
-                    </Link>
-                </Button>
-            )}
-             {showFeedbackForm && <FeedbackForm trade={trade} />}
-        </CardContent>
-        {showActions && (
-            <CardFooter className="pt-6">
-                 <ActionButtons trade={trade} currentUserRole={currentUserRole} />
-            </CardFooter>
+          )}
+        </div>
+
+        {showReopen && (
+            <Button asChild variant="outline" className="w-full !mt-6">
+                <Link href={`/ad/${trade.adId}`}>
+                    <RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade
+                </Link>
+            </Button>
         )}
+        {showFeedbackForm && <FeedbackForm trade={trade} />}
+      </CardContent>
+      {showActions && (
+        <CardFooter className="pt-6">
+          <ActionButtons trade={trade} currentUserRole={currentUserRole} />
+        </CardFooter>
+      )}
     </Card>
   );
 }
