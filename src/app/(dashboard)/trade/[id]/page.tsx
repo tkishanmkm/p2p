@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TradeDetails from '@/components/trade/trade-details';
-import { TradeChat } from '@/components/trade/trade-chat';
+import TradeChat from '@/components/trade/trade-chat';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Shield } from 'lucide-react';
+import { AlertCircle, Shield, MessageSquare, ListDetails } from 'lucide-react';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { cancelTrade } from '@/lib/wallet';
@@ -23,6 +23,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const { isAdmin } = useAdminStatus();
+  const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
 
   // Memoized Firestore references
