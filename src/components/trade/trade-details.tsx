@@ -133,18 +133,23 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     const handleReleaseCrypto = async () => { if (!firestore) return; try { await releaseFundsFromEscrow(firestore, trade.id); toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
     const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
 
+    const canBuyerCancel = currentUserRole === 'buy' && (trade.status === 'active' || trade.status === 'disputed');
+    const canSellerRelease = currentUserRole === 'sell' && (trade.status === 'paid' || trade.status === 'disputed');
+    const canBuyerMarkPaid = currentUserRole === "buy" && trade.status === "active";
+    const canOpenDispute = (trade.status === 'active' || trade.status === 'paid');
+
     return (
         <div className="space-y-2">
-            {currentUserRole === "buy" && trade.status === "active" && (
+            {canBuyerMarkPaid && (
                 <AlertDialog><AlertDialogTrigger asChild><Button className="w-full" size="lg">Mark as Paid</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm Payment</AlertDialogTitle><AlertDialogDescription>Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Only confirm after you have fully sent the payment.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleMarkAsPaid}>Yes, I Have Paid</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
             )}
-            {currentUserRole === "sell" && trade.status === "paid" && (
+            {canSellerRelease && (
                 <AlertDialog><AlertDialogTrigger asChild><Button className="w-full" size="lg">Release Crypto</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Release Cryptocurrency?</AlertDialogTitle><AlertDialogDescription>Confirm you have received <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span>. This action is irreversible.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleReleaseCrypto}>Confirm and Release</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
             )}
-            {trade.status === 'active' && currentUserRole === 'buy' && (
+            {canBuyerCancel && (
                 <AlertDialog><AlertDialogTrigger asChild><Button variant="outline" className="w-full">Cancel Trade</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Cancel Trade?</AlertDialogTitle><AlertDialogDescription>Are you sure? This cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>No</AlertDialogCancel><AlertDialogAction onClick={handleCancelTrade}>Yes, Cancel</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
             )}
-            {(trade.status === 'paid' || trade.status === 'active') && (<OpenDisputeDialog trade={trade} currentUserId={user.uid} currentUsername={user.displayName || 'user'} />)}
+            {canOpenDispute && (<OpenDisputeDialog trade={trade} currentUserId={user.uid} currentUsername={user.displayName || 'user'} />)}
             <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Warning</AlertTitle><AlertDescription>To avoid scams, never communicate or trade outside of this platform.</AlertDescription></Alert>
         </div>
     );
@@ -182,7 +187,7 @@ export default function TradeDetails({ trade, sellerTerms, currentUserRole }: { 
                 {showReopen && (<Button asChild variant="outline" className="w-full"><Link href={`/ad/${trade.adId}`}><RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade</Link></Button>)}
             </CardContent>
         </Card>
-        {(trade.status === 'active' || trade.status === 'paid') && <ActionButtons trade={trade} currentUserRole={currentUserRole} />}
+        {(trade.status === 'active' || trade.status === 'paid' || trade.status === 'disputed') && <ActionButtons trade={trade} currentUserRole={currentUserRole} />}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
@@ -27,7 +28,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { DefaultAvatar } from '@/components/icons';
+import { DefaultAvatar, Logo } from '@/components/icons';
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Shield, Clock, Send, Plus, Info as InfoIcon, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -112,8 +113,11 @@ function FeedbackForm({ trade }: { trade: Trade }) {
 }
 
 // --- Sub-component: TradeInstructions ---
-function TradeInstructions({ trade, isBuyer, onDismiss }: { trade: Trade, isBuyer: boolean, onDismiss: () => void }) {
-    const title = isBuyer ? "You're buying" : "You're selling";
+function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) {
+    const title = isBuyer 
+        ? `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency} via ${trade.paymentMethod}.`
+        : `You're selling ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency} via ${trade.paymentMethod}.`;
+    
     const instructions = isBuyer ? [
         "When the seller is ready to start the transaction, they'll share their bank account details in the trade chat.",
         "Make your payment.",
@@ -128,13 +132,10 @@ function TradeInstructions({ trade, isBuyer, onDismiss }: { trade: Trade, isBuye
     ];
 
     return (
-        <Alert className="bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200 relative">
+        <Alert className="bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200">
             <InfoIcon className="h-4 w-4 text-yellow-600" />
-            <button onClick={onDismiss} className="absolute top-2 right-2 text-yellow-700 dark:text-yellow-300 hover:opacity-75">
-                <XCircle className="h-5 w-5" />
-            </button>
             <AlertTitle className="font-bold">
-                {title} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}.
+                {title}
             </AlertTitle>
             <AlertDescription className="text-yellow-800 dark:text-yellow-300">
                 <p className="mb-2">The crypto is now in escrow and it's safe to make your payment.</p>
@@ -146,11 +147,23 @@ function TradeInstructions({ trade, isBuyer, onDismiss }: { trade: Trade, isBuye
     );
 }
 
+// --- Sub-component: SystemMessage ---
+function SystemMessage({ type, children }: { type: 'dispute' | 'success' | 'error' | 'warning' | 'info'; children: React.ReactNode }) {
+    const variants = {
+        dispute: 'border-blue-500/50 text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20',
+        success: 'border-green-500/50 text-green-800 dark:text-green-300 bg-green-50 dark:bg-green-900/20',
+        error: 'border-destructive/50 text-destructive bg-destructive/10',
+        warning: 'border-yellow-500/50 text-yellow-800 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20',
+        info: 'border-gray-500/50 text-muted-foreground bg-secondary',
+    };
+    return <div className={cn("text-center text-xs p-3 rounded-md border", variants[type])}>{children}</div>;
+}
 
-// --- Sub-component: TradeChat ---
+
+// --- Sub-component: TradeSummaryBar ---
 const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
-    const bgColor = isBuyer ? 'bg-green-600/10' : 'bg-red-600/10';
-    const textColor = isBuyer ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300';
+    const bgColor = isBuyer ? 'bg-green-600/10' : 'bg-red-500/20';
+    const textColor = isBuyer ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-400';
     const roleText = isBuyer ? 'Buying' : 'Selling';
     return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</div>);
 }
@@ -164,24 +177,69 @@ export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onI
   const [newMessage, setNewMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isTradeFinished = ['released', 'cancelled', 'expired', 'disputed'].includes(trade.status);
+  const isTradeFinished = ['released', 'cancelled', 'expired'].includes(trade.status);
   const stopwatch = useStopwatch(trade.createdAt, isTradeFinished);
-  const [isInstructionsVisible, setIsInstructionsVisible] = useState(true);
 
   const displayMessages = useMemo(() => {
     const baseMessages = messages || [];
-    let finalMessage: TradeChatMessage | null = null;
-    if (trade.status === 'released' && trade.claimedByBuyer) {
-      finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade Completed', isModerator: true, createdAt: trade.releasedAt || new Date().toISOString() };
-    } else if (trade.status === 'cancelled') {
-      finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is cancelled.\nKindly do not pay. If you have already paid, please reopen the trade.', isModerator: true, createdAt: new Date().toISOString() };
-    } else if (trade.status === 'expired') {
-       finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is expired.\nKindly do not pay. If you have already paid, please open a new trade.', isModerator: true, createdAt: trade.expiresAt };
-    } else if (trade.status === 'disputed') {
-       finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is disputed. A moderator will join the chat shortly.', isModerator: true, createdAt: new Date().toISOString() };
+    const systemMessages: TradeChatMessage[] = [];
+
+    // This message is generated by the `markTradeAsPaid` function now
+    // We just need to handle the other system-level status changes.
+
+    if (trade.status === 'disputed' && !baseMessages.some(m => m.id === 'system-dispute-alert')) {
+      systemMessages.push({
+        id: 'system-dispute-alert',
+        tradeId: trade.id,
+        senderId: 'system',
+        senderUsername: 'System',
+        message: 'This trade has been marked as disputed. Please do not release any crypto or make any further payment until the moderator reviews the case. A TradeFlow moderator will join the chat shortly to investigate and provide instructions. Kindly cooperate and share any required proof or details in the chat.',
+        isModerator: true,
+        createdAt: new Date().toISOString(),
+      });
     }
-    return finalMessage ? [...baseMessages, finalMessage] : baseMessages;
-  }, [messages, trade.status, trade.id, trade.releasedAt, trade.createdAt, trade.expiresAt, trade.claimedByBuyer]);
+
+    if (trade.status === 'released' && trade.claimedByBuyer && !baseMessages.some(m => m.id === 'system-final')) {
+      systemMessages.push({
+        id: 'system-final',
+        tradeId: trade.id,
+        senderId: 'system',
+        senderUsername: 'System',
+        message: 'Congratulations! This trade has been successfully completed. The crypto has been released to the buyer, and the transaction is now closed. If you are satisfied with the trade, please leave feedback for your trade partner.',
+        isModerator: true,
+        createdAt: trade.releasedAt || new Date().toISOString(),
+      });
+    }
+    
+    if (trade.status === 'cancelled' && !baseMessages.some(m => m.id === 'system-final')) {
+       systemMessages.push({
+        id: 'system-final',
+        tradeId: trade.id,
+        senderId: 'system',
+        senderUsername: 'System',
+        message: 'This trade has been cancelled. Do not make any payment if you have not already paid. If you have already made a payment, immediately contact support and share proof of payment in the chat. Do not release or expect any crypto from this trade, as it is no longer active.',
+        isModerator: true,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    if (trade.status === 'expired' && !baseMessages.some(m => m.id === 'system-final')) {
+       systemMessages.push({
+        id: 'system-final',
+        tradeId: trade.id,
+        senderId: 'system',
+        senderUsername: 'System',
+        message: 'This trade has expired due to inactivity or time limit. Do not make any payment, as the trade is no longer valid. If you still wish to proceed, please create a new trade.',
+        isModerator: true,
+        createdAt: trade.expiresAt,
+      });
+    }
+    
+    const allMessages = [...baseMessages, ...systemMessages];
+    allMessages.sort((a, b) => (toDate(a.createdAt)?.getTime() ?? 0) - (toDate(b.createdAt)?.getTime() ?? 0));
+
+    return allMessages;
+  }, [messages, trade]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -232,12 +290,26 @@ export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onI
   let activityText = 'Offline';
   if (opponentLastActive) { activityText = `Seen ${formatDistanceToNow(opponentLastActive)} ago`; }
 
-  const renderSystemMessageContent = (msg: TradeChatMessage) => {
-    if (msg.message === 'Trade Completed') { return (<Card className="border-green-500 bg-green-50 text-center dark:bg-green-900/20"><CardContent className="pt-6 space-y-4"><div className="flex flex-col items-center gap-3"><CheckCircle className="h-10 w-10 text-green-600"/><div><h3 className="font-bold text-green-800 dark:text-green-300">Trade Completed</h3><p className="text-sm text-green-700 dark:text-green-400">Congratulations! The coin has been released.</p></div></div><FeedbackForm trade={trade} /></CardContent></Card>); }
-    if (msg.message.startsWith('Trade is cancelled')) { return (<Alert variant="destructive" className="text-center"><XCircle className="h-4 w-4" /><AlertTitle>Trade Cancelled</AlertTitle><AlertDescription>{msg.message.replace('Trade is cancelled.\n','')}</AlertDescription></Alert>); }
-    if (msg.message.startsWith('Trade is expired')) { return (<Alert variant="default" className="text-center border-orange-500 text-orange-800 dark:text-orange-300 dark:border-orange-500/50 dark:bg-orange-900/20"><AlertTriangle className="h-4 w-4" /><AlertTitle>Trade Expired</AlertTitle><AlertDescription>{msg.message.replace('Trade is expired.\n','')}</AlertDescription></Alert>); }
-    return <div className="text-center text-xs text-muted-foreground p-2 rounded-md bg-secondary">{msg.message}</div>;
+  const renderSystemMessage = (msg: TradeChatMessage) => {
+    if (msg.message.startsWith("Congratulations!")) {
+      return <SystemMessage type="success"><p className="font-bold">Trade Completed</p><p>{msg.message}</p><FeedbackForm trade={trade} /></SystemMessage>
+    }
+    if (msg.message.startsWith("This trade has been cancelled")) {
+      return <SystemMessage type="error"><p className="font-bold">Trade Cancelled</p><p>{msg.message}</p></SystemMessage>
+    }
+    if (msg.message.startsWith("This trade has expired")) {
+      return <SystemMessage type="info"><p className="font-bold">Trade Expired</p><p>{msg.message}</p></SystemMessage>
+    }
+    if (msg.message.startsWith("This trade has been marked as disputed")) {
+      return <SystemMessage type="dispute"><p className="font-bold">Trade is Disputed. A moderator will join shortly.</p><p>{msg.message}</p></SystemMessage>
+    }
+     if (msg.message.startsWith("Buyer has marked the trade as Paid")) {
+      return <SystemMessage type="success">{msg.message}</SystemMessage>
+    }
+    // Default system message for dispute open, etc.
+    return <SystemMessage type="info">{msg.message}</SystemMessage>
   }
+
 
   return (
     <Card className="flex flex-col h-full">
@@ -261,13 +333,63 @@ export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onI
                 <div className="text-sm font-semibold font-mono flex items-center gap-1.5 justify-end mt-1"><Clock className="h-4 w-4" />{stopwatch}</div>
             </div>
         </div>
-        {trade.status === 'active' && isInstructionsVisible && (
-            <TradeInstructions trade={trade} isBuyer={isBuyer} onDismiss={() => setIsInstructionsVisible(false)} />
-        )}
         <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
       </CardHeader>
-      <CardContent className="flex-grow overflow-hidden"><ScrollArea className="h-full pr-4" ref={scrollAreaRef}>{areMessagesLoading ? <div className="space-y-4"><Skeleton className="h-16" /><Skeleton className="h-12" /></div> : <div className="space-y-4">{displayMessages.map((msg) => {if(msg.senderId === 'system') { return <div key={msg.id} className="py-2">{renderSystemMessageContent(msg)}</div>; } const isCurrentUser = msg.senderId === currentUserId; let senderName: string | React.ReactNode = isCurrentUser ? 'You' : opponent?.userId || 'Opponent'; if (msg.isModerator) senderName = 'Moderator'; const senderAvatar = isCurrentUser ? null : msg.isModerator ? <Avatar className="h-8 w-8"><AvatarFallback className="bg-blue-500"><Shield className="h-4 w-4 text-white" /></AvatarFallback></Avatar> : <Avatar className="h-8 w-8"><AvatarImage src={opponent?.photoURL} /><AvatarFallback>{opponent?.userId?.substring(0, 2)}</AvatarFallback></Avatar>; return (<div key={msg.id} className={cn('flex items-end gap-2', isCurrentUser ? 'justify-end' : 'justify-start')}>{!isCurrentUser && (<div className="self-end">{senderAvatar}</div>)}<div className={cn('max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-1', isCurrentUser && !msg.isModerator && 'bg-primary text-primary-foreground', !isCurrentUser && !msg.isModerator && 'bg-muted', msg.isModerator && 'bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700')}><p className="font-bold text-xs">{senderName}</p>{msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}{msg.mediaUrl && msg.mediaType === 'image' && (<a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer"><Image src={msg.mediaUrl} alt="Uploaded attachment" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" /></a>)}{msg.mediaUrl && (msg.mediaType === 'video' || msg.mediaType === 'audio' || msg.mediaType === undefined) && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">View Attached File</a>}<p className="text-xs mt-1 opacity-70 text-right w-full">{toDate(msg.createdAt)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'sending...'}</p></div></div>);})}</div>}</ScrollArea></CardContent>
-      <CardFooter><form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2"><input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*,video/*,application/pdf" /><Button variant="ghost" size="icon" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isTradeFinished}>{isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}</Button><Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Write a message..." autoComplete="off" disabled={isUploading || isTradeFinished} /><Button type="submit" size="icon" disabled={isUploading || !newMessage.trim() || isTradeFinished}><Send className="h-5 w-5" /><span className="sr-only">Send</span></Button></form></CardFooter>
+      <CardContent className="flex-grow overflow-hidden min-h-[400px]">
+        <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
+          <div className="space-y-4">
+            <TradeInstructions trade={trade} isBuyer={isBuyer} />
+            {areMessagesLoading ? <div className="space-y-4"><Skeleton className="h-16" /><Skeleton className="h-12" /></div> : 
+              <div className="space-y-4">
+                {displayMessages.map((msg) => {
+                  if (msg.senderId === 'system') {
+                    return <div key={msg.id} className="py-2">{renderSystemMessage(msg)}</div>;
+                  }
+                  const isCurrentUser = msg.senderId === currentUserId;
+                  let senderName: string | React.ReactNode = isCurrentUser ? 'You' : opponent?.userId || 'Opponent';
+                  if (msg.isModerator) senderName = 'Moderator';
+                  
+                  const senderAvatar = isCurrentUser 
+                    ? null 
+                    : msg.isModerator 
+                      ? <Avatar className="h-8 w-8"><AvatarFallback className="bg-transparent"><Logo /></AvatarFallback></Avatar> 
+                      : <Avatar className="h-8 w-8"><AvatarImage src={opponent?.photoURL} /><AvatarFallback>{opponent?.userId?.substring(0, 2)}</AvatarFallback></Avatar>;
+
+                  return (
+                    <div key={msg.id} className={cn('flex items-end gap-2', isCurrentUser ? 'justify-end' : 'justify-start')}>
+                      {!isCurrentUser && (<div className="self-end">{senderAvatar}</div>)}
+                      <div className={cn(
+                          'max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-1',
+                          isCurrentUser && !msg.isModerator && 'bg-primary text-primary-foreground',
+                          !isCurrentUser && !msg.isModerator && 'bg-muted',
+                          msg.isModerator && 'bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700'
+                      )}>
+                        <p className="font-bold text-xs">{senderName}</p>
+                        {msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}
+                        {msg.mediaUrl && msg.mediaType === 'image' && (<a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer"><Image src={msg.mediaUrl} alt="Uploaded attachment" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" /></a>)}
+                        {msg.mediaUrl && (msg.mediaType === 'video' || msg.mediaType === 'audio' || msg.mediaType === undefined) && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">View Attached File</a>}
+                        <p className="text-xs mt-1 opacity-70 text-right w-full">{toDate(msg.createdAt)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'sending...'}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            }
+          </div>
+        </ScrollArea>
+      </CardContent>
+      <CardFooter>
+        <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
+            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*,video/*,application/pdf" />
+            <Button variant="ghost" size="icon" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isTradeFinished}>
+              {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+            </Button>
+            <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Write a message..." autoComplete="off" disabled={isUploading || isTradeFinished} />
+            <Button type="submit" size="icon" disabled={isUploading || !newMessage.trim() || isTradeFinished}>
+              <Send className="h-5 w-5" /><span className="sr-only">Send</span>
+            </Button>
+        </form>
+      </CardFooter>
     </Card>
   );
 }

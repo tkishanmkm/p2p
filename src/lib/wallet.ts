@@ -167,6 +167,18 @@ export async function markTradeAsPaid(db: Firestore, tradeId: string) {
             paidAt: new Date().toISOString()
         });
 
+        // Add system message to chat
+        const messagesCollectionRef = collection(db, 'trades', tradeId, 'messages');
+        const systemMessage = {
+          tradeId: tradeId,
+          senderId: 'system',
+          senderUsername: 'System',
+          message: `Buyer has marked the trade as Paid. Kindly check and release the payment only after you have received the funds. Be aware of fake screenshots. Always confirm the payment in your bank account before releasing the crypto.`,
+          isModerator: true,
+          createdAt: new Date().toISOString(),
+        };
+        transaction.set(doc(messagesCollectionRef), systemMessage);
+
         // Notify seller
         const sellerNotificationRef = doc(collection(db, 'users', tradeData.sellerId, 'notifications'));
         transaction.set(sellerNotificationRef, {
@@ -194,7 +206,7 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
     if (!tradeDoc.exists()) throw new Error("Trade not found.");
     
     const trade = tradeDoc.data() as Trade;
-    if (trade.status !== 'paid') throw new Error("Trade has not been marked as paid by the buyer.");
+    if (trade.status !== 'paid' && trade.status !== 'disputed') throw new Error("This trade is not ready for release.");
 
     const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', trade.crypto);
     const sellerWalletDoc = await transaction.get(sellerWalletRef);
@@ -328,7 +340,7 @@ export async function cancelTrade(db: Firestore, tradeId: string) {
     const trade = tradeDoc.data() as Trade;
     
     // Only proceed if the trade is in a cancellable state.
-    if (trade.status !== "active" && trade.status !== "paid") {
+    if (trade.status !== "active" && trade.status !== "paid" && trade.status !== "disputed") {
       // Don't throw, just log and exit. Race conditions can happen.
       console.warn(`Trade ${tradeId} is not in a cancellable state (current: ${trade.status}).`);
       return;

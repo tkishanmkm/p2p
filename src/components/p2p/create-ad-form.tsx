@@ -423,8 +423,8 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
                       className="w-full"
                     >
                       <TabsList className="grid w-full grid-cols-2 pointer-events-none">
-                        <TabsTrigger value="sell" className="data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">Sell</TabsTrigger>
                         <TabsTrigger value="buy" className="data-[state=active]:bg-green-600 data-[state=active]:text-primary-foreground">Buy</TabsTrigger>
+                        <TabsTrigger value="sell" className="data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">Sell</TabsTrigger>
                       </TabsList>
                     </Tabs>
                   </FormControl>

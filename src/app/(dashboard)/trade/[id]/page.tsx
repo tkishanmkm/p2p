@@ -103,10 +103,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   return (
     <div className="flex flex-col h-full w-full">
-        <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg font-semibold md:text-2xl">Trade Room</h1>
-        </div>
-
         {isAdmin && (
             <Card className="mb-4 border-amber-500">
                 <CardHeader className="flex flex-row items-center gap-4 space-y-0">

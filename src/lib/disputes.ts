@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Firestore,
@@ -30,8 +31,8 @@ export async function openDispute(
   if (currentTradeData.status === 'disputed') {
     throw new Error('A dispute is already open for this trade.');
   }
-  if (currentTradeData.status !== 'paid') {
-    throw new Error('Disputes can only be opened on paid trades.');
+  if (currentTradeData.status !== 'paid' && currentTradeData.status !== 'active') {
+    throw new Error('Disputes can only be opened on active or paid trades.');
   }
 
   // 1. Update the trade status to 'disputed'
@@ -52,7 +53,7 @@ export async function openDispute(
     tradeId: trade.id,
     senderId: 'system',
     senderUsername: 'System',
-    message: `${openerUsername} has opened a dispute.\nReason: ${reason}\n\n"${explanation}"`,
+    message: `This trade has been marked as disputed. Please do not release any crypto or make any further payment until the moderator reviews the case. A TradeFlow moderator will join the chat shortly to investigate and provide instructions. Kindly cooperate and share any required proof or details in the chat.\n\nReason from ${openerUsername}: ${reason}\n${explanation}`,
     isModerator: true, // Use this flag to style it as a system/moderator message
     createdAt: new Date().toISOString(),
   };
