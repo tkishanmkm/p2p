@@ -9,7 +9,7 @@ export default function TradePageLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex-1 flex flex-col -m-2 sm:-m-4 lg:-m-6">
+    <div className="flex-1 flex flex-col -m-2 sm:-m-4 lg:-m-6 overflow-hidden">
         {children}
     </div>
   );
