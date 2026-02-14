@@ -171,8 +171,6 @@ export default function PublicProfilePage() {
   }
 
   const isOwnProfile = authUser?.uid === user.id;
-  const countryName = countries.find(c => c.code === user.country)?.name;
-
 
   return (
     <>

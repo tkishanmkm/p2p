@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -21,7 +20,7 @@ import type { TradeChatMessage, Trade, User, P2PAd, TradeStatus } from '@/lib/ty
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { addReceiptToTrade } from '@/lib/wallet';
 import { useToast } from '@/hooks/use-toast';
-import { useCountdown } from '@/hooks/use-countdown';
+import { useStopwatch } from '@/hooks/use-stopwatch';
 import { collection, addDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
@@ -49,89 +48,23 @@ interface TradeChatProps {
   onInfoClick: () => void;
 }
 
-const FinalStatusMessage = ({ trade }: { trade: Trade }) => {
-    if (trade.status === 'active' || trade.status === 'paid' || trade.status === 'disputed') {
-        return null;
-    }
-    
-    if (trade.status === 'released') {
-        return (
-            <Card className="mt-4 border-green-500 bg-green-50 text-center">
-                <CardContent className="pt-6 space-y-4">
-                    <div className="flex flex-col items-center gap-3">
-                        <CheckCircle className="h-10 w-10 text-green-600"/>
-                        <div>
-                            <h3 className="font-bold text-green-800">Congratulations! Trade is completed.</h3>
-                            <p className="text-sm text-green-700">Coin has been released by seller. Please leave feedback.</p>
-                        </div>
-                    </div>
-                    <FeedbackForm trade={trade} />
-                </CardContent>
-            </Card>
-        )
-    }
-
-    if (trade.status === 'cancelled') {
-        return (
-            <Card className="mt-4 border-red-500 bg-red-50 text-center">
-                <CardContent className="pt-6">
-                    <div className="flex flex-col items-center gap-3">
-                        <XCircle className="h-10 w-10 text-red-600"/>
-                        <div>
-                            <h3 className="font-bold text-red-800">Trade is cancelled.</h3>
-                            <p className="text-sm text-red-700">Kindly do not pay. If you have already paid, please reopen the trade.</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        )
-    }
-
-    if (trade.status === 'expired') {
-        return (
-            <Card className="mt-4 border-gray-400 bg-gray-50 text-center">
-                <CardContent className="pt-6">
-                    <div className="flex flex-col items-center gap-3">
-                        <AlertTriangle className="h-10 w-10 text-gray-600"/>
-                        <div>
-                            <h3 className="font-bold text-gray-800">Trade is expired.</h3>
-                            <p className="text-sm text-gray-700">Kindly do not pay. If you have already paid, please open a new trade.</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        )
-    }
-
-    return null;
-}
-
-const CountdownDisplay = ({ targetDate, tradeStatus }: { targetDate: string, tradeStatus: TradeStatus }) => {
-    const { hours, minutes, seconds, isFinished } = useCountdown(targetDate);
-    
-    if (isFinished || !['active', 'paid'].includes(tradeStatus)) {
-        return <div className="text-sm font-semibold font-mono text-muted-foreground">--:--:--</div>;
-    }
-
-    const displayTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  
-    return (
-      <div className="text-sm font-semibold font-mono text-destructive flex items-center gap-1.5">
-        <Clock className="h-4 w-4" />
-        {displayTime}
-      </div>
-    );
-}
-
 const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
     const bgColor = isBuyer ? 'bg-green-600/10' : 'bg-red-600/10';
     const textColor = isBuyer ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300';
     const roleText = isBuyer ? 'Buying' : 'Selling';
-    const paymentMethod = trade.paymentMethod || ad.paymentMethods[0];
+    const paymentMethod = trade.paymentMethod;
 
     return (
-        <div className={cn('p-3 rounded-lg text-sm font-medium text-center', bgColor, textColor)}>
+        <div className={cn('p-3 rounded-lg text-sm font-semibold text-center', bgColor, textColor)}>
             {roleText} {trade.amount} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency} – {paymentMethod}
+        </div>
+    )
+}
+
+const SystemMessage = ({ message }: { message: string }) => {
+    return (
+        <div className="text-xs text-center text-muted-foreground my-2 p-2 bg-secondary rounded-md">
+            {message}
         </div>
     )
 }
@@ -151,6 +84,25 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isTradeFinished = ['released', 'cancelled', 'expired'].includes(trade.status);
+  const stopwatch = useStopwatch(trade.createdAt, isTradeFinished);
+
+  const displayMessages = useMemo(() => {
+    const baseMessages = messages || [];
+    let finalMessage: TradeChatMessage | null = null;
+    
+    if (trade.status === 'released') {
+      finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade completed.', isModerator: true, createdAt: trade.releasedAt || new Date().toISOString() };
+    } else if (trade.status === 'cancelled') {
+      finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is cancelled. Kindly do not pay. If you have already paid, please reopen the trade.', isModerator: true, createdAt: trade.createdAt };
+    } else if (trade.status === 'expired') {
+      finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is expired. Kindly do not pay. If you have already paid, please open a new trade.', isModerator: true, createdAt: trade.expiresAt };
+    }
+    
+    return finalMessage ? [...baseMessages, finalMessage] : baseMessages;
+
+  }, [messages, trade.status, trade.id, trade.releasedAt, trade.createdAt, trade.expiresAt]);
+
   useEffect(() => {
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -158,7 +110,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [messages]);
+  }, [displayMessages]);
 
   const handleSendMessage = async (e: React.FormEvent, mediaUrl?: string, mediaType?: 'image' | 'video' | 'audio') => {
     e.preventDefault();
@@ -236,18 +188,75 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
       activityText = `Seen ${formatDistanceToNow(opponentLastActive)} ago`;
   }
 
+  const renderSystemMessageContent = (msg: TradeChatMessage) => {
+    const baseClasses = "text-center p-3 rounded-lg my-2 ";
+    if (msg.message.includes('completed')) {
+      return (
+        <Card className="border-green-500 bg-green-50 text-center">
+            <CardContent className="pt-6 space-y-4">
+                <div className="flex flex-col items-center gap-3">
+                    <CheckCircle className="h-10 w-10 text-green-600"/>
+                    <div>
+                        <h3 className="font-bold text-green-800">Trade Completed</h3>
+                        <p className="text-sm text-green-700">Congratulations! The coin has been released.</p>
+                    </div>
+                </div>
+                <FeedbackForm trade={trade} />
+            </CardContent>
+        </Card>
+      );
+    }
+    if (msg.message.includes('cancelled')) {
+      return (
+          <Card className="border-red-500 bg-red-50 text-center">
+                <CardContent className="pt-6">
+                    <div className="flex flex-col items-center gap-3">
+                        <XCircle className="h-10 w-10 text-red-600"/>
+                        <div>
+                            <h3 className="font-bold text-red-800">Trade Cancelled</h3>
+                            <p className="text-sm text-red-700">{msg.message}</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+      );
+    }
+    if (msg.message.includes('expired')) {
+       return (
+        <Card className="border-gray-400 bg-gray-50 text-center">
+            <CardContent className="pt-6">
+                <div className="flex flex-col items-center gap-3">
+                    <AlertTriangle className="h-10 w-10 text-gray-600"/>
+                    <div>
+                        <h3 className="font-bold text-gray-800">Trade Expired</h3>
+                        <p className="text-sm text-gray-700">{msg.message}</p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+       )
+    }
+     if (msg.message.includes('opened a dispute')) {
+      return <div className={cn(baseClasses, "bg-amber-100 text-amber-800 border-l-4 border-amber-500")}>{msg.message}</div>
+    }
+    // Default system message
+    return <div className={cn(baseClasses, "bg-blue-100 text-blue-800")}>{msg.message}</div>;
+  }
+
   return (
     <Card className="flex flex-col h-full">
       <CardHeader className="space-y-4">
         <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                    <AvatarImage src={opponent?.photoURL} />
-                    <AvatarFallback><DefaultAvatar /></AvatarFallback>
-                </Avatar>
+                <Link href={`/users/${opponent?.userId || ''}`}>
+                    <Avatar className="h-10 w-10">
+                        <AvatarImage src={opponent?.photoURL} />
+                        <AvatarFallback><DefaultAvatar /></AvatarFallback>
+                    </Avatar>
+                </Link>
                 <div>
                     <div className="flex items-center gap-1.5">
-                        <p className="font-semibold">{opponent?.userId}</p>
+                        <Link href={`/users/${opponent?.userId || ''}`} className="font-semibold hover:underline">{opponent?.userId}</Link>
                         {opponent?.country && <FlagIcon countryCode={opponent.country} />}
                         <Button variant="ghost" size="icon" onClick={onInfoClick} className="h-6 w-6">
                             <Info className="h-4 w-4" />
@@ -267,20 +276,27 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                     <ThumbsDown className="h-4 w-4 text-red-500" />
                     <span>{opponent?.negativeFeedback || 0}</span>
                 </div>
-                <CountdownDisplay targetDate={trade.expiresAt} tradeStatus={trade.status} />
+                 <div className="text-sm font-semibold font-mono flex items-center gap-1.5">
+                    <Clock className="h-4 w-4" />
+                    {stopwatch}
+                </div>
             </div>
         </div>
         <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
-        <ScrollArea className="h-[40vh] lg:h-full pr-4" ref={scrollAreaRef}>
+        <ScrollArea className="h-[50vh] lg:h-full pr-4" ref={scrollAreaRef}>
           {areMessagesLoading && (
             <div className="space-y-4">
               <Skeleton className="h-16" /><Skeleton className="h-12" />
             </div>
           )}
           <div className="space-y-4">
-            {messages?.map((msg) => {
+            {displayMessages.map((msg) => {
+              if(msg.senderId === 'system') {
+                  return <div key={msg.id}>{renderSystemMessageContent(msg)}</div>;
+              }
+                
               const isCurrentUser = msg.senderId === currentUserId;
               const isBlocked = checkMessageForBlockedWords(msg.message);
 
@@ -291,17 +307,18 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                 : trade.seller.username;
 
               if (msg.isModerator) senderName = 'Moderator';
-
-              const senderAvatar = (
+              
+              const senderAvatar = msg.isModerator ? (
+                  <Avatar className="h-8 w-8"><AvatarFallback className="bg-blue-500"><Shield className="h-4 w-4 text-white" /></AvatarFallback></Avatar>
+              ) : (
                 <Avatar className="h-8 w-8"><AvatarImage src={opponent?.photoURL} /><AvatarFallback>{msg.senderUsername.substring(0, 2)}</AvatarFallback></Avatar>
               );
 
               return (
                 <div key={msg.id} className={cn('flex items-end gap-2', isCurrentUser ? 'justify-end' : 'justify-start')}>
-                  {!isCurrentUser && !msg.isModerator && (
-                    <Link href={`/users/${msg.senderUsername}`} className="self-end">{senderAvatar}</Link>
+                  {!isCurrentUser && (
+                    <div className="self-end">{senderAvatar}</div>
                   )}
-                  {!isCurrentUser && msg.isModerator && <div className="self-end">{senderAvatar}</div>}
                   <div
                     className={cn(
                       'max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-2',
@@ -311,12 +328,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      {msg.isModerator && <Shield className="h-4 w-4 text-blue-600" />}
-                      <p className="font-bold">
-                        {!isCurrentUser && !msg.isModerator ? (
-                          <Link href={`/users/${msg.senderUsername}`} className="hover:underline">{senderName}</Link>
-                        ) : ( senderName )}
-                      </p>
+                       <p className="font-bold text-xs">{senderName}</p>
                     </div>
 
                     {isBlocked ? (
@@ -335,7 +347,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                             <Image src={msg.mediaUrl} alt="Uploaded attachment" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" />
                           </a>
                         )}
-                         {msg.mediaUrl && (msg.mediaType === 'video' || msg.mediaType === 'audio') && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">View Attached File</a>}
+                         {msg.mediaUrl && (msg.mediaType === 'video' || msg.mediaType === 'audio' || msg.mediaType === undefined) && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">View Attached File</a>}
                       </>
                     )}
                     <p className="text-xs mt-1 opacity-70 text-right w-full">
@@ -345,7 +357,6 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                 </div>
               );
             })}
-             <FinalStatusMessage trade={trade} />
           </div>
         </ScrollArea>
       </CardContent>
@@ -356,7 +367,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                 ref={fileInputRef}
                 className="hidden"
                 onChange={handleFileChange}
-                accept="image/*,video/*,audio/*"
+                accept="image/*,video/*,application/pdf"
             />
             <Button
                 variant="ghost"

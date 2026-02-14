@@ -12,12 +12,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Trade } from "@/lib/types";
+import type { Trade, TradeStatus } from "@/lib/types";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { toDate, cn } from "@/lib/utils";
 import { FlagIcon } from "../ui/flag-icon";
-import { RefreshCw, AlertCircle } from "lucide-react";
+import { RefreshCw, AlertCircle, Clock } from "lucide-react";
 import { statusColors } from "@/lib/status-colors";
 import {
   AlertDialog,
@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from '@/lib/wallet';
 import { OpenDisputeDialog } from '@/components/trade/open-dispute-dialog';
-
+import { useCountdown } from '@/hooks/use-countdown';
 
 interface TradeDetailsProps {
   trade: Trade;
@@ -55,6 +55,22 @@ function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { l
       {valueContent}
     </div>
   )
+}
+
+const CountdownDisplay = ({ targetDate, tradeStatus }: { targetDate: string, tradeStatus: TradeStatus }) => {
+    const { hours, minutes, seconds, isFinished } = useCountdown(targetDate);
+    
+    if (isFinished || !['active', 'paid'].includes(tradeStatus)) {
+        return <div className="text-sm font-semibold font-mono text-muted-foreground">--:--:--</div>;
+    }
+
+    const displayTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  
+    return (
+      <div className="text-sm font-semibold font-mono text-destructive flex items-center gap-1.5">
+        {displayTime}
+      </div>
+    );
 }
 
 function ParticipantRow({ label, user }: { label: string, user?: { username: string; country?: string } }) {
@@ -220,6 +236,15 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
                     />
                 </div>
 
+                 <div className="space-y-2">
+                    <h4 className="font-semibold">Time Remaining</h4>
+                    <div className="flex items-center gap-2 text-sm">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <CountdownDisplay targetDate={trade.expiresAt} tradeStatus={trade.status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Time for buyer to make payment.</p>
+                </div>
+
                 <div className="space-y-2">
                     <h4 className="font-semibold">Participants & Payment</h4>
                     <ParticipantRow label="Buyer" user={trade?.buyer} />
@@ -232,7 +257,6 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: TradeDetai
                     <DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString() ?? 'N/A'} />
                     {trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}
                     {trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}
-                    {trade.status === 'active' && <DetailRow label="Expires At" value={toDate(trade?.expiresAt)?.toLocaleString() ?? 'N/A'} valueClass="text-destructive" />}
                 </div>
 
                 {sellerTerms && <div className="space-y-2">
