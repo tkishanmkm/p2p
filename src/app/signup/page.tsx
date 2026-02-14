@@ -122,13 +122,15 @@ function SignupFormComponent() {
       // 4. Create Firestore user document
       const userDocRef = doc(firestore, "users", newUser.uid);
       const dob = new Date(parseInt(values.year), parseInt(values.month) - 1, parseInt(values.day));
+      const randomIpCountry = countries[Math.floor(Math.random() * countries.length)].code;
+
       const newUserDoc = {
           id: newUser.uid,
           userId: values.userId,
           fullName: values.fullName,
           dob: dob.toISOString().split('T')[0], // YYYY-MM-DD
           country: values.country,
-          ipBasedCountry: values.country, // Simulate IP-based country
+          ipBasedCountry: randomIpCountry, // Simulate IP-based country with a random one
           isBanned: false,
           isOnHold: false,
           tradeVolume: 0,
