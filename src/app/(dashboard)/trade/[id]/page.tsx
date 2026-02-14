@@ -41,7 +41,7 @@ import { Label } from "@/components/ui/label";
 import { DefaultAvatar } from '@/components/icons';
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Shield, MessageSquare, ListDetails, RefreshCw, Clock, Send, Plus, Info, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, Flag, Calendar, ShieldBan, Users } from 'lucide-react';
+import { AlertCircle, Shield, MessageSquare, ListDetails, RefreshCw, Clock, Send, Plus, Info, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, Flag, Calendar, ShieldBan, Users, AlertTriangle } from 'lucide-react';
 
 
 // --- Sub-component: FeedbackForm ---
