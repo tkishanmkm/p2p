@@ -19,6 +19,7 @@ import {
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser } from './types';
 import { add } from 'date-fns';
 import type { User as AuthUser } from 'firebase/auth';
+import { toDate } from '@/lib/utils';
 
 function generateId(prefix: string, length: number) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -287,18 +288,38 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     // Update user stats
     if (buyerUserDoc.exists()) {
         const buyerData = buyerUserDoc.data() as AppUser;
+        const oldTotalTrades = buyerData.completedTrades || 0;
+        let newAvgPaymentTime = buyerData.avgPaymentTime || 0;
+        
+        if (trade.paidAt && trade.createdAt) {
+            const paymentDuration = (new Date(trade.paidAt).getTime() - new Date(trade.createdAt).getTime()) / (1000 * 60); // in minutes
+            if (paymentDuration > 0) {
+                 newAvgPaymentTime = ((newAvgPaymentTime * oldTotalTrades) + paymentDuration) / (oldTotalTrades + 1);
+            }
+        }
         transaction.update(buyerUserRef, {
-            completedTrades: (buyerData.completedTrades || 0) + 1,
+            completedTrades: oldTotalTrades + 1,
             tradeVolume: (buyerData.tradeVolume || 0) + trade.fiatAmount,
             lastTradeAt: new Date().toISOString(),
+            avgPaymentTime: newAvgPaymentTime,
         });
     }
      if (sellerUserDoc.exists()) {
         const sellerData = sellerUserDoc.data() as AppUser;
+        const oldTotalTrades = sellerData.completedTrades || 0;
+        let newAvgReleaseTime = sellerData.avgReleaseTime || 0;
+
+        if(trade.releasedAt && trade.paidAt) {
+            const releaseDuration = (new Date(trade.releasedAt).getTime() - new Date(trade.paidAt).getTime()) / (1000 * 60); // in minutes
+            if(releaseDuration > 0) {
+                newAvgReleaseTime = ((newAvgReleaseTime * oldTotalTrades) + releaseDuration) / (oldTotalTrades + 1);
+            }
+        }
         transaction.update(sellerUserRef, {
-            completedTrades: (sellerData.completedTrades || 0) + 1,
+            completedTrades: oldTotalTrades + 1,
             tradeVolume: (sellerData.tradeVolume || 0) + trade.fiatAmount,
             lastTradeAt: new Date().toISOString(),
+            avgReleaseTime: newAvgReleaseTime
         });
     }
 
@@ -315,7 +336,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     transaction.set(sellerNotificationRef, {
         userId: trade.sellerId,
         message: `Trade ${trade.tradeId} is complete. Funds have been claimed by the buyer.`,
-        link: `/trade/${tradeId}`,
+        link: `/trade/${trade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),
     });

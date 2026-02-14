@@ -100,9 +100,9 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="grid h-full grid-rows-[auto_1fr] gap-4 lg:grid-cols-3 lg:grid-rows-1">
         {isAdmin && (
-            <Card className="mb-4 border-amber-500 shrink-0">
+            <Card className="border-amber-500 lg:col-span-3">
                 <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                     <Shield className="h-6 w-6 text-amber-500" />
                     <div className="grid gap-1">
@@ -116,20 +116,20 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             </Card>
         )}
 
-        <div className="grid grid-rows-[auto_1fr] lg:grid-rows-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
-            <div className="lg:col-span-1 overflow-y-auto pr-2 space-y-6">
+        <div className="overflow-y-auto lg:col-span-1">
+            <div className="space-y-6">
                 <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
             </div>
-            
-            <div className="lg:col-span-2 flex flex-col min-h-0">
-                <TradeChat 
-                    currentUserId={user.uid} 
-                    trade={trade} 
-                    opponent={opponentProfile} 
-                    isAdmin={isAdmin} 
-                    onInfoClick={() => setIsInfoPanelOpen(true)}
-                />
-            </div>
+        </div>
+        
+        <div className="flex flex-col lg:col-span-2 min-h-0">
+            <TradeChat 
+                currentUserId={user.uid} 
+                trade={trade} 
+                opponent={opponentProfile} 
+                isAdmin={isAdmin} 
+                onInfoClick={() => setIsInfoPanelOpen(true)}
+            />
         </div>
         
         <CounterpartyInfoPanel 
@@ -144,7 +144,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
 export default function TradePage({ params }: { params: { id: string } }) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="h-full">
         <ErrorBoundary>
             <TradePageContent tradeId={params.id} />
         </ErrorBoundary>
