@@ -4,6 +4,7 @@
 import { DashboardHeader } from "@/components/dashboard/header";
 import { Footer } from "@/components/layout/footer";
 import { usePathname } from 'next/navigation';
+import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
@@ -14,9 +15,16 @@ export default function DashboardLayout({
   const isTradePage = pathname.startsWith('/trade/');
 
   return (
-    <div className="flex flex-col min-h-screen w-full">
+    <div className={cn(
+        "flex flex-col w-full",
+        isTradePage ? "h-screen" : "min-h-screen"
+      )}
+    >
       <DashboardHeader />
-      <main className="flex flex-1 flex-col gap-4 p-2 sm:p-4 lg:p-6 bg-secondary/30">
+      <main className={cn(
+        "flex-1 flex flex-col bg-secondary/30",
+        isTradePage ? "overflow-hidden" : "gap-4 p-2 sm:p-4 lg:p-6"
+      )}>
         {children}
       </main>
       {!isTradePage && <Footer />}
