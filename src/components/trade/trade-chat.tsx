@@ -167,11 +167,10 @@ function SystemMessage({ type, title, children, timestamp }: { type: 'dispute' |
 // --- Sub-component: TradeSummaryBar ---
 const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
     const bgColor = isBuyer 
-        ? 'bg-green-50 dark:bg-green-900/30' 
-        : 'bg-red-50 dark:bg-red-900/30';
-    const textColor = isBuyer 
-        ? 'text-green-800 dark:text-green-300' 
-        : 'text-red-700 dark:text-red-400'; // Darkened red
+        ? 'bg-green-600' 
+        : 'bg-destructive';
+    const textColor = 'text-primary-foreground';
+    
     const roleText = isBuyer ? 'Buying' : 'Selling';
     return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</div>);
 }
@@ -323,7 +322,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
         </div>
         <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
       </CardHeader>
-      <CardContent className="flex-grow overflow-hidden min-h-[400px] md:min-h-[500px]">
+      <CardContent className="flex-grow overflow-hidden min-h-[500px]">
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             <TradeInstructions trade={trade} isBuyer={isBuyer} />

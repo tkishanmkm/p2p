@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { TradeDetails } from '@/components/trade/trade-details';
 import { TradeChat } from '@/components/trade/trade-chat';
 import { Button } from '@/components/ui/button';
