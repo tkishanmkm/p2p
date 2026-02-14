@@ -103,7 +103,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   return (
     <div className="flex flex-col h-full w-full">
         {isAdmin && (
-            <Card className="mb-4 border-amber-500">
+            <Card className="mb-4 border-amber-500 shrink-0">
                 <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                     <Shield className="h-6 w-6 text-amber-500" />
                     <div className="grid gap-1">
@@ -117,12 +117,12 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow">
-            <div className={cn("lg:col-span-1 space-y-6", "block lg:block")}>
+        <div className="flex flex-col lg:flex-row flex-1 gap-8 min-h-0">
+            <div className="lg:w-1/3 lg:max-w-sm shrink-0 space-y-6 overflow-y-auto">
                 <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
             </div>
             
-            <div className={cn("lg:col-span-2 flex-grow flex flex-col", "flex")}>
+            <div className="flex-1 flex flex-col min-h-0">
                 <TradeChat 
                     currentUserId={user.uid} 
                     trade={trade} 
