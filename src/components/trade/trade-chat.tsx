@@ -1,0 +1,234 @@
+
+'use client';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { formatDistanceToNow } from 'date-fns';
+
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { doc, collection, addDoc, query, orderBy } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { useAdminStatus } from '@/hooks/use-admin-status';
+import { useStopwatch } from '@/hooks/use-stopwatch';
+
+import { addReceiptToTrade } from '@/lib/wallet';
+import { cn, toDate } from '@/lib/utils';
+import type { Trade, User, TradeChatMessage } from '@/lib/types';
+
+import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Form, FormControl, FormItem, FormLabel } from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
+
+import { DefaultAvatar } from '@/components/icons';
+import { FlagIcon } from '@/components/ui/flag-icon';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Shield, Clock, Send, Plus, Info, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { claimFundsForTrade } from '@/lib/wallet';
+
+
+// --- Sub-component: FeedbackForm ---
+function FeedbackForm({ trade }: { trade: Trade }) {
+    const { firestore, user } = useFirebase();
+    const { toast } = useToast();
+    const [rating, setRating] = useState<'positive' | 'negative' | null>(null);
+    const [comment, setComment] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!rating || !comment.trim() || !firestore || !user || !user.displayName) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please select a rating and write a comment.' });
+            return;
+        }
+
+        setIsSubmitting(true);
+        const opponentId = user.uid === trade.buyerId ? trade.sellerId : trade.buyerId;
+
+        try {
+            const feedbackRef = collection(firestore, 'trades', trade.id, 'feedback');
+            await addDoc(feedbackRef, {
+                tradeId: trade.id,
+                fromUser: user.uid,
+                fromUsername: user.displayName,
+                toUser: opponentId,
+                rating,
+                comment,
+                createdAt: new Date().toISOString(),
+            });
+
+            // Claim funds after leaving feedback
+            if (user.uid === trade.buyerId) {
+                await claimFundsForTrade(firestore, trade.id, user.uid);
+            }
+
+            toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback. ${error.message}` });
+        } finally {
+             setIsSubmitting(false);
+        }
+    };
+    
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4 border-t">
+            <h4 className="font-semibold text-center text-sm text-foreground">Leave Feedback</h4>
+            <RadioGroup onValueChange={(v) => setRating(v as any)} value={rating || ''} className="flex gap-4 justify-center">
+                <FormItem>
+                    <FormControl>
+                        <RadioGroupItem value="positive" id="rating-positive" className="sr-only" />
+                    </FormControl>
+                    <FormLabel htmlFor="rating-positive" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-green-500 has-[:checked]:bg-green-100 dark:has-[:checked]:bg-green-900/30">
+                        <ThumbsUp className="h-5 w-5 text-green-600" /> Positive
+                    </FormLabel>
+                </FormItem>
+                <FormItem>
+                     <FormControl>
+                        <RadioGroupItem value="negative" id="rating-negative" className="sr-only" />
+                    </FormControl>
+                    <FormLabel htmlFor="rating-negative" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-red-500 has-[:checked]:bg-red-100 dark:has-[:checked]:bg-red-900/30">
+                        <ThumbsDown className="h-5 w-5 text-red-600" /> Negative
+                    </FormLabel>
+                </FormItem>
+            </RadioGroup>
+            <Textarea 
+                placeholder="Leave a comment about your trading experience..." 
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+            />
+            <Button type="submit" size="sm" className="w-full" disabled={isSubmitting || !rating || !comment}>
+                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Submit Feedback
+            </Button>
+        </form>
+    );
+}
+
+// --- Sub-component: TradeChat ---
+const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
+    const bgColor = isBuyer ? 'bg-green-600/10' : 'bg-red-600/10';
+    const textColor = isBuyer ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300';
+    const roleText = isBuyer ? 'Buying' : 'Selling';
+    const paymentMethod = trade.paymentMethod;
+    return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency} – {paymentMethod}</div>);
+}
+
+export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; onInfoClick: () => void; }) {
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'trades', trade.id, 'messages'), orderBy('createdAt', 'asc')) : null), [firestore, trade.id]);
+  const { data: messages, isLoading: areMessagesLoading } = useCollection<TradeChatMessage>(messagesQuery);
+  const [newMessage, setNewMessage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isTradeFinished = ['released', 'cancelled', 'expired', 'disputed'].includes(trade.status);
+  const stopwatch = useStopwatch(trade.createdAt, isTradeFinished);
+
+  const displayMessages = useMemo(() => {
+    const baseMessages = messages || [];
+    let finalMessage: TradeChatMessage | null = null;
+    if (trade.status === 'released' && trade.claimedByBuyer) {
+      finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade Completed', isModerator: true, createdAt: trade.releasedAt || new Date().toISOString() };
+    } else if (trade.status === 'cancelled') {
+      finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is cancelled.\nKindly do not pay. If you have already paid, please reopen the trade.', isModerator: true, createdAt: new Date().toISOString() };
+    } else if (trade.status === 'expired') {
+       finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is expired.\nKindly do not pay. If you have already paid, please open a new trade.', isModerator: true, createdAt: trade.expiresAt };
+    } else if (trade.status === 'disputed') {
+       finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is disputed. A moderator will join the chat shortly.', isModerator: true, createdAt: new Date().toISOString() };
+    }
+    return finalMessage ? [...baseMessages, finalMessage] : baseMessages;
+  }, [messages, trade.status, trade.id, trade.releasedAt, trade.createdAt, trade.expiresAt, trade.claimedByBuyer]);
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) { viewport.scrollTop = viewport.scrollHeight; }
+    }
+  }, [displayMessages]);
+
+  const handleSendMessage = async (e: React.FormEvent, mediaUrl?: string, mediaType?: 'image' | 'video' | 'audio') => {
+    e.preventDefault();
+    if ((!newMessage.trim() && !mediaUrl) || !firestore || !user) return;
+    const blockedWords = ['telegram', 'whatsapp', 'phone', 'contact'];
+    if (blockedWords.some(word => newMessage.toLowerCase().includes(word))) {
+      toast({ variant: 'destructive', title: 'Message Blocked', description: 'Please do not share contact information.' });
+      return;
+    }
+    const messageToSend = newMessage;
+    setNewMessage('');
+    try {
+      await addDoc(collection(firestore, 'trades', trade.id, 'messages'), { tradeId: trade.id, senderId: currentUserId, senderUsername: user.displayName || 'User', message: messageToSend, isModerator: isAdmin, createdAt: new Date().toISOString(), mediaUrl: mediaUrl || null, mediaType: mediaType || 'none' });
+      if (mediaUrl && trade.status === 'active') {
+        await addReceiptToTrade(firestore, trade.id, mediaUrl);
+        toast({ title: 'Receipt Uploaded', description: 'The seller has been notified.' });
+      }
+    } catch (error: any) { toast({ variant: 'destructive', title: 'Send Failed', description: error.message }); }
+  };
+  
+   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        let mediaType: 'image' | 'video' | 'audio' = 'image';
+        if (file.type.startsWith('video/')) mediaType = 'video';
+        if (file.type.startsWith('audio/')) mediaType = 'audio';
+        handleSendMessage(new Event('submit'), result, mediaType).finally(() => { setIsUploading(false); if(fileInputRef.current) fileInputRef.current.value = ""; });
+      } else { setIsUploading(false); }
+    };
+    reader.onerror = () => { setIsUploading(false); toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the selected file.' }); };
+    reader.readAsDataURL(file);
+  };
+
+  const isBuyer = currentUserId === trade.buyerId;
+  const opponentLastActive = opponent?.lastActive ? toDate(opponent.lastActive) : null;
+  let activityText = 'Offline';
+  if (opponentLastActive) { activityText = `Seen ${formatDistanceToNow(opponentLastActive)} ago`; }
+
+  const renderSystemMessageContent = (msg: TradeChatMessage) => {
+    if (msg.message === 'Trade Completed') { return (<Card className="border-green-500 bg-green-50 text-center dark:bg-green-900/20"><CardContent className="pt-6 space-y-4"><div className="flex flex-col items-center gap-3"><CheckCircle className="h-10 w-10 text-green-600"/><div><h3 className="font-bold text-green-800 dark:text-green-300">Trade Completed</h3><p className="text-sm text-green-700 dark:text-green-400">Congratulations! The coin has been released.</p></div></div><FeedbackForm trade={trade} /></CardContent></Card>); }
+    if (msg.message.startsWith('Trade is cancelled')) { return (<Alert variant="destructive" className="text-center"><XCircle className="h-4 w-4" /><AlertTitle>Trade Cancelled</AlertTitle><AlertDescription>{msg.message.replace('Trade is cancelled.\n','')}</AlertDescription></Alert>); }
+    if (msg.message.startsWith('Trade is expired')) { return (<Alert variant="default" className="text-center border-orange-500 text-orange-800 dark:text-orange-300 dark:border-orange-500/50 dark:bg-orange-900/20"><AlertTriangle className="h-4 w-4" /><AlertTitle>Trade Expired</AlertTitle><AlertDescription>{msg.message.replace('Trade is expired.\n','')}</AlertDescription></Alert>); }
+    return <div className="text-center text-xs text-muted-foreground p-2 rounded-md bg-secondary">{msg.message}</div>;
+  }
+
+  return (
+    <Card className="flex flex-col h-full">
+      <CardHeader className="space-y-4">
+        <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+                <Link href={`/users/${opponent?.userId || ''}`}>
+                    <Avatar className="h-10 w-10"><AvatarImage src={opponent?.photoURL} /><AvatarFallback><DefaultAvatar /></AvatarFallback></Avatar>
+                </Link>
+                <div>
+                    <div className="flex items-center gap-1.5">
+                        <Link href={`/users/${opponent?.userId || ''}`} className="font-semibold hover:underline">{opponent?.userId}</Link>
+                        {opponent?.country && <FlagIcon countryCode={opponent.country} />}
+                        <Button variant="ghost" size="icon" onClick={onInfoClick} className="h-6 w-6"><Info className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2"><span>{activityText}</span></div>
+                </div>
+            </div>
+            <div className="text-right">
+                <div className="flex items-center gap-4 text-sm"><div className="flex items-center gap-1.5"><ThumbsUp className="h-4 w-4 text-green-500" /><span>{opponent?.positiveFeedback || 0}</span></div><div className="flex items-center gap-1.5"><ThumbsDown className="h-4 w-4 text-red-500" /><span>{opponent?.negativeFeedback || 0}</span></div></div>
+                <div className="text-sm font-semibold font-mono flex items-center gap-1.5 justify-end mt-1"><Clock className="h-4 w-4" />{stopwatch}</div>
+            </div>
+        </div>
+        <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
+      </CardHeader>
+      <CardContent className="flex-grow overflow-hidden"><ScrollArea className="h-full pr-4" ref={scrollAreaRef}>{areMessagesLoading ? <div className="space-y-4"><Skeleton className="h-16" /><Skeleton className="h-12" /></div> : <div className="space-y-4">{displayMessages.map((msg) => {if(msg.senderId === 'system') { return <div key={msg.id} className="py-2">{renderSystemMessageContent(msg)}</div>; } const isCurrentUser = msg.senderId === currentUserId; let senderName: string | React.ReactNode = isCurrentUser ? 'You' : opponent?.userId || 'Opponent'; if (msg.isModerator) senderName = 'Moderator'; const senderAvatar = isCurrentUser ? null : msg.isModerator ? <Avatar className="h-8 w-8"><AvatarFallback className="bg-blue-500"><Shield className="h-4 w-4 text-white" /></AvatarFallback></Avatar> : <Avatar className="h-8 w-8"><AvatarImage src={opponent?.photoURL} /><AvatarFallback>{opponent?.userId?.substring(0, 2)}</AvatarFallback></Avatar>; return (<div key={msg.id} className={cn('flex items-end gap-2', isCurrentUser ? 'justify-end' : 'justify-start')}>{!isCurrentUser && (<div className="self-end">{senderAvatar}</div>)}<div className={cn('max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-1', isCurrentUser && !msg.isModerator && 'bg-primary text-primary-foreground', !isCurrentUser && !msg.isModerator && 'bg-muted', msg.isModerator && 'bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700')}><p className="font-bold text-xs">{senderName}</p>{msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}{msg.mediaUrl && msg.mediaType === 'image' && (<a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer"><Image src={msg.mediaUrl} alt="Uploaded attachment" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" /></a>)}{msg.mediaUrl && (msg.mediaType === 'video' || msg.mediaType === 'audio' || msg.mediaType === undefined) && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">View Attached File</a>}<p className="text-xs mt-1 opacity-70 text-right w-full">{toDate(msg.createdAt)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'sending...'}</p></div></div>);})}</div>}</ScrollArea></CardContent>
+      <CardFooter><form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2"><input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*,video/*,application/pdf" /><Button variant="ghost" size="icon" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isTradeFinished}>{isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}</Button><Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Write a message..." autoComplete="off" disabled={isUploading || isTradeFinished} /><Button type="submit" size="icon" disabled={isUploading || !newMessage.trim() || isTradeFinished}><Send className="h-5 w-5" /><span className="sr-only">Send</span></Button></form></CardFooter>
+    </Card>
+  );
+}
