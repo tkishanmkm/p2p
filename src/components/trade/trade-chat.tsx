@@ -127,10 +127,11 @@ const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean })
     const bgColor = isBuyer ? 'bg-green-600/10' : 'bg-red-600/10';
     const textColor = isBuyer ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300';
     const roleText = isBuyer ? 'Buying' : 'Selling';
+    const paymentMethod = trade.paymentMethod || ad.paymentMethods[0];
 
     return (
         <div className={cn('p-3 rounded-lg text-sm font-medium text-center', bgColor, textColor)}>
-            {roleText} {trade.amount} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency} – {trade.paymentMethod}
+            {roleText} {trade.amount} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency} – {paymentMethod}
         </div>
     )
 }
@@ -306,11 +307,11 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                       'max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-2',
                       isCurrentUser && !msg.isModerator && 'bg-primary text-primary-foreground',
                       !isCurrentUser && !msg.isModerator && 'bg-muted',
-                      msg.isModerator && 'bg-amber-100 text-amber-900 border border-amber-200'
+                      msg.isModerator && 'bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700'
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      {msg.isModerator && <Shield className="h-4 w-4 text-amber-600" />}
+                      {msg.isModerator && <Shield className="h-4 w-4 text-blue-600" />}
                       <p className="font-bold">
                         {!isCurrentUser && !msg.isModerator ? (
                           <Link href={`/users/${msg.senderUsername}`} className="hover:underline">{senderName}</Link>
