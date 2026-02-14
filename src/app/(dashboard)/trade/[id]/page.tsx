@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -40,7 +41,7 @@ import { Label } from "@/components/ui/label";
 import { DefaultAvatar } from '@/components/icons';
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Shield, MessageSquare, ListDetails, RefreshCw, Clock, Send, Plus, Info, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, Flag, Calendar, ShieldBan, Users, AlertTriangle } from 'lucide-react';
+import { AlertCircle, Shield, MessageSquare, ListDetails, RefreshCw, Clock, Send, Plus, Info, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, Flag, Calendar, ShieldBan, Users } from 'lucide-react';
 
 
 // --- Sub-component: FeedbackForm ---
@@ -291,7 +292,7 @@ function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { c
     if (trade.status === 'released' && trade.claimedByBuyer) {
       finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade Completed', isModerator: true, createdAt: trade.releasedAt || new Date().toISOString() };
     } else if (trade.status === 'cancelled') {
-      finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is cancelled.\nKindly do not pay. If you have already paid, please reopen the trade.', isModerator: true, createdAt: trade.createdAt };
+      finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is cancelled.\nKindly do not pay. If you have already paid, please reopen the trade.', isModerator: true, createdAt: new Date().toISOString() };
     } else if (trade.status === 'expired') {
       finalMessage = { id: 'system-final', tradeId: trade.id, senderId: 'system', senderUsername: 'System', message: 'Trade is expired.\nKindly do not pay. If you have already paid, please open a new trade.', isModerator: true, createdAt: trade.expiresAt };
     } else if (trade.status === 'disputed') {
@@ -381,7 +382,7 @@ function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { c
         </div>
         <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
       </CardHeader>
-      <CardContent className="flex-grow overflow-hidden"><ScrollArea className="h-[50vh] lg:h-full pr-4" ref={scrollAreaRef}>{areMessagesLoading ? <div className="space-y-4"><Skeleton className="h-16" /><Skeleton className="h-12" /></div> : <div className="space-y-4">{displayMessages.map((msg) => {if(msg.senderId === 'system') { return <div key={msg.id} className="py-2">{renderSystemMessageContent(msg)}</div>; } const isCurrentUser = msg.senderId === currentUserId; let senderName: string | React.ReactNode = isCurrentUser ? 'You' : opponent?.userId || 'Opponent'; if (msg.isModerator) senderName = 'Moderator'; const senderAvatar = isCurrentUser ? null : msg.isModerator ? <Avatar className="h-8 w-8"><AvatarFallback className="bg-blue-500"><Shield className="h-4 w-4 text-white" /></AvatarFallback></Avatar> : <Avatar className="h-8 w-8"><AvatarImage src={opponent?.photoURL} /><AvatarFallback>{opponent?.userId?.substring(0, 2)}</AvatarFallback></Avatar>; return (<div key={msg.id} className={cn('flex items-end gap-2', isCurrentUser ? 'justify-end' : 'justify-start')}>{!isCurrentUser && (<div className="self-end">{senderAvatar}</div>)}<div className={cn('max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-1', isCurrentUser && !msg.isModerator && 'bg-primary text-primary-foreground', !isCurrentUser && !msg.isModerator && 'bg-muted', msg.isModerator && 'bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700')}><p className="font-bold text-xs">{senderName}</p>{msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}{msg.mediaUrl && msg.mediaType === 'image' && (<a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer"><Image src={msg.mediaUrl} alt="Uploaded attachment" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" /></a>)}{msg.mediaUrl && (msg.mediaType === 'video' || msg.mediaType === 'audio' || msg.mediaType === undefined) && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">View Attached File</a>}<p className="text-xs mt-1 opacity-70 text-right w-full">{toDate(msg.createdAt)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'sending...'}</p></div></div>);})}</div>}</ScrollArea></CardContent>
+      <CardContent className="flex-grow overflow-hidden"><ScrollArea className="h-full pr-4" ref={scrollAreaRef}>{areMessagesLoading ? <div className="space-y-4"><Skeleton className="h-16" /><Skeleton className="h-12" /></div> : <div className="space-y-4">{displayMessages.map((msg) => {if(msg.senderId === 'system') { return <div key={msg.id} className="py-2">{renderSystemMessageContent(msg)}</div>; } const isCurrentUser = msg.senderId === currentUserId; let senderName: string | React.ReactNode = isCurrentUser ? 'You' : opponent?.userId || 'Opponent'; if (msg.isModerator) senderName = 'Moderator'; const senderAvatar = isCurrentUser ? null : msg.isModerator ? <Avatar className="h-8 w-8"><AvatarFallback className="bg-blue-500"><Shield className="h-4 w-4 text-white" /></AvatarFallback></Avatar> : <Avatar className="h-8 w-8"><AvatarImage src={opponent?.photoURL} /><AvatarFallback>{opponent?.userId?.substring(0, 2)}</AvatarFallback></Avatar>; return (<div key={msg.id} className={cn('flex items-end gap-2', isCurrentUser ? 'justify-end' : 'justify-start')}>{!isCurrentUser && (<div className="self-end">{senderAvatar}</div>)}<div className={cn('max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-1', isCurrentUser && !msg.isModerator && 'bg-primary text-primary-foreground', !isCurrentUser && !msg.isModerator && 'bg-muted', msg.isModerator && 'bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700')}><p className="font-bold text-xs">{senderName}</p>{msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}{msg.mediaUrl && msg.mediaType === 'image' && (<a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer"><Image src={msg.mediaUrl} alt="Uploaded attachment" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" /></a>)}{msg.mediaUrl && (msg.mediaType === 'video' || msg.mediaType === 'audio' || msg.mediaType === undefined) && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">View Attached File</a>}<p className="text-xs mt-1 opacity-70 text-right w-full">{toDate(msg.createdAt)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'sending...'}</p></div></div>);})}</div>}</ScrollArea></CardContent>
       <CardFooter><form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2"><input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*,video/*,application/pdf" /><Button variant="ghost" size="icon" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isTradeFinished}>{isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}</Button><Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Write a message..." autoComplete="off" disabled={isUploading || isTradeFinished} /><Button type="submit" size="icon" disabled={isUploading || !newMessage.trim() || isTradeFinished}><Send className="h-5 w-5" /><span className="sr-only">Send</span></Button></form></CardFooter>
     </Card>
   );
@@ -423,11 +424,9 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
 
-  // Memoized Firestore references
   const tradeRef = useMemoFirebase(() => (firestore && tradeId ? doc(firestore, "trades", tradeId) : null), [firestore, tradeId]);
   const { data: trade, isLoading, error } = useDoc<Trade>(tradeRef);
 
-  // Stabilize dependencies by extracting IDs from the trade object
   const adId = trade?.adId;
   const buyerId = trade?.buyerId;
   const sellerId = trade?.sellerId;
@@ -441,10 +440,10 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const sellerRef = useMemoFirebase(() => (firestore && sellerId ? doc(firestore, 'users', sellerId) : null), [firestore, sellerId]);
   const { data: sellerProfile } = useDoc<User>(sellerRef);
   
-  if (isLoading) { return <div className="grid lg:grid-cols-3 gap-8 h-full"><Skeleton className="lg:col-span-1 h-full" /><Skeleton className="lg:col-span-2 h-full" /></div>; }
-  if (error) { return (<Card className="border-destructive"><CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><AlertCircle /> Error Loading Trade</CardTitle><CardDescription className="text-destructive">There was a problem loading the trade data. This could be due to a network issue or a problem with the trade document itself.</CardDescription></CardHeader><CardContent><h3 className="font-semibold">Error Details:</h3><pre className="mt-2 w-full whitespace-pre-wrap rounded-md bg-muted p-4 font-mono text-sm text-muted-foreground">{error.message}</pre></CardContent></Card>); }
-  if (!trade || !user) { return <Card><CardHeader><CardTitle>Trade Not Found</CardTitle><CardDescription>This trade may have been completed or does not exist.</CardDescription></CardHeader></Card>; }
-  if (!trade.buyer || !trade.seller) { return (<Card><CardHeader><CardTitle>Incomplete Trade Data</CardTitle><CardDescription>This trade document is missing critical participant information and cannot be displayed.</CardDescription></CardHeader><CardContent><p>This may be due to old data. Please contact support if this is a recent trade.</p></CardContent></Card>); }
+  if (isLoading) { return <div className="grid lg:grid-cols-3 gap-8 h-full p-6"><Skeleton className="lg:col-span-1 h-full" /><Skeleton className="lg:col-span-2 h-full" /></div>; }
+  if (error) { return (<div className="p-6"><Card className="border-destructive"><CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><AlertCircle /> Error Loading Trade</CardTitle><CardDescription className="text-destructive">There was a problem loading the trade data. This could be due to a network issue or a problem with the trade document itself.</CardDescription></CardHeader><CardContent><h3 className="font-semibold">Error Details:</h3><pre className="mt-2 w-full whitespace-pre-wrap rounded-md bg-muted p-4 font-mono text-sm text-muted-foreground">{error.message}</pre></CardContent></Card></div>); }
+  if (!trade || !user) { return <div className="p-6"><Card><CardHeader><CardTitle>Trade Not Found</CardTitle><CardDescription>This trade may have been completed or does not exist.</CardDescription></CardHeader></Card></div>; }
+  if (!trade.buyer || !trade.seller) { return (<div className="p-6"><Card><CardHeader><CardTitle>Incomplete Trade Data</CardTitle><CardDescription>This trade document is missing critical participant information and cannot be displayed.</CardDescription></CardHeader><CardContent><p>This may be due to old data. Please contact support if this is a recent trade.</p></CardContent></Card></div>); }
   
   const currentUserRole = user.uid === trade.buyerId ? "buy" : "sell";
   const opponentProfile = user.uid === trade.buyerId ? sellerProfile : buyerProfile;
@@ -452,14 +451,14 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const handleAdminCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id); toast({ title: "Trade Cancelled by Admin" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } }
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col h-full w-full p-2 sm:p-4 lg:p-6">
         <div className="flex items-center justify-between mb-4 flex-shrink-0"><h1 className="text-lg font-semibold md:text-2xl">Trade {trade.tradeId}</h1></div>
         {isAdmin && (<Card className="mb-4 border-amber-500 flex-shrink-0"><CardHeader className="flex flex-row items-center gap-4 space-y-0"><Shield className="h-6 w-6 text-amber-500" /><div className="grid gap-1"><CardTitle>Admin Controls</CardTitle><CardDescription>You are viewing this trade as an administrator.</CardDescription></div></CardHeader><CardContent className="flex gap-4">{(trade.status === "active" || trade.status === "paid") && <Button variant="destructive" onClick={handleAdminCancelTrade}>Admin: Cancel Trade</Button>}</CardContent></Card>)}
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow min-h-0">
             <div className={cn("lg:col-span-1 space-y-6", mobileView === 'details' ? 'block' : 'hidden lg:block')}><TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} /></div>
             <div className={cn("lg:col-span-2 flex-grow flex flex-col min-h-0", mobileView === 'chat' ? 'flex' : 'hidden lg:flex')}><TradeChat currentUserId={user.uid} trade={trade} opponent={opponentProfile} isAdmin={isAdmin} onInfoClick={() => setIsInfoPanelOpen(true)} /></div>
         </div>
-        <div className="md:hidden grid grid-cols-2 gap-2 border-t pt-2 mt-2 bg-background -mx-2 sm:-mx-4 lg:-mx-6 -mb-2 sm:-mb-4 lg:-mb-6 px-2 sm:px-4 lg:px-6 sticky bottom-0">
+        <div className="md:hidden grid grid-cols-2 gap-2 border-t pt-2 mt-auto bg-background -mx-2 sm:-mx-4 lg:-mx-6 px-2 sm:px-4 lg:px-6 sticky bottom-0">
             <Button variant={mobileView === 'details' ? 'default' : 'outline'} onClick={() => setMobileView('details')}><ListDetails className="mr-2 h-4 w-4" /> Details</Button>
             <Button variant={mobileView === 'chat' ? 'default' : 'outline'} onClick={() => setMobileView('chat')}><MessageSquare className="mr-2 h-4 w-4" /> Chat</Button>
         </div>
@@ -471,10 +470,8 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
 export default function TradePage({ params }: { params: { id: string } }) {
     return (
-      <div className="flex flex-col h-full">
         <ErrorBoundary>
             <TradePageContent tradeId={params.id} />
         </ErrorBoundary>
-      </div>
     )
 }
