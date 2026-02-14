@@ -82,7 +82,6 @@ function SellPageContent() {
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'price');
   const [selectedTags, setSelectedTags] = useState<string[]>(searchParams.get('tags')?.split(',').filter(Boolean) || []);
   const [showTopRated, setShowTopRated] = useState(searchParams.get('topRated') === 'true');
-  const [showVerified, setShowVerified] = useState(searchParams.get('verified') === 'true');
   const [showAcceptable, setShowAcceptable] = useState(searchParams.get('acceptable') === 'true');
   const [isOfferTagsSheetOpen, setIsOfferTagsSheetOpen] = useState(false);
 
@@ -97,7 +96,6 @@ function SellPageContent() {
     setSortBy('price');
     setSelectedTags([]);
     setShowTopRated(false);
-    setShowVerified(false);
     setShowAcceptable(false);
     setIsFiltersSheetOpen(false);
   };
@@ -112,10 +110,9 @@ function SellPageContent() {
     if(sortBy !== 'price') params.set('sortBy', sortBy); else params.delete('sortBy');
     if(selectedTags.length > 0) params.set('tags', selectedTags.join(',')); else params.delete('tags');
     if(showTopRated) params.set('topRated', 'true'); else params.delete('topRated');
-    if(showVerified) params.set('verified', 'true'); else params.delete('verified');
     if(showAcceptable) params.set('acceptable', 'true'); else params.delete('acceptable');
     router.replace(`${pathname}?${params.toString()}`);
-  }, [amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, sortBy, selectedTags, showTopRated, showVerified, showAcceptable, pathname, router, searchParams]);
+  }, [amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, sortBy, selectedTags, showTopRated, showAcceptable, pathname, router, searchParams]);
 
   const allPaymentMethods = useMemo(() => [
     { category: 'Bank Transfers', methods: bankTransfers, icon: Landmark },
@@ -223,9 +220,6 @@ function SellPageContent() {
       if (showTopRated) {
         if (!ad.user.badges?.includes('power')) return false;
       }
-      if (showVerified) {
-        if (!ad.user.badges?.includes('verified')) return false;
-      }
       if (selectedTags.length > 0) {
           if (!ad.tags || !selectedTags.every(tag => ad.tags!.includes(tag))) {
               return false;
@@ -280,7 +274,7 @@ function SellPageContent() {
 
     return [...recentlyActiveAds, ...otherAds];
 
-  }, [buyAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, showTopRated, showVerified, showAcceptable, selectedTags, currentUserData, sortBy, prices, fiatRates, adCreators]);
+  }, [buyAds, amount, paymentMethod, selectedCoin, selectedFiat, selectedCountry, showTopRated, showAcceptable, selectedTags, currentUserData, sortBy, prices, fiatRates, adCreators]);
   
   const handleToggle = (page: 'buy' | 'sell') => {
     router.push(`/${page}`);
@@ -557,13 +551,6 @@ function SellPageContent() {
                             <p className="text-xs text-muted-foreground">Experienced traders with badges</p>
                         </div>
                         <Switch id="top-rated-switch" checked={showTopRated} onCheckedChange={setShowTopRated} />
-                    </div>
-                    <div className="flex items-center justify-between py-2">
-                        <div>
-                            <Label htmlFor="verified-switch" className="cursor-pointer">Verified users only</Label>
-                            <p className="text-xs text-muted-foreground">Show offers from ID-verified users</p>
-                        </div>
-                        <Switch id="verified-switch" checked={showVerified} onCheckedChange={setShowVerified} />
                     </div>
                     <div className="flex items-center justify-between py-2">
                         <div>

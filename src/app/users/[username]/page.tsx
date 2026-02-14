@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -195,7 +196,6 @@ export default function PublicProfilePage() {
                      <div className="flex gap-2 mt-2">
                         {user.isBanned && <Badge variant="destructive">Banned</Badge>}
                         {user.isOnHold && <Badge variant="secondary" className="bg-yellow-500 text-white">On Hold</Badge>}
-                        {!user.isBanned && !user.isOnHold && <Badge className="bg-green-500">Verified</Badge>}
                     </div>
                     
                     <div className="flex items-center justify-center gap-2 mt-2">

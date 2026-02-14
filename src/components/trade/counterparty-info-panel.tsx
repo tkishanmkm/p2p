@@ -3,15 +3,14 @@
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { DefaultAvatar } from '@/components/icons';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { toDate } from '@/lib/utils';
 import type { User } from '@/lib/types';
-import { Calendar, CheckCircle, ShieldCheck, ThumbsDown, ThumbsUp, User as UserIcon } from 'lucide-react';
+import { Calendar, CheckCircle, ShieldBan, ShieldCheck, ThumbsDown, ThumbsUp, User as UserIcon, Users } from 'lucide-react';
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | undefined }) {
-    if (!value && value !== 0) return null;
+    if (value === undefined || value === null) return null;
     return (
         <div className="flex items-center gap-3 py-2 border-b">
             <div className="text-muted-foreground">{icon}</div>
@@ -34,6 +33,7 @@ export function CounterpartyInfoPanel({ user, open, onOpenChange }: Counterparty
   
   const createdDate = toDate(user.createdAt);
   const lastActiveDate = toDate(user.lastActive);
+  const dob = toDate(user.dob);
   
   const joinedAgo = createdDate ? formatDistanceToNow(createdDate) + ' ago' : 'N/A';
   const lastSeen = lastActiveDate ? formatDistanceToNow(lastActiveDate) + ' ago' : 'N/A';
@@ -51,18 +51,17 @@ export function CounterpartyInfoPanel({ user, open, onOpenChange }: Counterparty
                 <AvatarImage src={user.photoURL} />
                 <AvatarFallback><DefaultAvatar /></AvatarFallback>
             </Avatar>
-            <h2 className="text-xl font-bold">{user.userId}</h2>
-            <div className="flex gap-2">
-                {user.isBanned && <Badge variant="destructive">Banned</Badge>}
-                {!user.isBanned && <Badge className="bg-green-500">Verified</Badge>}
-            </div>
+            <h2 className="text-xl font-bold">{user.fullName}</h2>
+             <p className="text-sm text-muted-foreground">@{user.userId}</p>
           </div>
           <div className="space-y-1">
-             <DetailItem icon={<UserIcon size={16} />} label="Username" value={user.userId} />
+             <DetailItem icon={<Calendar size={16} />} label="Date of Birth" value={dob ? format(dob, 'LLLL d, yyyy') : 'N/A'} />
              <DetailItem icon={<Calendar size={16} />} label="Joined" value={joinedAgo} />
              <DetailItem icon={<CheckCircle size={16} />} label="Completed Trades" value={user.completedTrades?.toLocaleString()} />
              <DetailItem icon={<ThumbsUp size={16} />} label="Positive Feedback" value={`${user.feedbackScore || 100}% (${user.positiveFeedback || 0})`} />
              <DetailItem icon={<ThumbsDown size={16} />} label="Negative Feedback" value={user.negativeFeedback || 0} />
+             <DetailItem icon={<ShieldBan size={16} />} label="Users Blocked" value={user.blockedUsers?.length || 0} />
+             <p className="text-xs text-muted-foreground pt-2">Information on how many users have blocked this trader is not available.</p>
           </div>
         </div>
       </SheetContent>
