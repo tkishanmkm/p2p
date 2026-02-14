@@ -81,8 +81,6 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
         
         setIsSubmitting(true);
         try {
-            // Using the first payment method as specified in the logic
-            const paymentMethod = ad.paymentMethods[0];
             const tradeId = await initiateTrade(firestore, authUser.uid, ad, parseFloat(cryptoAmount), parseFloat(fiatAmount));
             toast({ title: "Trade Initiated!", description: "You are being redirected to the trade room." });
             router.push(`/trade/${tradeId}`);
@@ -206,7 +204,7 @@ export default function AdDetailPage() {
 
     const lastActiveDate = toDate(user.lastActive);
 
-    const userBadges = user.badges || [];
+    const userBadges = (user.badges || []).filter(b => b !== 'verified');
     const displayedBadges = userBadges.slice(0, 4);
     const hiddenBadgesCount = userBadges.length - displayedBadges.length;
     
@@ -222,7 +220,9 @@ export default function AdDetailPage() {
                     <div className="flex items-center gap-1">
                         {displayedBadges.map((badge, i) => (
                            <TooltipProvider key={i}><Tooltip><TooltipTrigger>
-                           <Badge variant="outline" className="p-1">{badge === 'verified' ? <CheckShield className="h-3 w-3 text-green-500" /> : <Award className="h-3 w-3 text-amber-500" />}</Badge>
+                           <Badge variant="outline" className="p-1">
+                               <Award className="h-3 w-3 text-amber-500" />
+                           </Badge>
                            </TooltipTrigger><TooltipContent>{badge}</TooltipContent></Tooltip></TooltipProvider>
                         ))}
                         {hiddenBadgesCount > 0 && <Badge variant="secondary">+{hiddenBadgesCount} more</Badge>}
@@ -254,4 +254,3 @@ export default function AdDetailPage() {
         </div>
     );
 }
-

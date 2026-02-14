@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import type { P2PAd, CryptoCurrency } from '@/lib/types';
 import { usePrices } from '@/context/price-context';
-import { ThumbsUp, ThumbsDown, Info } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Info, Award } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo, DefaultAvatar } from '@/components/icons';
@@ -72,6 +72,10 @@ export function AdCard({ ad }: AdCardProps) {
       activity = { text: `${formattedDistance} ago`, dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
     }
   }
+  
+  const userBadges = (adCreator.badges || []).filter(b => b !== 'verified');
+  const displayedBadges = userBadges.slice(0, 3);
+  const hiddenBadgesCount = userBadges.length - displayedBadges.length;
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -87,6 +91,14 @@ export function AdCard({ ad }: AdCardProps) {
               <div className="flex items-center gap-1.5">
                 <Link href={`/users/${adCreator.username}`} className="font-semibold hover:underline">{adCreator.username}</Link>
                 {adCreator.country && <FlagIcon countryCode={adCreator.country} />}
+                {displayedBadges.map((badge, i) => (
+                   <TooltipProvider key={i}><Tooltip><TooltipTrigger>
+                   <Badge variant="outline" className="p-1">
+                       <Award className="h-3 w-3 text-amber-500" />
+                   </Badge>
+                   </TooltipTrigger><TooltipContent>{badge}</TooltipContent></Tooltip></TooltipProvider>
+                ))}
+                {hiddenBadgesCount > 0 && <Badge variant="secondary">+{hiddenBadgesCount} more</Badge>}
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-3 flex-wrap">
                 <span>{adCreator.completedTrades || 0} Trades</span>
