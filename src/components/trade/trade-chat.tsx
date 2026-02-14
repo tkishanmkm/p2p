@@ -68,7 +68,7 @@ function FeedbackForm({ trade }: { trade: Trade }) {
 
             toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback. ${''\'\''}error.message` });
+            toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback: ${error.message}` });
         } finally {
              setIsSubmitting(false);
         }
