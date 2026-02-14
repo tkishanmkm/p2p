@@ -109,34 +109,39 @@ function FeedbackForm({ trade }: { trade: Trade }) {
 
 // --- Sub-component: TradeInstructions ---
 function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) {
-    const title = isBuyer 
-        ? `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`
-        : `You're selling ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`;
+    const buyerTitle = `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency} via ${trade.paymentMethod}.`;
+    const sellerTitle = `You're selling ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`;
+    const title = isBuyer ? buyerTitle : sellerTitle;
     
-    const instructions = isBuyer ? [
+    const buyerSubtitle = "The BTC is now in escrow and it's safe to make your payment.";
+    const sellerSubtitle = "The crypto is now in escrow.";
+    const subtitle = isBuyer ? buyerSubtitle : sellerSubtitle;
+    
+    const buyerInstructions = [
         "When the seller is ready to start the transaction, they'll share their bank account details in the trade chat.",
         "Make your payment.",
         "Mark the trade as Paid and upload proof of payment.",
         "Wait for your trade partner to confirm your payment.",
         "Your trade partner will release the BTC to you.",
-    ] : [
+    ];
+    const sellerInstructions = [
         "Wait for the buyer to make the payment.",
         "Once payment is received and confirmed in your account, release the BTC.",
         "Do not release funds based on payment proof alone. Always verify in your account.",
         "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
     ];
 
-    const subTitle = "The crypto is now in escrow.";
-
+    const instructions = isBuyer ? buyerInstructions : sellerInstructions;
+    
     return (
-        <Alert className="bg-yellow-100 border-yellow-300 text-yellow-900 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200">
-            <InfoIcon className="h-4 w-4 text-yellow-700" />
-            <AlertTitle className="font-bold">
+        <Alert className="bg-amber-100 border-amber-200 text-amber-900 dark:bg-amber-950/60 dark:border-amber-800/50 dark:text-amber-200">
+            <InfoIcon className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+            <AlertTitle className="font-bold text-amber-900 dark:text-amber-100">
                 {title}
             </AlertTitle>
-            <AlertDescription className="text-yellow-900 dark:text-yellow-300">
-                <p className="mb-2">{subTitle}</p>
-                <ol className="list-decimal list-inside space-y-1 text-xs">
+            <AlertDescription className="text-amber-800 dark:text-amber-200/90">
+                <p>{subtitle}</p>
+                <ol className="list-decimal list-inside space-y-1 text-xs mt-2">
                     {instructions.map((step, i) => <li key={i}>{step}</li>)}
                 </ol>
             </AlertDescription>
