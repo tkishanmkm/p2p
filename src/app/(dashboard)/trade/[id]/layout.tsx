@@ -1,7 +1,8 @@
+
 "use client";
 
 // This layout provides a full-screen container for the trade page,
-// counteracting the parent layout's padding and hiding the footer.
+// counteracting the parent layout's padding to make the content area full-width.
 export default function TradePageLayout({
   children,
 }: {
