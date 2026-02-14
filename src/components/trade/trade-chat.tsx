@@ -109,15 +109,15 @@ function FeedbackForm({ trade }: { trade: Trade }) {
 
 // --- Sub-component: TradeInstructions ---
 function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) {
-    const buyerTitle = `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`;
+    const buyerTitle = `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency} via ${trade.paymentMethod}.`;
     const sellerTitle = `You're selling ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`;
     const title = isBuyer ? buyerTitle : sellerTitle;
     
     const subtitle = "The crypto is now in escrow.";
     
     const buyerInstructions = [
-        "The seller will share payment details in the chat.",
-        "Make your payment for the exact amount.",
+        "When the seller is ready to start the transaction, they'll share their bank account details in the trade chat.",
+        "Make your payment.",
         "Mark the trade as 'Paid' and upload proof of payment.",
         "Wait for your trade partner to confirm your payment.",
         "Your trade partner will release the BTC to you.",
@@ -148,17 +148,11 @@ function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean 
 }
 
 // --- Sub-component: SystemMessage ---
-function SystemMessage({ type, title, children, timestamp }: { type: 'dispute' | 'success' | 'error' | 'info'; title: string; children: React.ReactNode; timestamp: string }) {
-    const variants = {
-        dispute: 'border-blue-500/50 text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20',
-        success: 'border-green-500/50 text-green-800 dark:text-green-300 bg-green-50 dark:bg-green-900/20',
-        error: 'border-destructive/50 text-destructive bg-destructive/10',
-        info: 'border-gray-500/50 text-muted-foreground bg-secondary',
-    };
+function SystemMessage({ title, children, timestamp }: { title: string; children: React.ReactNode; timestamp: string }) {
     const timeString = toDate(timestamp)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '';
 
     return (
-        <div className={cn("text-center text-xs p-3 rounded-md border", variants[type])}>
+        <div className="text-center text-xs p-3 rounded-md border bg-blue-100 border-blue-200 text-blue-900 dark:bg-blue-950/60 dark:border-blue-800/50 dark:text-blue-200">
             <p className="font-bold mb-1">{title}</p>
             <div className="text-left">{children}</div>
             <p className="text-right text-xs opacity-70 mt-2">{timeString}</p>
@@ -168,14 +162,17 @@ function SystemMessage({ type, title, children, timestamp }: { type: 'dispute' |
 
 
 // --- Sub-component: TradeSummaryBar ---
-const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
-    const bgColor = isBuyer 
-        ? 'bg-green-600' 
-        : 'bg-destructive/10';
-    const textColor = isBuyer ? 'text-primary-foreground' : 'text-destructive';
-    
+const TradeSummaryBar = ({ trade, currentUserRole }: { trade: Trade, currentUserRole: 'buy' | 'sell' }) => {
+    const isBuyer = currentUserRole === 'buy';
+    const bgColor = isBuyer ? 'bg-green-600' : 'bg-destructive';
+    const textColor = 'text-destructive-foreground'; 
     const roleText = isBuyer ? 'Buying' : 'Selling';
-    return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</div>);
+    
+    return (
+        <div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>
+            {roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}
+        </div>
+    );
 }
 
 export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; onInfoClick: () => void; }) {
@@ -191,51 +188,11 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
   const stopwatch = useStopwatch(trade.createdAt, isTradeFinished);
 
   const displayMessages = useMemo(() => {
-    const baseMessages = messages || [];
-    const systemMessages: TradeChatMessage[] = [];
-    
-    // Only generate system messages if they don't already exist in the chat history from the database
-    if (trade.status === 'released' && trade.claimedByBuyer && !baseMessages.some(m => m.message.includes('Congratulations!'))) {
-      systemMessages.push({
-        id: 'system-final-complete',
-        tradeId: trade.id,
-        senderId: 'system',
-        senderUsername: 'System',
-        message: 'Congratulations! This trade has been successfully completed. The crypto has been released to the buyer, and the transaction is now closed. If you are satisfied with the trade, please leave feedback for your trade partner. Your feedback helps maintain a safe and trusted marketplace.',
-        isModerator: true,
-        createdAt: trade.releasedAt || new Date().toISOString(),
-      });
-    }
-    
-    if (trade.status === 'cancelled' && !baseMessages.some(m => m.message.includes('cancelled'))) {
-       systemMessages.push({
-        id: 'system-final-cancelled',
-        tradeId: trade.id,
-        senderId: 'system',
-        senderUsername: 'System',
-        message: 'This trade has been cancelled. Do not make any payment if you have not already paid. If you have already made a payment, immediately contact support and share proof of payment in the chat. Do not release or expect any crypto from this trade, as it is no longer active.',
-        isModerator: true,
-        createdAt: new Date().toISOString(), // No better timestamp available
-      });
-    }
-
-    if (trade.status === 'expired' && !baseMessages.some(m => m.message.includes('expired'))) {
-       systemMessages.push({
-        id: 'system-final-expired',
-        tradeId: trade.id,
-        senderId: 'system',
-        senderUsername: 'System',
-        message: 'This trade has expired due to inactivity or time limit. Do not make any payment, as the trade is no longer valid. If you still wish to proceed, please create a new trade.',
-        isModerator: true,
-        createdAt: trade.expiresAt,
-      });
-    }
-    
-    const allMessages = [...baseMessages, ...systemMessages];
+    if (!messages) return [];
+    const allMessages = [...messages];
     allMessages.sort((a, b) => (toDate(a.createdAt)?.getTime() ?? 0) - (toDate(b.createdAt)?.getTime() ?? 0));
-
     return allMessages;
-  }, [messages, trade]);
+  }, [messages]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -323,7 +280,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                 <div className="text-sm font-semibold font-mono flex items-center gap-1.5 justify-end mt-1"><Clock className="h-4 w-4" />{stopwatch}</div>
             </div>
         </div>
-        <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
+        <TradeSummaryBar trade={trade} currentUserRole={isBuyer ? 'buy' : 'sell'} />
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden min-h-0">
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
@@ -334,27 +291,27 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                 {displayMessages.map((msg) => {
                   if (msg.senderId === 'system') {
                      if (msg.message.includes("disputed")) {
-                        return <SystemMessage key={msg.id} type="dispute" title="Trade is disputed. A moderator will join the chat shortly." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
+                        return <SystemMessage key={msg.id} title="Trade is disputed. A moderator will join the chat shortly." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
                     }
                     if (msg.message.includes("Congratulations!")) {
                         return (
-                            <SystemMessage key={msg.id} type="success" title="Congratulations! The trade is completed. Kindly leave feedback." timestamp={msg.createdAt}>
+                            <SystemMessage key={msg.id} title="Congratulations! The trade is completed. Kindly leave feedback." timestamp={msg.createdAt}>
                                 <p>{msg.message}</p>
                                 <FeedbackForm trade={trade} />
                             </SystemMessage>
                         );
                     }
                     if (msg.message.includes("cancelled")) {
-                        return <SystemMessage key={msg.id} type="error" title="Trade is cancelled." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
+                        return <SystemMessage key={msg.id} title="Trade is cancelled." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
                     }
                     if (msg.message.includes("expired")) {
-                        return <SystemMessage key={msg.id} type="info" title="Trade is expired." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
+                        return <SystemMessage key={msg.id} title="Trade is expired." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
                     }
                     if (msg.message.includes("Buyer has marked the trade as Paid")) {
-                        return <SystemMessage key={msg.id} type="success" title="Buyer has marked the trade as Paid." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
+                        return <SystemMessage key={msg.id} title="Buyer has marked the trade as Paid." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
                     }
                     // Fallback for any other system message
-                    return <SystemMessage key={msg.id} type="info" title="System Message" timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
+                    return <SystemMessage key={msg.id} title="System Message" timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
                   }
 
                   const isCurrentUser = msg.senderId === currentUserId;
@@ -374,7 +331,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                           'max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-1',
                           isCurrentUser && !msg.isModerator && 'bg-primary text-primary-foreground',
                           !isCurrentUser && !msg.isModerator && 'bg-muted',
-                          msg.isModerator && 'bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700'
+                          msg.isModerator && 'bg-blue-100 border-blue-200 text-blue-900 dark:bg-blue-950/60 dark:border-blue-800/50 dark:text-blue-200'
                       )}>
                         <p className="font-bold text-xs">{senderName}</p>
                         {msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}
