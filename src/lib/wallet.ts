@@ -1,4 +1,5 @@
 
+
 'use client';
 import {
   Firestore,
@@ -30,23 +31,40 @@ function generateId(prefix: string, length: number) {
 
 export async function initiateTrade(
   db: Firestore,
-  buyerId: string,
+  initiatorId: string,
   ad: P2PAd,
   cryptoAmount: number,
   fiatAmount: number,
 ): Promise<string> {
-    if (ad.userId === buyerId) {
-        throw new Error("You cannot trade with yourself.");
+    let buyerId: string;
+    let sellerId: string;
+
+    if (ad.adType === 'buy') {
+        // Ad poster wants to buy, so they are the buyer. Initiator is the seller.
+        buyerId = ad.userId;
+        sellerId = initiatorId;
+    } else { // ad.adType === 'sell'
+        // Ad poster wants to sell, so they are the seller. Initiator is the buyer.
+        buyerId = initiatorId;
+        sellerId = ad.userId;
     }
 
-  const sellerWalletRef = doc(db, 'users', ad.userId, 'wallets', ad.crypto);
-  const buyerDocRef = doc(db, 'users', buyerId);
-  const newTradeRef = doc(collection(db, 'trades'));
+    if (buyerId === sellerId) {
+        throw new Error("You cannot trade with yourself.");
+    }
+    
+    const sellerWalletRef = doc(db, 'users', sellerId, 'wallets', ad.crypto);
+    const buyerDocRef = doc(db, 'users', buyerId);
+    const sellerDocRef = doc(db, 'users', sellerId);
+    const newTradeRef = doc(collection(db, 'trades'));
 
   try {
     const newTradeId = await runTransaction(db, async (transaction) => {
-      const sellerWalletDoc = await transaction.get(sellerWalletRef);
-      const buyerDoc = await transaction.get(buyerDocRef);
+        const [sellerWalletDoc, buyerDoc, sellerDoc] = await Promise.all([
+            transaction.get(sellerWalletRef),
+            transaction.get(buyerDocRef),
+            transaction.get(sellerDocRef)
+        ]);
 
       if (!sellerWalletDoc.exists()) {
         throw new Error("Seller's wallet does not exist.");
@@ -54,7 +72,12 @@ export async function initiateTrade(
        if (!buyerDoc.exists()) {
         throw new Error("Buyer's profile does not exist.");
       }
+      if (!sellerDoc.exists()) {
+        throw new Error("Seller's profile does not exist.");
+      }
       const buyerData = buyerDoc.data() as AppUser;
+      const sellerData = sellerDoc.data() as AppUser;
+
 
       const sellerWallet = sellerWalletDoc.data() as UserWallet;
       if ((sellerWallet.balance || 0) < cryptoAmount) {
@@ -77,7 +100,7 @@ export async function initiateTrade(
         tradeId: generateId("T-", 8),
         adId: ad.id,
         buyerId: buyerId,
-        sellerId: ad.userId,
+        sellerId: sellerId,
         crypto: ad.crypto,
         amount: cryptoAmount,
         escrowFee: cryptoFee,
@@ -94,8 +117,8 @@ export async function initiateTrade(
           ...(buyerData.country && { country: buyerData.country })
         },
         seller: { 
-            username: ad.user.username, 
-            ...(ad.user.country && { country: ad.user.country })
+            username: sellerData.userId, 
+            ...(sellerData.country && { country: sellerData.country })
         }
       };
 
@@ -103,16 +126,16 @@ export async function initiateTrade(
       const buyerNotificationRef = doc(collection(db, 'users', buyerId, 'notifications'));
       transaction.set(buyerNotificationRef, {
           userId: buyerId,
-          message: `You have started a new trade (${newTrade.tradeId}) with ${ad.user.username}.`,
+          message: `You have a new trade (${newTrade.tradeId}) with ${sellerData.userId}.`,
           link: `/trade/${newTradeRef.id}`,
           isRead: false,
           createdAt: new Date().toISOString(),
       });
 
-      const sellerNotificationRef = doc(collection(db, 'users', ad.userId, 'notifications'));
+      const sellerNotificationRef = doc(collection(db, 'users', sellerId, 'notifications'));
       transaction.set(sellerNotificationRef, {
-          userId: ad.userId,
-          message: `${buyerData.userId} has started a new trade (${newTrade.tradeId}) with you.`,
+          userId: sellerId,
+          message: `You have a new trade (${newTrade.tradeId}) with ${buyerData.userId}.`,
           link: `/trade/${newTradeRef.id}`,
           isRead: false,
           createdAt: new Date().toISOString(),

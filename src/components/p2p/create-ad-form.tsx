@@ -417,7 +417,6 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
               name="adType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>I want to</FormLabel>
                   <FormControl>
                     <Tabs
                       value={field.value}
