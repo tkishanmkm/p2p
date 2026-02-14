@@ -131,6 +131,8 @@ function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean 
         "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
     ];
 
+    const subTitle = isBuyer ? "The crypto is now in escrow and it's safe to make your payment." : "The crypto is now in escrow. Wait for the buyer to complete the payment.";
+
     return (
         <Alert className="bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200">
             <InfoIcon className="h-4 w-4 text-yellow-600" />
@@ -138,7 +140,7 @@ function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean 
                 {title}
             </AlertTitle>
             <AlertDescription className="text-yellow-800 dark:text-yellow-300">
-                <p className="mb-2">The crypto is now in escrow and it's safe to make your payment.</p>
+                <p className="mb-2">{subTitle}</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs">
                     {instructions.map((step, i) => <li key={i}>{step}</li>)}
                 </ol>
@@ -162,13 +164,17 @@ function SystemMessage({ type, children }: { type: 'dispute' | 'success' | 'erro
 
 // --- Sub-component: TradeSummaryBar ---
 const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
-    const bgColor = isBuyer ? 'bg-green-600/10' : 'bg-red-500/20';
-    const textColor = isBuyer ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-400';
+    const bgColor = isBuyer 
+        ? 'bg-green-50 dark:bg-green-900/30' 
+        : 'bg-red-50 dark:bg-red-900/30';
+    const textColor = isBuyer 
+        ? 'text-green-800 dark:text-green-300' 
+        : 'text-red-800 dark:text-red-400';
     const roleText = isBuyer ? 'Buying' : 'Selling';
     return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</div>);
 }
 
-export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; onInfoClick: () => void; }) {
+export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; onInfoClick: () => void; }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -290,23 +296,23 @@ export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onI
   let activityText = 'Offline';
   if (opponentLastActive) { activityText = `Seen ${formatDistanceToNow(opponentLastActive)} ago`; }
 
-  const renderSystemMessage = (msg: TradeChatMessage) => {
+  const renderSystemMessageContent = (msg: TradeChatMessage) => {
+    if (msg.message.startsWith("This trade has been marked as disputed")) {
+      return <SystemMessage type="dispute"><p className="font-bold">Trade is disputed. A moderator will join the chat shortly.</p><p>{msg.message}</p></SystemMessage>
+    }
     if (msg.message.startsWith("Congratulations!")) {
-      return <SystemMessage type="success"><p className="font-bold">Trade Completed</p><p>{msg.message}</p><FeedbackForm trade={trade} /></SystemMessage>
+      return <SystemMessage type="success"><p className="font-bold">Congratulations! The trade is completed. Kindly leave feedback.</p><p>{msg.message}</p><FeedbackForm trade={trade} /></SystemMessage>
     }
     if (msg.message.startsWith("This trade has been cancelled")) {
-      return <SystemMessage type="error"><p className="font-bold">Trade Cancelled</p><p>{msg.message}</p></SystemMessage>
+      return <SystemMessage type="error"><p className="font-bold">Trade is cancelled.</p><p>{msg.message}</p></SystemMessage>
     }
     if (msg.message.startsWith("This trade has expired")) {
-      return <SystemMessage type="info"><p className="font-bold">Trade Expired</p><p>{msg.message}</p></SystemMessage>
-    }
-    if (msg.message.startsWith("This trade has been marked as disputed")) {
-      return <SystemMessage type="dispute"><p className="font-bold">Trade is Disputed. A moderator will join shortly.</p><p>{msg.message}</p></SystemMessage>
+      return <SystemMessage type="info"><p className="font-bold">Trade is expired.</p><p>{msg.message}</p></SystemMessage>
     }
      if (msg.message.startsWith("Buyer has marked the trade as Paid")) {
-      return <SystemMessage type="success">{msg.message}</SystemMessage>
+      return <SystemMessage type="success"><p className="font-bold">Buyer has marked the trade as Paid.</p>{msg.message}</SystemMessage>
     }
-    // Default system message for dispute open, etc.
+    // Default system message for other cases
     return <SystemMessage type="info">{msg.message}</SystemMessage>
   }
 
@@ -335,7 +341,7 @@ export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onI
         </div>
         <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
       </CardHeader>
-      <CardContent className="flex-grow overflow-hidden min-h-[400px]">
+      <CardContent className="flex-grow overflow-hidden min-h-[400px] md:min-h-[500px]">
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             <TradeInstructions trade={trade} isBuyer={isBuyer} />
@@ -343,7 +349,7 @@ export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onI
               <div className="space-y-4">
                 {displayMessages.map((msg) => {
                   if (msg.senderId === 'system') {
-                    return <div key={msg.id} className="py-2">{renderSystemMessage(msg)}</div>;
+                    return <div key={msg.id} className="py-2">{renderSystemMessageContent(msg)}</div>;
                   }
                   const isCurrentUser = msg.senderId === currentUserId;
                   let senderName: string | React.ReactNode = isCurrentUser ? 'You' : opponent?.userId || 'Opponent';
