@@ -1,7 +1,8 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { TradeDetails } from '@/components/trade/trade-details';
+import { TradeChat } from '@/components/trade/trade-chat';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Shield, MessageSquare, ListDetails } from 'lucide-react';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
@@ -13,12 +14,9 @@ import type { Trade, P2PAd, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CounterpartyInfoPanel } from '@/components/trade/counterparty-info-panel';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
-// Import the newly created components
-import TradeDetails from '@/components/trade/trade-details';
-import TradeChat from '@/components/trade/trade-chat';
-import CounterpartyInfoPanel from '@/components/trade/counterparty-info-panel';
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
@@ -104,12 +102,12 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
   return (
     <div className="flex flex-col h-full w-full">
-        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+        <div className="flex items-center justify-between mb-4">
             <h1 className="text-lg font-semibold md:text-2xl">Trade {trade.tradeId}</h1>
         </div>
 
         {isAdmin && (
-            <Card className="mb-4 border-amber-500 flex-shrink-0">
+            <Card className="mb-4 border-amber-500">
                 <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                     <Shield className="h-6 w-6 text-amber-500" />
                     <div className="grid gap-1">
@@ -123,12 +121,12 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow min-h-0">
-            <div className={cn("lg:col-span-1 space-y-6", mobileView === 'details' ? 'block' : 'hidden lg:block')}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow">
+            <div className={cn("lg:col-span-1 space-y-6", "block lg:block")}>
                 <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
             </div>
             
-            <div className={cn("lg:col-span-2 flex-grow flex flex-col min-h-0", mobileView === 'chat' ? 'flex' : 'hidden lg:flex')}>
+            <div className={cn("lg:col-span-2 flex-grow flex flex-col", "flex")}>
                 <TradeChat 
                     currentUserId={user.uid} 
                     trade={trade} 
@@ -137,11 +135,6 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
                     onInfoClick={() => setIsInfoPanelOpen(true)}
                 />
             </div>
-        </div>
-        
-        <div className="md:hidden grid grid-cols-2 gap-2 border-t pt-2 mt-auto bg-background -mx-2 sm:-mx-4 lg:-mx-6 px-2 sm:px-4 lg:px-6 sticky bottom-0">
-            <Button variant={mobileView === 'details' ? 'default' : 'outline'} onClick={() => setMobileView('details')}><ListDetails className="mr-2 h-4 w-4" /> Details</Button>
-            <Button variant={mobileView === 'chat' ? 'default' : 'outline'} onClick={() => setMobileView('chat')}><MessageSquare className="mr-2 h-4 w-4" /> Chat</Button>
         </div>
         
         <CounterpartyInfoPanel 
@@ -156,8 +149,10 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
 
 export default function TradePage({ params }: { params: { id: string } }) {
     return (
+      <div className="flex flex-col h-full">
         <ErrorBoundary>
             <TradePageContent tradeId={params.id} />
         </ErrorBoundary>
+      </div>
     )
 }
