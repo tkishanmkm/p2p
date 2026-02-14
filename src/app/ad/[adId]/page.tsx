@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams, useRouter } from "next/navigation";
@@ -204,7 +205,7 @@ export default function AdDetailPage() {
 
     const lastActiveDate = toDate(user.lastActive);
 
-    const userBadges = (user.badges || []).filter(b => b !== 'verified');
+    const userBadges = (user.badges || []);
     const displayedBadges = userBadges.slice(0, 4);
     const hiddenBadgesCount = userBadges.length - displayedBadges.length;
     

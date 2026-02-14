@@ -73,7 +73,7 @@ export function AdCard({ ad }: AdCardProps) {
     }
   }
   
-  const userBadges = (adCreator.badges || []).filter(b => b !== 'verified');
+  const userBadges = (adCreator.badges || []);
   const displayedBadges = userBadges.slice(0, 3);
   const hiddenBadgesCount = userBadges.length - displayedBadges.length;
 
