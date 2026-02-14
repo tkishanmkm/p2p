@@ -2,10 +2,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { formatDistanceToNow } from 'date-fns';
 
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { doc, collection, addDoc, query, orderBy } from 'firebase/firestore';
@@ -22,9 +18,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Form, FormControl, FormItem, FormLabel } from "@/components/ui/form";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { DefaultAvatar } from '@/components/icons';
@@ -33,79 +26,7 @@ import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Shield, Clock, Send, Plus, Info as InfoIcon, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import { claimFundsForTrade } from '@/lib/wallet';
-
-
-// --- Sub-component: FeedbackForm ---
-function FeedbackForm({ trade }: { trade: Trade }) {
-    const { firestore, user } = useFirebase();
-    const { toast } = useToast();
-    const [rating, setRating] = useState<'positive' | 'negative' | null>(null);
-    const [comment, setComment] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!rating || !comment.trim() || !firestore || !user || !user.displayName) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please select a rating and write a comment.' });
-            return;
-        }
-
-        setIsSubmitting(true);
-        const opponentId = user.uid === trade.buyerId ? trade.sellerId : trade.buyerId;
-
-        try {
-            const feedbackRef = collection(firestore, 'trades', trade.id, 'feedback');
-            await addDoc(feedbackRef, {
-                tradeId: trade.id,
-                fromUser: user.uid,
-                fromUsername: user.displayName,
-                toUser: opponentId,
-                rating,
-                comment,
-                createdAt: new Date().toISOString(),
-            });
-
-            toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback: ${error.message}` });
-        } finally {
-             setIsSubmitting(false);
-        }
-    };
-    
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4 border-t">
-            <h4 className="font-semibold text-center text-sm text-foreground">Leave Feedback</h4>
-            <RadioGroup onValueChange={(v) => setRating(v as any)} value={rating || ''} className="flex gap-4 justify-center">
-                <FormItem>
-                    <FormControl>
-                        <RadioGroupItem value="positive" id="rating-positive" className="sr-only" />
-                    </FormControl>
-                    <FormLabel htmlFor="rating-positive" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-green-500 has-[:checked]:bg-green-100 dark:has-[:checked]:bg-green-900/30">
-                        <ThumbsUp className="h-5 w-5 text-green-600" /> Positive
-                    </FormLabel>
-                </FormItem>
-                <FormItem>
-                     <FormControl>
-                        <RadioGroupItem value="negative" id="rating-negative" className="sr-only" />
-                    </FormControl>
-                    <FormLabel htmlFor="rating-negative" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-red-500 has-[:checked]:bg-red-100 dark:has-[:checked]:bg-red-900/30">
-                        <ThumbsDown className="h-5 w-5 text-red-600" /> Negative
-                    </FormLabel>
-                </FormItem>
-            </RadioGroup>
-            <Textarea 
-                placeholder="Leave a comment about your trading experience..." 
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-            />
-            <Button type="submit" size="sm" className="w-full" disabled={isSubmitting || !rating || !comment}>
-                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Submit Feedback
-            </Button>
-        </form>
-    );
-}
+import { formatDistanceToNow } from 'date-fns';
 
 // --- Sub-component: TradeInstructions ---
 function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) {
@@ -192,8 +113,8 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
   const [newMessage, setNewMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isTradeFinished = ['released', 'cancelled', 'expired'].includes(trade.status);
-  const stopwatch = useStopwatch(trade.createdAt, isTradeFinished);
+  const isTradeStopped = ['released', 'cancelled', 'expired'].includes(trade.status);
+  const stopwatch = useStopwatch(trade.createdAt, isTradeStopped);
 
   const displayMessages = useMemo(() => {
     if (!messages) return [];
@@ -290,7 +211,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
         </div>
         <TradeSummaryBar trade={trade} currentUserRole={isBuyer ? 'buy' : 'sell'} />
       </CardHeader>
-      <CardContent className="flex-grow overflow-hidden min-h-0">
+      <CardContent className="flex-1 overflow-hidden min-h-0">
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             <TradeInstructions trade={trade} isBuyer={isBuyer} />
@@ -308,9 +229,8 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
                     }
                     if (msg.message.includes("Congratulations!")) {
                         return (
-                            <SystemMessage key={msg.id} title="Congratulations! The trade is completed. Kindly leave feedback." timestamp={msg.createdAt} variant="success">
-                                <p>{msg.message}</p>
-                                <FeedbackForm trade={trade} />
+                            <SystemMessage key={msg.id} title="Congratulations! The trade is completed." timestamp={msg.createdAt} variant="success">
+                                <p>You can now leave feedback for this trade from the details panel.</p>
                             </SystemMessage>
                         );
                     }
@@ -363,11 +283,11 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
       <CardFooter>
         <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*,video/*,application/pdf" />
-            <Button variant="ghost" size="icon" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isTradeFinished}>
+            <Button variant="ghost" size="icon" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
               {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
             </Button>
-            <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Write a message..." autoComplete="off" disabled={isUploading || isTradeFinished} />
-            <Button type="submit" size="icon" disabled={isUploading || !newMessage.trim() || isTradeFinished}>
+            <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Write a message..." autoComplete="off" disabled={isUploading} />
+            <Button type="submit" size="icon" disabled={isUploading || !newMessage.trim()}>
               <Send className="h-5 w-5" /><span className="sr-only">Send</span>
             </Button>
         </form>
