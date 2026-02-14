@@ -110,7 +110,7 @@ function FeedbackForm({ trade }: { trade: Trade }) {
 // --- Sub-component: TradeInstructions ---
 function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) {
     const title = isBuyer 
-        ? `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency} via ${trade.paymentMethod}.`
+        ? `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`
         : `You're selling ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`;
     
     const instructions = isBuyer ? [
@@ -126,15 +126,15 @@ function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean 
         "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
     ];
 
-    const subTitle = isBuyer ? "The crypto is now in escrow and it's safe to make your payment." : "The crypto is now in escrow. Wait for the buyer to complete the payment.";
+    const subTitle = "The crypto is now in escrow.";
 
     return (
-        <Alert className="bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200">
-            <InfoIcon className="h-4 w-4 text-yellow-600" />
+        <Alert className="bg-yellow-100 border-yellow-300 text-yellow-900 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200">
+            <InfoIcon className="h-4 w-4 text-yellow-700" />
             <AlertTitle className="font-bold">
                 {title}
             </AlertTitle>
-            <AlertDescription className="text-yellow-800 dark:text-yellow-300">
+            <AlertDescription className="text-yellow-900 dark:text-yellow-300">
                 <p className="mb-2">{subTitle}</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs">
                     {instructions.map((step, i) => <li key={i}>{step}</li>)}
@@ -168,8 +168,8 @@ function SystemMessage({ type, title, children, timestamp }: { type: 'dispute' |
 const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
     const bgColor = isBuyer 
         ? 'bg-green-600' 
-        : 'bg-destructive';
-    const textColor = 'text-primary-foreground';
+        : 'bg-destructive/10 text-destructive dark:bg-destructive/20';
+    const textColor = isBuyer ? 'text-primary-foreground' : '';
     
     const roleText = isBuyer ? 'Buying' : 'Selling';
     return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</div>);
