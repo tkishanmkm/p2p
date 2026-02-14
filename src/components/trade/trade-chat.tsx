@@ -129,7 +129,7 @@ function TradeInstructions({ trade, isBuyer, onDismiss }: { trade: Trade, isBuye
 
     return (
         <Alert className="bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200 relative">
-            <InfoIcon className="h-4 w-4" />
+            <InfoIcon className="h-4 w-4 text-yellow-600" />
             <button onClick={onDismiss} className="absolute top-2 right-2 text-yellow-700 dark:text-yellow-300 hover:opacity-75">
                 <XCircle className="h-5 w-5" />
             </button>
@@ -137,7 +137,7 @@ function TradeInstructions({ trade, isBuyer, onDismiss }: { trade: Trade, isBuye
                 {title} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}.
             </AlertTitle>
             <AlertDescription className="text-yellow-800 dark:text-yellow-300">
-                <p className="mb-2">The crypto is now in escrow and it's safe to proceed.</p>
+                <p className="mb-2">The crypto is now in escrow and it's safe to make your payment.</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs">
                     {instructions.map((step, i) => <li key={i}>{step}</li>)}
                 </ol>
@@ -146,16 +146,16 @@ function TradeInstructions({ trade, isBuyer, onDismiss }: { trade: Trade, isBuye
     );
 }
 
+
 // --- Sub-component: TradeChat ---
 const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
     const bgColor = isBuyer ? 'bg-green-600/10' : 'bg-red-600/10';
     const textColor = isBuyer ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300';
     const roleText = isBuyer ? 'Buying' : 'Selling';
-    const paymentMethod = trade.paymentMethod;
-    return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency} – {paymentMethod}</div>);
+    return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</div>);
 }
 
-export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; onInfoClick: () => void; }) {
+export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; onInfoClick: () => void; }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
