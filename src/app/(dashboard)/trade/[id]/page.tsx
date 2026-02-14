@@ -12,7 +12,6 @@ import { cancelTrade } from '@/lib/wallet';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Trade, P2PAd, User } from '@/lib/types';
-import { cn } from '@/lib/utils';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CounterpartyInfoPanel } from '@/components/trade/counterparty-info-panel';
@@ -117,12 +116,12 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
             </Card>
         )}
 
-        <div className="flex flex-col lg:flex-row flex-1 gap-8 min-h-0">
-            <div className="lg:w-1/3 lg:max-w-sm shrink-0 space-y-6 overflow-y-auto">
+        <div className="grid grid-rows-[auto_1fr] lg:grid-rows-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
+            <div className="lg:col-span-1 overflow-y-auto pr-2 space-y-6">
                 <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
             </div>
             
-            <div className="flex-1 flex flex-col min-h-0">
+            <div className="lg:col-span-2 flex flex-col min-h-0">
                 <TradeChat 
                     currentUserId={user.uid} 
                     trade={trade} 
