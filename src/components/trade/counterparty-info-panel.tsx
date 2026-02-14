@@ -8,6 +8,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { toDate } from '@/lib/utils';
 import type { User } from '@/lib/types';
 import { countries } from '@/lib/countries';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | undefined }) {
     if (value === undefined || value === null) return null;
@@ -24,31 +25,33 @@ export function CounterpartyInfoPanel({ user, open, onOpenChange, completedTrade
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent>
+        <SheetContent className="flex flex-col">
             <SheetHeader>
                 <SheetTitle>Trader Information</SheetTitle>
                 <SheetDescription>Details for {user.userId}</SheetDescription>
             </SheetHeader>
-            <div className="py-4 space-y-6">
-                <div className="flex flex-col items-center gap-2">
-                    <Avatar className="h-24 w-24 border-4 border-secondary">
-                        <AvatarImage src={user.photoURL} />
-                        <AvatarFallback><DefaultAvatar /></AvatarFallback>
-                    </Avatar>
-                    <h2 className="text-xl font-bold">{user.userId}</h2>
-                </div>
-                <div className="space-y-1">
-                    <DetailItem icon={<ArrowLeftRight size={16} />} label="Trades With You" value={completedTradesWithUser} />
-                    <DetailItem icon={<Calendar size={16} />} label="Joined" value={joinedAgo} />
-                    <DetailItem icon={<CheckCircle size={16} />} label="Completed Trades" value={user.completedTrades?.toLocaleString()} />
-                    <DetailItem icon={<ThumbsUp size={16} />} label="Positive Feedback" value={`${user.feedbackScore || 100}% (${user.positiveFeedback || 0})`} />
-                    <DetailItem icon={<ThumbsDown size={16} />} label="Negative Feedback" value={user.negativeFeedback || 0} />
-                    <DetailItem icon={<ShieldBan size={16} />} label="Users Blocked by them" value={user.blockedUsers?.length || 0} />
-                    <DetailItem icon={<Globe size={16} />} label="Country of Residence" value={getCountryName(user.country)} />
-                    <DetailItem icon={<Globe size={16} />} label="IP-based Location" value={getCountryName(user.ipBasedCountry)} />
-                    <p className="text-xs text-muted-foreground pt-2">Information on how many users have blocked this trader is not available.</p>
-                </div>
-            </div>
+            <ScrollArea className="flex-grow">
+              <div className="py-4 space-y-6 pr-6">
+                  <div className="flex flex-col items-center gap-2">
+                      <Avatar className="h-24 w-24 border-4 border-secondary">
+                          <AvatarImage src={user.photoURL} />
+                          <AvatarFallback><DefaultAvatar /></AvatarFallback>
+                      </Avatar>
+                      <h2 className="text-xl font-bold">{user.userId}</h2>
+                  </div>
+                  <div className="space-y-1">
+                      <DetailItem icon={<ArrowLeftRight size={16} />} label="Trades With You" value={completedTradesWithUser} />
+                      <DetailItem icon={<Calendar size={16} />} label="Joined" value={joinedAgo} />
+                      <DetailItem icon={<CheckCircle size={16} />} label="Completed Trades" value={user.completedTrades?.toLocaleString()} />
+                      <DetailItem icon={<ThumbsUp size={16} />} label="Positive Feedback" value={`${user.feedbackScore || 100}% (${user.positiveFeedback || 0})`} />
+                      <DetailItem icon={<ThumbsDown size={16} />} label="Negative Feedback" value={user.negativeFeedback || 0} />
+                      <DetailItem icon={<ShieldBan size={16} />} label="Users Blocked by them" value={user.blockedUsers?.length || 0} />
+                      <DetailItem icon={<Globe size={16} />} label="Country of Residence" value={getCountryName(user.country)} />
+                      <DetailItem icon={<Globe size={16} />} label="IP-based Location" value={getCountryName(user.ipBasedCountry)} />
+                      <p className="text-xs text-muted-foreground pt-2">Information on how many users have blocked this trader is not available.</p>
+                  </div>
+              </div>
+            </ScrollArea>
         </SheetContent>
     </Sheet>
   );
