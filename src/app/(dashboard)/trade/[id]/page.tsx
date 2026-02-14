@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import TradeDetails from '@/components/trade/trade-details';
-import TradeChat from '@/components/trade/trade-chat';
+import { TradeDetails } from '@/components/trade/trade-details';
+import { TradeChat } from '@/components/trade/trade-chat';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Shield, MessageSquare, ListDetails } from 'lucide-react';
+import { AlertCircle, Shield } from 'lucide-react';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { cancelTrade } from '@/lib/wallet';
@@ -15,15 +14,14 @@ import type { Trade, P2PAd, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import CounterpartyInfoPanel from '@/components/trade/counterparty-info-panel';
-import ErrorBoundary from '@/components/ErrorBoundary';
+import { CounterpartyInfoPanel } from '@/components/trade/counterparty-info-panel';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 
 function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const { isAdmin } = useAdminStatus();
-  const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
 
   // Memoized Firestore references

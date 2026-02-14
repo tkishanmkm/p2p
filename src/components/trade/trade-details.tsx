@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -155,7 +154,7 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     );
 };
 
-export default function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: Trade; sellerTerms?: string; currentUserRole: 'buy' | 'sell'; }) {
+export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: Trade; sellerTerms?: string; currentUserRole: 'buy' | 'sell'; }) {
   const isBuying = currentUserRole === 'buy';
   const showReopen = ['cancelled', 'expired'].includes(trade.status);
 

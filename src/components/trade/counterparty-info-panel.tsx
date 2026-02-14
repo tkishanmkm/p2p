@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -14,7 +13,7 @@ function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: stri
     return (<div className="flex items-center gap-3 py-2 border-b"><div className="text-muted-foreground">{icon}</div><div><p className="text-xs text-muted-foreground">{label}</p><p className="font-medium text-sm">{value}</p></div></div>);
 }
 
-export default function CounterpartyInfoPanel({ user, open, onOpenChange }: { user: User | null | undefined; open: boolean; onOpenChange: (open: boolean) => void; }) {
+export function CounterpartyInfoPanel({ user, open, onOpenChange }: { user: User | null | undefined; open: boolean; onOpenChange: (open: boolean) => void; }) {
   if (!user) return null;
   const createdDate = toDate(user.createdAt);
   const dob = toDate(user.dob);
