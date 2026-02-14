@@ -68,7 +68,7 @@ function FeedbackForm({ trade }: { trade: Trade }) {
 
             toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback. ${error.message}` });
+            toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback. ${''\'\''}error.message` });
         } finally {
              setIsSubmitting(false);
         }
@@ -184,7 +184,7 @@ const TradeSummaryBar = ({ trade, currentUserRole }: { trade: Trade, currentUser
     );
 }
 
-export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; onInfoClick: () => void; }) {
+export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; sellerTerms?: string; onInfoClick: () => void; }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -295,6 +295,11 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             <TradeInstructions trade={trade} isBuyer={isBuyer} />
+            {sellerTerms && (
+              <SystemMessage title="Seller's Terms & Conditions" timestamp={trade.createdAt}>
+                <p className="whitespace-pre-wrap">{sellerTerms}</p>
+              </SystemMessage>
+            )}
             {areMessagesLoading ? <div className="space-y-4"><Skeleton className="h-16" /><Skeleton className="h-12" /></div> : 
               <div className="space-y-4">
                 {displayMessages.map((msg) => {

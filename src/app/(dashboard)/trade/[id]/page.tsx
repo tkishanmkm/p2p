@@ -77,16 +77,17 @@ function TradePageContent() {
       <CounterpartyInfoPanel user={opponent} open={isInfoPanelOpen} onOpenChange={setIsInfoPanelOpen} />
       
       {/* Desktop Layout */}
-      <div className="hidden md:flex flex-row h-full gap-6">
-        <div className="md:w-4/12 lg:w-3/12 h-full">
+      <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6 h-full overflow-hidden">
+        <div className="md:col-span-1 lg:col-span-1 h-full overflow-hidden">
           <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
         </div>
-        <div className="md:w-8/12 lg:w-9/12 h-full">
+        <div className="md:col-span-2 lg:col-span-3 h-full overflow-hidden">
           <TradeChat
             currentUserId={authUser.uid}
             trade={trade}
             opponent={opponent}
             isAdmin={isAdmin}
+            sellerTerms={ad?.terms}
             onInfoClick={() => setIsInfoPanelOpen(true)}
           />
         </div>
@@ -107,6 +108,7 @@ function TradePageContent() {
                 trade={trade}
                 opponent={opponent}
                 isAdmin={isAdmin}
+                sellerTerms={ad?.terms}
                 onInfoClick={() => setIsInfoPanelOpen(true)}
               />
             </div>
