@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -16,7 +15,7 @@ import { cn, toDate } from '@/lib/utils';
 import { statusColors } from '@/lib/status-colors';
 import type { Trade, TradeStatus } from '@/lib/types';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -158,6 +157,7 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: Trade; sellerTerms?: string; currentUserRole: 'buy' | 'sell'; }) {
   const isBuying = currentUserRole === 'buy';
   const showReopen = ['cancelled', 'expired'].includes(trade.status);
+  const showActions = ['active', 'paid', 'disputed'].includes(trade.status);
 
   return (
     <div className="flex flex-col h-full gap-6">
@@ -184,10 +184,20 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: T
                 <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{trade?.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}</div>
                 <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString() ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}</div>
                 {sellerTerms && <div className="space-y-2"><h4 className="font-semibold">Seller's Terms</h4><div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground whitespace-pre-wrap"><p>{sellerTerms}</p></div></div>}
-                {showReopen && (<Button asChild variant="outline" className="w-full"><Link href={`/ad/${trade.adId}`}><RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade</Link></Button>)}
             </CardContent>
         </Card>
-        {(trade.status === 'active' || trade.status === 'paid' || trade.status === 'disputed') && <div className="flex-shrink-0"><ActionButtons trade={trade} currentUserRole={currentUserRole} /></div>}
+        <div className="flex-shrink-0">
+          {showReopen && (
+            <Button asChild variant="outline" className="w-full">
+              <Link href={`/ad/${trade.adId}`}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade
+              </Link>
+            </Button>
+          )}
+          {showActions && (
+            <ActionButtons trade={trade} currentUserRole={currentUserRole} />
+          )}
+        </div>
     </div>
   );
 }
