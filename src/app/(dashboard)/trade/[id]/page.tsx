@@ -1,10 +1,9 @@
-
 'use client';
 
-import React, { Suspense, useMemo, useState } from 'react';
+import React, { Suspense, useMemo, useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs } from 'firebase/firestore';
 import type { P2PAd, Trade, User } from '@/lib/types';
 import { Loader2, Info, MessageSquare } from 'lucide-react';
 import { TradeDetails } from '@/components/trade/trade-details';
@@ -21,6 +20,7 @@ function TradePageContent() {
 
   const [activeView, setActiveView] = useState<'chat' | 'details'>('details');
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
+  const [completedTradesWithUser, setCompletedTradesWithUser] = useState(0);
 
   const tradeRef = useMemoFirebase(
     () => (tradeId && firestore ? doc(firestore, 'trades', tradeId as string) : null),
@@ -39,6 +39,36 @@ function TradePageContent() {
   );
   const { data: opponent, isLoading: isOpponentLoading } = useDoc<User>(opponentRef);
   
+  useEffect(() => {
+    if (!firestore || !authUser || !opponent) return;
+
+    const fetchTradeCount = async () => {
+        const q1 = query(
+            collection(firestore, 'trades'),
+            where('buyerId', '==', authUser.uid),
+            where('sellerId', '==', opponent.id),
+            where('status', '==', 'released')
+        );
+        const q2 = query(
+            collection(firestore, 'trades'),
+            where('buyerId', '==', opponent.id),
+            where('sellerId', '==', authUser.uid),
+            where('status', '==', 'released')
+        );
+
+        try {
+            const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+            const total = snapshot1.size + snapshot2.size;
+            setCompletedTradesWithUser(total);
+        } catch (error) {
+            console.error("Failed to fetch trade count with user:", error);
+        }
+    };
+
+    fetchTradeCount();
+  }, [firestore, authUser, opponent]);
+
+
   const currentUserRole = useMemo(() => {
     if(!trade || !authUser) return 'sell';
     return authUser.uid === trade.buyerId ? 'buy' : 'sell';
@@ -74,11 +104,16 @@ function TradePageContent() {
 
   return (
     <div className="h-full flex flex-col">
-      <CounterpartyInfoPanel user={opponent} open={isInfoPanelOpen} onOpenChange={setIsInfoPanelOpen} />
+      <CounterpartyInfoPanel 
+        user={opponent} 
+        open={isInfoPanelOpen} 
+        onOpenChange={setIsInfoPanelOpen} 
+        completedTradesWithUser={completedTradesWithUser}
+      />
       
       {/* Desktop Layout */}
       <div className="hidden md:grid md:grid-cols-[1fr,2fr] lg:grid-cols-[1fr,3fr] gap-0 h-full overflow-hidden">
-        <div className="md:col-span-1 h-full overflow-y-auto border-r">
+        <div className="md:col-span-1 h-full border-r">
           <TradeDetails trade={trade} ad={ad} currentUserRole={currentUserRole} />
         </div>
         <div className="md:col-span-2 lg:col-span-1 h-full overflow-hidden">
@@ -97,7 +132,7 @@ function TradePageContent() {
        <div className="md:hidden flex flex-col h-full bg-background">
         <div className="flex-1 min-h-0">
           {activeView === 'details' && (
-            <div className="p-2 h-full overflow-y-auto">
+            <div className="h-full overflow-y-auto">
               <TradeDetails trade={trade} ad={ad} currentUserRole={currentUserRole} />
             </div>
           )}
