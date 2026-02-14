@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
@@ -295,3 +296,5 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
     </Card>
   );
 }
+
+    

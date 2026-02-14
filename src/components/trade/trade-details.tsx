@@ -319,3 +319,5 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
     </Card>
   );
 }
+
+    
