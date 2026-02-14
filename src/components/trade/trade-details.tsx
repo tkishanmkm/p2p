@@ -138,7 +138,8 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     const canOpenDispute = (trade.status === 'active' || trade.status === 'paid');
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 w-full">
+            <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Warning</AlertTitle><AlertDescription>To avoid scams, never communicate or trade outside of this platform.</AlertDescription></Alert>
             {canBuyerMarkPaid && (
                 <AlertDialog><AlertDialogTrigger asChild><Button className="w-full" size="lg">Mark as Paid</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm Payment</AlertDialogTitle><AlertDialogDescription>Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Only confirm after you have fully sent the payment.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleMarkAsPaid}>Yes, I Have Paid</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
             )}
@@ -149,14 +150,13 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
                 <AlertDialog><AlertDialogTrigger asChild><Button variant="outline" className="w-full">Cancel Trade</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Cancel Trade?</AlertDialogTitle><AlertDialogDescription>Are you sure? This cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>No</AlertDialogCancel><AlertDialogAction onClick={handleCancelTrade}>Yes, Cancel</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
             )}
             {canOpenDispute && (<OpenDisputeDialog trade={trade} currentUserId={user.uid} currentUsername={user.displayName || 'user'} />)}
-            <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Warning</AlertTitle><AlertDescription>To avoid scams, never communicate or trade outside of this platform.</AlertDescription></Alert>
         </div>
     );
 };
 
 export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: Trade; sellerTerms?: string; currentUserRole: 'buy' | 'sell'; }) {
   const isBuying = currentUserRole === 'buy';
-  const showReopen = ['cancelled', 'expired'].includes(trade.status);
+  const showReopen = ['cancelled', 'expired', 'released'].includes(trade.status);
   const showActions = ['active', 'paid', 'disputed'].includes(trade.status);
 
   return (
@@ -168,7 +168,7 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: T
                     <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade?.status || 'unknown'}</Badge>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-4 overflow-y-auto">
+            <CardContent className="flex-1 overflow-y-auto space-y-4">
                 <div className="space-y-2 rounded-md border p-4">
                     <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade?.amount ?? 0} ${trade?.crypto ?? ''}`} />
                     <DetailRow label="Price" value={`1 ${trade?.crypto ?? ''} = ${(trade?.price ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} />
@@ -184,20 +184,21 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: T
                 <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{trade?.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}</div>
                 <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString() ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}</div>
                 {sellerTerms && <div className="space-y-2"><h4 className="font-semibold">Seller's Terms</h4><div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground whitespace-pre-wrap"><p>{sellerTerms}</p></div></div>}
+                
+                 {showReopen && (
+                    <Button asChild variant="outline" className="w-full !mt-6">
+                        <Link href={`/ad/${trade.adId}`}>
+                            <RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade
+                        </Link>
+                    </Button>
+                )}
             </CardContent>
+            {showActions && (
+                <CardFooter className="pt-6">
+                     <ActionButtons trade={trade} currentUserRole={currentUserRole} />
+                </CardFooter>
+            )}
         </Card>
-        <div className="flex-shrink-0">
-          {showReopen && (
-            <Button asChild variant="outline" className="w-full">
-              <Link href={`/ad/${trade.adId}`}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade
-              </Link>
-            </Button>
-          )}
-          {showActions && (
-            <ActionButtons trade={trade} currentUserRole={currentUserRole} />
-          )}
-        </div>
     </div>
   );
 }
