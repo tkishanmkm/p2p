@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import TradeDetails from '@/components/trade/trade-details';
-import TradeChat from '@/components/trade/trade-chat';
+import { TradeChat } from '@/components/trade/trade-chat';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Shield } from 'lucide-react';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
@@ -11,6 +11,7 @@ import { cancelTrade } from '@/lib/wallet';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Trade, P2PAd, User } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import CounterpartyInfoPanel from '@/components/trade/counterparty-info-panel';
@@ -21,6 +22,7 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const { isAdmin } = useAdminStatus();
+  const [mobileView, setMobileView] = useState<'chat' | 'details'>('chat');
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
 
   // Memoized Firestore references
@@ -120,11 +122,11 @@ function TradePageContent({ tradeId }: { tradeId: string }) {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 flex-grow">
-            <div className={'lg:col-span-1 space-y-6 block lg:block'}>
+            <div className={cn("lg:col-span-1 space-y-6", "block lg:block")}>
                 <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
             </div>
             
-            <div className={'lg:col-span-2 flex-grow flex flex-col flex'}>
+            <div className={cn("lg:col-span-2 flex-grow flex flex-col", "flex")}>
                 <TradeChat 
                     currentUserId={user.uid} 
                     trade={trade} 
