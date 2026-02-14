@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -130,7 +131,7 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 
     const handleMarkAsPaid = async () => { if (!firestore) return; try { await markTradeAsPaid(firestore, trade.id); toast({ title: "Success", description: "Seller has been notified that you've paid." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
     const handleReleaseCrypto = async () => { if (!firestore) return; try { await releaseFundsFromEscrow(firestore, trade.id); toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
-    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
+    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id, trade.sellerId, trade.crypto, trade.amount); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
 
     const canBuyerCancel = currentUserRole === 'buy' && (trade.status === 'active' || trade.status === 'disputed');
     const canSellerRelease = currentUserRole === 'sell' && (trade.status === 'paid' || trade.status === 'disputed');
@@ -160,45 +161,42 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: T
   const showActions = ['active', 'paid', 'disputed'].includes(trade.status);
 
   return (
-    <div className="flex flex-col h-full gap-6">
-        <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div><CardTitle>Trade Details</CardTitle><CardDescription>ID: {trade?.tradeId || 'N/A'}</CardDescription></div>
-                    <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade?.status || 'unknown'}</Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto space-y-4">
-                <div className="space-y-2 rounded-md border p-4">
-                    <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade?.amount ?? 0} ${trade?.crypto ?? ''}`} />
-                    <DetailRow label="Price" value={`1 ${trade?.crypto ?? ''} = ${(trade?.price ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} />
-                    {trade.escrowFee && <DetailRow label="Escrow Fee" value={`${trade.escrowFee.toFixed(8)} ${trade.crypto}`} />}
-                    <hr className="my-2 border-dashed" />
-                    <DetailRow label={isBuying ? "You will pay" : "You will receive"} value={`${(trade?.fiatAmount ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} />
-                </div>
-                 <div className="space-y-2">
-                    <h4 className="font-semibold">Time Remaining</h4>
-                    <div className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4 text-muted-foreground" /><CountdownDisplay targetDate={trade.expiresAt} tradeStatus={trade.status} /></div>
-                    <p className="text-xs text-muted-foreground">Time for buyer to make payment.</p>
-                </div>
-                <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{trade?.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}</div>
-                <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString() ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}</div>
-                {sellerTerms && <div className="space-y-2"><h4 className="font-semibold">Seller's Terms</h4><div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground whitespace-pre-wrap"><p>{sellerTerms}</p></div></div>}
-                
-                 {showReopen && (
-                    <Button asChild variant="outline" className="w-full !mt-6">
-                        <Link href={`/ad/${trade.adId}`}>
-                            <RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade
-                        </Link>
-                    </Button>
-                )}
-            </CardContent>
-            {showActions && (
-                <CardFooter className="pt-6">
-                     <ActionButtons trade={trade} currentUserRole={currentUserRole} />
-                </CardFooter>
+    <Card className="flex flex-col h-full">
+        <CardHeader>
+            <div className="flex justify-between items-start">
+                <div><CardTitle>Trade Details</CardTitle><CardDescription>ID: {trade?.tradeId || 'N/A'}</CardDescription></div>
+                <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade?.status || 'unknown'}</Badge>
+            </div>
+        </CardHeader>
+        <CardContent className="flex-1 overflow-y-auto space-y-4">
+            <div className="space-y-2 rounded-md border p-4">
+                <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade?.amount ?? 0} ${trade?.crypto ?? ''}`} />
+                <DetailRow label="Price" value={`1 ${trade?.crypto ?? ''} = ${(trade?.price ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} />
+                {trade.escrowFee && <DetailRow label="Escrow Fee" value={`${trade.escrowFee.toFixed(8)} ${trade.crypto}`} />}
+                <hr className="my-2 border-dashed" />
+                <DetailRow label={isBuying ? "You will pay" : "You will receive"} value={`${(trade?.fiatAmount ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} />
+            </div>
+             <div className="space-y-2">
+                <h4 className="font-semibold">Time Remaining</h4>
+                <div className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4 text-muted-foreground" /><CountdownDisplay targetDate={trade.expiresAt} tradeStatus={trade.status} /></div>
+                <p className="text-xs text-muted-foreground">Time for buyer to make payment.</p>
+            </div>
+            <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{trade?.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}</div>
+            <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString() ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString() ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString() ?? 'N/A'} />}</div>
+            {sellerTerms && <div className="space-y-2"><h4 className="font-semibold">Seller's Terms</h4><div className="text-sm p-3 bg-secondary rounded-md text-muted-foreground whitespace-pre-wrap"><p>{sellerTerms}</p></div></div>}
+             {showReopen && (
+                <Button asChild variant="outline" className="w-full !mt-6">
+                    <Link href={`/ad/${trade.adId}`}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade
+                    </Link>
+                </Button>
             )}
-        </Card>
-    </div>
+        </CardContent>
+        {showActions && (
+            <CardFooter className="pt-6">
+                 <ActionButtons trade={trade} currentUserRole={currentUserRole} />
+            </CardFooter>
+        )}
+    </Card>
   );
 }

@@ -19,7 +19,7 @@ function TradePageContent() {
   const { isAdmin } = useAdminStatus();
   const tradeId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  const [activeView, setActiveView] = useState<'chat' | 'details'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'details'>('details');
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
 
   const tradeRef = useMemoFirebase(
@@ -73,15 +73,15 @@ function TradePageContent() {
   }
 
   return (
-    <>
+    <div className="h-full flex flex-col">
       <CounterpartyInfoPanel user={opponent} open={isInfoPanelOpen} onOpenChange={setIsInfoPanelOpen} />
       
       {/* Desktop Layout */}
-      <div className="hidden md:grid md:grid-cols-10 h-full overflow-hidden">
-        <div className="md:col-span-4 lg:col-span-3 h-full p-2">
+      <div className="hidden md:flex flex-row h-full gap-6">
+        <div className="md:w-4/12 lg:w-3/12 h-full">
           <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
         </div>
-        <div className="md:col-span-6 lg:col-span-7 h-full flex flex-col">
+        <div className="md:w-8/12 lg:w-9/12 h-full">
           <TradeChat
             currentUserId={authUser.uid}
             trade={trade}
@@ -94,8 +94,12 @@ function TradePageContent() {
       
       {/* Mobile Layout */}
        <div className="md:hidden flex flex-col h-full bg-background">
-        <div className="flex-grow min-h-0">
-          {activeView === 'details' && <div className="p-2 h-full"><TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} /></div>}
+        <div className="flex-1 min-h-0">
+          {activeView === 'details' && (
+            <div className="p-2 h-full overflow-y-auto">
+              <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
+            </div>
+          )}
           {activeView === 'chat' && (
             <div className="h-full">
               <TradeChat
@@ -119,7 +123,7 @@ function TradePageContent() {
           </Button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
