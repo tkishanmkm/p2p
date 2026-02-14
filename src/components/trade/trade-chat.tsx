@@ -109,24 +109,22 @@ function FeedbackForm({ trade }: { trade: Trade }) {
 
 // --- Sub-component: TradeInstructions ---
 function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) {
-    const buyerTitle = `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency} via ${trade.paymentMethod}.`;
+    const buyerTitle = `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`;
     const sellerTitle = `You're selling ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`;
     const title = isBuyer ? buyerTitle : sellerTitle;
     
-    const buyerSubtitle = "The BTC is now in escrow and it's safe to make your payment.";
-    const sellerSubtitle = "The crypto is now in escrow.";
-    const subtitle = isBuyer ? buyerSubtitle : sellerSubtitle;
+    const subtitle = "The crypto is now in escrow.";
     
     const buyerInstructions = [
-        "When the seller is ready to start the transaction, they'll share their bank account details in the trade chat.",
-        "Make your payment.",
-        "Mark the trade as Paid and upload proof of payment.",
-        "Wait for your trade partner to confirm your payment.",
-        "Your trade partner will release the BTC to you.",
+        "The seller will share payment details in the chat.",
+        "Make your payment for the exact amount.",
+        "Mark the trade as 'Paid' and upload proof of payment.",
+        "Wait for the seller to confirm your payment.",
+        "The seller will release the crypto to you.",
     ];
     const sellerInstructions = [
         "Wait for the buyer to make the payment.",
-        "Once payment is received and confirmed in your account, release the BTC.",
+        "Once payment is received and confirmed in your account, release the crypto.",
         "Do not release funds based on payment proof alone. Always verify in your account.",
         "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
     ];
@@ -173,8 +171,8 @@ function SystemMessage({ type, title, children, timestamp }: { type: 'dispute' |
 const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
     const bgColor = isBuyer 
         ? 'bg-green-600' 
-        : 'bg-destructive/10 text-destructive dark:bg-destructive/20';
-    const textColor = isBuyer ? 'text-primary-foreground' : '';
+        : 'bg-destructive/10';
+    const textColor = isBuyer ? 'text-primary-foreground' : 'text-destructive';
     
     const roleText = isBuyer ? 'Buying' : 'Selling';
     return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</div>);
@@ -327,7 +325,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
         </div>
         <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
       </CardHeader>
-      <CardContent className="flex-grow overflow-hidden min-h-[500px]">
+      <CardContent className="flex-grow overflow-hidden">
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             <TradeInstructions trade={trade} isBuyer={isBuyer} />
