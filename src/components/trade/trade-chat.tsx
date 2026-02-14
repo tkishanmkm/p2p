@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
@@ -31,7 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DefaultAvatar } from '@/components/icons';
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Shield, Clock, Send, Plus, Info, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Shield, Clock, Send, Plus, Info as InfoIcon, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import { claimFundsForTrade } from '@/lib/wallet';
 
 
@@ -112,16 +111,51 @@ function FeedbackForm({ trade }: { trade: Trade }) {
     );
 }
 
+// --- Sub-component: TradeInstructions ---
+function TradeInstructions({ trade, isBuyer, onDismiss }: { trade: Trade, isBuyer: boolean, onDismiss: () => void }) {
+    const title = isBuyer ? "You're buying" : "You're selling";
+    const instructions = isBuyer ? [
+        "When the seller is ready to start the transaction, they'll share their bank account details in the trade chat.",
+        "Make your payment.",
+        "Mark the trade as Paid and upload proof of payment.",
+        "Wait for your trade partner to confirm your payment.",
+        "Your trade partner will release the BTC to you.",
+    ] : [
+        "Wait for the buyer to make the payment.",
+        "Once payment is received and confirmed in your account, release the BTC.",
+        "Do not release funds based on payment proof alone. Always verify in your account.",
+        "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
+    ];
+
+    return (
+        <Alert className="bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200 relative">
+            <InfoIcon className="h-4 w-4" />
+            <button onClick={onDismiss} className="absolute top-2 right-2 text-yellow-700 dark:text-yellow-300 hover:opacity-75">
+                <XCircle className="h-5 w-5" />
+            </button>
+            <AlertTitle className="font-bold">
+                {title} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}.
+            </AlertTitle>
+            <AlertDescription className="text-yellow-800 dark:text-yellow-300">
+                <p className="mb-2">The crypto is now in escrow and it's safe to proceed.</p>
+                <ol className="list-decimal list-inside space-y-1 text-xs">
+                    {instructions.map((step, i) => <li key={i}>{step}</li>)}
+                </ol>
+            </AlertDescription>
+        </Alert>
+    );
+}
+
 // --- Sub-component: TradeChat ---
 const TradeSummaryBar = ({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) => {
     const bgColor = isBuyer ? 'bg-green-600/10' : 'bg-red-600/10';
     const textColor = isBuyer ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300';
     const roleText = isBuyer ? 'Buying' : 'Selling';
     const paymentMethod = trade.paymentMethod;
-    return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency} – {paymentMethod}</div>);
+    return (<div className={cn('p-4 rounded-lg text-base font-semibold text-center', bgColor, textColor)}>{roleText} {trade.amount.toFixed(8)} {trade.crypto} for {trade.fiatAmount.toLocaleString()} {trade.fiatCurrency} – {paymentMethod}</div>);
 }
 
-export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; onInfoClick: () => void; }) {
+export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick }: { currentUserId: string; trade: Trade; opponent: User | null | undefined; isAdmin: boolean; onInfoClick: () => void; }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -132,6 +166,7 @@ export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onI
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isTradeFinished = ['released', 'cancelled', 'expired', 'disputed'].includes(trade.status);
   const stopwatch = useStopwatch(trade.createdAt, isTradeFinished);
+  const [isInstructionsVisible, setIsInstructionsVisible] = useState(true);
 
   const displayMessages = useMemo(() => {
     const baseMessages = messages || [];
@@ -216,7 +251,7 @@ export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onI
                     <div className="flex items-center gap-1.5">
                         <Link href={`/users/${opponent?.userId || ''}`} className="font-semibold hover:underline">{opponent?.userId}</Link>
                         {opponent?.country && <FlagIcon countryCode={opponent.country} />}
-                        <Button variant="ghost" size="icon" onClick={onInfoClick} className="h-6 w-6"><Info className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={onInfoClick} className="h-6 w-6"><InfoIcon className="h-4 w-4" /></Button>
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-2"><span>{activityText}</span></div>
                 </div>
@@ -226,6 +261,9 @@ export default function TradeChat({ currentUserId, trade, opponent, isAdmin, onI
                 <div className="text-sm font-semibold font-mono flex items-center gap-1.5 justify-end mt-1"><Clock className="h-4 w-4" />{stopwatch}</div>
             </div>
         </div>
+        {trade.status === 'active' && isInstructionsVisible && (
+            <TradeInstructions trade={trade} isBuyer={isBuyer} onDismiss={() => setIsInstructionsVisible(false)} />
+        )}
         <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden"><ScrollArea className="h-full pr-4" ref={scrollAreaRef}>{areMessagesLoading ? <div className="space-y-4"><Skeleton className="h-16" /><Skeleton className="h-12" /></div> : <div className="space-y-4">{displayMessages.map((msg) => {if(msg.senderId === 'system') { return <div key={msg.id} className="py-2">{renderSystemMessageContent(msg)}</div>; } const isCurrentUser = msg.senderId === currentUserId; let senderName: string | React.ReactNode = isCurrentUser ? 'You' : opponent?.userId || 'Opponent'; if (msg.isModerator) senderName = 'Moderator'; const senderAvatar = isCurrentUser ? null : msg.isModerator ? <Avatar className="h-8 w-8"><AvatarFallback className="bg-blue-500"><Shield className="h-4 w-4 text-white" /></AvatarFallback></Avatar> : <Avatar className="h-8 w-8"><AvatarImage src={opponent?.photoURL} /><AvatarFallback>{opponent?.userId?.substring(0, 2)}</AvatarFallback></Avatar>; return (<div key={msg.id} className={cn('flex items-end gap-2', isCurrentUser ? 'justify-end' : 'justify-start')}>{!isCurrentUser && (<div className="self-end">{senderAvatar}</div>)}<div className={cn('max-w-[75%] rounded-lg p-3 text-sm flex flex-col items-start gap-1', isCurrentUser && !msg.isModerator && 'bg-primary text-primary-foreground', !isCurrentUser && !msg.isModerator && 'bg-muted', msg.isModerator && 'bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700')}><p className="font-bold text-xs">{senderName}</p>{msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}{msg.mediaUrl && msg.mediaType === 'image' && (<a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer"><Image src={msg.mediaUrl} alt="Uploaded attachment" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" /></a>)}{msg.mediaUrl && (msg.mediaType === 'video' || msg.mediaType === 'audio' || msg.mediaType === undefined) && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">View Attached File</a>}<p className="text-xs mt-1 opacity-70 text-right w-full">{toDate(msg.createdAt)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'sending...'}</p></div></div>);})}</div>}</ScrollArea></CardContent>
