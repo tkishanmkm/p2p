@@ -119,12 +119,12 @@ function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean 
         "The seller will share payment details in the chat.",
         "Make your payment for the exact amount.",
         "Mark the trade as 'Paid' and upload proof of payment.",
-        "Wait for the seller to confirm your payment.",
-        "The seller will release the crypto to you.",
+        "Wait for your trade partner to confirm your payment.",
+        "Your trade partner will release the BTC to you.",
     ];
     const sellerInstructions = [
         "Wait for the buyer to make the payment.",
-        "Once payment is received and confirmed in your account, release the crypto.",
+        "Once payment is received and confirmed in your account, release the BTC.",
         "Do not release funds based on payment proof alone. Always verify in your account.",
         "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
     ];
@@ -325,7 +325,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
         </div>
         <TradeSummaryBar trade={trade} isBuyer={isBuyer} />
       </CardHeader>
-      <CardContent className="flex-grow overflow-hidden">
+      <CardContent className="flex-grow overflow-hidden min-h-0">
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             <TradeInstructions trade={trade} isBuyer={isBuyer} />
