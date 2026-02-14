@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -159,15 +160,15 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: T
   const showReopen = ['cancelled', 'expired'].includes(trade.status);
 
   return (
-    <div className="space-y-6">
-        <Card>
+    <div className="flex flex-col h-full gap-6">
+        <Card className="flex-1 flex flex-col min-h-0">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div><CardTitle>Trade Details</CardTitle><CardDescription>ID: {trade?.tradeId || 'N/A'}</CardDescription></div>
                     <Badge variant="outline" className={cn("capitalize", statusColors[trade.status])}>{trade?.status || 'unknown'}</Badge>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 overflow-y-auto">
                 <div className="space-y-2 rounded-md border p-4">
                     <DetailRow label={isBuying ? "You are buying" : "You are selling"} value={`${trade?.amount ?? 0} ${trade?.crypto ?? ''}`} />
                     <DetailRow label="Price" value={`1 ${trade?.crypto ?? ''} = ${(trade?.price ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} />
@@ -186,7 +187,7 @@ export function TradeDetails({ trade, sellerTerms, currentUserRole }: { trade: T
                 {showReopen && (<Button asChild variant="outline" className="w-full"><Link href={`/ad/${trade.adId}`}><RefreshCw className="mr-2 h-4 w-4" /> Reopen Trade</Link></Button>)}
             </CardContent>
         </Card>
-        {(trade.status === 'active' || trade.status === 'paid' || trade.status === 'disputed') && <ActionButtons trade={trade} currentUserRole={currentUserRole} />}
+        {(trade.status === 'active' || trade.status === 'paid' || trade.status === 'disputed') && <div className="flex-shrink-0"><ActionButtons trade={trade} currentUserRole={currentUserRole} /></div>}
     </div>
   );
 }

@@ -77,8 +77,8 @@ function TradePageContent() {
       <CounterpartyInfoPanel user={opponent} open={isInfoPanelOpen} onOpenChange={setIsInfoPanelOpen} />
       
       {/* Desktop Layout */}
-      <div className="hidden md:grid md:grid-cols-10 gap-6 h-full overflow-hidden">
-        <div className="md:col-span-4 lg:col-span-3 h-full overflow-y-auto pr-2">
+      <div className="hidden md:grid md:grid-cols-10 h-full overflow-hidden">
+        <div className="md:col-span-4 lg:col-span-3 h-full p-2">
           <TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} />
         </div>
         <div className="md:col-span-6 lg:col-span-7 h-full flex flex-col">
@@ -94,8 +94,8 @@ function TradePageContent() {
       
       {/* Mobile Layout */}
        <div className="md:hidden flex flex-col h-full bg-background">
-        <div className="flex-grow overflow-y-auto">
-          {activeView === 'details' && <div className="p-2"><TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} /></div>}
+        <div className="flex-grow min-h-0">
+          {activeView === 'details' && <div className="p-2 h-full"><TradeDetails trade={trade} sellerTerms={ad?.terms} currentUserRole={currentUserRole} /></div>}
           {activeView === 'chat' && (
             <div className="h-full">
               <TradeChat
