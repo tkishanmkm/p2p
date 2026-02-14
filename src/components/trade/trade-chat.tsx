@@ -28,7 +28,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { DefaultAvatar, Logo } from '@/components/icons';
+import { DefaultAvatar } from '@/components/icons';
+import { Logo } from '@/components/logo';
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Shield, Clock, Send, Plus, Info as InfoIcon, Loader2, ThumbsUp, ThumbsDown, XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -109,22 +110,23 @@ function FeedbackForm({ trade }: { trade: Trade }) {
 
 // --- Sub-component: TradeInstructions ---
 function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean }) {
-    const buyerTitle = `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency} via ${trade.paymentMethod}.`;
-    const sellerTitle = `You're selling ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`;
-    const title = isBuyer ? buyerTitle : sellerTitle;
+    const title = isBuyer 
+        ? `You're buying ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`
+        : `You're selling ${trade.amount.toFixed(8)} ${trade.crypto} for ${trade.fiatAmount.toLocaleString()} ${trade.fiatCurrency}.`;
     
     const subtitle = "The crypto is now in escrow.";
     
     const buyerInstructions = [
-        "When the seller is ready to start the transaction, they'll share their bank account details in the trade chat.",
-        "Make your payment.",
-        "Mark the trade as 'Paid' and upload proof of payment.",
-        "Wait for your trade partner to confirm your payment.",
-        "Your trade partner will release the BTC to you.",
+        "Wait for the seller to provide their payment details in the chat.",
+        "Make your payment using the details provided.",
+        "Mark the trade as 'Paid' and upload proof of payment if necessary.",
+        "Wait for your trade partner to confirm they have received your payment.",
+        "Your trade partner will release the crypto to you.",
     ];
     const sellerInstructions = [
+        "Share your payment details with the buyer in the chat.",
         "Wait for the buyer to make the payment.",
-        "Once payment is received and confirmed in your account, release the BTC.",
+        "Once payment is received and confirmed in your account, release the crypto.",
         "Do not release funds based on payment proof alone. Always verify in your account.",
         "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
     ];
@@ -148,13 +150,20 @@ function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean 
 }
 
 // --- Sub-component: SystemMessage ---
-function SystemMessage({ title, children, timestamp }: { title: string; children: React.ReactNode; timestamp: string }) {
+function SystemMessage({ title, children, timestamp, variant }: { title: string; children: React.ReactNode; timestamp: string, variant?: 'default' | 'destructive' | 'success' | 'warning' }) {
     const timeString = toDate(timestamp)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '';
 
+    const variants = {
+        default: "bg-blue-100 border-blue-200 text-blue-900 dark:bg-blue-950/60 dark:border-blue-800/50 dark:text-blue-200",
+        destructive: "bg-red-100 border-red-200 text-red-900 dark:bg-red-950/60 dark:border-red-800/50 dark:text-red-200",
+        success: "bg-green-100 border-green-200 text-green-900 dark:bg-green-950/60 dark:border-green-800/50 dark:text-green-200",
+        warning: "bg-gray-100 border-gray-200 text-gray-900 dark:bg-gray-800/60 dark:border-gray-700/50 dark:text-gray-200",
+    }
+
     return (
-        <div className="text-center text-xs p-3 rounded-md border bg-blue-100 border-blue-200 text-blue-900 dark:bg-blue-950/60 dark:border-blue-800/50 dark:text-blue-200">
+        <div className={cn("text-center text-xs p-3 rounded-md border", variants[variant || 'default'])}>
             <p className="font-bold mb-1">{title}</p>
-            <div className="text-left">{children}</div>
+            <div className="text-left text-xs">{children}</div>
             <p className="text-right text-xs opacity-70 mt-2">{timeString}</p>
         </div>
     );
@@ -295,20 +304,20 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, onInfoClick
                     }
                     if (msg.message.includes("Congratulations!")) {
                         return (
-                            <SystemMessage key={msg.id} title="Congratulations! The trade is completed. Kindly leave feedback." timestamp={msg.createdAt}>
+                            <SystemMessage key={msg.id} title="Congratulations! The trade is completed. Kindly leave feedback." timestamp={msg.createdAt} variant="success">
                                 <p>{msg.message}</p>
                                 <FeedbackForm trade={trade} />
                             </SystemMessage>
                         );
                     }
                     if (msg.message.includes("cancelled")) {
-                        return <SystemMessage key={msg.id} title="Trade is cancelled." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
+                        return <SystemMessage key={msg.id} title="Trade is cancelled." timestamp={msg.createdAt} variant="destructive">{msg.message}</SystemMessage>;
                     }
                     if (msg.message.includes("expired")) {
-                        return <SystemMessage key={msg.id} title="Trade is expired." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
+                        return <SystemMessage key={msg.id} title="Trade is expired." timestamp={msg.createdAt} variant="warning">{msg.message}</SystemMessage>;
                     }
                     if (msg.message.includes("Buyer has marked the trade as Paid")) {
-                        return <SystemMessage key={msg.id} title="Buyer has marked the trade as Paid." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
+                        return <SystemMessage key={msg.id} title="Buyer has marked the trade as Paid." timestamp={msg.createdAt} variant="success">{msg.message}</SystemMessage>;
                     }
                     // Fallback for any other system message
                     return <SystemMessage key={msg.id} title="System Message" timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
