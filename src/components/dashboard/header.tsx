@@ -392,9 +392,14 @@ export function DashboardHeader() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 p-0">
-              <DropdownMenuLabel className="px-2 pt-2">Notifications</DropdownMenuLabel>
+              <div className="flex items-center justify-between p-2">
+                <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+                <Button asChild variant="link" className="text-xs h-auto p-0">
+                    <Link href="/notifications">View All</Link>
+                </Button>
+              </div>
               <DropdownMenuSeparator />
-              <ScrollArea className="h-auto max-h-96">
+              <ScrollArea className="h-80">
                 <div className="p-1 space-y-1">
                   {notifications && notifications.length > 0 ? (
                     notifications.map((n) => (
