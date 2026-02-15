@@ -236,7 +236,7 @@ function FeedbackForm({ trade }: { trade: Trade }) {
             <FormField control={form.control} name="rating" render={({ field }) => (
                 <FormItem className="space-y-3">
                     <FormControl>
-                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 justify-center">
+                        <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 justify-center">
                             <FormItem>
                                 <FormControl>
                                     <RadioGroupItem value="positive" id="rating-positive" className="sr-only" />
@@ -368,11 +368,7 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
           <hr className="my-2 border-dashed" />
           <DetailRow label={isBuying ? "You will pay" : "You will receive"} value={`${(trade?.fiatAmount ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} />
         </div>
-        <div className="space-y-2">
-          <h4 className="font-semibold">Time Remaining</h4>
-          <div className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4 text-muted-foreground" /><CountdownDisplay targetDate={trade.expiresAt} tradeStatus={trade.status} /></div>
-          <p className="text-xs text-muted-foreground">Time for buyer to make payment.</p>
-        </div>
+        <div className="space-y-2"><h4 className="font-semibold">Time Remaining</h4><div className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4 text-muted-foreground" /><CountdownDisplay targetDate={trade.expiresAt} tradeStatus={trade.status} /></div><p className="text-xs text-muted-foreground">Time for buyer to make payment.</p></div>
         <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{ad?.paymentMethods && <DetailRow label="Payment Method" value={ad.paymentMethods.join(', ')} />}</div>
         <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}</div>
         
