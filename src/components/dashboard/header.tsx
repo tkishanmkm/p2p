@@ -520,7 +520,7 @@ export function DashboardHeader() {
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <div className="hidden sm:block flex-shrink min-w-0 text-left">
+                <div className="flex-shrink min-w-0 text-left">
                   {authUser?.displayName ? (
                     <p className="font-semibold text-sm leading-tight truncate">{authUser.displayName}</p>
                   ) : (
