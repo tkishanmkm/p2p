@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
-import { collection, doc, query, orderBy, where } from "firebase/firestore";
+import { collection, doc, query, orderBy, where, addDoc } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -12,21 +12,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
 import { CryptoCurrency, User, UserWallet, Deposit, Withdrawal, CoinTransfer, CryptoDepositAddress } from "@/lib/types";
 import { SUPPORTED_CRYPTOS, CHAINS } from "@/lib/constants";
-import { Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy, Loader2, Send, Repeat, PlusCircle } from "lucide-react";
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy, Loader2, Send, Repeat, PlusCircle, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import { WithdrawDialog } from "@/components/wallets/withdraw-dialog";
-import { DepositForm } from "@/components/wallets/deposit-form";
 import { Badge } from "@/components/ui/badge";
 import { cn, toDate } from "@/lib/utils";
 import { useRouter } from 'next/navigation';
 import { usePrices } from "@/context/price-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, add } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { createMissingUserWallets } from "@/lib/wallet";
+import { createMissingUserWallets, processAutomatedDeposit } from "@/lib/wallet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
   switch (crypto) {
@@ -47,6 +54,74 @@ const transactionStatusColors: Record<string, string> = {
   cancelled: "text-gray-500",
 };
 
+function SimulateDepositDialog({ open, onOpenChange, crypto, chain, depositInfo }: { open: boolean; onOpenChange: (open: boolean) => void; crypto: CryptoCurrency; chain: string; depositInfo: CryptoDepositAddress; }) {
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  const [amount, setAmount] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firestore || !user || !user.displayName) return;
+    const simulatedAmount = parseFloat(amount);
+    if (isNaN(simulatedAmount) || simulatedAmount <= 0) {
+      toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a positive number.' });
+      return;
+    }
+    setIsSubmitting(true);
+
+    try {
+      const depositRequest: Omit<Deposit, 'id'> = {
+        userId: user.uid,
+        userDisplayName: user.displayName,
+        crypto,
+        chain,
+        amount: simulatedAmount,
+        txId: `SIMULATED_${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        walletAddress: depositInfo.address,
+        qrCodeUrl: depositInfo.qrCodeUrl,
+        status: 'awaiting_confirmation',
+        timerEnd: add(new Date(), { minutes: 60 }).toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      
+      const docRef = await addDoc(collection(firestore, "deposits"), depositRequest);
+      const newDepositData = { ...depositRequest, id: docRef.id };
+      await processAutomatedDeposit(firestore, newDepositData);
+      
+      toast({ title: "Deposit Simulated!", description: `Your balance has been credited with ${simulatedAmount} ${crypto}.` });
+      setAmount('');
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Simulation Failed', description: error.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Simulate Incoming Deposit</DialogTitle>
+          <DialogDescription>This is a developer tool to simulate a blockchain deposit being detected.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="sim-amount">Amount of {crypto} to deposit</Label>
+            <Input id="sim-amount" type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00000000" />
+          </div>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Credit Wallet
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositAddresses, onWithdrawClick }: {
     crypto: CryptoCurrency;
     wallet: UserWallet | undefined;
@@ -58,6 +133,8 @@ function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositA
 }) {
     const { prices, fiatRates } = usePrices();
     const { user: authUser } = useFirebase();
+    const [isSimulateDialogOpen, setIsSimulateDialogOpen] = useState(false);
+    const depositSectionRef = useRef<HTMLDivElement>(null);
 
     const balance = wallet?.balance ?? 0;
     const lockedBalance = wallet?.lockedBalance ?? 0;
@@ -76,6 +153,10 @@ function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositA
         ];
         return txs.sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
     }, [deposits, withdrawals, transfers, authUser]);
+    
+    const handleReceiveClick = () => {
+        depositSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -106,10 +187,14 @@ function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositA
                     <CardHeader>
                         <CardTitle>Actions</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
+                    <CardContent className="grid grid-cols-3 gap-2">
+                         <Button variant="outline" className="flex-col h-20 gap-1" onClick={handleReceiveClick}>
+                            <ArrowDownToLine className="h-5 w-5"/>
+                            <span>Receive</span>
+                        </Button>
                          <Button variant="outline" className="flex-col h-20 gap-1" onClick={onWithdrawClick}>
                             <ArrowUpFromLine className="h-5 w-5"/>
-                            <span>Withdraw</span>
+                            <span>Send</span>
                         </Button>
                          <Button variant="outline" className="flex-col h-20 gap-1" disabled>
                             <Repeat className="h-5 w-5"/>
@@ -121,9 +206,9 @@ function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositA
             
             {/* Right Column */}
             <div className="lg:col-span-2 space-y-6">
-                <Card>
+                <Card ref={depositSectionRef}>
                     <CardHeader>
-                         <CardTitle>Deposit {crypto}</CardTitle>
+                         <CardTitle>Receive {crypto}</CardTitle>
                          <CardDescription>Send only {crypto} to this address. Sending any other asset will result in permanent loss.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -135,35 +220,43 @@ function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositA
                             )}
                             {chains.map(chain => {
                                 const depositInfo = depositAddresses.find(addr => addr.crypto === crypto && addr.chain === chain);
-                                if (!depositInfo) {
-                                    return (
-                                        <TabsContent key={chain} value={chain}>
-                                            <Alert variant="destructive">
+                                return (
+                                    <TabsContent key={chain} value={chain} className="mt-4">
+                                        {!depositInfo ? (
+                                             <Alert variant="destructive">
                                                 <AlertTitle>Address Not Configured</AlertTitle>
                                                 <AlertDescription>No deposit address has been configured for the {chain} network. Please contact support.</AlertDescription>
                                             </Alert>
-                                        </TabsContent>
-                                    )
-                                }
-                                return (
-                                    <TabsContent key={chain} value={chain} className="mt-4">
-                                        <div className="flex flex-col sm:flex-row items-center gap-6">
-                                            <div className="p-2 bg-white rounded-lg">
-                                                <Image src={depositInfo.qrCodeUrl} alt={`${chain} QR Code`} width={160} height={160}/>
-                                            </div>
-                                            <div className="space-y-4 flex-grow w-full">
-                                                <div className="space-y-1">
-                                                    <Label htmlFor={`${chain}-address`}>{chain} Address</Label>
-                                                    <div className="relative">
-                                                        <Input id={`${chain}-address`} value={depositInfo.address} readOnly className="pr-10 font-mono text-xs"/>
-                                                        <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={() => navigator.clipboard.writeText(depositInfo.address)}>
-                                                            <Copy className="h-4 w-4"/>
-                                                        </Button>
+                                        ) : (
+                                            <>
+                                                <div className="flex flex-col sm:flex-row items-center gap-6">
+                                                    <div className="p-2 bg-white rounded-lg">
+                                                        <Image src={depositInfo.qrCodeUrl} alt={`${chain} QR Code`} width={160} height={160}/>
+                                                    </div>
+                                                    <div className="space-y-4 flex-grow w-full">
+                                                        <div className="space-y-1">
+                                                            <Label htmlFor={`${chain}-address`}>{chain} Address</Label>
+                                                            <div className="relative">
+                                                                <Input id={`${chain}-address`} value={depositInfo.address} readOnly className="pr-10 font-mono text-xs"/>
+                                                                <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={() => navigator.clipboard.writeText(depositInfo.address)}>
+                                                                    <Copy className="h-4 w-4"/>
+                                                                </Button>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                        <DepositForm crypto={crypto} chain={chain} depositInfo={depositInfo} />
+                                                <Alert className="mt-4">
+                                                    <AlertTitle>Automatic Deposits</AlertTitle>
+                                                    <AlertDescription>
+                                                        Deposits are automatically detected and will be credited to your account after sufficient network confirmations. This may take some time.
+                                                    </AlertDescription>
+                                                </Alert>
+                                                 <Button variant="secondary" className="w-full mt-4" onClick={() => setIsSimulateDialogOpen(true)}>
+                                                    <Sparkles className="mr-2 h-4 w-4" /> Simulate Incoming Deposit
+                                                </Button>
+                                                <SimulateDepositDialog open={isSimulateDialogOpen} onOpenChange={setIsSimulateDialogOpen} crypto={crypto} chain={chain} depositInfo={depositInfo} />
+                                            </>
+                                        )}
                                     </TabsContent>
                                 )
                             })}
