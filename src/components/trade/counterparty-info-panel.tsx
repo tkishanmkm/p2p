@@ -3,7 +3,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DefaultAvatar } from '@/components/icons';
-import { Calendar, CheckCircle, ThumbsUp, ThumbsDown, ShieldBan, Globe, ArrowLeftRight } from 'lucide-react';
+import { Calendar, CheckCircle, ThumbsUp, ThumbsDown, ShieldBan, Globe, ArrowLeftRight, User as UserIcon } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toDate } from '@/lib/utils';
 import type { User } from '@/lib/types';
@@ -19,6 +19,7 @@ export function CounterpartyInfoPanel({ user, open, onOpenChange, completedTrade
   if (!user) return null;
   const createdDate = toDate(user.createdAt);
   const joinedAgo = createdDate ? formatDistanceToNow(createdDate) + ' ago' : 'N/A';
+  const dobDate = toDate(user.dob);
 
   const getCountryName = (code?: string) => code ? countries.find(c => c.code === code)?.name : 'N/A';
 
@@ -40,6 +41,8 @@ export function CounterpartyInfoPanel({ user, open, onOpenChange, completedTrade
                       <h2 className="text-xl font-bold">{user.userId}</h2>
                   </div>
                   <div className="space-y-1">
+                      <DetailItem icon={<UserIcon size={16} />} label="Full Name" value={user.fullName} />
+                      <DetailItem icon={<Calendar size={16} />} label="Date of Birth" value={dobDate ? format(dobDate, 'LLLL d, yyyy') : 'N/A'} />
                       <DetailItem icon={<ArrowLeftRight size={16} />} label="Trades With You" value={completedTradesWithUser} />
                       <DetailItem icon={<Calendar size={16} />} label="Joined" value={joinedAgo} />
                       <DetailItem icon={<CheckCircle size={16} />} label="Completed Trades" value={user.completedTrades?.toLocaleString()} />
