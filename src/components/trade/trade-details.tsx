@@ -34,6 +34,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { adminCancelTrade, adminMarkTradeAsPaid, adminReleaseFunds } from '@/lib/admin';
 import { AdminActionDialog, type AdminActionType } from '../admin/admin-action-dialog';
+import { Checkbox } from '../ui/checkbox';
 
 function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { label: string, value: string | React.ReactNode, valueClass?: string, isLink?: boolean, href?: string }) {
     const valueContent = isLink ? (
@@ -203,7 +204,6 @@ function FeedbackForm({ trade }: { trade: Trade }) {
   });
 
   const { isSubmitting } = form.formState;
-  const watchedRating = form.watch('rating');
 
   async function onSubmit(values: FeedbackFormValues) {
     if (!firestore || !user || !user.displayName) {
@@ -233,47 +233,58 @@ function FeedbackForm({ trade }: { trade: Trade }) {
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4 border-t">
             <h4 className="font-semibold text-center text-sm text-foreground">Leave Feedback</h4>
-            <FormField control={form.control} name="rating" render={({ field }) => (
+            <FormField
+              control={form.control}
+              name="rating"
+              render={({ field }) => (
                 <FormItem className="space-y-3">
-                    <FormControl>
-                        <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 justify-center">
-                            <FormItem>
-                                <FormControl>
-                                    <RadioGroupItem value="positive" id="rating-positive" className="sr-only" />
-                                </FormControl>
-                                <Label
-                                    htmlFor="rating-positive"
-                                    className={cn(
-                                        "flex items-center gap-2 cursor-pointer p-2 border rounded-md font-normal transition-colors",
-                                        watchedRating === 'positive' 
-                                            ? 'border-green-500 bg-green-100 dark:bg-green-900/30' 
-                                            : 'hover:bg-muted/50'
-                                    )}
-                                >
-                                    <ThumbsUp className="h-5 w-5 text-green-600" /> Positive
-                                </Label>
-                            </FormItem>
-                            <FormItem>
-                                <FormControl>
-                                    <RadioGroupItem value="negative" id="rating-negative" className="sr-only" />
-                                </FormControl>
-                                <Label
-                                    htmlFor="rating-negative"
-                                    className={cn(
-                                        "flex items-center gap-2 cursor-pointer p-2 border rounded-md font-normal transition-colors",
-                                        watchedRating === 'negative'
-                                            ? 'border-red-500 bg-red-100 dark:bg-red-900/30'
-                                            : 'hover:bg-muted/50'
-                                    )}
-                                >
-                                    <ThumbsDown className="h-5 w-5 text-red-600" /> Negative
-                                </Label>
-                            </FormItem>
-                        </RadioGroup>
-                    </FormControl>
-                    <FormMessage className="text-center" />
+                  <FormControl>
+                    <div className="flex gap-4 justify-center">
+                      <Label
+                        htmlFor="rating-positive"
+                        className={cn(
+                          "flex w-full items-center gap-3 cursor-pointer p-3 border rounded-md font-normal transition-colors",
+                          field.value === 'positive'
+                            ? 'border-green-500 bg-green-100/50 dark:bg-green-900/20'
+                            : 'hover:bg-muted/50'
+                        )}
+                      >
+                        <Checkbox
+                          id="rating-positive"
+                          checked={field.value === 'positive'}
+                          onCheckedChange={() => field.onChange('positive')}
+                          className="h-5 w-5"
+                        />
+                        <span className="flex items-center gap-2 font-medium">
+                          <ThumbsUp className="h-5 w-5 text-green-600" /> Positive
+                        </span>
+                      </Label>
+
+                      <Label
+                        htmlFor="rating-negative"
+                        className={cn(
+                          "flex w-full items-center gap-3 cursor-pointer p-3 border rounded-md font-normal transition-colors",
+                          field.value === 'negative'
+                            ? 'border-red-500 bg-red-100/50 dark:bg-red-900/20'
+                            : 'hover:bg-muted/50'
+                        )}
+                      >
+                        <Checkbox
+                          id="rating-negative"
+                          checked={field.value === 'negative'}
+                          onCheckedChange={() => field.onChange('negative')}
+                          className="h-5 w-5"
+                        />
+                        <span className="flex items-center gap-2 font-medium">
+                          <ThumbsDown className="h-5 w-5 text-red-600" /> Negative
+                        </span>
+                      </Label>
+                    </div>
+                  </FormControl>
+                  <FormMessage className="text-center" />
                 </FormItem>
-            )} />
+              )}
+            />
             <FormField control={form.control} name="comment" render={({ field }) => (
                 <FormItem>
                     <FormControl>
