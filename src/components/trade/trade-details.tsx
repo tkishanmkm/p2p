@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,7 +29,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, RefreshCw, Clock, Loader2, Flag, ThumbsUp, ThumbsDown, Shield, Eye } from 'lucide-react';
 import { add } from 'date-fns';
 import { Input } from '../ui/input';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { adminCancelTrade, adminMarkTradeAsPaid, adminReleaseFunds } from '@/lib/admin';
@@ -147,7 +147,7 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 
     const handleMarkAsPaid = async () => { if (!firestore) return; try { await markTradeAsPaid(firestore, trade.id); toast({ title: "Success", description: "Seller has been notified that you've paid." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
     const handleReleaseCrypto = async () => { if (!firestore) return; try { await releaseFundsFromEscrow(firestore, trade.id); toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
-    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(db, trade.id); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
+    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
 
     const canBuyerCancel = currentUserRole === 'buy' && ['active', 'paid', 'disputed'].includes(trade.status);
     const canSellerRelease = currentUserRole === 'sell' && (trade.status === 'paid' || trade.status === 'disputed');
@@ -195,13 +195,24 @@ const feedbackSchema = z.object({
 
 type FeedbackFormValues = z.infer<typeof feedbackSchema>;
 
-function FeedbackForm({ trade }: { trade: Trade }) {
+function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedback?: Feedback }) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   
   const form = useForm<FeedbackFormValues>({
     resolver: zodResolver(feedbackSchema),
+    defaultValues: {
+      rating: existingFeedback?.rating,
+      comment: existingFeedback?.comment || "",
+    }
   });
+
+  useEffect(() => {
+    form.reset({
+      rating: existingFeedback?.rating,
+      comment: existingFeedback?.comment || "",
+    });
+  }, [existingFeedback, form]);
 
   const { isSubmitting } = form.formState;
 
@@ -213,17 +224,27 @@ function FeedbackForm({ trade }: { trade: Trade }) {
     const opponentId = user.uid === trade.buyerId ? trade.sellerId : trade.buyerId;
 
     try {
-      const feedbackRef = collection(firestore, 'trades', trade.id, 'feedback');
-      await addDoc(feedbackRef, {
-        tradeId: trade.id,
-        fromUser: user.uid,
-        fromUsername: user.displayName,
-        toUser: opponentId,
-        rating: values.rating,
-        comment: values.comment,
-        createdAt: new Date().toISOString(),
-      });
-      toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
+       if (existingFeedback) {
+        // Update
+        const feedbackDocRef = doc(firestore, 'trades', trade.id, 'feedback', existingFeedback.id);
+        await updateDoc(feedbackDocRef, {
+          rating: values.rating,
+          comment: values.comment,
+        });
+        toast({ title: 'Feedback Updated', description: 'Your feedback has been successfully updated.' });
+      } else {
+        const feedbackRef = collection(firestore, 'trades', trade.id, 'feedback');
+        await addDoc(feedbackRef, {
+          tradeId: trade.id,
+          fromUser: user.uid,
+          fromUsername: user.displayName,
+          toUser: opponentId,
+          rating: values.rating,
+          comment: values.comment,
+          createdAt: new Date().toISOString(),
+        });
+        toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
+      }
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback: ${error.message}` });
     }
@@ -232,7 +253,9 @@ function FeedbackForm({ trade }: { trade: Trade }) {
   return (
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4 border-t">
-            <h4 className="font-semibold text-center text-sm text-foreground">Leave Feedback</h4>
+            <h4 className="font-semibold text-center text-sm text-foreground">
+                {existingFeedback ? 'Update Your Feedback' : 'Leave Feedback'}
+            </h4>
             <FormField
               control={form.control}
               name="rating"
@@ -295,7 +318,7 @@ function FeedbackForm({ trade }: { trade: Trade }) {
             )} />
             <Button type="submit" size="sm" className="w-full" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Submit Feedback
+                {existingFeedback ? 'Update Feedback' : 'Submit Feedback'}
             </Button>
         </form>
     </Form>
@@ -376,8 +399,8 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
   const { data: disputes } = useCollection<Dispute>(disputesRef);
   const resolvedDispute = disputes?.find(d => d.status === 'resolved');
 
-  const hasUserGivenFeedback = feedbacks?.some(f => f.fromUser === user?.uid);
-  const showFeedbackForm = trade.status === 'released' && !hasUserGivenFeedback;
+  const userFeedback = feedbacks?.find(f => f.fromUser === user?.uid);
+  const showFeedbackSection = trade.status === 'released';
 
   return (
     <Card className="flex flex-col h-full shadow-none border-0 rounded-none">
@@ -436,7 +459,7 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
                 </Link>
             </Button>
         )}
-        {showFeedbackForm && <FeedbackForm trade={trade} />}
+        {showFeedbackSection && <FeedbackForm trade={trade} existingFeedback={userFeedback} />}
         {isAdmin && <AdminTradeActions trade={trade} />}
       </CardContent>
       {showActions && !isAdmin && (
