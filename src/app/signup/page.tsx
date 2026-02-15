@@ -31,10 +31,11 @@ import { useState, Suspense } from "react";
 import { useFirebase } from "@/firebase";
 import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, setDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SECURITY_QUESTIONS } from "@/lib/constants";
+import { SECURITY_QUESTIONS, SUPPORTED_CRYPTOS } from "@/lib/constants";
 import { countries } from "@/lib/countries";
+import * as bip39 from 'bip39';
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -119,9 +120,12 @@ function SignupFormComponent() {
       // 3. Update auth user profile (displayName)
       await updateProfile(newUser, { displayName: values.userId });
       
-      // 4. Create Firestore user document
+      // 4. Create Firestore user document and wallets in a batch
+      const batch = writeBatch(firestore);
+      
       const userDocRef = doc(firestore, "users", newUser.uid);
       const dob = new Date(parseInt(values.year), parseInt(values.month) - 1, parseInt(values.day));
+      const seedPhrase = bip39.generateMnemonic();
 
       const newUserDoc = {
           id: newUser.uid,
@@ -129,7 +133,6 @@ function SignupFormComponent() {
           fullName: values.fullName,
           dob: dob.toISOString().split('T')[0], // YYYY-MM-DD
           country: values.country,
-          // ipBasedCountry will be set on first login
           isBanned: false,
           isOnHold: false,
           tradeVolume: 0,
@@ -145,9 +148,25 @@ function SignupFormComponent() {
           preferredCurrency: "USD",
           securityQuestion: values.securityQuestion,
           securityAnswer: values.securityAnswer,
+          seedPhrase: seedPhrase,
           blockedUsers: [],
       };
-      await setDoc(userDocRef, newUserDoc);
+      batch.set(userDocRef, newUserDoc);
+
+      // Create initial wallets
+      SUPPORTED_CRYPTOS.forEach(crypto => {
+          const walletRef = doc(firestore, "users", newUser.uid, "wallets", crypto.name);
+          batch.set(walletRef, {
+              id: crypto.name,
+              userId: newUser.uid,
+              crypto: crypto.name,
+              balance: 0,
+              lockedBalance: 0,
+              updatedAt: new Date().toISOString(),
+          });
+      });
+      
+      await batch.commit();
 
       toast({ title: "Account Created", description: "Redirecting..." });
       router.push('/buy');

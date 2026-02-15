@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useState, useEffect } from "react";
+import { processAutomatedDeposit } from "@/lib/wallet";
 
 const depositConfirmationSchema = z.object({
   txId: z.string().min(10, { message: "Transaction Hash is required and must be at least 10 characters." }),
@@ -77,7 +78,7 @@ function DepositPageContent() {
   };
   
   const onSubmit = async (values: DepositConfirmationFormValues) => {
-    if (!depositRef || !firestore) return;
+    if (!depositRef || !firestore || !deposit) return;
     setIsSubmitting(true);
 
     try {
@@ -85,10 +86,14 @@ function DepositPageContent() {
             txId: values.txId,
             status: 'awaiting_confirmation'
         });
-        toast({ title: "Confirmation Received", description: "Your deposit is pending review by an administrator. You will be notified upon approval." });
+
+        // Immediately try to process it automatically
+        await processAutomatedDeposit(firestore, { ...deposit, status: 'awaiting_confirmation' });
+
+        toast({ title: "Deposit Confirmed!", description: "Your deposit has been processed and your balance updated." });
     } catch (error: any) {
         console.error("Error confirming deposit:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not save your confirmation." });
+        toast({ variant: "destructive", title: "Error", description: "Could not process your deposit automatically. An admin will review it shortly." });
     } finally {
         setIsSubmitting(false);
     }
@@ -127,7 +132,7 @@ function DepositPageContent() {
                 </div>
                 <CardTitle className="mt-4">Deposit {deposit.status}</CardTitle>
                  <CardDescription>
-                    {isDeclinedOrExpired ? 'This deposit request has been closed.' : 'This deposit request is now closed.'}
+                    {isCompleted ? `Your balance has been credited with ${deposit.finalAmount || deposit.amount} ${deposit.crypto}.` : 'This deposit request has been closed.'}
                 </CardDescription>
             </CardHeader>
         </Card>
@@ -196,7 +201,7 @@ function DepositPageContent() {
                 </form>
             </Form>
             <p className="text-center text-xs text-muted-foreground">
-                After you submit, your deposit will be reviewed. You will be notified once it's approved.
+                After you submit, your deposit will be automatically confirmed.
             </p>
         </div>
       </CardContent>

@@ -1,7 +1,4 @@
 
-
-
-
 'use client';
 import {
   Firestore,
@@ -18,7 +15,7 @@ import {
   getDocs,
   setDoc,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Deposit } from './types';
 import { add } from 'date-fns';
 import type { User as AuthUser } from 'firebase/auth';
 import { toDate } from '@/lib/utils';
@@ -613,4 +610,54 @@ export async function sendCoinToUser(
   });
 
   return transferId;
+}
+
+/**
+ * Automatically processes a deposit after user confirmation.
+ */
+export async function processAutomatedDeposit(
+  db: Firestore,
+  deposit: Deposit
+): Promise<void> {
+  const depositRef = doc(db, "deposits", deposit.id);
+  const userWalletRef = doc(db, "users", deposit.userId, "wallets", deposit.crypto);
+  const notificationRef = doc(collection(db, "users", deposit.userId, "notifications"));
+
+  await runTransaction(db, async (transaction) => {
+    const depositDoc = await transaction.get(depositRef);
+    if (!depositDoc.exists() || depositDoc.data().status !== 'awaiting_confirmation') {
+      throw new Error('Deposit is not in a state to be processed.');
+    }
+
+    const walletDoc = await transaction.get(userWalletRef);
+    let newBalance = deposit.amount;
+
+    if (walletDoc.exists()) {
+      const walletData = walletDoc.data() as UserWallet;
+      newBalance += (walletData.balance || 0);
+    }
+    
+    // Use set with merge to create or update the wallet
+    transaction.set(userWalletRef, {
+        balance: newBalance,
+        crypto: deposit.crypto,
+        userId: deposit.userId,
+        id: deposit.crypto,
+    }, { merge: true });
+
+    transaction.update(userWalletRef, { updatedAt: new Date().toISOString() });
+    
+    transaction.update(depositRef, {
+      status: "approved",
+      finalAmount: deposit.amount,
+    });
+
+    transaction.set(notificationRef, {
+        userId: deposit.userId,
+        message: `Your deposit of ${deposit.amount} ${deposit.crypto} has been confirmed and added to your wallet.`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        link: `/wallets`
+    });
+  });
 }

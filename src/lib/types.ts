@@ -1,9 +1,3 @@
-
-
-
-
-
-
 // All IDs are string (UUID)
 // Amounts are string to handle DECIMAL(36,18) precision
 
@@ -32,6 +26,7 @@ export type User = {
   lastActive?: string;
   securityQuestion?: string;
   securityAnswer?: string;
+  seedPhrase?: string; // 12-word mnemonic
   isAdminAccount?: boolean;
   blockedUsers?: string[];
   badges?: string[];
