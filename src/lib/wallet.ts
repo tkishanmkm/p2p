@@ -15,7 +15,7 @@ import {
   getDocs,
   setDoc,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Deposit } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Deposit, Withdrawal } from './types';
 import { add } from 'date-fns';
 import type { User as AuthUser } from 'firebase/auth';
 import { toDate } from '@/lib/utils';
@@ -528,7 +528,7 @@ export async function cancelWithdrawal(db: Firestore, withdrawal: Withdrawal): P
             throw new Error("Insufficient locked balance to return.");
         }
 
-        // Return funds to available balance
+        // Return funds from locked to available balance
         transaction.update(walletRef, {
             balance: (wallet.balance || 0) + withdrawal.amount,
             lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
@@ -640,51 +640,30 @@ export async function sendCoinToUser(
 }
 
 /**
- * Automatically processes a deposit after user confirmation.
+ * Creates a deposit request document.
  */
-export async function processAutomatedDeposit(
+export async function createDepositRequest(
   db: Firestore,
-  deposit: Deposit
-): Promise<void> {
-  const depositRef = doc(db, "deposits", deposit.id);
-  const userWalletRef = doc(db, "users", deposit.userId, "wallets", deposit.crypto);
-  const notificationRef = doc(collection(db, "users", deposit.userId, "notifications"));
+  user: AuthUser,
+  values: Omit<Deposit, 'id' | 'createdAt' | 'status' | 'userId' | 'userDisplayName' | 'timerEnd'>
+): Promise<Deposit> {
+  const depositCollectionRef = collection(db, "deposits");
+  const newDepositRef = doc(depositCollectionRef);
+  
+  const depositData: Omit<Deposit, 'id'> = {
+    userId: user.uid,
+    userDisplayName: user.displayName || 'Unknown',
+    crypto: values.crypto,
+    chain: values.chain,
+    amount: values.amount,
+    status: 'pending',
+    walletAddress: values.walletAddress,
+    qrCodeUrl: values.qrCodeUrl,
+    timerEnd: add(new Date(), { hours: 1 }).toISOString(), // e.g., 1 hour expiry
+    createdAt: new Date().toISOString(),
+  };
 
-  await runTransaction(db, async (transaction) => {
-    const depositDoc = await transaction.get(depositRef);
-    if (!depositDoc.exists() || depositDoc.data().status !== 'awaiting_confirmation') {
-      throw new Error('Deposit is not in a state to be processed.');
-    }
-
-    const walletDoc = await transaction.get(userWalletRef);
-    let newBalance = deposit.amount;
-
-    if (walletDoc.exists()) {
-      const walletData = walletDoc.data() as UserWallet;
-      newBalance += (walletData.balance || 0);
-    }
-    
-    // Use set with merge to create or update the wallet
-    transaction.set(userWalletRef, {
-        balance: newBalance,
-        crypto: deposit.crypto,
-        userId: deposit.userId,
-        id: deposit.crypto,
-    }, { merge: true });
-
-    transaction.update(userWalletRef, { updatedAt: new Date().toISOString() });
-    
-    transaction.update(depositRef, {
-      status: "approved",
-      finalAmount: deposit.amount,
-    });
-
-    transaction.set(notificationRef, {
-        userId: deposit.userId,
-        message: `Your deposit of ${deposit.amount} ${deposit.crypto} has been confirmed and added to your wallet.`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        link: `/wallets`
-    });
-  });
+  await setDoc(newDepositRef, depositData);
+  
+  return { id: newDepositRef.id, ...depositData };
 }
