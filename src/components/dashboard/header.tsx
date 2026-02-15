@@ -40,10 +40,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { Logo } from '@/components/logo';
 import { ModeToggle } from '@/components/mode-toggle';
-import { DefaultAvatar } from '../icons';
+import { BtcLogo, EthLogo, LtcLogo, UsdtLogo, DefaultAvatar } from '../icons';
 import { Badge } from '../ui/badge';
 import { collection, doc, orderBy, query, updateDoc, where } from 'firebase/firestore';
-import type { UserWallet, Notification, User as AppUser, Language, Trade } from '@/lib/types';
+import type { UserWallet, Notification, User as AppUser, Language, Trade, CryptoCurrency } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { cn, toDate } from '@/lib/utils';
 import { usePrices } from '@/context/price-context';
@@ -77,6 +77,16 @@ const navItems: NavItem[] = [
   { href: '/trades', label: 'My Trades', icon: ArrowLeftRight },
   { href: '/contact', label: 'Support', icon: LifeBuoy },
 ];
+
+const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
+    switch (crypto) {
+        case 'BTC': return <BtcLogo className={className} />;
+        case 'ETH': return <EthLogo className={className} />;
+        case 'LTC': return <LtcLogo className={className} />;
+        case 'USDT': return <UsdtLogo className={className} />;
+        default: return null;
+    }
+}
 
 export function DashboardHeader() {
   const { user: authUser, isUserLoading, firestore, auth } = useFirebase();
@@ -473,7 +483,10 @@ export function DashboardHeader() {
                                             <p className="text-sm font-medium truncate">{partner.username}</p>
                                             <div className="flex items-center gap-2">
                                                 <Badge className={cn("text-xs h-auto", isBuyer ? 'bg-green-600 text-primary-foreground hover:bg-green-600/90' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90')}>{isBuyer ? "Buy" : "Sell"}</Badge>
-                                                <p className="text-xs text-muted-foreground truncate">{trade.amount.toFixed(4)} {trade.crypto}</p>
+                                                <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                                                    {trade.amount.toFixed(4)} {trade.crypto}
+                                                    <CryptoLogo crypto={trade.crypto as CryptoCurrency} className="h-4 w-4" />
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="text-right text-xs shrink-0">
