@@ -149,7 +149,7 @@ export function DashboardHeader() {
     if (!auth) return;
     try {
       await signOut(auth);
-      toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push('/login');
     } catch (error) {
       toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred during logout." });
@@ -472,7 +472,7 @@ export function DashboardHeader() {
                                         <div className="flex-grow overflow-hidden">
                                             <p className="text-sm font-medium truncate">{partner.username}</p>
                                             <div className="flex items-center gap-2">
-                                                <Badge variant={isBuyer ? "default" : "secondary"} className="text-xs h-auto">{isBuyer ? "Buy" : "Sell"}</Badge>
+                                                <Badge className={cn("text-xs h-auto", isBuyer ? 'bg-green-600 text-primary-foreground hover:bg-green-600/90' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90')}>{isBuyer ? "Buy" : "Sell"}</Badge>
                                                 <p className="text-xs text-muted-foreground truncate">{trade.amount.toFixed(4)} {trade.crypto}</p>
                                             </div>
                                         </div>
@@ -507,13 +507,13 @@ export function DashboardHeader() {
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <div className="flex-shrink min-w-0 text-left">
+                <div className="hidden sm:block flex-shrink min-w-0 text-left">
                   {authUser?.displayName ? (
-                    <p className="font-semibold text-[11px] md:text-sm leading-tight truncate">{authUser.displayName}</p>
+                    <p className="font-semibold text-sm leading-tight truncate">{authUser.displayName}</p>
                   ) : (
                     <Skeleton className="h-4 w-16" />
                   )}
-                  <p className="text-[9px] md:text-xs leading-tight text-muted-foreground truncate">
+                  <p className="text-xs leading-tight text-muted-foreground truncate">
                     {totalWalletValueConverted.toLocaleString(undefined, {
                       style: 'currency',
                       currency: preferredCurrency,
