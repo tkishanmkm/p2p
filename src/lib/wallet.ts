@@ -19,6 +19,7 @@ import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Deposit
 import { add } from 'date-fns';
 import type { User as AuthUser } from 'firebase/auth';
 import { toDate } from '@/lib/utils';
+import { SUPPORTED_CRYPTOS } from './constants';
 
 function generateId(prefix: string, length: number) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -28,6 +29,32 @@ function generateId(prefix: string, length: number) {
   }
   return prefix + result;
 }
+
+export async function createMissingUserWallets(
+  db: Firestore,
+  userId: string,
+  existingWallets: UserWallet[]
+): Promise<void> {
+  const batch = writeBatch(db);
+  const existingCryptoNames = existingWallets.map(w => w.crypto);
+
+  SUPPORTED_CRYPTOS.forEach(crypto => {
+    if (!existingCryptoNames.includes(crypto.name)) {
+      const walletRef = doc(db, "users", userId, "wallets", crypto.name);
+      batch.set(walletRef, {
+        id: crypto.name,
+        userId: userId,
+        crypto: crypto.name,
+        balance: 0,
+        lockedBalance: 0,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  });
+
+  await batch.commit();
+}
+
 
 export async function initiateTrade(
   db: Firestore,

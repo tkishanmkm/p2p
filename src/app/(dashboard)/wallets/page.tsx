@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
 import { CryptoCurrency, User, UserWallet, Deposit, Withdrawal, CoinTransfer, CryptoDepositAddress } from "@/lib/types";
 import { SUPPORTED_CRYPTOS, CHAINS } from "@/lib/constants";
-import { Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy, Loader2, Send, Repeat } from "lucide-react";
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy, Loader2, Send, Repeat, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import { WithdrawDialog } from "@/components/wallets/withdraw-dialog";
@@ -25,6 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { createMissingUserWallets } from "@/lib/wallet";
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
   switch (crypto) {
@@ -54,7 +55,6 @@ function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositA
     depositAddresses: CryptoDepositAddress[];
     onWithdrawClick: () => void;
 }) {
-    const [showDeposit, setShowDeposit] = useState(true);
     const { prices, fiatRates } = usePrices();
     const { user: authUser } = useFirebase();
 
@@ -105,11 +105,7 @@ function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositA
                     <CardHeader>
                         <CardTitle>Actions</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-3 gap-2">
-                        <Button variant="outline" className="flex-col h-20 gap-1" onClick={() => setShowDeposit(true)}>
-                            <ArrowDownToLine className="h-5 w-5"/>
-                            <span>Deposit</span>
-                        </Button>
+                    <CardContent className="grid grid-cols-2 gap-2">
                          <Button variant="outline" className="flex-col h-20 gap-1" onClick={onWithdrawClick}>
                             <ArrowUpFromLine className="h-5 w-5"/>
                             <span>Withdraw</span>
@@ -124,56 +120,54 @@ function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositA
             
             {/* Right Column */}
             <div className="lg:col-span-2 space-y-6">
-                {showDeposit && (
-                    <Card>
-                        <CardHeader>
-                             <CardTitle>Deposit {crypto}</CardTitle>
-                             <CardDescription>Send only {crypto} to this address. Sending any other asset will result in permanent loss.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Tabs defaultValue={chains[0]} className="w-full">
-                                {chains.length > 1 && (
-                                    <TabsList className="grid w-full grid-cols-3">
-                                        {chains.map(chain => <TabsTrigger key={chain} value={chain}>{chain}</TabsTrigger>)}
-                                    </TabsList>
-                                )}
-                                {chains.map(chain => {
-                                    const depositInfo = depositAddresses.find(addr => addr.crypto === crypto && addr.chain === chain);
-                                    if (!depositInfo) {
-                                        return (
-                                            <TabsContent key={chain} value={chain}>
-                                                <Alert variant="destructive">
-                                                    <AlertTitle>Address Not Configured</AlertTitle>
-                                                    <AlertDescription>No deposit address has been configured for the {chain} network. Please contact support.</AlertDescription>
-                                                </Alert>
-                                            </TabsContent>
-                                        )
-                                    }
+                <Card>
+                    <CardHeader>
+                         <CardTitle>Deposit {crypto}</CardTitle>
+                         <CardDescription>Send only {crypto} to this address. Sending any other asset will result in permanent loss.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Tabs defaultValue={chains[0]} className="w-full">
+                            {chains.length > 1 && (
+                                <TabsList className="grid w-full grid-cols-3">
+                                    {chains.map(chain => <TabsTrigger key={chain} value={chain}>{chain}</TabsTrigger>)}
+                                </TabsList>
+                            )}
+                            {chains.map(chain => {
+                                const depositInfo = depositAddresses.find(addr => addr.crypto === crypto && addr.chain === chain);
+                                if (!depositInfo) {
                                     return (
-                                        <TabsContent key={chain} value={chain} className="mt-4">
-                                            <div className="flex flex-col sm:flex-row items-center gap-6">
-                                                <div className="p-2 bg-white rounded-lg">
-                                                    <Image src={depositInfo.qrCodeUrl} alt={`${chain} QR Code`} width={160} height={160}/>
-                                                </div>
-                                                <div className="space-y-4 flex-grow w-full">
-                                                    <div className="space-y-1">
-                                                        <Label htmlFor={`${chain}-address`}>{chain} Address</Label>
-                                                        <div className="relative">
-                                                            <Input id={`${chain}-address`} value={depositInfo.address} readOnly className="pr-10 font-mono text-xs"/>
-                                                            <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={() => navigator.clipboard.writeText(depositInfo.address)}>
-                                                                <Copy className="h-4 w-4"/>
-                                                            </Button>
-                                                        </div>
+                                        <TabsContent key={chain} value={chain}>
+                                            <Alert variant="destructive">
+                                                <AlertTitle>Address Not Configured</AlertTitle>
+                                                <AlertDescription>No deposit address has been configured for the {chain} network. Please contact support.</AlertDescription>
+                                            </Alert>
+                                        </TabsContent>
+                                    )
+                                }
+                                return (
+                                    <TabsContent key={chain} value={chain} className="mt-4">
+                                        <div className="flex flex-col sm:flex-row items-center gap-6">
+                                            <div className="p-2 bg-white rounded-lg">
+                                                <Image src={depositInfo.qrCodeUrl} alt={`${chain} QR Code`} width={160} height={160}/>
+                                            </div>
+                                            <div className="space-y-4 flex-grow w-full">
+                                                <div className="space-y-1">
+                                                    <Label htmlFor={`${chain}-address`}>{chain} Address</Label>
+                                                    <div className="relative">
+                                                        <Input id={`${chain}-address`} value={depositInfo.address} readOnly className="pr-10 font-mono text-xs"/>
+                                                        <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={() => navigator.clipboard.writeText(depositInfo.address)}>
+                                                            <Copy className="h-4 w-4"/>
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </TabsContent>
-                                    )
-                                })}
-                            </Tabs>
-                        </CardContent>
-                    </Card>
-                )}
+                                        </div>
+                                    </TabsContent>
+                                )
+                            })}
+                        </Tabs>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader>
                         <CardTitle>Transaction History</CardTitle>
@@ -252,6 +246,7 @@ export default function WalletsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [isCreatingWallets, setIsCreatingWallets] = useState(false);
   const { prices, fiatRates } = usePrices();
 
   useEffect(() => {
@@ -285,12 +280,49 @@ export default function WalletsPage() {
 
   const isLoading = isAuthLoading || isUserLoading || isWalletsLoading || isDepositsLoading || isWithdrawalsLoading || areAddressesLoading || sentLoading || receivedLoading;
 
+  const supportedCryptoNames = SUPPORTED_CRYPTOS.map(c => c.name);
+  const userWalletCryptos = wallets?.map(w => w.crypto) || [];
+  const hasAllWallets = supportedCryptoNames.every(c => userWalletCryptos.includes(c));
+
+  const handleCreateWallets = async () => {
+    if (!firestore || !authUser) return;
+    setIsCreatingWallets(true);
+    try {
+      await createMissingUserWallets(firestore, authUser.uid, wallets || []);
+      toast({ title: "Wallets Created", description: "Your wallets have been successfully created." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setIsCreatingWallets(false);
+    }
+  };
+
+
   if (isLoading || !authUser) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  if (!isWalletsLoading && !hasAllWallets) {
+    return (
+         <div className="flex flex-1 items-center justify-center">
+            <Card className="max-w-md text-center">
+                <CardHeader>
+                    <CardTitle>Create Your Wallets</CardTitle>
+                    <CardDescription>Get started by creating your wallets for all supported cryptocurrencies.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleCreateWallets} disabled={isCreatingWallets}>
+                        {isCreatingWallets ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                        Create Initial Wallets
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    )
   }
 
   return (
