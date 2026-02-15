@@ -1,12 +1,10 @@
-
-
 'use client';
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, limit, doc } from 'firebase/firestore';
-import type { User, P2PAd } from '@/lib/types';
+import { collection, query, where, limit, doc, orderBy } from 'firebase/firestore';
+import type { User, P2PAd, Feedback } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -21,6 +19,7 @@ import { blockUser, unblockUser } from '@/lib/users';
 import { useToast } from '@/hooks/use-toast';
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { countries } from '@/lib/countries';
+import { FeedbackCard } from '@/components/p2p/feedback-card';
 
 function UserStats({ user }: { user: User }) {
   const lastTradeDate = toDate(user.lastTradeAt);
@@ -106,6 +105,12 @@ export default function PublicProfilePage() {
       [firestore, user]
   );
   const { data: ads, isLoading: areAdsLoading } = useCollection<P2PAd>(adsQuery);
+
+  const feedbackQuery = useMemoFirebase(
+    () => (firestore && user ? query(collection(firestore, 'users', user.id, 'feedback'), orderBy('createdAt', 'desc')) : null),
+    [firestore, user]
+  );
+  const { data: feedbacks, isLoading: areFeedbackLoading } = useCollection<Feedback>(feedbackQuery);
 
   const isBlockedByCurrentUser = currentUserData?.blockedUsers?.includes(user?.id || '');
   const isCurrentUserBlocked = user?.blockedUsers?.includes(currentUserData?.id || '');
@@ -225,7 +230,7 @@ export default function PublicProfilePage() {
             <UserStats user={user} />
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
             {isInteractionBlocked ? (
                 <Card>
                     <CardHeader>
@@ -258,6 +263,29 @@ export default function PublicProfilePage() {
                     </CardContent>
                 </Card>
             )}
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Feedback</CardTitle>
+                    <CardDescription>Feedback left by other traders for {user.userId}.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {areFeedbackLoading ? (
+                        <div className="space-y-4">
+                            <Skeleton className="h-16 w-full" />
+                            <Skeleton className="h-16 w-full" />
+                        </div>
+                    ) : feedbacks && feedbacks.length > 0 ? (
+                        <div className="space-y-0">
+                            {feedbacks.map(fb => <FeedbackCard key={fb.id} feedback={fb} />)}
+                        </div>
+                    ) : (
+                         <div className="text-center py-10 border-2 border-dashed rounded-lg">
+                            <p className="text-sm text-muted-foreground">No feedback yet.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
       </div>
     </>

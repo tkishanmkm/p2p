@@ -138,24 +138,6 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 
     const isBuyer = currentUserRole === 'buy';
 
-    const buyerInstructions = [
-        "Do not forget to mark trade as 'Paid' after you have sent the money.",
-        "Always make payment within the given trade time limit.",
-        "If the time has expired, do not make the payment.",
-        "Never communicate or trade outside the platform.",
-        "Always verify the seller's payment details match the information in the chat.",
-    ];
-
-    const sellerInstructions = [
-        "Check for payment by logging into your account to confirm the transaction.",
-        "Do not release crypto based on payment proof (e.g., screenshots) alone.",
-        "Once payment is confirmed in your account, release the crypto promptly.",
-        "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
-        "Never communicate or trade outside of the platform.",
-    ];
-
-    const instructions = isBuyer ? buyerInstructions : sellerInstructions;
-
     if (!user) return null;
 
     const handleMarkAsPaid = async () => { if (!firestore) return; try { await markTradeAsPaid(firestore, trade.id); toast({ title: "Success", description: "Seller has been notified that you've paid." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
@@ -169,12 +151,6 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 
     return (
         <div className="space-y-4 w-full">
-            <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Trade Awareness</AlertTitle><AlertDescription>
-                <ul className="list-disc list-inside text-xs space-y-1 mt-2">
-                    {instructions.map((step, i) => <li key={i}>{step}</li>)}
-                </ul>
-            </AlertDescription></Alert>
-
              <div className="space-y-2">
                 {canBuyerMarkPaid && (
                     <AlertDialog><AlertDialogTrigger asChild><Button className="w-full" size="lg">Mark as Paid</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm Payment</AlertDialogTitle><AlertDialogDescription>Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Only confirm after you have fully sent the payment.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleMarkAsPaid}>Yes, I Have Paid</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
@@ -247,6 +223,7 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
 
         let positiveAdjustment = 0;
         let negativeAdjustment = 0;
+        const opponentFeedbackColRef = collection(firestore, 'users', opponentId, 'feedback');
 
         if (existingFeedback) {
           if (existingFeedback.rating !== values.rating) {
@@ -266,6 +243,12 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
             rating: values.rating,
             comment: values.comment,
           });
+          // Also update the denormalized copy
+          const denormalizedFeedbackRef = doc(opponentFeedbackColRef, existingFeedback.id);
+          transaction.update(denormalizedFeedbackRef, {
+            rating: values.rating,
+            comment: values.comment,
+          });
         } else {
           if (values.rating === 'positive') {
             positiveAdjustment = 1;
@@ -274,8 +257,9 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
           }
 
           const feedbackColRef = collection(firestore, 'trades', trade.id, 'feedback');
-          const newFeedbackRef = doc(feedbackColRef);
-          transaction.set(newFeedbackRef, {
+          const newFeedbackRef = doc(feedbackColRef); // Generate a new ID
+          
+          const feedbackPayload = {
             id: newFeedbackRef.id,
             tradeId: trade.id,
             fromUser: user.uid,
@@ -284,7 +268,13 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
             rating: values.rating,
             comment: values.comment,
             createdAt: new Date().toISOString(),
-          });
+          };
+          
+          // Write to original location
+          transaction.set(newFeedbackRef, feedbackPayload);
+          // Write denormalized copy to user's subcollection
+          const denormalizedFeedbackRef = doc(opponentFeedbackColRef, newFeedbackRef.id);
+          transaction.set(denormalizedFeedbackRef, feedbackPayload);
         }
         
         if (positiveAdjustment !== 0 || negativeAdjustment !== 0) {
@@ -481,6 +471,26 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
 
   const userFeedback = feedbacks?.find(f => f.fromUser === user?.uid);
   const showFeedbackSection = trade.status === 'released';
+  const paymentTimeRemaining = useCountdown(trade.status === 'active' ? trade.expiresAt : new Date());
+
+
+  const buyerInstructions = [
+      "Do not forget to mark trade as 'Paid' after you have sent the money.",
+      "Always make payment within the given trade time limit.",
+      "If the time has expired, do not make the payment.",
+      "Never communicate or trade outside the platform.",
+      "Always verify the seller's payment details match the information in the chat.",
+  ];
+
+  const sellerInstructions = [
+      "Check for payment by logging into your account to confirm the transaction.",
+      "Do not release crypto based on payment proof (e.g., screenshots) alone.",
+      "Once payment is confirmed in your account, release the crypto promptly.",
+      "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
+      "Never communicate or trade outside of the platform.",
+  ];
+
+  const instructions = isBuying ? buyerInstructions : sellerInstructions;
 
   return (
     <Card className="flex flex-col h-full shadow-none border-0 rounded-none">
@@ -499,12 +509,27 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
           <DetailRow label={isBuying ? "You will pay" : "You will receive"} value={`${(trade?.fiatAmount ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} />
         </div>
         
+        {trade.status === 'active' && (
+            <div className="text-center p-2 border rounded-md">
+                <p className="text-sm font-semibold">Time Remaining to Pay:</p>
+                <p className="text-lg font-mono text-destructive">
+                    {paymentTimeRemaining.isFinished ? '--:--:--' : `${String(paymentTimeRemaining.hours).padStart(2, '0')}:${String(paymentTimeRemaining.minutes).padStart(2, '0')}:${String(paymentTimeRemaining.seconds).padStart(2, '0')}`}
+                </p>
+            </div>
+        )}
+        
         {showActions && !isAdmin && (
             <div className="pt-2">
               <ActionButtons trade={trade} currentUserRole={currentUserRole} />
             </div>
         )}
         
+        <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Trade Awareness</AlertTitle><AlertDescription>
+            <ul className="list-disc list-inside text-xs space-y-1 mt-2">
+                {instructions.map((step, i) => <li key={i}>{step}</li>)}
+            </ul>
+        </AlertDescription></Alert>
+
         <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{ad?.paymentMethods && <DetailRow label="Payment Method" value={ad.paymentMethods.join(', ')} />}</div>
         <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}</div>
         

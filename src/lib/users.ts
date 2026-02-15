@@ -1,7 +1,8 @@
 'use client';
-import { Firestore, doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc, writeBatch, limit } from 'firebase/firestore';
+import { Firestore, doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc, writeBatch, limit, getDoc } from 'firebase/firestore';
 import type { User as AuthUser } from 'firebase/auth';
 import { countries } from './countries';
+import type { Trade } from './types';
 
 /**
  * Blocks a target user by adding their UID to the current user's block list.
@@ -18,10 +19,47 @@ export async function blockUser(db: Firestore, currentUserId: string, targetUser
     if (querySnapshot.empty) {
         throw new Error(`User "${targetUsername}" not found.`);
     }
-    const targetUserId = querySnapshot.docs[0].id;
+    const targetUserDoc = querySnapshot.docs[0];
+    const targetUserId = targetUserDoc.id;
     if (currentUserId === targetUserId) {
         throw new Error("You cannot block yourself.");
     }
+    
+    // Check for active trades
+    const tradesRef = collection(db, "trades");
+    const activeTradeQuery = query(tradesRef,
+        where('status', 'in', ['active', 'paid', 'disputed'])
+    );
+
+    const activeTradesSnapshot = await getDocs(activeTradeQuery);
+    const activeTradesBetweenUsers = activeTradesSnapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as Trade))
+        .filter(t =>
+            (t.buyerId === currentUserId && t.sellerId === targetUserId) ||
+            (t.buyerId === targetUserId && t.sellerId === currentUserId)
+        );
+
+    // Add system message if active trades exist
+    if (activeTradesBetweenUsers.length > 0) {
+        const currentUserDocSnap = await getDoc(doc(db, "users", currentUserId));
+        const currentUsername = currentUserDocSnap.data()?.userId || 'The other user';
+        const batch = writeBatch(db);
+
+        for (const trade of activeTradesBetweenUsers) {
+            const messagesColRef = collection(db, 'trades', trade.id, 'messages');
+            const systemMessage = {
+                tradeId: trade.id,
+                senderId: 'system',
+                senderUsername: 'System',
+                message: `${currentUsername} has blocked you. This will not affect the current trade. Please continue with the transaction. Do not cancel the trade.`,
+                isModerator: true,
+                createdAt: new Date().toISOString(),
+            };
+            batch.set(doc(messagesColRef), systemMessage);
+        }
+        await batch.commit();
+    }
+
 
     const currentUserRef = doc(db, "users", currentUserId);
     await updateDoc(currentUserRef, {
