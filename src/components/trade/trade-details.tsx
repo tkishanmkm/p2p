@@ -46,7 +46,7 @@ function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { l
 
 const CountdownDisplay = ({ targetDate, tradeStatus }: { targetDate: string, tradeStatus: TradeStatus }) => {
     const { hours, minutes, seconds, isFinished } = useCountdown(targetDate);
-    if (isFinished || !['active', 'paid'].includes(tradeStatus)) { return <div className="text-sm font-semibold font-mono text-muted-foreground">--:--:--</div>; }
+    if (isFinished || tradeStatus !== 'active') { return <div className="text-sm font-semibold font-mono text-muted-foreground">--:--:--</div>; }
     const displayTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     return (<div className="text-sm font-semibold font-mono text-destructive flex items-center gap-1.5">{displayTime}</div>);
 }
@@ -144,6 +144,26 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     const isDisputeWaiting = trade.status === 'paid' && !disputeCountdown.isFinished;
     const canDisputeAfterWait = trade.status === 'paid' && disputeCountdown.isFinished;
 
+    const isBuyer = currentUserRole === 'buy';
+
+    const buyerInstructions = [
+        "Do not forget to mark trade as 'Paid' after you have sent the money.",
+        "Always make payment within the given trade time limit.",
+        "If the time has expired, do not make the payment.",
+        "Never communicate or trade outside the platform.",
+        "Always verify the seller's payment details match the information in the chat.",
+    ];
+
+    const sellerInstructions = [
+        "Check for payment by logging into your account to confirm the transaction.",
+        "Do not release crypto based on payment proof (e.g., screenshots) alone.",
+        "Once payment is confirmed in your account, release the crypto promptly.",
+        "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
+        "Never communicate or trade outside of the platform.",
+    ];
+
+    const instructions = isBuyer ? buyerInstructions : sellerInstructions;
+
     if (!user) return null;
 
     const handleMarkAsPaid = async () => { if (!firestore) return; try { await markTradeAsPaid(firestore, trade.id); toast({ title: "Success", description: "Seller has been notified that you've paid." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
@@ -156,35 +176,35 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     const canOpenDispute = (trade.status === 'active' || canDisputeAfterWait);
 
     return (
-        <div className="space-y-2 w-full">
+        <div className="space-y-4 w-full">
             <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Trade Awareness</AlertTitle><AlertDescription>
                 <ul className="list-disc list-inside text-xs space-y-1 mt-2">
-                    <li>Do not forget to mark trade as 'Paid' after you have sent the money.</li>
-                    <li>Always make payment within the given trade time limit.</li>
-                    <li>If the time has expired, do not make the payment.</li>
-                    <li>Never communicate or trade outside the platform.</li>
+                    {instructions.map((step, i) => <li key={i}>{step}</li>)}
                 </ul>
             </AlertDescription></Alert>
-            {canBuyerMarkPaid && (
-                <AlertDialog><AlertDialogTrigger asChild><Button className="w-full" size="lg">Mark as Paid</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm Payment</AlertDialogTitle><AlertDialogDescription>Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Only confirm after you have fully sent the payment.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleMarkAsPaid}>Yes, I Have Paid</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-            )}
-            {canSellerRelease && (
-                <AlertDialog><AlertDialogTrigger asChild><Button className="w-full" size="lg">Release Crypto</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Release Cryptocurrency?</AlertDialogTitle><AlertDialogDescription>Confirm you have received <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span>. This action is irreversible.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleReleaseCrypto}>Confirm and Release</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-            )}
-            {canBuyerCancel && (
-                <AlertDialog><AlertDialogTrigger asChild><Button variant="outline" className="w-full">Cancel Trade</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm Trade Cancellation</AlertDialogTitle><AlertDialogDescription>To prevent accidental cancellations, please type "I DID NOT PAID" in the box below to confirm you have not sent payment.</AlertDialogDescription></AlertDialogHeader>
-                <div className="py-4">
-                    <Input value={cancelInput} onChange={(e) => setCancelInput(e.target.value)} placeholder='Type "I DID NOT PAID"'/>
-                </div>
-                <AlertDialogFooter><AlertDialogCancel>Back</AlertDialogCancel><AlertDialogAction onClick={handleCancelTrade} disabled={!isCancelInputCorrect}>Confirm Cancellation</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-            )}
-            {isDisputeWaiting && (
-                <div className="text-center p-2 border rounded-md">
-                    <p className="text-sm font-semibold">Dispute option available in:</p>
-                    <p className="text-lg font-mono text-destructive">{`${String(disputeCountdown.hours).padStart(2, '0')}:${String(disputeCountdown.minutes).padStart(2, '0')}:${String(disputeCountdown.seconds).padStart(2, '0')}`}</p>
-                </div>
-            )}
-            <OpenDisputeDialog trade={trade} currentUserId={user.uid} currentUsername={user.displayName || 'user'} disabled={!canOpenDispute} />
+
+             <div className="space-y-2">
+                {canBuyerMarkPaid && (
+                    <AlertDialog><AlertDialogTrigger asChild><Button className="w-full" size="lg">Mark as Paid</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm Payment</AlertDialogTitle><AlertDialogDescription>Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Only confirm after you have fully sent the payment.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleMarkAsPaid}>Yes, I Have Paid</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                )}
+                {canSellerRelease && (
+                    <AlertDialog><AlertDialogTrigger asChild><Button className="w-full" size="lg">Release Crypto</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Release Cryptocurrency?</AlertDialogTitle><AlertDialogDescription>Confirm you have received <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span>. This action is irreversible.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleReleaseCrypto}>Confirm and Release</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                )}
+                {canBuyerCancel && (
+                    <AlertDialog><AlertDialogTrigger asChild><Button variant="outline" className="w-full">Cancel Trade</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm Trade Cancellation</AlertDialogTitle><AlertDialogDescription>To prevent accidental cancellations, please type "I DID NOT PAID" in the box below to confirm you have not sent payment.</AlertDialogDescription></AlertDialogHeader>
+                    <div className="py-4">
+                        <Input value={cancelInput} onChange={(e) => setCancelInput(e.target.value)} placeholder='Type "I DID NOT PAID"'/>
+                    </div>
+                    <AlertDialogFooter><AlertDialogCancel>Back</AlertDialogCancel><AlertDialogAction onClick={handleCancelTrade} disabled={!isCancelInputCorrect}>Confirm Cancellation</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                )}
+                {isDisputeWaiting && (
+                    <div className="text-center p-2 border rounded-md">
+                        <p className="text-sm font-semibold">Dispute option available in:</p>
+                        <p className="text-lg font-mono text-destructive">{`${String(disputeCountdown.hours).padStart(2, '0')}:${String(disputeCountdown.minutes).padStart(2, '0')}:${String(disputeCountdown.seconds).padStart(2, '0')}`}</p>
+                    </div>
+                )}
+                <OpenDisputeDialog trade={trade} currentUserId={user.uid} currentUsername={user.displayName || 'user'} disabled={!canOpenDispute} />
+            </div>
         </div>
     );
 };
@@ -527,14 +547,16 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
                 </Link>
             </Button>
         )}
+        
+        {showActions && !isAdmin && (
+            <div className="pt-4">
+              <ActionButtons trade={trade} currentUserRole={currentUserRole} />
+            </div>
+        )}
+
         {showFeedbackSection && <FeedbackForm trade={trade} existingFeedback={userFeedback} />}
         {isAdmin && <AdminTradeActions trade={trade} />}
       </CardContent>
-      {showActions && !isAdmin && (
-        <CardFooter className="pt-6">
-          <ActionButtons trade={trade} currentUserRole={currentUserRole} />
-        </CardFooter>
-      )}
     </Card>
   );
 }
