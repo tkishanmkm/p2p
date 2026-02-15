@@ -39,6 +39,8 @@ export default function WalletPage() {
       </div>
     );
   }
+  
+  const selectedDepositAddress = depositAddresses?.find(a => a.crypto === selectedCrypto);
 
   return (
     <div className="p-4">
@@ -63,8 +65,10 @@ export default function WalletPage() {
               {depositAddress && (
                 <div className="mt-4">
                     <p>Deposit Address:</p>
-                    <QRCode value={depositAddress.address} size={128}/>
-                    <p className="font-mono text-xs break-all text-center max-w-[200px] mx-auto mt-2">{depositAddress.address}</p>
+                    <div className="p-2 inline-block bg-white rounded-lg mt-2">
+                        <QRCode value={depositAddress.address} size={128}/>
+                    </div>
+                    <p className="font-mono text-xs break-all max-w-[200px] mt-2 p-2 bg-muted rounded-md">{depositAddress.address}</p>
                 </div>
               )}
             </CardContent>
@@ -80,7 +84,7 @@ export default function WalletPage() {
         open={isDepositOpen}
         onOpenChange={setIsDepositOpen}
         selectedCrypto={selectedCrypto}
-        depositAddresses={depositAddresses || []}
+        depositAddress={selectedDepositAddress}
       />
       <WithdrawDialog
         open={isWithdrawOpen}
