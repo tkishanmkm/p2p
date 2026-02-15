@@ -226,16 +226,12 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
                 {displayMessages.map((msg) => {
                   if (msg.senderId === 'system') {
                      if (msg.message.includes("disputed")) {
-                        return <SystemMessage key={msg.id} title="Trade is disputed. A moderator will join the chat shortly." timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
+                        return <SystemMessage key={msg.id} title="Trade is disputed. A moderator will join the chat shortly." timestamp={msg.createdAt} variant="destructive">{msg.message}</SystemMessage>;
                     }
                     if (msg.message.includes("Congratulations!")) {
-                        return (
-                            <SystemMessage key={msg.id} title="Congratulations! The trade is completed." timestamp={msg.createdAt} variant="success">
-                                <p>You can now leave feedback for this trade from the details panel.</p>
-                            </SystemMessage>
-                        );
+                        return <SystemMessage key={msg.id} title="Congratulations! The trade is completed." timestamp={msg.createdAt} variant="success"><p>You can now leave feedback for this trade from the details panel.</p></SystemMessage>;
                     }
-                    if (msg.message.includes("cancelled")) {
+                     if (msg.message.includes("cancelled")) {
                         return <SystemMessage key={msg.id} title="Trade is cancelled." timestamp={msg.createdAt} variant="destructive">{msg.message}</SystemMessage>;
                     }
                     if (msg.message.includes("expired")) {
@@ -243,6 +239,9 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
                     }
                     if (msg.message.includes("Buyer has marked the trade as Paid")) {
                         return <SystemMessage key={msg.id} title="Buyer has marked the trade as Paid." timestamp={msg.createdAt} variant="success">{msg.message}</SystemMessage>;
+                    }
+                    if (msg.message.includes("Dispute resolved")) {
+                        return <SystemMessage key={msg.id} title="Dispute Resolved" timestamp={msg.createdAt} variant="default">{msg.message}</SystemMessage>;
                     }
                     // Fallback for any other system message
                     return <SystemMessage key={msg.id} title="System Message" timestamp={msg.createdAt}>{msg.message}</SystemMessage>;
@@ -296,5 +295,3 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
     </Card>
   );
 }
-
-    

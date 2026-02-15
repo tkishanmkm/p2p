@@ -9,8 +9,10 @@ import {
   updateDoc,
   collection,
   arrayRemove,
+  setDoc,
 } from "firebase/firestore";
 import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket } from "./types";
+import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from "./wallet";
 
 /**
  * Approves a deposit and updates the user's wallet balance in a single transaction.
@@ -244,39 +246,73 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
   const tradeRef = doc(db, "trades", trade.id);
   const disputeRef = doc(db, "trades", trade.id, "disputes", dispute.id);
   const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
+  const messagesCollectionRef = collection(db, 'trades', trade.id, 'messages');
 
   return runTransaction(db, async (transaction) => {
     const sellerWalletDoc = await transaction.get(sellerWalletRef);
     if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
     const sellerWallet = sellerWalletDoc.data() as UserWallet;
 
+    const winnerUsername = winnerId === trade.buyerId ? trade.buyer.username : trade.seller.username;
+    let finalTradeStatus: 'cancelled' | 'released';
+
     if (winnerId === trade.sellerId) {
-      // Return funds to seller
+      finalTradeStatus = 'cancelled';
       if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to return.");
       transaction.update(sellerWalletRef, {
         balance: (sellerWallet.balance || 0) + trade.amount,
         lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
         updatedAt: new Date().toISOString()
       });
-      transaction.update(tradeRef, { status: "cancelled" });
+      transaction.update(tradeRef, { status: finalTradeStatus });
     } else { // Winner is buyer
-      // Release funds (same as normal release, just from dispute context)
-      // The buyer will claim it via the `claimFundsForTrade` function automatically
+      finalTradeStatus = 'released';
       if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to release.");
       transaction.update(sellerWalletRef, {
         balance: sellerWallet.balance || 0, // Preserve available balance
         lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
         updatedAt: new Date().toISOString()
       });
-      transaction.update(tradeRef, { status: "released" });
+      transaction.update(tradeRef, { status: finalTradeStatus });
     }
 
-    // Update the dispute document
+    // Update dispute doc
     transaction.update(disputeRef, {
       status: "resolved",
       winnerId: winnerId,
       resolvedBy: adminId,
-      resolutionNote: `Dispute awarded to ${winnerId === trade.buyerId ? 'buyer' : 'seller'} by moderator.`,
+      resolutionNote: `Dispute awarded to ${winnerUsername} by moderator.`,
+    });
+
+    // Add system message
+    transaction.set(doc(messagesCollectionRef), {
+      tradeId: trade.id,
+      senderId: 'system',
+      senderUsername: 'System',
+      message: `Dispute resolved. The trade has been awarded to ${winnerUsername}. Final trade status: ${finalTradeStatus}.`,
+      isModerator: true,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Add notifications
+    const opponentId = winnerId === trade.buyerId ? trade.sellerId : trade.buyerId;
+
+    const winnerNotifRef = doc(collection(db, 'users', winnerId, 'notifications'));
+    transaction.set(winnerNotifRef, {
+        userId: winnerId,
+        message: `You have won the dispute for trade ${trade.tradeId}. The trade is now ${finalTradeStatus}.`,
+        link: `/trade/${trade.id}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+    });
+
+    const loserNotifRef = doc(collection(db, 'users', opponentId, 'notifications'));
+    transaction.set(loserNotifRef, {
+        userId: opponentId,
+        message: `The dispute for trade ${trade.tradeId} has been resolved in favor of the other party. The trade is now ${finalTradeStatus}.`,
+        link: `/trade/${trade.id}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
     });
   });
 }
@@ -375,4 +411,37 @@ export async function adminUnblockUser(
   await updateDoc(userRef, {
     blockedUsers: arrayRemove(targetUserIdToUnblock)
   });
+}
+
+export async function adminCancelTrade(db: Firestore, trade: Trade, adminId: string, reason: string) {
+    await cancelTrade(db, trade.id);
+    const adminLogRef = doc(collection(db, "admin_logs"));
+    await setDoc(adminLogRef, {
+        adminId,
+        action: `Admin cancelled trade ${trade.tradeId}. Reason: ${reason}`,
+        targetId: trade.id,
+        createdAt: new Date().toISOString(),
+    });
+}
+
+export async function adminMarkTradeAsPaid(db: Firestore, trade: Trade, adminId: string, reason: string) {
+    await markTradeAsPaid(db, trade.id);
+    const adminLogRef = doc(collection(db, "admin_logs"));
+    await setDoc(adminLogRef, {
+        adminId,
+        action: `Admin marked trade ${trade.tradeId} as paid. Reason: ${reason}`,
+        targetId: trade.id,
+        createdAt: new Date().toISOString(),
+    });
+}
+
+export async function adminReleaseFunds(db: Firestore, trade: Trade, adminId: string, reason: string) {
+    await releaseFundsFromEscrow(db, trade.id);
+    const adminLogRef = doc(collection(db, "admin_logs"));
+    await setDoc(adminLogRef, {
+        adminId,
+        action: `Admin released funds for trade ${trade.tradeId}. Reason: ${reason}`,
+        targetId: trade.id,
+        createdAt: new Date().toISOString(),
+    });
 }

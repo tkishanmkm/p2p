@@ -14,7 +14,7 @@ import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from '@/lib/wall
 import { openDispute } from '@/lib/disputes';
 import { cn, toDate } from '@/lib/utils';
 import { statusColors } from '@/lib/status-colors';
-import type { Feedback, P2PAd, Trade, TradeStatus } from '@/lib/types';
+import type { Feedback, P2PAd, Trade, TradeStatus, Dispute } from '@/lib/types';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,11 +27,14 @@ import { Label } from "@/components/ui/label";
 
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, RefreshCw, Clock, Loader2, Flag, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { AlertCircle, RefreshCw, Clock, Loader2, Flag, ThumbsUp, ThumbsDown, Shield, Eye } from 'lucide-react';
 import { add } from 'date-fns';
 import { Input } from '../ui/input';
 import { collection, addDoc } from 'firebase/firestore';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { useAdminStatus } from '@/hooks/use-admin-status';
+import { adminCancelTrade, adminMarkTradeAsPaid, adminReleaseFunds } from '@/lib/admin';
+import { AdminActionDialog, type AdminActionType } from '../admin/admin-action-dialog';
 
 function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { label: string, value: string | React.ReactNode, valueClass?: string, isLink?: boolean, href?: string }) {
     const valueContent = isLink ? (
@@ -144,7 +147,7 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 
     const handleMarkAsPaid = async () => { if (!firestore) return; try { await markTradeAsPaid(firestore, trade.id); toast({ title: "Success", description: "Seller has been notified that you've paid." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
     const handleReleaseCrypto = async () => { if (!firestore) return; try { await releaseFundsFromEscrow(firestore, trade.id); toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
-    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
+    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(db, trade.id); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
 
     const canBuyerCancel = currentUserRole === 'buy' && ['active', 'paid', 'disputed'].includes(trade.status);
     const canSellerRelease = currentUserRole === 'sell' && (trade.status === 'paid' || trade.status === 'disputed');
@@ -153,7 +156,14 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 
     return (
         <div className="space-y-2 w-full">
-            <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Warning</AlertTitle><AlertDescription>To avoid scams, never communicate or trade outside of this platform.</AlertDescription></Alert>
+            <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Trade Awareness</AlertTitle><AlertDescription>
+                <ul className="list-disc list-inside text-xs space-y-1 mt-2">
+                    <li>Do not forget to mark trade as 'Paid' after you have sent the money.</li>
+                    <li>Always make payment within the given trade time limit.</li>
+                    <li>If the time has expired, do not make the payment.</li>
+                    <li>Never communicate or trade outside the platform.</li>
+                </ul>
+            </AlertDescription></Alert>
             {canBuyerMarkPaid && (
                 <AlertDialog><AlertDialogTrigger asChild><Button className="w-full" size="lg">Mark as Paid</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm Payment</AlertDialogTitle><AlertDialogDescription>Have you sent <span className="font-bold">{trade.fiatAmount} {trade.fiatCurrency}</span> to the seller? Only confirm after you have fully sent the payment.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleMarkAsPaid}>Yes, I Have Paid</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
             )}
@@ -178,72 +188,151 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     );
 };
 
-// --- Sub-component: FeedbackForm ---
+const feedbackSchema = z.object({
+  rating: z.enum(['positive', 'negative'], { required_error: 'Please select a rating.' }),
+  comment: z.string().min(1, "Comment is required.").max(500, "Comment cannot exceed 500 characters."),
+});
+
+type FeedbackFormValues = z.infer<typeof feedbackSchema>;
+
 function FeedbackForm({ trade }: { trade: Trade }) {
-    const { firestore, user } = useFirebase();
-    const { toast } = useToast();
-    const [rating, setRating] = useState<'positive' | 'negative' | null>(null);
-    const [comment, setComment] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  
+  const form = useForm<FeedbackFormValues>({
+    resolver: zodResolver(feedbackSchema),
+  });
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!rating || !comment.trim() || !firestore || !user || !user.displayName) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please select a rating and write a comment.' });
-            return;
-        }
+  const { isSubmitting } = form.formState;
 
-        setIsSubmitting(true);
-        const opponentId = user.uid === trade.buyerId ? trade.sellerId : trade.buyerId;
+  async function onSubmit(values: FeedbackFormValues) {
+    if (!firestore || !user || !user.displayName) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to leave feedback.' });
+      return;
+    }
+    const opponentId = user.uid === trade.buyerId ? trade.sellerId : trade.buyerId;
 
-        try {
-            const feedbackRef = collection(firestore, 'trades', trade.id, 'feedback');
-            await addDoc(feedbackRef, {
-                tradeId: trade.id,
-                fromUser: user.uid,
-                fromUsername: user.displayName,
-                toUser: opponentId,
-                rating,
-                comment,
-                createdAt: new Date().toISOString(),
-            });
+    try {
+      const feedbackRef = collection(firestore, 'trades', trade.id, 'feedback');
+      await addDoc(feedbackRef, {
+        tradeId: trade.id,
+        fromUser: user.uid,
+        fromUsername: user.displayName,
+        toUser: opponentId,
+        rating: values.rating,
+        comment: values.comment,
+        createdAt: new Date().toISOString(),
+      });
+      toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback: ${error.message}` });
+    }
+  }
 
-            toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback: ${error.message}` });
-        } finally {
-             setIsSubmitting(false);
-        }
-    };
-    
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4 border-t">
+  return (
+    <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4 border-t">
             <h4 className="font-semibold text-center text-sm text-foreground">Leave Feedback</h4>
-            <RadioGroup onValueChange={(v) => setRating(v as any)} value={rating || ''} className="flex gap-4 justify-center">
-                <div>
-                    <RadioGroupItem value="positive" id="rating-positive" className="sr-only" />
-                    <Label htmlFor="rating-positive" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-green-500 has-[:checked]:bg-green-100 dark:has-[:checked]:bg-green-900/30 font-normal">
-                        <ThumbsUp className="h-5 w-5 text-green-600" /> Positive
-                    </Label>
-                </div>
-                <div>
-                    <RadioGroupItem value="negative" id="rating-negative" className="sr-only" />
-                    <Label htmlFor="rating-negative" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-red-500 has-[:checked]:bg-red-100 dark:has-[:checked]:bg-red-900/30 font-normal">
-                        <ThumbsDown className="h-5 w-5 text-red-600" /> Negative
-                    </Label>
-                </div>
-            </RadioGroup>
-            <Textarea 
-                placeholder="Leave a comment about your trading experience..." 
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-            />
-            <Button type="submit" size="sm" className="w-full" disabled={isSubmitting || !rating || !comment}>
-                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <FormField control={form.control} name="rating" render={({ field }) => (
+                <FormItem className="space-y-3">
+                    <FormControl>
+                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 justify-center">
+                            <FormItem>
+                                <FormControl>
+                                    <RadioGroupItem value="positive" id="rating-positive" className="sr-only" />
+                                </FormControl>
+                                <Label htmlFor="rating-positive" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-green-500 has-[:checked]:bg-green-100 dark:has-[:checked]:bg-green-900/30 font-normal">
+                                    <ThumbsUp className="h-5 w-5 text-green-600" /> Positive
+                                </Label>
+                            </FormItem>
+                            <FormItem>
+                                <FormControl>
+                                    <RadioGroupItem value="negative" id="rating-negative" className="sr-only" />
+                                </FormControl>
+                                <Label htmlFor="rating-negative" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-red-500 has-[:checked]:bg-red-100 dark:has-[:checked]:bg-red-900/30 font-normal">
+                                    <ThumbsDown className="h-5 w-5 text-red-600" /> Negative
+                                </Label>
+                            </FormItem>
+                        </RadioGroup>
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                </FormItem>
+            )} />
+            <FormField control={form.control} name="comment" render={({ field }) => (
+                <FormItem>
+                    <FormControl>
+                        <Textarea placeholder="Leave a comment about your trading experience..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
+            <Button type="submit" size="sm" className="w-full" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Submit Feedback
             </Button>
         </form>
-    );
+    </Form>
+  );
+}
+
+function AdminTradeActions({ trade }: { trade: Trade }) {
+  const { firestore, user: adminUser } = useFirebase();
+  const { toast } = useToast();
+  const [dialogState, setDialogState] = useState<{ open: boolean; action: AdminActionType | null; }>({ open: false, action: null });
+
+  const handleActionConfirm = async (reason: string) => {
+    if (!dialogState.action || !adminUser || !firestore) return;
+
+    try {
+        if (dialogState.action === 'cancel') {
+            await adminCancelTrade(firestore, trade, adminUser.uid, reason);
+        } else if (dialogState.action === 'paid') {
+            await adminMarkTradeAsPaid(firestore, trade, adminUser.uid, reason);
+        } else if (dialogState.action === 'release') {
+            await adminReleaseFunds(firestore, trade, adminUser.uid, reason);
+        }
+        toast({ title: 'Admin Action Successful', description: 'The trade has been updated.' });
+    } catch(e: any) {
+        toast({ variant: 'destructive', title: 'Admin Action Failed', description: e.message });
+    }
+  }
+
+  const actionMap: Record<string, {label: string, action: 'cancel' | 'paid' | 'release'}> = {
+      cancel: { label: 'Cancel Trade', action: 'cancel' },
+      paid: { label: 'Mark as Paid', action: 'paid' },
+      release: { label: 'Release Funds', action: 'release' },
+  }
+
+  return (
+      <>
+        <AdminActionDialog
+            open={dialogState.open}
+            onOpenChange={(open) => setDialogState(prev => ({...prev, open }))}
+            user={null}
+            action={dialogState.action}
+            onConfirm={handleActionConfirm}
+        />
+        <Card className="border-destructive mt-6">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Admin Controls
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Button variant="outline" onClick={() => setDialogState({ open: true, action: actionMap.cancel.action })}>
+                    {actionMap.cancel.label}
+                </Button>
+                 <Button variant="outline" onClick={() => setDialogState({ open: true, action: actionMap.paid.action })}>
+                    {actionMap.paid.label}
+                </Button>
+                <Button variant="outline" onClick={() => setDialogState({ open: true, action: actionMap.release.action })}>
+                    {actionMap.release.label}
+                </Button>
+            </CardContent>
+        </Card>
+      </>
+  )
 }
 
 export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?: P2PAd | null; currentUserRole: 'buy' | 'sell'; }) {
@@ -251,9 +340,15 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
   const showReopen = ['cancelled', 'expired'].includes(trade.status);
   const showActions = ['active', 'paid', 'disputed'].includes(trade.status);
   const { firestore, user } = useFirebase();
+  const { isAdmin } = useAdminStatus();
 
   const feedbackRef = useMemoFirebase(() => firestore ? collection(firestore, 'trades', trade.id, 'feedback') : null, [firestore, trade.id]);
   const { data: feedbacks } = useCollection<Feedback>(feedbackRef);
+  
+  const disputesRef = useMemoFirebase(() => firestore ? collection(firestore, 'trades', trade.id, 'disputes') : null, [firestore, trade.id]);
+  const { data: disputes } = useCollection<Dispute>(disputesRef);
+  const resolvedDispute = disputes?.find(d => d.status === 'resolved');
+
   const hasUserGivenFeedback = feedbacks?.some(f => f.fromUser === user?.uid);
   const showFeedbackForm = trade.status === 'released' && !hasUserGivenFeedback;
 
@@ -281,8 +376,17 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
         <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{ad?.paymentMethods && <DetailRow label="Payment Method" value={ad.paymentMethods.join(', ')} />}</div>
         <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}</div>
         
+        {resolvedDispute && (
+            <div className="space-y-2">
+                <h4 className="font-semibold">Dispute Resolution</h4>
+                <DetailRow label="Winner" value={resolvedDispute.winnerId === trade.buyerId ? trade.buyer.username : trade.seller.username} />
+                <DetailRow label="Outcome" value={<span className="capitalize">{trade.status === 'released' ? 'Trade Completed' : 'Trade Cancelled'}</span>} />
+            </div>
+        )}
+
         <div className="space-y-2">
           <h4 className="font-semibold">Ad Details</h4>
+          {ad?.publicAdId && <DetailRow label="Ad ID" value={ad.publicAdId} isLink href={`/ad/${ad.id}`} />}
           {ad?.offerLabel && <DetailRow label="Offer Label" value={ad.offerLabel} />}
           {ad?.tags && ad.tags.length > 0 && (
             <div className="flex justify-between items-start text-sm">
@@ -310,8 +414,9 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
             </Button>
         )}
         {showFeedbackForm && <FeedbackForm trade={trade} />}
+        {isAdmin && <AdminTradeActions trade={trade} />}
       </CardContent>
-      {showActions && (
+      {showActions && !isAdmin && (
         <CardFooter className="pt-6">
           <ActionButtons trade={trade} currentUserRole={currentUserRole} />
         </CardFooter>
@@ -319,5 +424,3 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
     </Card>
   );
 }
-
-    
