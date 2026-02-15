@@ -131,10 +131,11 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     const [cancelInput, setCancelInput] = useState('');
     const isCancelInputCorrect = cancelInput.trim().toLowerCase() === "i did not paid";
 
+    // Dispute Timer Logic
     const disputeUnlockTime = trade.paidAt ? add(toDate(trade.paidAt)!, { hours: 3 }) : null;
     const disputeCountdown = useCountdown(disputeUnlockTime || new Date(0));
     const isDisputeWaiting = trade.status === 'paid' && !disputeCountdown.isFinished;
-    const canDisputeAfterWait = trade.status === 'paid' && disputeCountdown.isFinished;
+    const canOpenDispute = trade.status === 'paid' && disputeCountdown.isFinished;
 
     const isBuyer = currentUserRole === 'buy';
 
@@ -147,8 +148,7 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     const canBuyerCancel = currentUserRole === 'buy' && ['active', 'paid', 'disputed'].includes(trade.status);
     const canSellerRelease = currentUserRole === 'sell' && (trade.status === 'paid' || trade.status === 'disputed');
     const canBuyerMarkPaid = currentUserRole === "buy" && trade.status === "active";
-    const canOpenDispute = (trade.status === 'active' || canDisputeAfterWait);
-
+    
     return (
         <div className="space-y-4 w-full">
              <div className="space-y-2">
@@ -165,14 +165,19 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
                     </div>
                     <AlertDialogFooter><AlertDialogCancel>Back</AlertDialogCancel><AlertDialogAction onClick={handleCancelTrade} disabled={!isCancelInputCorrect}>Confirm Cancellation</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                 )}
-                {isDisputeWaiting && (
-                    <div className="text-center p-2 border rounded-md">
-                        <p className="text-sm font-semibold">Dispute option available in:</p>
-                        <p className="text-lg font-mono text-destructive">{`${String(disputeCountdown.hours).padStart(2, '0')}:${String(disputeCountdown.minutes).padStart(2, '0')}:${String(disputeCountdown.seconds).padStart(2, '0')}`}</p>
-                    </div>
+                
+                {trade.status === 'paid' && (
+                    <>
+                        {isDisputeWaiting && (
+                            <div className="text-center p-2 border rounded-md">
+                                <p className="text-sm font-semibold">Dispute option available in:</p>
+                                <p className="text-lg font-mono text-destructive">{`${String(disputeCountdown.hours).padStart(2, '0')}:${String(disputeCountdown.minutes).padStart(2, '0')}:${String(disputeCountdown.seconds).padStart(2, '0')}`}</p>
+                            </div>
+                        )}
+                        <OpenDisputeDialog trade={trade} currentUserId={user.uid} currentUsername={user.displayName || 'user'} disabled={!canOpenDispute} />
+                    </>
                 )}
-                <OpenDisputeDialog trade={trade} currentUserId={user.uid} currentUsername={user.displayName || 'user'} disabled={!canOpenDispute} />
-            </div>
+             </div>
         </div>
     );
 };
@@ -458,7 +463,6 @@ function AdminTradeActions({ trade }: { trade: Trade }) {
 export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?: P2PAd | null; currentUserRole: 'buy' | 'sell'; }) {
   const isBuying = currentUserRole === 'buy';
   const showReopen = ['cancelled', 'expired'].includes(trade.status);
-  const showActions = ['active', 'paid', 'disputed'].includes(trade.status);
   const { firestore, user } = useFirebase();
   const { isAdmin } = useAdminStatus();
 
@@ -491,6 +495,7 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
   ];
 
   const instructions = isBuying ? buyerInstructions : sellerInstructions;
+  const showActions = ['active', 'paid', 'disputed'].includes(trade.status);
 
   return (
     <Card className="flex flex-col h-full shadow-none border-0 rounded-none">
@@ -517,7 +522,7 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
                 </p>
             </div>
         )}
-        
+
         {showActions && !isAdmin && (
             <div className="pt-2">
               <ActionButtons trade={trade} currentUserRole={currentUserRole} />
