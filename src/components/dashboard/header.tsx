@@ -20,6 +20,7 @@ import {
   Settings,
   Send,
   Globe,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,8 +42,8 @@ import { Logo } from '@/components/logo';
 import { ModeToggle } from '@/components/mode-toggle';
 import { DefaultAvatar } from '../icons';
 import { Badge } from '../ui/badge';
-import { collection, doc, orderBy, query, updateDoc } from 'firebase/firestore';
-import type { UserWallet, Notification, User as AppUser, Language } from '@/lib/types';
+import { collection, doc, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import type { UserWallet, Notification, User as AppUser, Language, Trade } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { cn, toDate } from '@/lib/utils';
 import { usePrices } from '@/context/price-context';
@@ -53,6 +54,9 @@ import { FlagIcon } from '../ui/flag-icon';
 import { useI18n } from '@/context/i18n-context';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ScrollArea } from '../ui/scroll-area';
+import { useState, useEffect } from 'react';
+import { statusColors } from '@/lib/status-colors';
+
 
 type NavItem = {
   href?: string;
@@ -82,6 +86,7 @@ export function DashboardHeader() {
   const { prices, fiatRates } = usePrices();
   const { language, setLanguage } = useI18n();
   const selectedLanguage = LANGUAGES.flatMap(l => l.dialects || l).find(l => l.code === language) || LANGUAGES[0];
+  const [showAllNotifications, setShowAllNotifications] = useState(false);
 
 
   const userDocRef = useMemoFirebase(() => (authUser ? doc(firestore, 'users', authUser.uid) : null), [
@@ -106,6 +111,23 @@ export function DashboardHeader() {
   );
   const { data: notifications } = useCollection<Notification>(notificationsQuery);
   const unreadCount = notifications?.filter((n) => !n.isRead).length || 0;
+  const visibleNotifications = showAllNotifications ? notifications : notifications?.slice(0, 3);
+
+  const tradesAsBuyerQuery = useMemoFirebase(() => authUser ? query(collection(firestore, 'trades'), where('buyerId', '==', authUser.uid)) : null, [firestore, authUser]);
+  const tradesAsSellerQuery = useMemoFirebase(() => authUser ? query(collection(firestore, 'trades'), where('sellerId', '==', authUser.uid)) : null, [firestore, authUser]);
+
+  const { data: buyerTrades } = useCollection<Trade>(tradesAsBuyerQuery);
+  const { data: sellerTrades } = useCollection<Trade>(tradesAsSellerQuery);
+  const [allTrades, setAllTrades] = useState<Trade[]>([]);
+
+  useEffect(() => {
+    if (buyerTrades || sellerTrades) {
+      const combined = [...(buyerTrades || []), ...(sellerTrades || [])];
+      const uniqueTrades = Array.from(new Map(combined.map(trade => [trade.id, trade])).values());
+      uniqueTrades.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+      setAllTrades(uniqueTrades);
+    }
+  }, [buyerTrades, sellerTrades]);
 
   const totalWalletValueUSD =
     wallets?.reduce((acc, wallet) => {
@@ -379,7 +401,7 @@ export function DashboardHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
+          <DropdownMenu onOpenChange={(open) => !open && setShowAllNotifications(false)}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full relative">
                 <Bell className="h-5 w-5" />
@@ -391,38 +413,83 @@ export function DashboardHeader() {
                 <span className="sr-only">Toggle notifications</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-0">
+            <DropdownMenuContent align="end" className="w-[380px] p-0">
               <div className="flex items-center justify-between p-2">
-                <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+                <DropdownMenuLabel className="p-0">Activity Center</DropdownMenuLabel>
                 <Button asChild variant="link" className="text-xs h-auto p-0">
                     <Link href="/notifications">View All</Link>
                 </Button>
               </div>
               <DropdownMenuSeparator />
-              <ScrollArea className="h-80">
+              <ScrollArea className="h-[450px]">
                 <div className="p-1 space-y-1">
                   {notifications && notifications.length > 0 ? (
-                    notifications.map((n) => (
-                      <DropdownMenuItem
-                        key={n.id}
-                        asChild
-                        className={cn('flex items-start gap-2 whitespace-normal', !n.isRead && 'bg-secondary')}
-                      >
-                        <Link href={n.link || '#'} onClick={() => handleMarkAsRead(n.id)}>
-                          <Mail className="mt-1 h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div className="flex flex-col">
-                            <p className="text-sm leading-snug">{n.message}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {toDate(n.createdAt)?.toLocaleString() ?? 'Invalid Date'}
-                            </p>
-                          </div>
-                        </Link>
-                      </DropdownMenuItem>
-                    ))
+                    <>
+                      {visibleNotifications?.map((n) => (
+                        <DropdownMenuItem
+                          key={n.id}
+                          asChild
+                          className={cn('flex items-start gap-2 whitespace-normal', !n.isRead && 'bg-secondary')}
+                        >
+                          <Link href={n.link || '#'} onClick={() => handleMarkAsRead(n.id)}>
+                            <Mail className="mt-1 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <div className="flex flex-col">
+                              <p className="text-sm leading-snug">{n.message}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {toDate(n.createdAt)?.toLocaleString() ?? 'Invalid Date'}
+                              </p>
+                            </div>
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                      {!showAllNotifications && notifications.length > 3 && (
+                        <Button variant="ghost" className="w-full justify-center text-xs" onClick={() => setShowAllNotifications(true)}>
+                          <ChevronDown className="h-4 w-4 mr-1" /> Show All
+                        </Button>
+                      )}
+                    </>
                   ) : (
                     <p className="p-4 text-center text-sm text-muted-foreground">No new notifications.</p>
                   )}
                 </div>
+                 <DropdownMenuSeparator />
+                 <div className="p-2">
+                    <DropdownMenuLabel className="p-0 text-xs font-semibold">Recent Trades</DropdownMenuLabel>
+                </div>
+                 <div className="p-1 space-y-1">
+                    {allTrades.length > 0 ? (
+                        allTrades.slice(0, 5).map(trade => {
+                             const isBuyer = trade.buyerId === authUser?.uid;
+                             const partner = isBuyer ? trade.seller : trade.buyer;
+                             return (
+                                <DropdownMenuItem key={trade.id} asChild className="p-0">
+                                    <Link href={`/trade/${trade.id}`} className="flex items-center gap-3 p-2">
+                                        <Avatar className="h-9 w-9">
+                                            {/* Assuming partner has photoURL */}
+                                            {/* <AvatarImage src={partner.photoURL} /> */}
+                                            <AvatarFallback>{partner.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-grow overflow-hidden">
+                                            <p className="text-sm font-medium truncate">{partner.username}</p>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant={isBuyer ? "default" : "secondary"} className="text-xs h-auto">{isBuyer ? "Buy" : "Sell"}</Badge>
+                                                <p className="text-xs text-muted-foreground truncate">{trade.amount.toFixed(4)} {trade.crypto}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right text-xs shrink-0">
+                                            <p className="font-semibold">{trade.fiatAmount.toLocaleString()} {trade.fiatCurrency}</p>
+                                            <Badge variant="outline" className={cn("capitalize mt-1", statusColors[trade.status])}>
+                                                {trade.status}
+                                            </Badge>
+                                        </div>
+                                    </Link>
+                                </DropdownMenuItem>
+                             )
+                        })
+                    ) : (
+                         <p className="p-4 text-center text-sm text-muted-foreground">No recent trades.</p>
+                    )}
+                 </div>
               </ScrollArea>
             </DropdownMenuContent>
           </DropdownMenu>
