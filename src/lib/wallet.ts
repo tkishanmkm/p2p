@@ -291,10 +291,13 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         const oldTotalTrades = buyerData.completedTrades || 0;
         let newAvgPaymentTime = buyerData.avgPaymentTime || 0;
         
-        if (trade.paidAt && trade.createdAt) {
-            const paymentDuration = (new Date(trade.paidAt).getTime() - new Date(trade.createdAt).getTime()) / (1000 * 60); // in minutes
+        const paidDate = toDate(trade.paidAt);
+        const createdDate = toDate(trade.createdAt);
+
+        if (paidDate && createdDate) {
+            const paymentDuration = (paidDate.getTime() - createdDate.getTime()) / (1000 * 60); // in minutes
             if (paymentDuration > 0) {
-                 newAvgPaymentTime = ((newAvgPaymentTime * oldTotalTrades) + paymentDuration) / (oldTotalTrades + 1);
+                 newAvgPaymentTime = (((buyerData.avgPaymentTime || 0) * oldTotalTrades) + paymentDuration) / (oldTotalTrades + 1);
             }
         }
         transaction.update(buyerUserRef, {
@@ -309,10 +312,13 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         const oldTotalTrades = sellerData.completedTrades || 0;
         let newAvgReleaseTime = sellerData.avgReleaseTime || 0;
 
-        if(trade.releasedAt && trade.paidAt) {
-            const releaseDuration = (new Date(trade.releasedAt).getTime() - new Date(trade.paidAt).getTime()) / (1000 * 60); // in minutes
+        const releasedDate = toDate(trade.releasedAt);
+        const paidDate = toDate(trade.paidAt);
+
+        if(releasedDate && paidDate) {
+            const releaseDuration = (releasedDate.getTime() - paidDate.getTime()) / (1000 * 60); // in minutes
             if(releaseDuration > 0) {
-                newAvgReleaseTime = ((newAvgReleaseTime * oldTotalTrades) + releaseDuration) / (oldTotalTrades + 1);
+                newAvgReleaseTime = (((sellerData.avgReleaseTime || 0) * oldTotalTrades) + releaseDuration) / (oldTotalTrades + 1);
             }
         }
         transaction.update(sellerUserRef, {

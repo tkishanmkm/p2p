@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -13,7 +14,7 @@ import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from '@/lib/wall
 import { openDispute } from '@/lib/disputes';
 import { cn, toDate } from '@/lib/utils';
 import { statusColors } from '@/lib/status-colors';
-import type { Feedback, P2PAd, Trade, TradeStatus, Dispute } from '@/lib/types';
+import type { Feedback, P2PAd, Trade, TradeStatus, Dispute, User } from '@/lib/types';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, RefreshCw, Clock, Loader2, Flag, ThumbsUp, ThumbsDown, Shield, Eye } from 'lucide-react';
 import { add } from 'date-fns';
 import { Input } from '../ui/input';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, runTransaction } from 'firebase/firestore';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { adminCancelTrade, adminMarkTradeAsPaid, adminReleaseFunds } from '@/lib/admin';
@@ -222,29 +223,73 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
       return;
     }
     const opponentId = user.uid === trade.buyerId ? trade.sellerId : trade.buyerId;
+    const opponentUserRef = doc(firestore, "users", opponentId);
 
     try {
-       if (existingFeedback) {
-        // Update
-        const feedbackDocRef = doc(firestore, 'trades', trade.id, 'feedback', existingFeedback.id);
-        await updateDoc(feedbackDocRef, {
-          rating: values.rating,
-          comment: values.comment,
-        });
-        toast({ title: 'Feedback Updated', description: 'Your feedback has been successfully updated.' });
-      } else {
-        const feedbackRef = collection(firestore, 'trades', trade.id, 'feedback');
-        await addDoc(feedbackRef, {
-          tradeId: trade.id,
-          fromUser: user.uid,
-          fromUsername: user.displayName,
-          toUser: opponentId,
-          rating: values.rating,
-          comment: values.comment,
-          createdAt: new Date().toISOString(),
-        });
-        toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!' });
-      }
+      await runTransaction(firestore, async (transaction) => {
+        const opponentDoc = await transaction.get(opponentUserRef);
+        if (!opponentDoc.exists()) {
+          throw new Error("User to give feedback to does not exist.");
+        }
+        const opponentData = opponentDoc.data() as User;
+
+        let positiveAdjustment = 0;
+        let negativeAdjustment = 0;
+
+        if (existingFeedback) {
+          if (existingFeedback.rating !== values.rating) {
+            if (existingFeedback.rating === 'positive') {
+              positiveAdjustment -= 1;
+            } else if (existingFeedback.rating === 'negative') {
+              negativeAdjustment -= 1;
+            }
+            if (values.rating === 'positive') {
+              positiveAdjustment += 1;
+            } else if (values.rating === 'negative') {
+              negativeAdjustment += 1;
+            }
+          }
+          const feedbackDocRef = doc(firestore, 'trades', trade.id, 'feedback', existingFeedback.id);
+          transaction.update(feedbackDocRef, {
+            rating: values.rating,
+            comment: values.comment,
+          });
+        } else {
+          if (values.rating === 'positive') {
+            positiveAdjustment = 1;
+          } else {
+            negativeAdjustment = 1;
+          }
+
+          const feedbackColRef = collection(firestore, 'trades', trade.id, 'feedback');
+          const newFeedbackRef = doc(feedbackColRef);
+          transaction.set(newFeedbackRef, {
+            tradeId: trade.id,
+            fromUser: user.uid,
+            fromUsername: user.displayName,
+            toUser: opponentId,
+            rating: values.rating,
+            comment: values.comment,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        
+        if (positiveAdjustment !== 0 || negativeAdjustment !== 0) {
+            const newPositive = (opponentData.positiveFeedback || 0) + positiveAdjustment;
+            const newNegative = (opponentData.negativeFeedback || 0) + negativeAdjustment;
+            const totalFeedback = newPositive + newNegative;
+            const newScore = totalFeedback > 0 ? Math.round((newPositive / totalFeedback) * 100) : 100;
+
+            transaction.update(opponentUserRef, {
+                positiveFeedback: newPositive,
+                negativeFeedback: newNegative,
+                feedbackScore: newScore,
+            });
+        }
+      });
+      
+      toast({ title: existingFeedback ? 'Feedback Updated' : 'Feedback Submitted', description: 'Thank you for your feedback!' });
+
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: `Failed to submit feedback: ${error.message}` });
     }
