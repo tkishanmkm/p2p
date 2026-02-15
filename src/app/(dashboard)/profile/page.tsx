@@ -89,8 +89,8 @@ export default function ProfilePage() {
                              <DetailItem icon={<CheckCircle size={20} />} label="Completed Trades" value={user.completedTrades} />
                              <DetailItem icon={<ThumbsUp size={20} />} label="Positive Feedback" value={user.positiveFeedback || 0} />
                              <DetailItem icon={<ThumbsDown size={20} />} label="Negative Feedback" value={user.negativeFeedback || 0} />
-                             <DetailItem icon={<Clock size={20} />} label="Avg. Payment Time" value={`${user.avgPaymentTime || 0} min`} />
-                             <DetailItem icon={<Clock size={20} />} label="Avg. Release Time" value={`${user.avgReleaseTime || 0} min`} />
+                             <DetailItem icon={<Clock size={20} />} label="Avg. Payment Time" value={`${(user.avgPaymentTime || 0).toFixed(1)} min`} />
+                             <DetailItem icon={<Clock size={20} />} label="Avg. Release Time" value={`${(user.avgReleaseTime || 0).toFixed(1)} min`} />
                              <DetailItem icon={<Clock size={20} />} label="Last Trade" value={lastTradeDate ? format(lastTradeDate, "PPpp") : 'No trades yet'} />
                         </CardContent>
                     </Card>

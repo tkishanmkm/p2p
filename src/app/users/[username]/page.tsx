@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -61,14 +62,14 @@ function UserStats({ user }: { user: User }) {
           <Clock className="h-6 w-6 text-muted-foreground" />
           <div>
             <p className="text-sm text-muted-foreground">Avg. Payment Time</p>
-            <p className="font-semibold">{user.avgPaymentTime || 0} min</p>
+            <p className="font-semibold">{(user.avgPaymentTime || 0).toFixed(1)} min</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Clock className="h-6 w-6 text-muted-foreground" />
           <div>
             <p className="text-sm text-muted-foreground">Avg. Release Time</p>
-            <p className="font-semibold">{user.avgReleaseTime || 0} min</p>
+            <p className="font-semibold">{(user.avgReleaseTime || 0).toFixed(1)} min</p>
           </div>
         </div>
         <div className="flex items-center gap-3 col-span-2">
