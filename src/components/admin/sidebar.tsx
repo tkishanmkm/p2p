@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -29,6 +30,7 @@ import {
   Send,
   DollarSign,
   Beaker,
+  DatabaseZap,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -45,6 +47,7 @@ const settingsItems = [
     { href: "/adminnarayan/settings/wallet", label: "Wallet Settings", icon: Wallet },
     { href: "/adminnarayan/settings/data", label: "Data Management", icon: Database },
     { href: "/adminnarayan/settings/seed", label: "Seed Data", icon: Beaker },
+    { href: "/adminnarayan/settings/backfill-wallets", label: "Backfill Wallets", icon: DatabaseZap },
     { href: "#", label: "Security Logs", icon: FileText },
 ]
 
