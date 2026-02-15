@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -204,6 +203,7 @@ function FeedbackForm({ trade }: { trade: Trade }) {
   });
 
   const { isSubmitting } = form.formState;
+  const watchedRating = form.watch('rating');
 
   async function onSubmit(values: FeedbackFormValues) {
     if (!firestore || !user || !user.displayName) {
@@ -241,7 +241,15 @@ function FeedbackForm({ trade }: { trade: Trade }) {
                                 <FormControl>
                                     <RadioGroupItem value="positive" id="rating-positive" className="sr-only" />
                                 </FormControl>
-                                <Label htmlFor="rating-positive" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-green-500 has-[:checked]:bg-green-100 dark:has-[:checked]:bg-green-900/30 font-normal">
+                                <Label
+                                    htmlFor="rating-positive"
+                                    className={cn(
+                                        "flex items-center gap-2 cursor-pointer p-2 border rounded-md font-normal transition-colors",
+                                        watchedRating === 'positive' 
+                                            ? 'border-green-500 bg-green-100 dark:bg-green-900/30' 
+                                            : 'hover:bg-muted/50'
+                                    )}
+                                >
                                     <ThumbsUp className="h-5 w-5 text-green-600" /> Positive
                                 </Label>
                             </FormItem>
@@ -249,7 +257,15 @@ function FeedbackForm({ trade }: { trade: Trade }) {
                                 <FormControl>
                                     <RadioGroupItem value="negative" id="rating-negative" className="sr-only" />
                                 </FormControl>
-                                <Label htmlFor="rating-negative" className="flex items-center gap-2 cursor-pointer p-2 border rounded-md has-[:checked]:border-red-500 has-[:checked]:bg-red-100 dark:has-[:checked]:bg-red-900/30 font-normal">
+                                <Label
+                                    htmlFor="rating-negative"
+                                    className={cn(
+                                        "flex items-center gap-2 cursor-pointer p-2 border rounded-md font-normal transition-colors",
+                                        watchedRating === 'negative'
+                                            ? 'border-red-500 bg-red-100 dark:bg-red-900/30'
+                                            : 'hover:bg-muted/50'
+                                    )}
+                                >
                                     <ThumbsDown className="h-5 w-5 text-red-600" /> Negative
                                 </Label>
                             </FormItem>
