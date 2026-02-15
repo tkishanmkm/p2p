@@ -68,7 +68,7 @@ function BuyPageContent() {
   const [amount, setAmount] = useState(searchParams.get('amount') || "");
   const [paymentMethod, setPaymentMethod] = useState(searchParams.get('paymentMethod') || "");
   const [selectedCoin, setSelectedCoin] = useState<CryptoCurrency>(searchParams.get('coin') as CryptoCurrency || "BTC");
-  const [selectedFiat, setSelectedFiat] = useState(searchParams.get('fiat') || "USD");
+  const [selectedFiat, setSelectedFiat] = useState(searchParams.get('fiat') || "");
   const [selectedCountry, setSelectedCountry] = useState(searchParams.get('country') || "");
   
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
@@ -91,7 +91,7 @@ function BuyPageContent() {
     setAmount('');
     setPaymentMethod('');
     setSelectedCoin('BTC');
-    setSelectedFiat('USD');
+    setSelectedFiat('');
     setSelectedCountry('');
     setSortBy('price');
     setSelectedTags([]);
@@ -345,7 +345,7 @@ function BuyPageContent() {
                     <div className="relative flex items-center flex-1 min-w-[200px]">
                         <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 pl-3 pr-20"/>
                         <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground" onClick={() => setIsFiatSheetOpen(true)}>
-                            {selectedFiat}
+                            {selectedFiat || 'Fiat'}
                             <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
                         </Button>
                     </div>
@@ -426,7 +426,7 @@ function BuyPageContent() {
                     <div className="relative flex items-center">
                           <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 pl-4 pr-24"/>
                           <Button type="button" variant="ghost" className="absolute right-1 h-10 px-3 flex items-center gap-1 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground" onClick={() => setIsFiatSheetOpen(true)}>
-                              {selectedFiat}
+                              {selectedFiat || 'Fiat'}
                               <ChevronDown className="h-4 w-4 opacity-50" />
                           </Button>
                       </div>
@@ -505,7 +505,7 @@ function BuyPageContent() {
                         <div className="relative flex items-center">
                             <Input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
                             <Button type="button" variant="ghost" className="absolute right-1 h-8 px-3 rounded-md bg-muted hover:bg-muted/80" onClick={() => { setIsFiltersSheetOpen(false); setIsFiatSheetOpen(true); }}>
-                                {selectedFiat}
+                                {selectedFiat || 'Fiat'}
                             </Button>
                         </div>
                     </div>
