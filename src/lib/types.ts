@@ -1,5 +1,24 @@
+
 // All IDs are string (UUID)
 // Amounts are string to handle DECIMAL(36,18) precision
+
+export interface WalletAddresses {
+  ETH: string
+  ERC20: string
+  BEP20: string
+  BTC: string
+  LTC: string
+  TRC20: string
+}
+
+export interface UserBalances {
+  ETH: number
+  USDT_ERC20: number
+  USDT_BEP20: number
+  USDT_TRC20: number
+  BTC: number
+  LTC: number
+}
 
 export type User = {
   id: string;
