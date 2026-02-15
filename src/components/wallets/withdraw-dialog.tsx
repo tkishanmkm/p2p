@@ -1,6 +1,6 @@
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { UserWallet } from "@/lib/types";
 
@@ -25,9 +25,6 @@ export function WithdrawDialog({ open, onOpenChange, userWallets }: WithdrawDial
           ))}
           <p className="text-xs text-muted-foreground mt-2">Withdrawal functionality coming soon.</p>
         </div>
-        <DialogClose asChild>
-          <Button variant="outline" className="mt-4 w-full">Close</Button>
-        </DialogClose>
       </DialogContent>
     </Dialog>
   );

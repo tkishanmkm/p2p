@@ -1,6 +1,6 @@
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import QRCode from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { CryptoDepositAddress, CryptoCurrency } from "@/lib/types";
@@ -31,9 +31,6 @@ export function DepositDialog({ open, onOpenChange, selectedCrypto, depositAddre
           <Button onClick={() => navigator.clipboard.writeText(address)}>Copy Address</Button>
         </div>
 
-        <DialogClose asChild>
-          <Button variant="outline" className="mt-4 w-full">Close</Button>
-        </DialogClose>
       </DialogContent>
     </Dialog>
   );
