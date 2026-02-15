@@ -1,3 +1,4 @@
+
 export default function AmlPolicyPage() {
   return (
     <div className="prose dark:prose-invert max-w-4xl mx-auto">
@@ -6,7 +7,7 @@ export default function AmlPolicyPage() {
 
       <h2>1. Policy Statement</h2>
       <p>
-        TradeFlow is committed to preventing the use of its platform for money laundering, terrorist financing, and other illicit activities. We have implemented a comprehensive Anti-Money Laundering (AML) and Counter-Terrorist Financing (CTF) program based on applicable laws and regulations.
+        Tradenaire is committed to preventing the use of its platform for money laundering, terrorist financing, and other illicit activities. We have implemented a comprehensive Anti-Money Laundering (AML) and Counter-Terrorist Financing (CTF) program based on applicable laws and regulations.
       </p>
 
       <h2>2. Customer Identification Program (CIP)</h2>
@@ -38,7 +39,7 @@ export default function AmlPolicyPage() {
       
       <h2>4. Sanctions Compliance</h2>
       <p>
-        TradeFlow complies with all applicable international sanctions programs, including those administered by the United Nations (UN), the U.S. Office of Foreign Assets Control (OFAC), and the European Union (EU). We prohibit and will block transactions involving individuals, entities, or jurisdictions on these sanctions lists.
+        Tradenaire complies with all applicable international sanctions programs, including those administered by the United Nations (UN), the U.S. Office of Foreign Assets Control (OFAC), and the European Union (EU). We prohibit and will block transactions involving individuals, entities, or jurisdictions on these sanctions lists.
       </p>
 
       <h2>5. Risk Assessment</h2>
@@ -48,7 +49,7 @@ export default function AmlPolicyPage() {
 
       <h2>6. Cooperation with Law Enforcement</h2>
       <p>
-        TradeFlow is committed to cooperating fully with law enforcement and regulatory agencies. We will respond to valid legal requests for information in accordance with our Privacy Policy and applicable laws.
+        Tradenaire is committed to cooperating fully with law enforcement and regulatory agencies. We will respond to valid legal requests for information in accordance with our Privacy Policy and applicable laws.
       </p>
     </div>
   );

@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
     }
 
     setIsLoggingIn(true);
-    const adminEmail = `${values.adminId}@tradeflow.app`;
+    const adminEmail = `${values.adminId}@tradenaire.app`;
 
     try {
         await setPersistence(auth, browserLocalPersistence);

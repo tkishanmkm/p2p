@@ -1,3 +1,4 @@
+
 {
   "home": {
     "heroTitle": "Comprar y vender monedas",
@@ -7,7 +8,7 @@
     "statsPayments": "Métodos de pago",
     "statsTime": "Tiempo promedio de transacción",
     "howItWorksTitle": "Cómo empezar",
-    "howItWorksSubtitle": "Operar en TradeFlow es simple, seguro y rápido. Sigue estos tres pasos fáciles para comenzar tu experiencia P2P.",
+    "howItWorksSubtitle": "Operar en Tradenaire es simple, seguro y rápido. Sigue estos tres pasos fáciles para comenzar tu experiencia P2P.",
     "step1Title": "1. Crea una cuenta",
     "step1Desc": "Regístrate gratis solo con un ID de usuario. Completa una verificación de identidad simple para asegurar tu cuenta y empezar a operar.",
     "step2Title": "2. Encuentra una oferta",
@@ -31,7 +32,7 @@
     "disputeTitle": "Resolución de disputas",
     "disputeDesc": "En el raro caso de desacuerdo, nuestro equipo de soporte dedicado está disponible. Los moderadores revisarán cuidadosamente los detalles de la operación, los registros de chat y las pruebas de pago para tomar una decisión justa e imparcial.",
     "supportedCoinsTitle": "Monedas soportadas",
-    "supportedCoinsDesc": "Soportamos una lista creciente de activos digitales populares, agregando más regularmente."
+    "supportedCoinsDesc": "Soportamos una lista creciente de activos digitais populares, agregando más regularmente."
   },
   "buySellForm": {
     "buyTab": "Quiero comprar",

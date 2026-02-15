@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -8,7 +9,7 @@ import { BrandingProvider } from '@/context/branding-context';
 import { I18nProvider } from '@/context/i18n-context';
 
 export const metadata: Metadata = {
-  title: 'TradeFlow - Secure P2P Coin Trading',
+  title: 'Tradenaire - Secure P2P Coin Trading',
   description: 'A full-featured, production-quality Peer-to-Peer (P2P) coin trading platform with an escrow system.',
 };
 

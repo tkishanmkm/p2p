@@ -1,3 +1,4 @@
+
 export default function PolicyPage() {
     return (
       <div className="prose dark:prose-invert max-w-4xl mx-auto">
@@ -5,7 +6,7 @@ export default function PolicyPage() {
         <p className="text-muted-foreground">Last updated: {new Date().toLocaleDateString()}</p>
   
         <h2>1. Introduction</h2>
-        <p>TradeFlow ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Services. Please read this policy carefully. If you do not agree with the terms of this privacy policy, please do not access the site.</p>
+        <p>Tradenaire ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Services. Please read this policy carefully. If you do not agree with the terms of this privacy policy, please do not access the site.</p>
   
         <h2>2. Information We Collect</h2>
         <p>We may collect information about you in a variety of ways. The information we may collect on the Services includes:</p>
