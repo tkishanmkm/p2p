@@ -3,6 +3,7 @@
 
 
 
+
 // All IDs are string (UUID)
 // Amounts are string to handle DECIMAL(36,18) precision
 
@@ -132,6 +133,7 @@ export type Trade = {
   escrowFee?: number;
   fiatCurrency: string;
   fiatAmount: number;
+  fiatAmountInUSD: number;
   paymentMethod: string;
   price: number; // Price per crypto
   status: TradeStatus;

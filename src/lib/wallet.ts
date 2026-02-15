@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 import {
   Firestore,
@@ -37,6 +38,7 @@ export async function initiateTrade(
   ad: P2PAd,
   cryptoAmount: number,
   fiatAmount: number,
+  fiatAmountInUSD: number,
   paymentMethod: string
 ): Promise<string> {
     let buyerId: string;
@@ -109,6 +111,7 @@ export async function initiateTrade(
         escrowFee: cryptoFee,
         fiatCurrency: ad.fiatCurrency,
         fiatAmount: fiatAmount,
+        fiatAmountInUSD: fiatAmountInUSD,
         paymentMethod: paymentMethod,
         price: fiatAmount / cryptoAmount,
         status: 'active',
@@ -305,7 +308,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         }
         transaction.update(buyerUserRef, {
             completedTrades: oldTotalTrades + 1,
-            tradeVolume: (buyerData.tradeVolume || 0) + trade.fiatAmount,
+            tradeVolume: (buyerData.tradeVolume || 0) + (trade.fiatAmountInUSD || 0),
             lastTradeAt: new Date().toISOString(),
             avgPaymentTime: newAvgPaymentTime,
         });
@@ -326,7 +329,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         }
         transaction.update(sellerUserRef, {
             completedTrades: oldTotalTrades + 1,
-            tradeVolume: (sellerData.tradeVolume || 0) + trade.fiatAmount,
+            tradeVolume: (sellerData.tradeVolume || 0) + (trade.fiatAmountInUSD || 0),
             lastTradeAt: new Date().toISOString(),
             avgReleaseTime: newAvgReleaseTime
         });

@@ -24,6 +24,14 @@ import { FlagIcon } from "@/components/ui/flag-icon";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const CryptoLogo = ({ crypto, className }: { crypto: string; className?: string }) => {
     switch (crypto) {
@@ -49,6 +57,7 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
     const { user: authUser, firestore } = useFirebase();
     const router = useRouter();
     const { toast } = useToast();
+    const { fiatRates } = usePrices();
     
     const [fiatAmount, setFiatAmount] = useState('');
     const [cryptoAmount, setCryptoAmount] = useState('');
@@ -82,8 +91,20 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
         if (!fiatAmount || !cryptoAmount || !ad || !firestore) return;
         
         setIsSubmitting(true);
+        const fiatAmountNum = parseFloat(fiatAmount);
+        const exchangeRate = fiatRates[ad.fiatCurrency] || 1;
+        const fiatAmountInUSD = fiatAmountNum / exchangeRate;
+
         try {
-            const tradeId = await initiateTrade(firestore, authUser.uid, ad, parseFloat(cryptoAmount), parseFloat(fiatAmount), selectedPaymentMethod);
+            const tradeId = await initiateTrade(
+                firestore, 
+                authUser.uid, 
+                ad, 
+                parseFloat(cryptoAmount), 
+                fiatAmountNum, 
+                fiatAmountInUSD,
+                selectedPaymentMethod
+            );
             toast({ title: "Trade Initiated!", description: "You are being redirected to the trade room." });
             router.push(`/trade/${tradeId}`);
         } catch (error: any) {
@@ -96,9 +117,9 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
     return (
         <form onSubmit={handleSubmit}>
             <div className="space-y-4">
-                <div className="space-y-4">
+                 <div className="space-y-4">
                     <div className="space-y-1">
-                        <Label htmlFor="pay-amount" className="text-sm text-muted-foreground">You pay</Label>
+                        <Label htmlFor="pay-amount" className="text-sm text-muted-foreground">{isForBuyingPage ? 'You pay' : 'You sell'}</Label>
                         <div className="relative">
                             <Input 
                                 id="pay-amount"
@@ -113,7 +134,7 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
                         </div>
                     </div>
                     <div className="space-y-1">
-                        <Label htmlFor="receive-amount" className="text-sm text-muted-foreground">You receive</Label>
+                        <Label htmlFor="receive-amount" className="text-sm text-muted-foreground">{isForBuyingPage ? 'You receive' : 'You receive'}</Label>
                          <div className="relative">
                             <Input 
                                 id="receive-amount"
@@ -259,7 +280,7 @@ export default function AdDetailPage() {
                 </div>
                 <div className="flex items-center gap-4 text-xs flex-wrap">
                     <StatItem icon={<ThumbsUp className="h-4 w-4 text-green-500"/>} value={`${user.feedbackScore || 100}%`} label="" />
-                    <StatItem icon={<Clock />} value={`${(user.avgReleaseTime || 0).toFixed(1)}m`} label="" />
+                    <StatItem icon={<Clock />} value={`${user.avgReleaseTime.toFixed(1)}m`} label="" />
                     <StatItem icon={<ArrowLeftRight />} value={user.completedTrades.toLocaleString()} label="Trades" />
                     {lastActiveDate && <StatItem icon={<div className="h-2 w-2 rounded-full bg-green-500" />} value={`Seen ${formatDistanceToNow(lastActiveDate)} ago`} label="" />}
                 </div>
