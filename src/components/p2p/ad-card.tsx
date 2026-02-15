@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import Link from 'next/link';
@@ -7,15 +5,21 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import type { P2PAd, CryptoCurrency } from '@/lib/types';
+import type { P2PAd, CryptoCurrency, User } from '@/lib/types';
 import { usePrices } from '@/context/price-context';
-import { ThumbsUp, ThumbsDown, Info, Award } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Info, Award, Clock, Calendar, CheckCircle, User as UserIcon } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo, DefaultAvatar } from '@/components/icons';
 import { FlagIcon } from '../ui/flag-icon';
 import { formatDistanceToNow } from 'date-fns';
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
     switch (crypto) {
@@ -26,6 +30,13 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?:
         default: return null;
     }
 }
+
+const DetailRow = ({ label, value }: { label: string; value: React.ReactNode }) => (
+    <div className="flex justify-between items-start text-sm">
+      <p className="text-muted-foreground">{label}</p>
+      <div className="text-right font-medium max-w-[70%]">{value}</div>
+    </div>
+);
 
 interface AdCardProps {
   ad: P2PAd;
@@ -92,11 +103,12 @@ export function AdCard({ ad }: AdCardProps) {
                 <Link href={`/users/${adCreator.username}`} className="font-semibold hover:underline">{adCreator.username}</Link>
                 {adCreator.country && <FlagIcon countryCode={adCreator.country} />}
                 {displayedBadges.map((badge, i) => (
-                   <TooltipProvider key={i}><Tooltip><TooltipTrigger>
-                   <Badge variant="outline" className="p-1">
-                       <Award className="h-3 w-3 text-amber-500" />
-                   </Badge>
-                   </TooltipTrigger><TooltipContent>{badge}</TooltipContent></Tooltip></TooltipProvider>
+                   <Dialog key={i}>
+                      <DialogTrigger asChild>
+                         <Badge variant="outline" className="p-1 cursor-pointer"><Award className="h-3 w-3 text-amber-500" /></Badge>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-xs"><DialogHeader><DialogTitle>{badge}</DialogTitle></DialogHeader></DialogContent>
+                   </Dialog>
                 ))}
                 {hiddenBadgesCount > 0 && <Badge variant="secondary">+{hiddenBadgesCount} more</Badge>}
               </div>
@@ -117,10 +129,22 @@ export function AdCard({ ad }: AdCardProps) {
               </div>
             </div>
           </div>
+          
+          {ad.offerLabel && (
+            <div className="p-2 text-sm font-semibold rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200">
+                {ad.offerLabel}
+            </div>
+          )}
+          
           <div className="flex flex-wrap gap-1">
-            {ad.paymentMethods.slice(0, 3).map(pm => <Badge key={pm} variant="outline" className="text-xs">{pm}</Badge>)}
-            {ad.paymentMethods.length > 3 && <Badge variant="outline" className="text-xs">+{ad.paymentMethods.length - 3} more</Badge>}
+            {ad.paymentMethods.map(pm => <Badge key={pm} variant="outline" className="text-xs">{pm}</Badge>)}
           </div>
+          
+           {ad.tags && ad.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+                {ad.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+            </div>
+          )}
         </div>
         
         {/* Right Side: Price & Action */}
@@ -147,20 +171,63 @@ export function AdCard({ ad }: AdCardProps) {
           </div>
 
           <div className="flex items-center justify-end gap-1 sm:gap-2 mt-2 w-full sm:w-auto">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-                    <Link href={`/users/${ad.user.username}`}>
-                      <Info className="h-5 w-5" />
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>View user profile and all ads</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Info className="h-5 w-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Trade Details</DialogTitle>
+                  <DialogDescription>
+                    {ad.adType === 'buy' ? 'Buy' : 'Sell'} ad from {adCreator.username}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                  <div>
+                    <h4 className="font-semibold text-base mb-2">Trader Info</h4>
+                     <div className="space-y-2 text-sm p-3 border rounded-md bg-secondary/50">
+                        <div className="flex items-center gap-3">
+                           <Avatar className="h-10 w-10">
+                                <AvatarImage src={adCreator.photoURL} />
+                                <AvatarFallback><DefaultAvatar /></AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="font-semibold">{adCreator.username}</p>
+                                <p className="text-xs text-muted-foreground">Joined {adCreator.createdAt ? formatDistanceToNow(toDate(adCreator.createdAt)!) + ' ago' : 'N/A'}</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 pt-2">
+                           <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-muted-foreground" /> <span>{adCreator.completedTrades || 0} Trades</span></div>
+                           <div className="flex items-center gap-2"><ThumbsUp className="h-4 w-4 text-green-500" /> <span>{adCreator.positiveFeedback || 0}</span></div>
+                           <div className="flex items-center gap-2"><ThumbsDown className="h-4 w-4 text-red-500" /> <span>{adCreator.negativeFeedback || 0}</span></div>
+                           <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /> <span>{adCreator.avgReleaseTime || 'N/A'}m release</span></div>
+                        </div>
+                     </div>
+                  </div>
+                   <div>
+                    <h4 className="font-semibold text-base mb-2">Ad Info</h4>
+                    <div className="space-y-3 text-sm p-3 border rounded-md bg-secondary/50">
+                        <DetailRow label="Price" value={<div className="flex items-center gap-2">{adPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-muted-foreground">{ad.fiatCurrency} / {ad.crypto}</span></div>} />
+                        <DetailRow label="Limits" value={`${ad.minAmount.toLocaleString()} - ${ad.maxAmount.toLocaleString()} ${ad.fiatCurrency}`} />
+                        <DetailRow label="Payment Window" value={`${ad.paymentTimeLimit} minutes`} />
+                        <DetailRow label="Payment Methods" value={<div className="flex flex-wrap gap-1 justify-end">{ad.paymentMethods.map(pm => <Badge key={pm} variant="outline">{pm}</Badge>)}</div>} />
+                    </div>
+                     <div className="space-y-2 text-sm p-3 border rounded-md bg-secondary/50 mt-2">
+                        <p className="font-medium">Terms & Conditions</p>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{ad.terms}</p>
+                     </div>
+                      {ad.tags && ad.tags.length > 0 && (
+                        <div className="space-y-2 text-sm p-3 border rounded-md bg-secondary/50 mt-2">
+                            <p className="font-medium">Tags</p>
+                             <div className="flex flex-wrap gap-1">{ad.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}</div>
+                        </div>
+                      )}
+                   </div>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             <Button asChild className={cn(buttonColorClass, "gap-2")}>
               <Link href={`/ad/${ad.id}`}>

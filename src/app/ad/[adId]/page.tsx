@@ -95,7 +95,7 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
     return (
         <form onSubmit={handleSubmit}>
             <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                     <div className="space-y-1">
                         <Label htmlFor="pay-amount" className="text-sm text-muted-foreground">You pay</Label>
                         <div className="relative">
@@ -134,6 +134,17 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
                     <p className="text-sm text-muted-foreground">Offer label</p>
                     <p className="text-sm font-medium">{ad.offerLabel}</p>
                 </div>}
+                
+                {ad.tags && ad.tags.length > 0 && (
+                  <div className="space-y-1 rounded-lg bg-muted/50 p-4">
+                    <p className="text-sm text-muted-foreground">Offer Tags</p>
+                     <div className="flex flex-wrap gap-2">
+                      {ad.tags.map(tag => (
+                        <Badge key={tag} variant="secondary">{tag}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-1 rounded-lg bg-muted/50 p-4">
                     <p className="text-sm text-muted-foreground">Offer terms</p>
