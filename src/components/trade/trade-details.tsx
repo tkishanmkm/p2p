@@ -264,6 +264,7 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
           const feedbackColRef = collection(firestore, 'trades', trade.id, 'feedback');
           const newFeedbackRef = doc(feedbackColRef);
           transaction.set(newFeedbackRef, {
+            id: newFeedbackRef.id,
             tradeId: trade.id,
             fromUser: user.uid,
             fromUsername: user.displayName,
@@ -286,6 +287,28 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
                 feedbackScore: newScore,
             });
         }
+
+        // Add system message to chat
+        const messagesCollectionRef = collection(firestore, 'trades', trade.id, 'messages');
+        const systemMessage = {
+          tradeId: trade.id,
+          senderId: 'system',
+          senderUsername: 'System',
+          message: `${user.displayName} left you ${values.rating} feedback.`,
+          isModerator: true,
+          createdAt: new Date().toISOString(),
+        };
+        transaction.set(doc(messagesCollectionRef), systemMessage);
+
+        // Add notification for opponent
+        const opponentNotificationRef = doc(collection(firestore, 'users', opponentId, 'notifications'));
+        transaction.set(opponentNotificationRef, {
+          userId: opponentId,
+          message: `${user.displayName} left you ${values.rating} feedback for trade ${trade.tradeId}.`,
+          link: `/trade/${trade.id}`,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        });
       });
       
       toast({ title: existingFeedback ? 'Feedback Updated' : 'Feedback Submitted', description: 'Thank you for your feedback!' });
