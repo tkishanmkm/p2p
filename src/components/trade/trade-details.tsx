@@ -43,13 +43,6 @@ function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { l
     return (<div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">{label}</p>{valueContent}</div>)
 }
 
-const CountdownDisplay = ({ targetDate, tradeStatus }: { targetDate: string, tradeStatus: TradeStatus }) => {
-    const { hours, minutes, seconds, isFinished } = useCountdown(targetDate);
-    if (isFinished || tradeStatus !== 'active') { return <div className="text-sm font-semibold font-mono text-muted-foreground">--:--:--</div>; }
-    const displayTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    return (<div className="text-sm font-semibold font-mono text-destructive flex items-center gap-1.5">{displayTime}</div>);
-}
-
 function ParticipantRow({ label, user }: { label: string, user?: { username: string; country?: string } }) {
     if (!user || !user.username) { return (<div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">{label}</p><p className="font-medium text-right text-muted-foreground">Unknown</p></div>); }
     return (<div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">{label}</p><Button variant="link" asChild className="p-0 h-auto font-medium"><Link href={`/users/${user.username}`} className="flex items-center gap-2">{user.username}{user.country && <FlagIcon countryCode={user.country} />}</Link></Button></div>)
@@ -505,7 +498,13 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
           <hr className="my-2 border-dashed" />
           <DetailRow label={isBuying ? "You will pay" : "You will receive"} value={`${(trade?.fiatAmount ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} />
         </div>
-        <div className="space-y-2"><h4 className="font-semibold">Time Remaining</h4><div className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4 text-muted-foreground" /><CountdownDisplay targetDate={trade.expiresAt} tradeStatus={trade.status} /></div><p className="text-xs text-muted-foreground">Time for buyer to make payment.</p></div>
+        
+        {showActions && !isAdmin && (
+            <div className="pt-2">
+              <ActionButtons trade={trade} currentUserRole={currentUserRole} />
+            </div>
+        )}
+        
         <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{ad?.paymentMethods && <DetailRow label="Payment Method" value={ad.paymentMethods.join(', ')} />}</div>
         <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}</div>
         
@@ -547,12 +546,6 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
             </Button>
         )}
         
-        {showActions && !isAdmin && (
-            <div className="pt-4">
-              <ActionButtons trade={trade} currentUserRole={currentUserRole} />
-            </div>
-        )}
-
         {showFeedbackSection && <FeedbackForm trade={trade} existingFeedback={userFeedback} />}
         {isAdmin && <AdminTradeActions trade={trade} />}
       </CardContent>
