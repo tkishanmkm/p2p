@@ -122,7 +122,6 @@ type AdFormValues = z.infer<typeof adFormSchema>;
 
 interface CreateAdFormProps {
   ad?: P2PAd;
-  adType: 'buy' | 'sell';
 }
 
 const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, field, addCustom, customValue, onCustomValueChange }: any) => {
@@ -205,7 +204,7 @@ const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, f
   );
 };
 
-export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
+export function CreateAdForm({ ad }: CreateAdFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { firestore, user } = useFirebase();
@@ -249,7 +248,7 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
         blockedCountries: ad.blockedCountries || [],
       }
       : {
-        adType: adType,
+        adType: 'buy',
         crypto: "BTC",
         fiatCurrency: "USD",
         paymentMethods: [],
@@ -406,7 +405,7 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
       <CardHeader>
         <CardTitle>{ad ? 'Edit P2P Advertisement' : 'Create a P2P Advertisement'}</CardTitle>
         <CardDescription>
-          {ad ? `Editing ad ${ad.publicAdId}.` : `Set up your ad to ${adType === 'buy' ? 'buy' : 'sell'} coins. It will be visible to other users.`}
+          {ad ? `Editing ad ${ad.publicAdId}.` : `Set up your ad to buy or sell coins. It will be visible to other users.`}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -420,11 +419,12 @@ export function CreateAdForm({ ad, adType }: CreateAdFormProps) {
                   <FormControl>
                     <Tabs
                       value={field.value}
+                      onValueChange={(value) => field.onChange(value as 'buy' | 'sell')}
                       className="w-full"
                     >
-                      <TabsList className="grid w-full grid-cols-2 pointer-events-none">
-                        <TabsTrigger value="buy" className="data-[state=active]:bg-green-600 data-[state=active]:text-primary-foreground">Buy</TabsTrigger>
-                        <TabsTrigger value="sell" className="data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">Sell</TabsTrigger>
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="buy" className="data-[state=active]:bg-green-600 data-[state=active]:text-primary-foreground">I want to Buy</TabsTrigger>
+                        <TabsTrigger value="sell" className="data-[state=active]:bg-red-600 data-[state=active]:text-primary-foreground">I want to Sell</TabsTrigger>
                       </TabsList>
                     </Tabs>
                   </FormControl>
