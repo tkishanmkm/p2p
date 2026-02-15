@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -7,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
-import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 
@@ -68,9 +68,6 @@ export function ProfileSettings({ user }: { user: User }) {
             if (!photoURL) {
                 throw new Error("No image data available to save.");
             }
-
-            // Update Firebase Auth profile
-            await updateProfile(auth.currentUser!, { photoURL });
 
             // Update Firestore user document
             const userDocRef = doc(firestore, 'users', currentUserId);

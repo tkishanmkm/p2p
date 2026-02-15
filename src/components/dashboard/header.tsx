@@ -512,8 +512,8 @@ export function DashboardHeader() {
               <Button variant="ghost" className="flex shrink-0 items-center gap-1.5 md:gap-2 p-1 h-auto rounded-md">
                 {userData?.country && <FlagIcon countryCode={userData.country} className="w-5 h-auto rounded-sm" />}
                 <Avatar className="h-8 w-8 shrink-0">
-                  {authUser?.photoURL ? (
-                    <AvatarImage src={authUser.photoURL} alt={authUser.displayName || 'User Avatar'} />
+                  {userData?.photoURL ? (
+                    <AvatarImage src={userData.photoURL} alt={authUser.displayName || 'User Avatar'} />
                   ) : (
                     <AvatarFallback className="bg-transparent">
                       <DefaultAvatar />
