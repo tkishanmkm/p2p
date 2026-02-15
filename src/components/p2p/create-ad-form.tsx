@@ -278,24 +278,20 @@ export function CreateAdForm({ ad }: CreateAdFormProps) {
   }, [watchedCrypto, watchedFiat, prices, fiatRates]);
 
   useEffect(() => {
-    if (!currentMarketPriceInFiat) return;
+    if (!currentMarketPriceInFiat || arePricesLoading) return;
 
     if (watchedRateType === "market") {
-      if (watchedRatePercent == null) {
-        form.setValue("ratePercent", 5, { shouldValidate: true });
-      }
+      // Always reset to a default percentage when switching to market rate
+      form.setValue("ratePercent", 5);
+      form.setValue("fixedRate", undefined, { shouldValidate: false });
     }
 
     if (watchedRateType === "fixed") {
-      if (watchedFixedRate == null || watchedFixedRate === 0) {
-        form.setValue(
-          "fixedRate",
-          Number(currentMarketPriceInFiat.toFixed(2)),
-          { shouldValidate: true }
-        );
-      }
+      // Always pre-fill with the current market price as a default when switching to fixed rate
+      form.setValue("fixedRate", Number(currentMarketPriceInFiat.toFixed(2)));
+      form.setValue("ratePercent", undefined, { shouldValidate: false });
     }
-  }, [watchedRateType, watchedCrypto, watchedFiat, currentMarketPriceInFiat, form, watchedFixedRate, watchedRatePercent]);
+  }, [watchedRateType, currentMarketPriceInFiat, arePricesLoading, form]);
 
 
   useEffect(() => {
