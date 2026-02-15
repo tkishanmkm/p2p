@@ -2,7 +2,7 @@
 'use client';
 
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 import {
   Card,
   CardContent,
@@ -87,13 +87,13 @@ export default function DashboardPage() {
   const { data: activeBuyerTrades, isLoading: activeBuyerTradesLoading } = useCollection<Trade>(activeTradesAsBuyerQuery);
 
   const activeTradesAsSellerQuery = useMemoFirebase(() => authUser ? query(collection(firestore, 'trades'), where('sellerId', '==', authUser.uid), where('status', 'in', ['active', 'paid'])) : null, [firestore, authUser]);
-  const { data: activeSellerTrades, isLoading: activeSellerTradesLoading } = useCollection<Trade>(activeSellerTradesQuery);
+  const { data: activeSellerTrades, isLoading: activeSellerTradesLoading } = useCollection<Trade>(activeTradesAsSellerQuery);
 
   const [activeTrades, setActiveTrades] = useState<Trade[]>([]);
   const isLoadingActiveTrades = activeBuyerTradesLoading || activeSellerTradesLoading;
 
   const notificationsRef = useMemoFirebase(() => authUser ? collection(firestore, 'users', authUser.uid, 'notifications') : null, [firestore, authUser]);
-  const notificationsQuery = useMemoFirebase(() => notificationsRef ? query(notificationsRef, 'orderBy', ['createdAt', 'desc']) : null, [notificationsRef]);
+  const notificationsQuery = useMemoFirebase(() => notificationsRef ? query(notificationsRef, orderBy('createdAt', 'desc')) : null, [notificationsRef]);
   const { data: notifications, isLoading: areNotificationsLoading } = useCollection<Notification>(notificationsQuery);
   const recentNotifications = useMemo(() => notifications?.slice(0, 3) || [], [notifications]);
 
