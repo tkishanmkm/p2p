@@ -168,17 +168,15 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
                 )}
                 
                 {trade.status === 'paid' && (
-                    <>
-                        {isDisputeWaiting && (
-                            <div className="text-center p-2 border rounded-md">
-                                <p className="text-sm font-semibold">Dispute option available in:</p>
-                                <p className="text-lg font-mono text-destructive">{`${String(disputeCountdown.hours).padStart(2, '0')}:${String(disputeCountdown.minutes).padStart(2, '0')}:${String(disputeCountdown.seconds).padStart(2, '0')}`}</p>
-                            </div>
-                        )}
-                        <OpenDisputeDialog trade={trade} currentUserId={user.uid} currentUsername={user.displayName || 'user'} disabled={!canOpenDispute} />
-                    </>
+                  <OpenDisputeDialog trade={trade} currentUserId={user.uid} currentUsername={user.displayName || 'user'} disabled={isDisputeWaiting} />
                 )}
              </div>
+             {isDisputeWaiting && (
+                <div className="text-center p-2 border rounded-md">
+                    <p className="text-sm font-semibold">Dispute option available in:</p>
+                    <p className="text-lg font-mono text-destructive">{`${String(disputeCountdown.hours).padStart(2, '0')}:${String(disputeCountdown.minutes).padStart(2, '0')}:${String(disputeCountdown.seconds).padStart(2, '0')}`}</p>
+                </div>
+            )}
         </div>
     );
 };
@@ -553,7 +551,7 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
             </ul>
         </AlertDescription></Alert>
 
-        <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{ad?.paymentMethods && <DetailRow label="Payment Method" value={ad.paymentMethods.join(', ')} />}</div>
+        <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{trade.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}</div>
         <div className="space-y-2"><h4 className="font-semibold">Timestamps</h4><DetailRow label="Created At" value={toDate(trade?.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />{trade?.paidAt && <DetailRow label="Paid At" value={toDate(trade.paidAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}{trade?.releasedAt && <DetailRow label="Released At" value={toDate(trade.releasedAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'} />}</div>
         
         {resolvedDispute && (

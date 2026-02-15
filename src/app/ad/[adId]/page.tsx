@@ -4,8 +4,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import type { P2PAd, User, CryptoCurrency, User as AppUser } from "@/lib/types";
+import { doc } from "firebase/firestore";
+import type { P2PAd, User, CryptoCurrency } from "@/lib/types";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -18,7 +18,7 @@ import { usePrices } from "@/context/price-context";
 import { initiateTrade } from "@/lib/wallet";
 import { cn, toDate } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { Clock, ThumbsUp, X, Loader2, Lock, Award, CheckShield, ArrowLeftRight } from "lucide-react";
+import { Clock, ThumbsUp, X, Loader2, Lock, Award, ArrowLeftRight } from "lucide-react";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
 import { FlagIcon } from "@/components/ui/flag-icon";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -53,7 +53,6 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
     const [fiatAmount, setFiatAmount] = useState('');
     const [cryptoAmount, setCryptoAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isTermsExpanded, setIsTermsExpanded] = useState(false);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(ad.paymentMethods[0] || '');
     
     const onFiatChange = (value: string) => {
@@ -171,12 +170,7 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
 
                 <div className="space-y-1 rounded-lg bg-muted/50 p-4">
                     <p className="text-sm text-muted-foreground">Offer terms</p>
-                    <p className={cn("text-sm font-medium whitespace-pre-wrap", !isTermsExpanded && "line-clamp-2")}>{ad.terms}</p>
-                    {ad.terms.length > 100 && (
-                        <Button type="button" variant="link" size="sm" className="p-0 h-auto" onClick={() => setIsTermsExpanded(!isTermsExpanded)}>
-                            {isTermsExpanded ? 'Show less' : 'Show more'}
-                        </Button>
-                    )}
+                    <p className="text-sm font-medium whitespace-pre-wrap">{ad.terms}</p>
                 </div>
             </div>
 
@@ -265,7 +259,7 @@ export default function AdDetailPage() {
                 </div>
                 <div className="flex items-center gap-4 text-xs flex-wrap">
                     <StatItem icon={<ThumbsUp className="h-4 w-4 text-green-500"/>} value={`${user.feedbackScore || 100}%`} label="" />
-                    <StatItem icon={<Clock />} value={`${user.avgReleaseTime || 0}m`} label="" />
+                    <StatItem icon={<Clock />} value={`${(user.avgReleaseTime || 0).toFixed(1)}m`} label="" />
                     <StatItem icon={<ArrowLeftRight />} value={user.completedTrades.toLocaleString()} label="Trades" />
                     {lastActiveDate && <StatItem icon={<div className="h-2 w-2 rounded-full bg-green-500" />} value={`Seen ${formatDistanceToNow(lastActiveDate)} ago`} label="" />}
                 </div>

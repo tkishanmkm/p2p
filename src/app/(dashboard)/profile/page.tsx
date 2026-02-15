@@ -85,7 +85,7 @@ export default function ProfilePage() {
                             <CardTitle>Account Stats</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                             <DetailItem icon={<DollarSign size={20} />} label="Total Trade Volume" value={`$${user.tradeVolume.toLocaleString()}`} />
+                             <DetailItem icon={<DollarSign size={20} />} label="Total Trade Volume" value={`$${(user.tradeVolume || 0).toLocaleString()}`} />
                              <DetailItem icon={<CheckCircle size={20} />} label="Completed Trades" value={user.completedTrades} />
                              <DetailItem icon={<ThumbsUp size={20} />} label="Positive Feedback" value={user.positiveFeedback || 0} />
                              <DetailItem icon={<ThumbsDown size={20} />} label="Negative Feedback" value={user.negativeFeedback || 0} />
