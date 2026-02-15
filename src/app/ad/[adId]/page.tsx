@@ -57,7 +57,7 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
     const { user: authUser, firestore } = useFirebase();
     const router = useRouter();
     const { toast } = useToast();
-    const { fiatRates } = usePrices();
+    const { fiatRates, isLoading: arePricesLoading } = usePrices();
     
     const [fiatAmount, setFiatAmount] = useState('');
     const [cryptoAmount, setCryptoAmount] = useState('');
@@ -196,9 +196,9 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
             </div>
 
             <div className="mt-6 space-y-4">
-                <Button type="submit" size="lg" className="w-full h-12 text-lg" disabled={isSubmitting || !fiatAmount || parseFloat(fiatAmount) < ad.minAmount || parseFloat(fiatAmount) > ad.maxAmount}>
-                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {authUser ? (isForBuyingPage ? 'Buy' : 'Sell') : 'Join & Trade'}
+                <Button type="submit" size="lg" className="w-full h-12 text-lg" disabled={isSubmitting || arePricesLoading || !fiatAmount || parseFloat(fiatAmount) < ad.minAmount || parseFloat(fiatAmount) > ad.maxAmount}>
+                     {(isSubmitting || arePricesLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                     {arePricesLoading ? 'Updating rates...' : authUser ? (isForBuyingPage ? 'Buy' : 'Sell') : 'Join & Trade'}
                 </Button>
                 <div className="text-xs text-muted-foreground flex items-center justify-center gap-2">
                     <Lock className="h-3 w-3" />
@@ -214,7 +214,7 @@ export default function AdDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { firestore } = useFirebase();
-    const { prices, fiatRates } = usePrices();
+    const { prices, fiatRates, isLoading: arePricesLoading } = usePrices();
     const adId = Array.isArray(params.adId) ? params.adId[0] : params.adId;
 
     const adRef = useMemoFirebase(() => (adId ? doc(firestore, "p2p_ads", adId) : null), [firestore, adId]);
@@ -223,7 +223,7 @@ export default function AdDetailPage() {
     const userRef = useMemoFirebase(() => (ad ? doc(firestore, 'users', ad.userId) : null), [ad]);
     const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
 
-    if (isAdLoading || isUserLoading) {
+    if (isAdLoading || isUserLoading || arePricesLoading) {
         return <div className="bg-card p-8 rounded-lg shadow-lg max-w-md w-full"><Skeleton className="h-[500px] w-full" /></div>
     }
 
