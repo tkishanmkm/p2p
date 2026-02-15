@@ -284,7 +284,7 @@ function BuyPageContent() {
 
   const coinFullName = selectedCoin === 'BTC' ? 'Bitcoin' : selectedCoin === 'ETH' ? 'Ethereum' : selectedCoin === 'LTC' ? 'Litecoin' : 'Tether';
   const marketPriceInFiat = (prices[selectedCoin] || 0) * (fiatRates[selectedFiat] || 1);
-  const marketPriceText = `1 ${selectedCoin} ≈ ${marketPriceInFiat.toLocaleString('en-US', { style: 'currency', currency: selectedFiat, minimumFractionDigits: 2 })}`;
+  const marketPriceText = `1 ${selectedCoin} ≈ ${marketPriceInFiat.toLocaleString('en-US', { style: 'currency', currency: selectedFiat || 'USD', minimumFractionDigits: 2 })}`;
 
   return (
     <>
