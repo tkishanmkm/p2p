@@ -36,6 +36,7 @@ export async function initiateTrade(
   ad: P2PAd,
   cryptoAmount: number,
   fiatAmount: number,
+  paymentMethod: string
 ): Promise<string> {
     let buyerId: string;
     let sellerId: string;
@@ -107,7 +108,7 @@ export async function initiateTrade(
         escrowFee: cryptoFee,
         fiatCurrency: ad.fiatCurrency,
         fiatAmount: fiatAmount,
-        paymentMethod: ad.paymentMethods[0],
+        paymentMethod: paymentMethod,
         price: fiatAmount / cryptoAmount,
         status: 'active',
         claimedByBuyer: false,

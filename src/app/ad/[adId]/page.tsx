@@ -23,6 +23,7 @@ import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
 import { FlagIcon } from "@/components/ui/flag-icon";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const CryptoLogo = ({ crypto, className }: { crypto: string; className?: string }) => {
     switch (crypto) {
@@ -53,6 +54,7 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
     const [cryptoAmount, setCryptoAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isTermsExpanded, setIsTermsExpanded] = useState(false);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(ad.paymentMethods[0] || '');
     
     const onFiatChange = (value: string) => {
         setFiatAmount(value);
@@ -82,7 +84,7 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
         
         setIsSubmitting(true);
         try {
-            const tradeId = await initiateTrade(firestore, authUser.uid, ad, parseFloat(cryptoAmount), parseFloat(fiatAmount));
+            const tradeId = await initiateTrade(firestore, authUser.uid, ad, parseFloat(cryptoAmount), parseFloat(fiatAmount), selectedPaymentMethod);
             toast({ title: "Trade Initiated!", description: "You are being redirected to the trade room." });
             router.push(`/trade/${tradeId}`);
         } catch (error: any) {
@@ -128,7 +130,28 @@ function TradeForm({ ad, adPrice, isForBuyingPage }: { ad: P2PAd, adPrice: numbe
                         </div>
                     </div>
                 </div>
-                 <p className="text-xs text-muted-foreground">Range: {ad.minAmount.toLocaleString()} - {ad.maxAmount.toLocaleString()} {ad.fiatCurrency}</p>
+                <p className="text-xs text-muted-foreground">Range: {ad.minAmount.toLocaleString()} - {ad.maxAmount.toLocaleString()} {ad.fiatCurrency}</p>
+
+                <div className="space-y-1">
+                  <Label>Payment Method</Label>
+                  {ad.paymentMethods.length > 1 ? (
+                    <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
+                      <SelectTrigger className="h-12 text-base">
+                        <SelectValue placeholder="Select a payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ad.paymentMethods.map(pm => (
+                          <SelectItem key={pm} value={pm}>{pm}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center p-3 text-sm font-medium bg-muted rounded-md h-12">
+                      {ad.paymentMethods[0]}
+                    </div>
+                  )}
+                </div>
+
 
                 {ad.offerLabel && <div className="space-y-1 rounded-lg bg-muted/50 p-4">
                     <p className="text-sm text-muted-foreground">Offer label</p>
@@ -245,9 +268,6 @@ export default function AdDetailPage() {
                     <StatItem icon={<Clock />} value={`${user.avgReleaseTime || 0}m`} label="" />
                     <StatItem icon={<ArrowLeftRight />} value={user.completedTrades.toLocaleString()} label="Trades" />
                     {lastActiveDate && <StatItem icon={<div className="h-2 w-2 rounded-full bg-green-500" />} value={`Seen ${formatDistanceToNow(lastActiveDate)} ago`} label="" />}
-                </div>
-                <div className="flex flex-wrap gap-1">
-                    {ad.paymentMethods.map(pm => <Badge key={pm} variant="secondary">{pm}</Badge>)}
                 </div>
 
                 <div className="text-right">
