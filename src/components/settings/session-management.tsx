@@ -1,7 +1,7 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -9,6 +9,7 @@ import { Smartphone, Monitor, LogOut, CheckCircle, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, orderBy, query } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 import type { Session } from '@/lib/types';
 import { toDate } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -18,7 +19,8 @@ import { logoutSessions } from '@/lib/users';
 export function SessionManagement() {
   const [currentSessionId, setCurrentSessionId] = useState('');
   const { toast } = useToast();
-  const { firestore, user: authUser } = useFirebase();
+  const { firestore, user: authUser, auth } = useFirebase();
+  const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState<string | 'all' | null>(null);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function SessionManagement() {
   const { data: sessions, isLoading } = useCollection<Session>(sessionsQuery);
 
   const handleLogout = async (sessionIds: string[] | 'all_other') => {
-    if (!firestore || !authUser || !currentSessionId) {
+    if (!firestore || !authUser || !currentSessionId || !auth) {
         toast({
             variant: "destructive",
             title: "Error",
@@ -45,23 +47,44 @@ export function SessionManagement() {
     }
 
     let idsToLogout: string[] = [];
+    let isLoggingOutAll = false;
     if (sessionIds === 'all_other') {
         setIsLoggingOut('all');
         idsToLogout = sessions?.filter(s => s.id !== currentSessionId && s.isActive).map(s => s.id) || [];
+        isLoggingOutAll = true;
     } else {
         setIsLoggingOut(sessionIds[0]);
         idsToLogout = sessionIds;
     }
 
+    // Special case: User clicks "log out all" but there are no other sessions.
+    // Log out the current device for security.
+    if (idsToLogout.length === 0 && isLoggingOutAll) {
+      toast({ title: "No Other Active Sessions", description: "Logging out from this device." });
+      await signOut(auth);
+      router.push('/login');
+      setIsLoggingOut(null);
+      return;
+    }
+
+    // If there are no sessions to log out (for a single logout click), do nothing.
     if (idsToLogout.length === 0) {
-        toast({ title: "No Sessions", description: "No other active sessions to log out." });
-        setIsLoggingOut(null);
-        return;
+      toast({ title: "No Action Needed", description: "That session is already inactive." });
+      setIsLoggingOut(null);
+      return;
     }
 
     try {
         await logoutSessions(firestore, authUser.uid, idsToLogout);
         toast({ title: "Success", description: "The selected session(s) have been marked as inactive." });
+
+        // If the user clicked "log out all", also log out the current device and redirect.
+        if (isLoggingOutAll) {
+            toast({ title: "Securing Account", description: "Logging you out from this device for security." });
+            await signOut(auth);
+            router.push('/login');
+        }
+
     } catch (error: any) {
         toast({ variant: "destructive", title: "Failed to Logout", description: error.message });
     } finally {
