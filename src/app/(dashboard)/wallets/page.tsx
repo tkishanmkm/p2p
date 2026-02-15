@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -73,6 +74,7 @@ function TransactionHistory({ userId, crypto }: { userId: string, crypto: Crypto
             <TableRow>
               <TableHead>Type</TableHead>
               <TableHead>Amount</TableHead>
+              <TableHead>Details</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
             </TableRow>
@@ -82,11 +84,17 @@ function TransactionHistory({ userId, crypto }: { userId: string, crypto: Crypto
               <TableRow key={`${tx.type}-${tx.id}`}>
                 <TableCell>{tx.type}</TableCell>
                 <TableCell>{tx.amount.toFixed(8)}</TableCell>
+                <TableCell>
+                  <div className="font-mono text-xs max-w-[150px] truncate" title={tx.type === 'Deposit' ? (tx as Deposit).txId || '' : (tx as Withdrawal).address}>
+                    {tx.type === 'Deposit' && (tx as Deposit).txId ? `TxID: ${(tx as Deposit).txId}` : ''}
+                    {tx.type === 'Withdrawal' ? `To: ${(tx as Withdrawal).address}` : ''}
+                  </div>
+                </TableCell>
                 <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[tx.status])}>{tx.status.replace(/_/g, ' ')}</Badge></TableCell>
                 <TableCell>{toDate(tx.createdAt)?.toLocaleString()}</TableCell>
               </TableRow>
             )) : (
-              <TableRow><TableCell colSpan={4} className="text-center h-24">No transactions yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} className="text-center h-24">No transactions yet.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>

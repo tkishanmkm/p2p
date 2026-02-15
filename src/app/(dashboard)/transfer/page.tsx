@@ -138,20 +138,11 @@ export default function TransferPage() {
   const walletsRef = useMemoFirebase(() => (authUser ? collection(firestore, 'users', authUser.uid, 'wallets') : null), [authUser, firestore]);
   const { data: wallets } = useCollection<UserWallet>(walletsRef);
 
-  const sentQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('senderId', '==', authUser.uid)) : null), [firestore, authUser]);
-  const { data: rawSentTransfers, isLoading: isLoadingSent } = useCollection<CoinTransfer>(sentQuery);
-  const sentTransfers = useMemo(() => {
-    if (!rawSentTransfers) return null;
-    return rawSentTransfers.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
-  }, [rawSentTransfers]);
+  const sentQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('senderId', '==', authUser.uid), orderBy('createdAt', 'desc')) : null), [firestore, authUser]);
+  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<CoinTransfer>(sentQuery);
 
-
-  const receivedQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('recipientId', '==', authUser.uid)) : null), [firestore, authUser]);
-  const { data: rawReceivedTransfers, isLoading: isLoadingReceived } = useCollection<CoinTransfer>(receivedQuery);
-  const receivedTransfers = useMemo(() => {
-    if (!rawReceivedTransfers) return null;
-    return rawReceivedTransfers.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
-  }, [rawReceivedTransfers]);
+  const receivedQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('recipientId', '==', authUser.uid), orderBy('createdAt', 'desc')) : null), [firestore, authUser]);
+  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<CoinTransfer>(receivedQuery);
 
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferSchema),
