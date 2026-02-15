@@ -52,6 +52,7 @@ import { LANGUAGES } from '@/lib/constants';
 import { FlagIcon } from '../ui/flag-icon';
 import { useI18n } from '@/context/i18n-context';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { ScrollArea } from '../ui/scroll-area';
 
 type NavItem = {
   href?: string;
@@ -390,30 +391,34 @@ export function DashboardHeader() {
                 <span className="sr-only">Toggle notifications</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-80 p-0">
+              <DropdownMenuLabel className="px-2 pt-2">Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {notifications && notifications.length > 0 ? (
-                notifications.map((n) => (
-                  <DropdownMenuItem
-                    key={n.id}
-                    asChild
-                    className={cn('flex items-start gap-2', !n.isRead && 'bg-secondary')}
-                  >
-                    <Link href={n.link || '#'} onClick={() => handleMarkAsRead(n.id)}>
-                      <Mail className="mt-1 h-4 w-4 text-muted-foreground" />
-                      <div className="flex flex-col">
-                        <p className="text-sm leading-snug">{n.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {toDate(n.createdAt)?.toLocaleString() ?? 'Invalid Date'}
-                        </p>
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <p className="p-4 text-center text-sm text-muted-foreground">No new notifications.</p>
-              )}
+              <ScrollArea className="h-auto max-h-96">
+                <div className="p-1 space-y-1">
+                  {notifications && notifications.length > 0 ? (
+                    notifications.map((n) => (
+                      <DropdownMenuItem
+                        key={n.id}
+                        asChild
+                        className={cn('flex items-start gap-2 whitespace-normal', !n.isRead && 'bg-secondary')}
+                      >
+                        <Link href={n.link || '#'} onClick={() => handleMarkAsRead(n.id)}>
+                          <Mail className="mt-1 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex flex-col">
+                            <p className="text-sm leading-snug">{n.message}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {toDate(n.createdAt)?.toLocaleString() ?? 'Invalid Date'}
+                            </p>
+                          </div>
+                        </Link>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <p className="p-4 text-center text-sm text-muted-foreground">No new notifications.</p>
+                  )}
+                </div>
+              </ScrollArea>
             </DropdownMenuContent>
           </DropdownMenu>
 
