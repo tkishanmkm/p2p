@@ -23,6 +23,8 @@ import { usePrices } from "@/context/price-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
   switch (crypto) {
