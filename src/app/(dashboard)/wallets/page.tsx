@@ -2,33 +2,27 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
-import { collection, doc, writeBatch, query, orderBy, where, getDocs } from "firebase/firestore";
+import { collection, doc, query, orderBy, where } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from "@/components/icons";
-import { CryptoCurrency, User, UserWallet, Deposit, Withdrawal } from "@/lib/types";
-import { SUPPORTED_CRYPTOS } from "@/lib/constants";
-import { Plus, Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy, Loader2 } from "lucide-react";
+import { CryptoCurrency, User, UserWallet, Deposit, Withdrawal, CoinTransfer, CryptoDepositAddress } from "@/lib/types";
+import { SUPPORTED_CRYPTOS, CHAINS } from "@/lib/constants";
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy, Loader2, Send, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { DepositDialog } from "@/components/wallets/deposit-dialog";
+
 import { WithdrawDialog } from "@/components/wallets/withdraw-dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn, toDate } from "@/lib/utils";
-import { cancelWithdrawal } from "@/lib/wallet";
 import { useRouter } from 'next/navigation';
 import { usePrices } from "@/context/price-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
+import { formatDistanceToNow } from "date-fns";
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
   switch (crypto) {
@@ -40,27 +34,221 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?:
   }
 };
 
-const depositStatusColors: Record<Deposit['status'], string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  awaiting_confirmation: "bg-yellow-100 text-yellow-800",
-  approved: "bg-green-100 text-green-800",
-  declined: "bg-red-100 text-red-800",
-  expired: "bg-gray-100 text-gray-800",
+const transactionStatusColors: Record<string, string> = {
+  pending: "text-yellow-600",
+  awaiting_confirmation: "text-yellow-600",
+  approved: "text-green-600",
+  declined: "text-red-600",
+  expired: "text-gray-500",
+  cancelled: "text-gray-500",
 };
 
-const withdrawalStatusColors: Record<Withdrawal['status'], string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  approved: "bg-green-100 text-green-800",
-  declined: "bg-red-100 text-red-800",
-  cancelled: "bg-gray-100 text-gray-800",
-};
+function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositAddresses, onWithdrawClick }: {
+    crypto: CryptoCurrency;
+    wallet: UserWallet | undefined;
+    deposits: Deposit[];
+    withdrawals: Withdrawal[];
+    transfers: any[];
+    depositAddresses: CryptoDepositAddress[];
+    onWithdrawClick: () => void;
+}) {
+    const [showDeposit, setShowDeposit] = useState(true);
+    const { prices, fiatRates } = usePrices();
+    const { user: authUser } = useFirebase();
 
+    const balance = wallet?.balance ?? 0;
+    const lockedBalance = wallet?.lockedBalance ?? 0;
+    const valueUSD = balance * (prices[crypto] || 0);
+    const preferredCurrency = authUser?.preferredCurrency || 'USD';
+    const exchangeRate = fiatRates[preferredCurrency] || 1;
+    const valueConverted = valueUSD * exchangeRate;
+    
+    const chains = CHAINS[crypto] || [];
+
+    const allTransactions = useMemo(() => {
+        const txs = [
+            ...deposits.map(d => ({ ...d, type: 'Deposit', date: toDate(d.createdAt) })),
+            ...withdrawals.map(w => ({ ...w, type: 'Withdrawal', date: toDate(w.createdAt) })),
+            ...transfers.map(t => ({ ...t, type: t.senderId === authUser?.uid ? 'Transfer Out' : 'Transfer In', date: toDate(t.createdAt) })),
+        ];
+        return txs.sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
+    }, [deposits, withdrawals, transfers, authUser]);
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column */}
+            <div className="lg:col-span-1 space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <CryptoLogo crypto={crypto} className="h-6 w-6" />
+                            {crypto} Balance
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Total Balance</p>
+                            <p className="text-2xl font-bold">{(balance + lockedBalance).toFixed(8)}</p>
+                        </div>
+                        <div className="text-sm space-y-1">
+                            <div className="flex justify-between"><span>Available:</span><span>{balance.toFixed(8)}</span></div>
+                            <div className="flex justify-between"><span>Locked:</span><span>{lockedBalance.toFixed(8)}</span></div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            ≈ {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2 })}
+                        </p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-3 gap-2">
+                        <Button variant="outline" className="flex-col h-20 gap-1" onClick={() => setShowDeposit(true)}>
+                            <ArrowDownToLine className="h-5 w-5"/>
+                            <span>Deposit</span>
+                        </Button>
+                         <Button variant="outline" className="flex-col h-20 gap-1" onClick={onWithdrawClick}>
+                            <ArrowUpFromLine className="h-5 w-5"/>
+                            <span>Withdraw</span>
+                        </Button>
+                         <Button variant="outline" className="flex-col h-20 gap-1" disabled>
+                            <Repeat className="h-5 w-5"/>
+                            <span>Swap</span>
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+            
+            {/* Right Column */}
+            <div className="lg:col-span-2 space-y-6">
+                {showDeposit && (
+                    <Card>
+                        <CardHeader>
+                             <CardTitle>Deposit {crypto}</CardTitle>
+                             <CardDescription>Send only {crypto} to this address. Sending any other asset will result in permanent loss.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Tabs defaultValue={chains[0]} className="w-full">
+                                {chains.length > 1 && (
+                                    <TabsList className="grid w-full grid-cols-3">
+                                        {chains.map(chain => <TabsTrigger key={chain} value={chain}>{chain}</TabsTrigger>)}
+                                    </TabsList>
+                                )}
+                                {chains.map(chain => {
+                                    const depositInfo = depositAddresses.find(addr => addr.crypto === crypto && addr.chain === chain);
+                                    if (!depositInfo) {
+                                        return (
+                                            <TabsContent key={chain} value={chain}>
+                                                <Alert variant="destructive">
+                                                    <AlertTitle>Address Not Configured</AlertTitle>
+                                                    <AlertDescription>No deposit address has been configured for the {chain} network. Please contact support.</AlertDescription>
+                                                </Alert>
+                                            </TabsContent>
+                                        )
+                                    }
+                                    return (
+                                        <TabsContent key={chain} value={chain} className="mt-4">
+                                            <div className="flex flex-col sm:flex-row items-center gap-6">
+                                                <div className="p-2 bg-white rounded-lg">
+                                                    <Image src={depositInfo.qrCodeUrl} alt={`${chain} QR Code`} width={160} height={160}/>
+                                                </div>
+                                                <div className="space-y-4 flex-grow w-full">
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`${chain}-address`}>{chain} Address</Label>
+                                                        <div className="relative">
+                                                            <Input id={`${chain}-address`} value={depositInfo.address} readOnly className="pr-10 font-mono text-xs"/>
+                                                            <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={() => navigator.clipboard.writeText(depositInfo.address)}>
+                                                                <Copy className="h-4 w-4"/>
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </TabsContent>
+                                    )
+                                })}
+                            </Tabs>
+                        </CardContent>
+                    </Card>
+                )}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Transaction History</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Tabs defaultValue="all">
+                            <TabsList>
+                                <TabsTrigger value="all">All</TabsTrigger>
+                                <TabsTrigger value="deposits">Deposits</TabsTrigger>
+                                <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
+                                <TabsTrigger value="transfers">Transfers</TabsTrigger>
+                            </TabsList>
+                            <div className="mt-4">
+                                <TransactionTable transactions={allTransactions} type="all" />
+                                <TransactionTable transactions={allTransactions} type="Deposit" />
+                                <TransactionTable transactions={allTransactions} type="Withdrawal" />
+                                <TransactionTable transactions={allTransactions} type="Transfer" />
+                            </div>
+                        </Tabs>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
+function TransactionTable({ transactions, type }: { transactions: any[], type: 'all' | 'Deposit' | 'Withdrawal' | 'Transfer' }) {
+    const filtered = useMemo(() => {
+        if (type === 'all') return transactions;
+        if (type === 'Transfer') return transactions.filter(t => t.type === 'Transfer In' || t.type === 'Transfer Out');
+        return transactions.filter(t => t.type === type);
+    }, [transactions, type]);
+
+    const content = (
+         <div className="max-h-96 overflow-y-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status/Partner</TableHead>
+                        <TableHead className="text-right">Date</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filtered.length > 0 ? filtered.map(tx => (
+                        <TableRow key={tx.id}>
+                            <TableCell className="font-medium">{tx.type}</TableCell>
+                            <TableCell className={cn(tx.type.includes('In') || tx.type.includes('Deposit') ? 'text-green-600' : 'text-red-600')}>
+                                {(tx.type.includes('In') || tx.type.includes('Deposit') ? '+' : '-') + (tx.finalAmount ?? tx.amount).toFixed(8)}
+                            </TableCell>
+                            <TableCell className={cn("capitalize", transactionStatusColors[tx.status])}>
+                                {tx.type.includes('Transfer') ? (tx.type === 'Transfer In' ? tx.senderUsername : tx.recipientUsername) : tx.status?.replace(/_/g, ' ')}
+                            </TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground">{tx.date ? formatDistanceToNow(tx.date, { addSuffix: true }) : 'N/A'}</TableCell>
+                        </TableRow>
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={4} className="h-24 text-center">No {type !== 'all' ? type.toLowerCase() : ''} transactions found.</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    )
+
+    return (
+        <TabsContent value={type === 'Transfer' ? 'transfers' : type.toLowerCase()}>
+            {content}
+        </TabsContent>
+    );
+}
 
 export default function WalletsPage() {
   const { firestore, user: authUser, isUserLoading: isAuthLoading } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
-  const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const { prices, fiatRates } = usePrices();
 
@@ -76,56 +264,26 @@ export default function WalletsPage() {
   const walletsCollectionRef = useMemoFirebase(() => authUser ? collection(firestore, "users", authUser.uid, "wallets") : null, [firestore, authUser]);
   const { data: wallets, isLoading: isWalletsLoading } = useCollection<UserWallet>(walletsCollectionRef);
   
-  const depositsQuery = useMemoFirebase(() => 
-    authUser 
-      ? query(collection(firestore, "deposits"), where("userId", "==", authUser.uid)) 
-      : null,
-    [authUser, firestore]
-  );
-  const { data: rawDeposits, isLoading: isDepositsLoading, error: depositsError } = useCollection<Deposit>(depositsQuery);
-
-  const deposits = useMemo(() => {
-    if (!rawDeposits) return null;
-    return rawDeposits.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
-  }, [rawDeposits]);
-
-  const withdrawalsQuery = useMemoFirebase(() => 
-    authUser 
-      ? query(collection(firestore, "users", authUser.uid, "withdrawals"), orderBy("createdAt", "desc"))
-      : null,
-    [authUser, firestore]
-  );
-  const { data: withdrawals, isLoading: isWithdrawalsLoading, error: withdrawalsError } = useCollection<Withdrawal>(withdrawalsQuery);
+  const depositsQuery = useMemoFirebase(() => authUser ? query(collection(firestore, "deposits"), where("userId", "==", authUser.uid)) : null, [authUser, firestore]);
+  const { data: deposits, isLoading: isDepositsLoading } = useCollection<Deposit>(depositsQuery);
   
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: "Copied!", description: "Address copied to clipboard." });
-  };
+  const withdrawalsQuery = useMemoFirebase(() => authUser ? query(collection(firestore, `users/${authUser.uid}/withdrawals`)) : null, [authUser, firestore]);
+  const { data: withdrawals, isLoading: isWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
   
-    const totalWalletValueUSD =
-    wallets?.reduce((acc, wallet) => {
-      const value = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
-      return acc + value;
-    }, 0) || 0;
+  const addressesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "crypto_deposit_addresses")) : null, [firestore]);
+  const { data: depositAddresses, isLoading: areAddressesLoading } = useCollection<CryptoDepositAddress>(addressesQuery);
 
-  const preferredCurrency = user?.preferredCurrency || 'USD';
-  const exchangeRate = fiatRates[preferredCurrency] || 1;
-  const totalWalletValueConverted = totalWalletValueUSD * exchangeRate;
+  const sentTransfersQuery = useMemoFirebase(() => authUser ? query(collection(firestore, 'transfers'), where('senderId', '==', authUser.uid)) : null, [firestore, authUser]);
+  const { data: sentTransfers, isLoading: sentLoading } = useCollection<CoinTransfer>(sentTransfersQuery);
 
-  const handleCancelWithdrawal = async (withdrawal: Withdrawal) => {
-    if (!firestore || !authUser) return;
-    if (!confirm("Are you sure you want to cancel this withdrawal request?")) return;
-    try {
-      await cancelWithdrawal(firestore, withdrawal);
-      toast({ title: "Withdrawal Cancelled", description: "Your funds have been returned to your available balance." });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Cancellation Failed", description: e.message });
-    }
-  };
+  const receivedTransfersQuery = useMemoFirebase(() => authUser ? query(collection(firestore, 'transfers'), where('recipientId', '==', authUser.uid)) : null, [firestore, authUser]);
+  const { data: receivedTransfers, isLoading: receivedLoading } = useCollection<CoinTransfer>(receivedTransfersQuery);
+  
+  const allTransfers = useMemo(() => [...(sentTransfers || []), ...(receivedTransfers || [])], [sentTransfers, receivedTransfers]);
 
-  const isDepositDisabled = isUserLoading || !!user?.isBanned || !!user?.isOnHold;
+  const isLoading = isAuthLoading || isUserLoading || isWalletsLoading || isDepositsLoading || isWithdrawalsLoading || areAddressesLoading || sentLoading || receivedLoading;
 
-  if (isAuthLoading || !authUser) {
+  if (isLoading || !authUser) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -135,288 +293,35 @@ export default function WalletsPage() {
 
   return (
     <>
-      <DepositDialog open={isDepositOpen} onOpenChange={setIsDepositOpen} />
       <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} userWallets={wallets || []} />
       <div className="flex items-center mb-6">
         <h1 className="text-lg font-semibold md:text-2xl">My Wallets</h1>
       </div>
-      <div className="grid gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Available Value</CardTitle>
-            <CardDescription>
-              This is the estimated total value of your available (unlocked) crypto assets.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-                {isWalletsLoading || isUserLoading ? (
-                    <Skeleton className="h-9 w-48" />
-                ) : (
-                    totalWalletValueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                )}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-col md:flex-row md:items-center">
-            <div className="grid gap-2 flex-grow">
-              <CardTitle>Crypto Balances</CardTitle>
-              <CardDescription>
-                Your personal cryptocurrency wallets on the platform.
-              </CardDescription>
-            </div>
-            <div className="flex gap-2 mt-4 md:mt-0">
-              <Button variant="outline" onClick={() => setIsWithdrawOpen(true)} className="w-full md:w-auto">
-                <ArrowUpFromLine className="mr-2 h-4 w-4" /> Withdraw
-              </Button>
-              <Button onClick={() => setIsDepositOpen(true)} disabled={isDepositDisabled} className="w-full md:w-auto">
-                <ArrowDownToLine className="mr-2 h-4 w-4" /> Deposit
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isWalletsLoading && <p>Loading wallets...</p>}
-            {!isWalletsLoading && (!wallets || wallets.length === 0) && (
-              <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                  <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 text-lg font-semibold">No Wallets Found</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Click "Deposit" to create your first wallet.</p>
-              </div>
-            )}
-            {!isWalletsLoading && wallets && wallets.length > 0 && (
-              <>
-                {/* Desktop Table */}
-                <Table className="hidden md:table">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Asset</TableHead>
-                      <TableHead>Available Balance</TableHead>
-                      <TableHead>Locked Balance</TableHead>
-                      <TableHead className="text-right">Value ({preferredCurrency})</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {wallets.map(wallet => {
-                      const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
-                      const valueConverted = valueUSD * exchangeRate;
-                      return (
-                      <TableRow key={wallet.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <CryptoLogo crypto={wallet.crypto} />
-                            <span className="font-medium">{wallet.crypto}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{(wallet.balance || 0).toFixed(8)}</TableCell>
-                        <TableCell className="font-medium">{(wallet.lockedBalance || 0).toFixed(8)}</TableCell>
-                        <TableCell className="text-right font-medium">{valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                      </TableRow>
-                    )})}
-                  </TableBody>
-                </Table>
-                {/* Mobile Cards */}
-                <div className="md:hidden space-y-4">
-                  {wallets.map(wallet => {
-                      const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
-                      const valueConverted = valueUSD * exchangeRate;
-                      return (
-                    <Card key={wallet.id}>
-                      <CardHeader className="flex flex-row items-center justify-between pb-2">
-                         <div className="flex items-center gap-3">
-                            <CryptoLogo crypto={wallet.crypto} />
-                            <CardTitle className="text-lg">{wallet.crypto}</CardTitle>
-                          </div>
-                          <div className="font-semibold text-right">
-                            {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </div>
-                      </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Available</span>
-                          <span className="font-medium">{(wallet.balance || 0).toFixed(8)}</span>
+       <Tabs defaultValue="BTC" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+                {SUPPORTED_CRYPTOS.map(c => (
+                    <TabsTrigger key={c.name} value={c.name} className="py-2">
+                        <div className="flex items-center gap-2">
+                            <CryptoLogo crypto={c.name} className="h-5 w-5" />
+                            <span className="font-semibold">{c.name}</span>
                         </div>
-                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Locked</span>
-                          <span className="font-medium">{(wallet.lockedBalance || 0).toFixed(8)}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )})}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader>
-                <CardTitle>Deposit History</CardTitle>
-                <CardDescription>A log of your past and pending deposits.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isDepositsLoading && <p>Loading history...</p>}
-                {depositsError && (
-                  <Alert variant="destructive">
-                    <AlertTitle>Error Loading Deposits</AlertTitle>
-                    <AlertDescription>{depositsError.message}</AlertDescription>
-                  </Alert>
-                )}
-                {!isDepositsLoading && !depositsError && (!deposits || deposits.length === 0) && (
-                    <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                        <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <h3 className="mt-4 text-lg font-semibold">No Deposits Found</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">Click "Deposit" to get started.</p>
-                    </div>
-                )}
-                 {!isDepositsLoading && !depositsError && deposits && deposits.length > 0 && (
-                   <>
-                    {/* Desktop Table */}
-                    <Table className="hidden md:table">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Asset</TableHead>
-                                <TableHead>Amount</TableHead>
-                                <TableHead>Chain</TableHead>
-                                <TableHead>Status</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {deposits.map(deposit => (
-                                <TableRow key={deposit.id}>
-                                    <TableCell className="text-muted-foreground">{toDate(deposit.createdAt)?.toLocaleString() ?? 'Invalid Date'}</TableCell>
-                                    <TableCell className="font-medium">{deposit.crypto}</TableCell>
-                                    <TableCell>{(deposit.finalAmount ?? deposit.amount).toFixed(8)}</TableCell>
-                                    <TableCell>{deposit.chain}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className={cn("capitalize", depositStatusColors[deposit.status])}>{deposit.status.replace(/_/g, ' ')}</Badge>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    {/* Mobile Cards */}
-                    <div className="md:hidden space-y-4">
-                      {deposits.map(deposit => (
-                        <Card key={deposit.id}>
-                          <CardHeader className="flex flex-row items-center justify-between pb-2">
-                              <CardTitle className="text-base">{(deposit.finalAmount ?? deposit.amount).toFixed(4)} {deposit.crypto}</CardTitle>
-                              <Badge variant="outline" className={cn("capitalize", depositStatusColors[deposit.status])}>{deposit.status.replace(/_/g, ' ')}</Badge>
-                          </CardHeader>
-                          <CardContent className="space-y-1 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Date</span>
-                              <span>{toDate(deposit.createdAt)?.toLocaleString() ?? 'N/A'}</span>
-                            </div>
-                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Chain</span>
-                              <span>{deposit.chain}</span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                   </>
-                 )}
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader>
-                <CardTitle>Withdrawal History</CardTitle>
-                <CardDescription>A log of your past and pending withdrawals.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isWithdrawalsLoading && <p>Loading history...</p>}
-                {withdrawalsError && (
-                  <Alert variant="destructive">
-                    <AlertTitle>Error Loading Withdrawals</AlertTitle>
-                    <AlertDescription>{withdrawalsError.message}</AlertDescription>
-                  </Alert>
-                )}
-                {!isWithdrawalsLoading && !withdrawalsError && (!withdrawals || withdrawals.length === 0) && (
-                    <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                        <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <h3 className="mt-4 text-lg font-semibold">No Withdrawals Found</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">Click "Withdraw" to get started.</p>
-                    </div>
-                )}
-                 {!isWithdrawalsLoading && !withdrawalsError && withdrawals && withdrawals.length > 0 && (
-                    <>
-                      {/* Desktop Table */}
-                      <Table className="hidden md:table">
-                          <TableHeader>
-                              <TableRow>
-                                  <TableHead>Date</TableHead>
-                                  <TableHead>Asset</TableHead>
-                                  <TableHead>Amount</TableHead>
-                                  <TableHead>Address</TableHead>
-                                  <TableHead>Status</TableHead>
-                                  <TableHead className="text-right">Action</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {withdrawals.map(w => (
-                                  <TableRow key={w.id}>
-                                      <TableCell className="text-muted-foreground">{toDate(w.createdAt)?.toLocaleString() ?? 'Invalid Date'}</TableCell>
-                                      <TableCell className="font-medium">{w.crypto}</TableCell>
-                                      <TableCell>{w.amount.toFixed(8)}</TableCell>
-                                      <TableCell className="font-mono text-xs max-w-[150px] truncate">{w.address}</TableCell>
-                                      <TableCell>
-                                          <Badge variant="outline" className={cn("capitalize", withdrawalStatusColors[w.status])}>{w.status}</Badge>
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                          {w.status === 'pending' && (
-                                              <Button variant="ghost" size="sm" onClick={() => handleCancelWithdrawal(w)}>
-                                                  <RotateCcw className="mr-2 h-4 w-4"/>
-                                                  Cancel
-                                              </Button>
-                                          )}
-                                      </TableCell>
-                                  </TableRow>
-                              ))}
-                          </TableBody>
-                      </Table>
-                       {/* Mobile Cards */}
-                      <div className="md:hidden space-y-4">
-                        {withdrawals.map(w => (
-                          <Card key={w.id}>
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-base">{w.amount.toFixed(4)} {w.crypto}</CardTitle>
-                                <Badge variant="outline" className={cn("capitalize", withdrawalStatusColors[w.status])}>{w.status}</Badge>
-                            </CardHeader>
-                            <CardContent className="space-y-2 text-sm">
-                              <div className="flex justify-between items-start">
-                                <span className="text-muted-foreground">Address</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-mono text-xs max-w-[150px] truncate">{w.address}</span>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(w.address)}>
-                                      <Copy className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Date</span>
-                                <span>{toDate(w.createdAt)?.toLocaleString() ?? 'N/A'}</span>
-                              </div>
-                              {w.status === 'pending' && (
-                                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => handleCancelWithdrawal(w)}>
-                                  <RotateCcw className="mr-2 h-4 w-4"/>
-                                  Cancel Request
-                                </Button>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </>
-                 )}
-            </CardContent>
-        </Card>
-      </div>
+                    </TabsTrigger>
+                ))}
+            </TabsList>
+            {SUPPORTED_CRYPTOS.map(c => (
+                 <TabsContent key={c.name} value={c.name} className="mt-6">
+                    <WalletView
+                        crypto={c.name}
+                        wallet={wallets?.find(w => w.crypto === c.name)}
+                        deposits={deposits?.filter(d => d.crypto === c.name) || []}
+                        withdrawals={withdrawals?.filter(w => w.crypto === c.name) || []}
+                        transfers={allTransfers.filter(t => t.crypto === c.name) || []}
+                        depositAddresses={depositAddresses || []}
+                        onWithdrawClick={() => setIsWithdrawOpen(true)}
+                    />
+                </TabsContent>
+            ))}
+       </Tabs>
     </>
   );
 }
-
-    
