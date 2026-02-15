@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -20,10 +19,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus, BookOpen, ShieldCheck, LifeBuoy, FileText, ArrowRight, ArrowLeftRight, Loader2, Bell } from 'lucide-react';
+import { Minus, Plus, BookOpen, ShieldCheck, LifeBuoy, FileText, ArrowRight, ArrowLeftRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { BtcLogo, EthLogo, UsdtLogo, LtcLogo } from '@/components/icons';
-import type { CryptoCurrency, User, UserWallet, P2PAd, Trade, Notification } from '@/lib/types';
+import type { CryptoCurrency, User, UserWallet, P2PAd, Trade } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrices } from '@/context/price-context';
 import { useState, useEffect, useMemo } from 'react';
@@ -91,12 +90,6 @@ export default function DashboardPage() {
 
   const [activeTrades, setActiveTrades] = useState<Trade[]>([]);
   const isLoadingActiveTrades = activeBuyerTradesLoading || activeSellerTradesLoading;
-
-  const notificationsRef = useMemoFirebase(() => authUser ? collection(firestore, 'users', authUser.uid, 'notifications') : null, [firestore, authUser]);
-  const notificationsQuery = useMemoFirebase(() => notificationsRef ? query(notificationsRef, orderBy('createdAt', 'desc')) : null, [notificationsRef]);
-  const { data: notifications, isLoading: areNotificationsLoading } = useCollection<Notification>(notificationsQuery);
-  const recentNotifications = useMemo(() => notifications?.slice(0, 3) || [], [notifications]);
-
 
   useEffect(() => {
     if (activeBuyerTrades || activeSellerTrades) {
@@ -226,43 +219,6 @@ export default function DashboardPage() {
                 </>
                 )}
             </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader className="flex flex-row items-center">
-                    <div className="grid gap-2">
-                        <CardTitle>Recent Notifications</CardTitle>
-                        <CardDescription>Your latest account updates.</CardDescription>
-                    </div>
-                    <Button asChild size="sm" className="ml-auto gap-1">
-                        <Link href="/notifications">View All <ArrowRight className="h-4 w-4" /></Link>
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    {areNotificationsLoading ? <Skeleton className="h-24 w-full" /> : (
-                        !areNotificationsLoading && recentNotifications.length > 0 ? (
-                            <div className="space-y-4">
-                                {recentNotifications.map(notification => (
-                                    <div key={notification.id} className="grid grid-cols-[25px_1fr] items-start pb-4 last:pb-0 last:border-b-0 border-b">
-                                        {!notification.isRead && <span className="flex h-2 w-2 translate-y-1 rounded-full bg-sky-500" />}
-                                        <div className="grid gap-1">
-                                            <p className="text-sm font-medium leading-none">{notification.message}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {toDate(notification.createdAt) ? formatDistanceToNow(toDate(notification.createdAt)!, { addSuffix: true }) : 'N/A'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                             <div className="text-center text-muted-foreground py-10 border-2 border-dashed rounded-lg bg-muted/50">
-                                <Bell className="mx-auto h-12 w-12 text-muted-foreground/50"/>
-                                <h3 className="mt-4 text-lg font-semibold">No New Notifications</h3>
-                                <p className="mt-1 text-sm">You're all caught up.</p>
-                            </div>
-                        )
-                    )}
-                </CardContent>
             </Card>
 
             <Card>
@@ -402,5 +358,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
