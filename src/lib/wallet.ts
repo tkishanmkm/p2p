@@ -245,6 +245,7 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
 
 export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId: string) {
   const tradeRef = doc(db, 'trades', tradeId);
+  const messagesCollectionRef = collection(db, 'trades', tradeId, 'messages');
 
   await runTransaction(db, async (transaction) => {
     const tradeDoc = await transaction.get(tradeRef);
@@ -347,6 +348,17 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         isRead: false,
         createdAt: new Date().toISOString(),
     });
+
+    // Add system message to chat
+    const systemMessage = {
+      tradeId: trade.id,
+      senderId: 'system',
+      senderUsername: 'System',
+      message: 'Congratulations! The trade is completed.',
+      isModerator: true,
+      createdAt: new Date().toISOString(),
+    };
+    transaction.set(doc(messagesCollectionRef), systemMessage);
   });
 }
 
