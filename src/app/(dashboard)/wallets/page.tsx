@@ -16,6 +16,7 @@ import { Wallet, ArrowDownToLine, ArrowUpFromLine, RotateCcw, Copy, Loader2, Sen
 import { useToast } from "@/hooks/use-toast";
 
 import { WithdrawDialog } from "@/components/wallets/withdraw-dialog";
+import { DepositForm } from "@/components/wallets/deposit-form";
 import { Badge } from "@/components/ui/badge";
 import { cn, toDate } from "@/lib/utils";
 import { useRouter } from 'next/navigation';
@@ -162,6 +163,7 @@ function WalletView({ crypto, wallet, deposits, withdrawals, transfers, depositA
                                                 </div>
                                             </div>
                                         </div>
+                                        <DepositForm crypto={crypto} chain={chain} depositInfo={depositInfo} />
                                     </TabsContent>
                                 )
                             })}

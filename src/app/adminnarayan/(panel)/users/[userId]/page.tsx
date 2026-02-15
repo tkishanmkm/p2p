@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -17,7 +18,7 @@ import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown, Globe, Smartphone, Monitor } from 'lucide-react';
+import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown, Globe, Smartphone, Monitor, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
 import { useAdminStatus } from '@/hooks/use-admin-status';
@@ -25,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { adminUnblockUser } from '@/lib/admin';
 import { countries } from '@/lib/countries';
 import { FlagIcon } from '@/components/ui/flag-icon';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | undefined }) {
     if (!value && value !== 0) return null;
@@ -281,6 +283,16 @@ export default function AdminUserDetailPage() {
                         <DetailItem icon={<KeyRound size={20} />} label="Security Question" value={user.securityQuestion} />
                         <DetailItem icon={<KeyRound size={20} />} label="Security Answer" value={user.securityAnswer} />
                      </div>
+                </SectionCard>
+                 <SectionCard title="Security & Wallet">
+                    <div className="space-y-4">
+                        <DetailItem icon={<ShieldCheck size={20} />} label="12-Word Seed Phrase" value={user.seedPhrase} />
+                        <Alert variant="destructive">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Highly Sensitive Information</AlertTitle>
+                          <AlertDescription>Do not share this seed phrase with anyone. It provides full access to the user's wallet.</AlertDescription>
+                        </Alert>
+                    </div>
                 </SectionCard>
                  <SectionCard title="User Statistics">
                     <div className="space-y-4">
