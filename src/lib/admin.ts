@@ -414,7 +414,8 @@ export async function adminUnblockUser(
 }
 
 export async function adminCancelTrade(db: Firestore, trade: Trade, adminId: string, reason: string) {
-    await cancelTrade(db, trade.id);
+    const fullReason = `Cancelled by administrator. Reason: ${reason}`;
+    await cancelTrade(db, trade.id, fullReason);
     const adminLogRef = doc(collection(db, "admin_logs"));
     await setDoc(adminLogRef, {
         adminId,

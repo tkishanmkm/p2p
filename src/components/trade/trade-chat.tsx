@@ -1,5 +1,6 @@
 
 
+
 'use client';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
@@ -85,7 +86,7 @@ function SystemMessage({ title, children, timestamp, variant }: { title: string;
     return (
         <div className={cn("text-center text-xs p-3 rounded-md border", variants[variant || 'default'])}>
             <p className="font-bold mb-1">{title}</p>
-            <div className="text-left text-xs">{children}</div>
+            <div className="text-left text-xs whitespace-pre-wrap">{children}</div>
             <p className="text-right text-xs opacity-70 mt-2">{timeString}</p>
         </div>
     );
@@ -232,11 +233,8 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
                     if (msg.message.includes("Congratulations!")) {
                         return <SystemMessage key={msg.id} title="Congratulations! The trade is completed." timestamp={msg.createdAt} variant="success"><p>You can now leave feedback for this trade from the details panel.</p></SystemMessage>;
                     }
-                     if (msg.message.includes("cancelled")) {
-                        return <SystemMessage key={msg.id} title="Trade is cancelled." timestamp={msg.createdAt} variant="destructive">{msg.message}</SystemMessage>;
-                    }
-                    if (msg.message.includes("expired")) {
-                        return <SystemMessage key={msg.id} title="Trade is expired." timestamp={msg.createdAt} variant="warning">{msg.message}</SystemMessage>;
+                     if (msg.message.toLowerCase().includes("cancelled") || msg.message.toLowerCase().includes("expired")) {
+                        return <SystemMessage key={msg.id} title="Trade Cancelled" timestamp={msg.createdAt} variant="destructive">{msg.message}</SystemMessage>;
                     }
                     if (msg.message.includes("Buyer has marked the trade as Paid")) {
                         return <SystemMessage key={msg.id} title="Buyer has marked the trade as Paid." timestamp={msg.createdAt} variant="success">{msg.message}</SystemMessage>;

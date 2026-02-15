@@ -1,5 +1,6 @@
 
 
+
 'use client';
 import {
   Firestore,
@@ -363,57 +364,71 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
 }
 
 /**
- * Cancels an active trade and returns locked funds to the seller.
- * This is a safe function that fetches all required data itself.
+ * Cancels a trade, returns funds if appropriate, and logs the reason.
  */
-export async function cancelTrade(db: Firestore, tradeId: string) {
+export async function cancelTrade(db: Firestore, tradeId: string, reason: string) {
   const tradeRef = doc(db, "trades", tradeId);
 
   await runTransaction(db, async (transaction) => {
     const tradeDoc = await transaction.get(tradeRef);
     if (!tradeDoc.exists()) {
-      // If trade doesn't exist, there's nothing to cancel.
       console.warn(`Attempted to cancel non-existent trade: ${tradeId}`);
       return;
     }
     
     const trade = tradeDoc.data() as Trade;
     
-    // Only proceed if the trade is in a cancellable state.
-    if (trade.status !== "active" && trade.status !== "paid" && trade.status !== "disputed") {
-      // Don't throw, just log and exit. Race conditions can happen.
+    // Only proceed if the trade is not already resolved.
+    if (["released", "cancelled", "expired"].includes(trade.status)) {
       console.warn(`Trade ${tradeId} is not in a cancellable state (current: ${trade.status}).`);
       return;
     }
     
-    // Only return funds if they are still locked (i.e., status is 'active' or 'paid')
-    const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
-    const sellerWalletDoc = await transaction.get(sellerWalletRef);
+    // Only return funds from escrow if the trade was active (not yet paid).
+    // If it was paid/disputed, cancellation implies an issue an admin should review, funds are not auto-returned.
+    if (trade.status === 'active') {
+      const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
+      const sellerWalletDoc = await transaction.get(sellerWalletRef);
 
-    if (sellerWalletDoc.exists()) {
-      const sellerWallet = sellerWalletDoc.data() as UserWallet;
-      if ((sellerWallet.lockedBalance || 0) >= trade.amount) {
-        transaction.update(sellerWalletRef, {
-          balance: (sellerWallet.balance || 0) + trade.amount,
-          lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-          updatedAt: new Date().toISOString(),
-        });
+      if (sellerWalletDoc.exists()) {
+        const sellerWallet = sellerWalletDoc.data() as UserWallet;
+        if ((sellerWallet.lockedBalance || 0) >= trade.amount) {
+          transaction.update(sellerWalletRef, {
+            balance: (sellerWallet.balance || 0) + trade.amount,
+            lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
+            updatedAt: new Date().toISOString(),
+          });
+        } else {
+          console.error(`CRITICAL: Insufficient locked balance for trade cancellation. Trade ID: ${tradeId}, Seller: ${trade.sellerId}`);
+        }
       } else {
-        // This is a critical error and should be logged for investigation.
-        console.error(`CRITICAL: Insufficient locked balance for trade cancellation. Trade ID: ${tradeId}, Seller: ${trade.sellerId}`);
+        console.error(`CRITICAL: Seller wallet not found during trade cancellation. Trade ID: ${tradeId}, Seller: ${trade.sellerId}`);
       }
-    } else {
-      console.error(`CRITICAL: Seller wallet not found during trade cancellation. Trade ID: ${tradeId}, Seller: ${trade.sellerId}`);
     }
 
-    // Always mark the trade as cancelled
-    transaction.update(tradeRef, { status: "cancelled" });
+    // Update trade status and reason
+    transaction.update(tradeRef, { 
+        status: "cancelled",
+        cancellationReason: reason,
+    });
+
+    // Add system message to chat
+    const messagesCollectionRef = collection(db, 'trades', tradeId, 'messages');
+    const systemMessage = {
+      tradeId: tradeId,
+      senderId: 'system',
+      senderUsername: 'System',
+      message: `This trade has been cancelled.\nReason: ${reason}\n\nDo not make any payment. If you have already paid, please open a support ticket immediately.`,
+      isModerator: true,
+      createdAt: new Date().toISOString(),
+    };
+    transaction.set(doc(messagesCollectionRef), systemMessage);
 
     // Notify both parties
     const buyerNotificationRef = doc(collection(db, 'users', trade.buyerId, 'notifications'));
     transaction.set(buyerNotificationRef, {
         userId: trade.buyerId,
-        message: `Trade ${trade.tradeId} has been cancelled.`,
+        message: `Trade ${trade.tradeId} has been cancelled. Reason: ${reason}`,
         link: `/trade/${trade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),

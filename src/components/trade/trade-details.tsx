@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -143,9 +144,9 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 
     const handleMarkAsPaid = async () => { if (!firestore) return; try { await markTradeAsPaid(firestore, trade.id); toast({ title: "Success", description: "Seller has been notified that you've paid." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
     const handleReleaseCrypto = async () => { if (!firestore) return; try { await releaseFundsFromEscrow(firestore, trade.id); toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
-    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
+    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id, 'Cancelled by user.'); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
 
-    const canBuyerCancel = currentUserRole === 'buy' && ['active', 'paid', 'disputed'].includes(trade.status);
+    const canBuyerCancel = currentUserRole === 'buy' && trade.status === 'active';
     const canSellerRelease = currentUserRole === 'sell' && (trade.status === 'paid' || trade.status === 'disputed');
     const canBuyerMarkPaid = currentUserRole === "buy" && trade.status === "active";
     
@@ -466,6 +467,24 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
   const { firestore, user } = useFirebase();
   const { isAdmin } = useAdminStatus();
 
+  const paymentTimeRemaining = useCountdown(trade.status === 'active' ? trade.expiresAt : new Date(0));
+
+  useEffect(() => {
+    // Auto-expire logic
+    const expireTrade = async () => {
+      if (firestore && trade.status === 'active' && paymentTimeRemaining.isFinished) {
+        try {
+          const reason = "Trade expired: Payment window timed out.";
+          await cancelTrade(firestore, trade.id, reason);
+          // The page will re-render via useDoc hook in parent component.
+        } catch (e) {
+          console.error("Failed to auto-expire trade:", e);
+        }
+      }
+    };
+    expireTrade();
+  }, [paymentTimeRemaining.isFinished, trade.status, trade.id, firestore]);
+
   const feedbackRef = useMemoFirebase(() => firestore ? collection(firestore, 'trades', trade.id, 'feedback') : null, [firestore, trade.id]);
   const { data: feedbacks } = useCollection<Feedback>(feedbackRef);
   
@@ -475,7 +494,6 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
 
   const userFeedback = feedbacks?.find(f => f.fromUser === user?.uid);
   const showFeedbackSection = trade.status === 'released';
-  const paymentTimeRemaining = useCountdown(trade.status === 'active' ? trade.expiresAt : new Date());
 
 
   const buyerInstructions = [
@@ -514,18 +532,18 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
           <DetailRow label={isBuying ? "You will pay" : "You will receive"} value={`${(trade?.fiatAmount ?? 0).toLocaleString()} ${trade?.fiatCurrency ?? ''}`} valueClass={isBuying ? "text-lg font-bold text-destructive" : "text-lg font-bold text-green-600"} />
         </div>
         
+        {showActions && !isAdmin && (
+            <div className="pt-2">
+              <ActionButtons trade={trade} currentUserRole={currentUserRole} />
+            </div>
+        )}
+
         {trade.status === 'active' && (
             <div className="text-center p-2 border rounded-md">
                 <p className="text-sm font-semibold">Time Remaining to Pay:</p>
                 <p className="text-lg font-mono text-destructive">
                     {paymentTimeRemaining.isFinished ? '--:--:--' : `${String(paymentTimeRemaining.hours).padStart(2, '0')}:${String(paymentTimeRemaining.minutes).padStart(2, '0')}:${String(paymentTimeRemaining.seconds).padStart(2, '0')}`}
                 </p>
-            </div>
-        )}
-
-        {showActions && !isAdmin && (
-            <div className="pt-2">
-              <ActionButtons trade={trade} currentUserRole={currentUserRole} />
             </div>
         )}
         

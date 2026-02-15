@@ -2,6 +2,7 @@
 
 
 
+
 // All IDs are string (UUID)
 // Amounts are string to handle DECIMAL(36,18) precision
 
@@ -134,6 +135,7 @@ export type Trade = {
   paymentMethod: string;
   price: number; // Price per crypto
   status: TradeStatus;
+  cancellationReason?: string;
   claimedByBuyer: boolean;
   paymentReceiptUrl?: string;
   expiresAt: string; // TIMESTAMP
