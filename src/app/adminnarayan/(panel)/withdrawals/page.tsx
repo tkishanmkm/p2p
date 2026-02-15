@@ -182,7 +182,7 @@ export default function AdminWithdrawalsPage() {
       setIsLoading(true);
       try {
         const withdrawalsRef = collectionGroup(firestore, "withdrawals");
-        const q = query(withdrawalsRef, orderBy("createdAt", "desc"));
+        const q = query(withdrawalsRef);
         const snapshot = await getDocs(q);
         
         let withdrawalsData = snapshot.docs.map(doc => {
@@ -191,6 +191,8 @@ export default function AdminWithdrawalsPage() {
             const userId = pathParts[1]; // Assumes path is users/{userId}/withdrawals/{withdrawalId}
             return { ...data, id: doc.id, userId: userId };
         });
+
+        withdrawalsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
         
         setAllWithdrawals(withdrawalsData);
 
@@ -401,3 +403,5 @@ export default function AdminWithdrawalsPage() {
     </>
   );
 }
+
+    
