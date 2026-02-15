@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy, where, getDocs } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -78,11 +78,16 @@ export default function WalletsPage() {
   
   const depositsQuery = useMemoFirebase(() => 
     authUser 
-      ? query(collection(firestore, "deposits"), where("userId", "==", authUser.uid), orderBy("createdAt", "desc")) 
+      ? query(collection(firestore, "deposits"), where("userId", "==", authUser.uid)) 
       : null,
     [authUser, firestore]
   );
-  const { data: deposits, isLoading: isDepositsLoading, error: depositsError } = useCollection<Deposit>(depositsQuery);
+  const { data: rawDeposits, isLoading: isDepositsLoading, error: depositsError } = useCollection<Deposit>(depositsQuery);
+
+  const deposits = useMemo(() => {
+    if (!rawDeposits) return null;
+    return rawDeposits.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+  }, [rawDeposits]);
 
   const withdrawalsQuery = useMemoFirebase(() => 
     authUser 
