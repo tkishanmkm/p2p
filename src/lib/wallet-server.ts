@@ -1,8 +1,9 @@
 
 import { firestoreAdmin } from '@/lib/firebase-admin';
-import { getEvmWallet, tron, estimateGasFeeNative } from '@/lib/blockchain-server';
+import { getEvmWallet, tron, estimateGasFeeNative, getEVMAddress, getTRONAddress } from '@/lib/blockchain-server';
 import { ethers } from 'ethers';
 import type { CryptoCurrency, User, UserWallet } from '@/lib/types';
+import { SUPPORTED_CRYPTOS } from './constants';
 
 const erc20ABI = ["function transfer(address to, uint amount) returns (bool)"];
 const getGasMultiplier = () => Number(process.env.GAS_MULTIPLIER) || 2;
@@ -163,3 +164,57 @@ export async function withdraw(userId: string, crypto: CryptoCurrency, chain: st
 
     return txHash;
 }
+
+export async function setupUserWallets(userId: string) {
+    const userRef = firestoreAdmin.collection("users").doc(userId);
+    const counterRef = firestoreAdmin.collection("system").doc("walletCounter");
+  
+    const index = await firestoreAdmin.runTransaction(async (tx) => {
+      const doc = await tx.get(counterRef);
+      const current = doc.exists ? (doc.data()?.value || 0) : 0;
+      tx.set(counterRef, { value: current + 1 }, { merge: true });
+      return current;
+    });
+  
+    await userRef.update({ walletIndex: index });
+  
+    const walletsRef = userRef.collection("wallets");
+  
+    const evmAddress = getEVMAddress(index);
+    const tronAddress = getTRONAddress(index);
+
+    const walletsToCreate = [
+        { coin: 'ETH', chain: 'ERC20', address: evmAddress },
+        { coin: 'BNB', chain: 'BEP20', address: evmAddress },
+        { coin: 'MATIC', chain: 'Polygon', address: evmAddress },
+        { coin: 'USDT', chain: 'ERC20', address: evmAddress },
+        { coin: 'USDT', chain: 'BEP20', address: evmAddress },
+        { coin: 'USDT', chain: 'Polygon', address: evmAddress },
+        { coin: 'USDT', chain: 'Arbitrum', address: evmAddress },
+        { coin: 'USDT', chain: 'Base', address: evmAddress },
+        { coin: 'TRX', chain: 'TRC20', address: tronAddress },
+        { coin: 'USDT', chain: 'TRC20', address: tronAddress },
+        { coin: 'BTC', chain: 'Bitcoin', address: 'bc1...'}, // Placeholder
+        { coin: 'LTC', chain: 'Litecoin', address: 'ltc1...'}  // Placeholder
+    ];
+  
+    const batch = firestoreAdmin.batch();
+    for (const wallet of walletsToCreate) {
+        const walletId = `${wallet.coin}-${wallet.chain}`;
+        const docRef = walletsRef.doc(walletId);
+        batch.set(docRef, {
+            id: walletId,
+            userId,
+            crypto: wallet.coin,
+            chain: wallet.chain,
+            depositAddress: wallet.address,
+            balance: 0,
+            lockedBalance: 0,
+            updatedAt: new Date().toISOString()
+        });
+    }
+
+    await batch.commit();
+    console.log(`Wallets created for user ${userId} with index ${index}`);
+  }
+  

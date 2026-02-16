@@ -32,7 +32,7 @@ import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserL
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SUPPORTED_CRYPTOS, CHAINS } from "@/lib/constants";
+import { SUPPORTED_CRYPTOS, CHAINS, SECURITY_QUESTIONS } from "@/lib/constants";
 import { countries } from "@/lib/countries";
 
 const formSchema = z.object({
@@ -43,6 +43,8 @@ const formSchema = z.object({
   country: z.string().min(1, "Please select your country."),
   userId: z.string().min(3, { message: "User ID must be at least 3 characters." }).regex(/^[a-zA-Z0-9_]+$/, "User ID can only contain letters, numbers, and underscores."),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
+  securityQuestion: z.string().min(1, "Please select a security question."),
+  securityAnswer: z.string().min(3, "Answer must be at least 3 characters."),
   captcha: z.boolean().refine((val) => val === true, {
     message: "Please confirm you are not a robot.",
   }),
@@ -79,6 +81,8 @@ function SignupFormComponent() {
       country: "",
       userId: searchParams.get("userId") || "",
       password: "",
+      securityQuestion: "",
+      securityAnswer: "",
       captcha: false,
     },
   });
@@ -114,9 +118,7 @@ function SignupFormComponent() {
       // 3. Update auth user profile (displayName)
       await updateProfile(newUser, { displayName: values.userId });
       
-      // 4. Create Firestore user document and wallets in a batch
-      const batch = writeBatch(firestore);
-      
+      // 4. Create Firestore user document
       const userDocRef = doc(firestore, "users", newUser.uid);
       const dob = new Date(parseInt(values.year), parseInt(values.month) - 1, parseInt(values.day));
 
@@ -126,6 +128,8 @@ function SignupFormComponent() {
           fullName: values.fullName,
           dob: dob.toISOString().split('T')[0], // YYYY-MM-DD
           country: values.country,
+          securityQuestion: values.securityQuestion,
+          securityAnswer: values.securityAnswer,
           isBanned: false,
           isOnHold: false,
           tradeVolume: 0,
@@ -141,30 +145,17 @@ function SignupFormComponent() {
           preferredCurrency: "USD",
           blockedUsers: [],
       };
-      batch.set(userDocRef, newUserDoc);
+      await setDoc(userDocRef, newUserDoc);
 
-      // Create initial wallets for each chain
-      SUPPORTED_CRYPTOS.forEach(crypto => {
-        const chains = CHAINS[crypto.name] || [crypto.name];
-        chains.forEach(chain => {
-            const walletId = `${crypto.name}-${chain}`;
-            const walletRef = doc(firestore, "users", newUser.uid, "wallets", walletId);
-            batch.set(walletRef, {
-                id: walletId,
-                userId: newUser.uid,
-                crypto: crypto.name,
-                chain: chain,
-                balance: 0,
-                lockedBalance: 0,
-                updatedAt: new Date().toISOString(),
-                // depositAddress will be populated by the backend
-            });
-        });
-      });
-      
-      await batch.commit();
+      // 5. Trigger server-side wallet creation (non-blocking)
+      fetch('/api/wallet/estimate-fee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ setup: true, userId: newUser.uid }),
+      }).catch(err => console.error("Failed to trigger wallet setup:", err));
 
-      toast({ title: "Account Created", description: "Redirecting..." });
+
+      toast({ title: "Account Created", description: "Your wallets are being set up. Redirecting..." });
       router.push('/buy');
 
     } catch (error: any) {
@@ -320,6 +311,38 @@ function SignupFormComponent() {
                   </FormItem>
                 )}
               />
+                <FormField
+                    control={form.control}
+                    name="securityQuestion"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Security Question</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger><SelectValue placeholder="Select a question" /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {SECURITY_QUESTIONS.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                             <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="securityAnswer"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Security Answer</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Your secret answer" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
               <FormField
                 control={form.control}
                 name="captcha"

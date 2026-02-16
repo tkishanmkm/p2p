@@ -2,10 +2,11 @@
 'use client';
 import { Timestamp } from "firebase/firestore";
 
-export type CryptoCurrency = "BTC" | "ETH" | "USDT" | "LTC";
+export type CryptoCurrency = "BTC" | "ETH" | "USDT" | "LTC" | "BNB" | "MATIC" | "TRX";
 
 export type SupportedCrypto = {
   name: CryptoCurrency;
+  chains: string[];
 }
 
 export type Language = {
@@ -23,7 +24,7 @@ export type UserWallet = {
   balance: number;
   lockedBalance: number;
   updatedAt: string;
-  depositAddress?: string;
+  depositAddress: string;
 };
 
 export type CryptoDepositAddress = {
@@ -94,6 +95,7 @@ export type User = {
   blockedUsers?: string[];
   badges?: string[];
   isAdminAccount?: boolean;
+  walletIndex?: number;
 };
 
 export type P2PAd = {
