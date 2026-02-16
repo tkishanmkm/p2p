@@ -91,9 +91,7 @@ export async function initiateTrade(
     // Assuming the ad is specific to one chain, which it should be.
     // If an ad can support multiple chains for one crypto (e.g. USDT on ERC20 & TRC20),
     // this logic would need to be more complex, likely decided by the initiator.
-    // For now, let's assume one chain per ad, inferred from the first payment method or an explicit field.
-    // A robust solution would be to add a `chain` field to the P2PAd type.
-    // Let's make an assumption for now: if USDT, default to ERC20 for locking logic.
+    // For now, let's make an assumption for now: if USDT, default to ERC20 for locking logic.
     const chainForCrypto = ad.crypto === 'USDT' ? 'ERC20' : CHAINS[ad.crypto][0];
     const sellerWalletId = `${ad.crypto}-${chainForCrypto}`;
     
@@ -316,7 +314,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     const [buyerWalletDoc, buyerUserDoc, sellerUserDoc] = await Promise.all([
       transaction.get(buyerWalletRef),
       transaction.get(buyerUserRef),
-      transaction.get(sellerUserRef),
+      transaction.get(sellerUserDoc),
     ]);
     
     const fee = trade.escrowFee || (trade.amount * 0.01);
@@ -601,35 +599,4 @@ export async function sendCoinToUser(
   });
 
   return transferId;
-}
-
-export async function requestWithdrawal(db: Firestore, userId: string, userDisplayName: string, wallet: UserWallet, amount: number, address: string) {
-    if (amount > wallet.balance) {
-        throw new Error("Withdrawal amount cannot exceed available balance.");
-    }
-
-    const userWalletRef = doc(db, 'users', userId, 'wallets', wallet.id);
-    const withdrawalRef = doc(collection(db, 'users', userId, 'withdrawals'));
-    
-    await runTransaction(db, async (transaction) => {
-        // Lock the funds in the user's wallet
-        transaction.update(userWalletRef, {
-            balance: wallet.balance - amount,
-            lockedBalance: wallet.lockedBalance + amount,
-            updatedAt: new Date().toISOString(),
-        });
-        
-        // Create the withdrawal request document
-        const newWithdrawal: Omit<Withdrawal, 'id'> = {
-            userId,
-            userDisplayName,
-            crypto: wallet.crypto,
-            chain: wallet.chain,
-            amount,
-            address,
-            status: 'pending',
-            createdAt: new Date().toISOString()
-        };
-        transaction.set(withdrawalRef, newWithdrawal);
-    });
 }

@@ -17,7 +17,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,9 +32,8 @@ import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserL
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SECURITY_QUESTIONS, SUPPORTED_CRYPTOS, CHAINS } from "@/lib/constants";
+import { SUPPORTED_CRYPTOS, CHAINS } from "@/lib/constants";
 import { countries } from "@/lib/countries";
-import * as bip39 from 'bip39';
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -45,8 +43,6 @@ const formSchema = z.object({
   country: z.string().min(1, "Please select your country."),
   userId: z.string().min(3, { message: "User ID must be at least 3 characters." }).regex(/^[a-zA-Z0-9_]+$/, "User ID can only contain letters, numbers, and underscores."),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
-  securityQuestion: z.string().min(1, "Please select a security question."),
-  securityAnswer: z.string().min(2, { message: "Answer must be at least 2 characters." }),
   captcha: z.boolean().refine((val) => val === true, {
     message: "Please confirm you are not a robot.",
   }),
@@ -83,8 +79,6 @@ function SignupFormComponent() {
       country: "",
       userId: searchParams.get("userId") || "",
       password: "",
-      securityQuestion: undefined,
-      securityAnswer: "",
       captcha: false,
     },
   });
@@ -125,7 +119,6 @@ function SignupFormComponent() {
       
       const userDocRef = doc(firestore, "users", newUser.uid);
       const dob = new Date(parseInt(values.year), parseInt(values.month) - 1, parseInt(values.day));
-      const seedPhrase = bip39.generateMnemonic();
 
       const newUserDoc = {
           id: newUser.uid,
@@ -146,9 +139,6 @@ function SignupFormComponent() {
           avgReleaseTime: 0,
           photoURL: "",
           preferredCurrency: "USD",
-          securityQuestion: values.securityQuestion,
-          securityAnswer: values.securityAnswer,
-          seedPhrase: seedPhrase,
           blockedUsers: [],
       };
       batch.set(userDocRef, newUserDoc);
@@ -167,6 +157,7 @@ function SignupFormComponent() {
                 balance: 0,
                 lockedBalance: 0,
                 updatedAt: new Date().toISOString(),
+                // depositAddress will be populated by the backend
             });
         });
       });
@@ -324,41 +315,6 @@ function SignupFormComponent() {
                     <FormLabel>Password</FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="securityQuestion"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Security Question</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a security question" />
-                            </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            {SECURITY_QUESTIONS.map((q, i) => (
-                                <SelectItem key={i} value={q}>{q}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="securityAnswer"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Security Answer</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Your answer" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

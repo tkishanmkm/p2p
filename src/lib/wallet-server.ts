@@ -1,7 +1,6 @@
 
-
 import { firestoreAdmin } from '@/lib/firebase-admin';
-import { ethWallet, bscWallet, tron, ethProvider, bscProvider } from '@/lib/blockchain-server';
+import { getEthWallet, getBscWallet, tron, ethProvider, bscProvider } from '@/lib/blockchain-server';
 import { ethers } from 'ethers';
 import type { CryptoCurrency, UserWallet } from '@/lib/types';
 
@@ -42,9 +41,9 @@ async function getContractAddresses(crypto: CryptoCurrency) {
 
 async function withdrawErc20(userId: string, chain: 'ERC20' | 'BEP20', amount: number, toAddress: string) {
     const provider = chain === 'ERC20' ? ethProvider : bscProvider;
-    const wallet = chain === 'ERC20' ? ethWallet : bscWallet;
+    const wallet = chain === 'ERC20' ? await getEthWallet() : await getBscWallet();
     const contracts = await getContractAddresses('USDT');
-    const contractAddress = contracts[chain];
+    const contractAddress = contracts?.[chain];
 
     if (!contractAddress) {
         throw new Error(`USDT contract address for ${chain} not configured.`);
@@ -75,7 +74,7 @@ async function withdrawErc20(userId: string, chain: 'ERC20' | 'BEP20', amount: n
 
 async function withdrawTrc20(userId: string, amount: number, toAddress: string) {
     const contracts = await getContractAddresses('USDT');
-    const contractAddress = contracts['TRC20']; // e.g., "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+    const contractAddress = contracts?.['TRC20']; // e.g., "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
      if (!contractAddress) {
         throw new Error(`USDT contract address for TRC20 not configured.`);
     }
@@ -97,13 +96,14 @@ async function withdrawTrc20(userId: string, amount: number, toAddress: string) 
 
 async function withdrawNative(userId: string, crypto: 'ETH' | 'LTC' | 'BTC', amount: number, toAddress: string) {
     if (crypto === 'ETH') {
+        const wallet = await getEthWallet();
         const gasPriceResult = await ethProvider.getFeeData();
         const gasPrice = gasPriceResult.gasPrice || ethers.parseUnits('5', 'gwei');
 
         const multipliedGas = (gasPrice * BigInt(getGasMultiplier()));
         const value = ethers.parseEther(amount.toString());
 
-        const tx = await ethWallet.sendTransaction({
+        const tx = await wallet.sendTransaction({
             to: toAddress,
             value: value,
             gasPrice: multipliedGas

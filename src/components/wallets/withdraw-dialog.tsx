@@ -9,15 +9,12 @@ import axios from 'axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { UserWallet } from "@/lib/types";
 import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { CHAINS } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { requestWithdrawal } from '@/lib/wallet';
 
 const withdrawSchema = z.object({
   address: z.string().min(1, "Recipient address is required."),
@@ -33,7 +30,7 @@ interface WithdrawDialogProps {
 }
 
 export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogProps) {
-  const { user, firestore } = useFirebase();
+  const { user } = useFirebase();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -51,7 +48,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
   }, [open, wallet, form]);
 
   async function onSubmit(values: WithdrawFormValues) {
-    if (!user || !wallet || !firestore || !user.displayName) {
+    if (!user || !wallet) {
         toast({ variant: 'destructive', title: 'Error', description: 'Cannot process withdrawal request.' });
         return;
     }
@@ -66,12 +63,24 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
     
     setIsLoading(true);
     try {
-        await requestWithdrawal(firestore, user.uid, user.displayName, wallet, values.amount, values.address);
-        toast({
-            title: "Withdrawal Request Submitted",
-            description: `Your request to withdraw ${values.amount} ${wallet.crypto} is pending admin approval.`,
-        });
-        onOpenChange(false);
+      const idToken = await user.getIdToken(true);
+      const res = await axios.post('/api/wallet/withdraw', {
+          idToken,
+          crypto: wallet.crypto,
+          chain: wallet.chain,
+          amount: values.amount,
+          address: values.address
+      });
+      
+      if (res.data.success) {
+          toast({
+              title: "Withdrawal Submitted",
+              description: `Your request to withdraw ${values.amount} ${wallet.crypto} is being processed. Tx: ${res.data.txHash}`,
+          });
+          onOpenChange(false);
+      } else {
+           throw new Error(res.data.error || "An unknown error occurred.");
+      }
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || "An unknown error occurred during withdrawal.";
       toast({ variant: 'destructive', title: "Withdrawal Failed", description: errorMessage });
@@ -92,7 +101,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Withdraw {wallet?.crypto} ({wallet?.chain})</DialogTitle>
-          <DialogDescription>Withdrawal requests are reviewed by an administrator. This is not an instant on-chain transaction.</DialogDescription>
+          <DialogDescription>Withdrawal requests are processed by the backend admin wallet. This is an on-chain transaction.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -127,7 +136,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Important</AlertTitle>
                     <AlertDescription>
-                        Double-check the address and network. Sending funds to the wrong address or network may result in permanent loss.
+                        Double-check the address and network. Sending funds to the wrong address or network may result in permanent loss. Transactions are irreversible.
                     </AlertDescription>
                 </Alert>
                 
@@ -137,7 +146,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
                     </DialogClose>
                     <Button type="submit" disabled={isLoading}>
                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit Request
+                      Submit Withdrawal
                     </Button>
                 </DialogFooter>
 

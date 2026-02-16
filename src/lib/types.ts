@@ -1,5 +1,4 @@
 
-
 'use client';
 import { Timestamp } from "firebase/firestore";
 
@@ -89,9 +88,6 @@ export type User = {
   createdAt: string;
   lastTradeAt?: string;
   lastActive?: string;
-  securityQuestion: string;
-  securityAnswer: string;
-  seedPhrase: string;
   preferredCurrency?: string;
   blockedUsers?: string[];
   badges?: string[];

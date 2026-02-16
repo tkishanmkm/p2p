@@ -5,7 +5,13 @@ import { withdraw } from '@/lib/wallet-server';
 import type { CryptoCurrency } from '@/lib/types';
 
 export async function POST(req: Request) {
-  const { idToken, crypto, chain, amount, address } = await req.json();
+  const authorization = req.headers.get('Authorization');
+  if (!authorization?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  
+  const idToken = authorization.split('Bearer ')[1];
+  const { crypto, chain, amount, address } = await req.json();
 
   if (!idToken || !crypto || !chain || !amount || !address) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
