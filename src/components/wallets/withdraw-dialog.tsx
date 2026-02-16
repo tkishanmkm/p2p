@@ -17,7 +17,6 @@ import { useToast } from '@/hooks/use-toast';
 import { CHAINS } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { requestWithdrawal } from '@/lib/wallet';
 
 const withdrawSchema = z.object({
   chain: z.string().min(1, "Please select a network/chain."),
@@ -34,7 +33,7 @@ interface WithdrawDialogProps {
 }
 
 export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogProps) {
-  const { user, firestore } = useFirebase();
+  const { user } = useFirebase();
   const { toast } = useToast();
   const [availableChains, setAvailableChains] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +54,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
   }, [open, wallet, form]);
 
   async function onSubmit(values: WithdrawFormValues) {
-    if (!user || !firestore || !wallet) {
+    if (!user || !wallet) {
         toast({ variant: 'destructive', title: 'Error', description: 'Cannot process withdrawal request.' });
         return;
     }
@@ -70,23 +69,28 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
     
     setIsLoading(true);
     try {
-      await requestWithdrawal(firestore, {
-        userId: user.uid,
-        userDisplayName: user.displayName || 'N/A',
-        crypto: wallet.crypto,
-        chain: values.chain,
-        address: values.address,
-        amount: values.amount,
+      const idToken = await user.getIdToken();
+      const res = await axios.post('/api/wallet/withdraw', {
+          idToken,
+          crypto: wallet.crypto,
+          chain: values.chain,
+          amount: values.amount,
+          address: values.address,
       });
       
-      toast({
-          title: "Withdrawal Request Submitted",
-          description: `Your request to withdraw ${values.amount} ${wallet.crypto} is pending approval.`,
-      });
-      onOpenChange(false);
+      if (res.data.success) {
+        toast({
+            title: "Withdrawal Submitted",
+            description: `Your withdrawal of ${values.amount} ${wallet.crypto} is being processed. Tx: ${res.data.txHash}`,
+        });
+        onOpenChange(false);
+      } else {
+        throw new Error(res.data.error || 'An unknown error occurred.');
+      }
       
     } catch (error: any) {
-      toast({ variant: 'destructive', title: "Withdrawal Failed", description: error.message });
+      const errorMessage = error.response?.data?.error || error.message || "An unknown error occurred during withdrawal.";
+      toast({ variant: 'destructive', title: "Withdrawal Failed", description: errorMessage });
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +108,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Withdraw {wallet?.crypto}</DialogTitle>
-          <DialogDescription>Your request will be reviewed by an administrator.</DialogDescription>
+          <DialogDescription>Withdrawals are processed directly on the blockchain. Fees will apply.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -168,7 +172,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
                     </DialogClose>
                     <Button type="submit" disabled={isLoading}>
                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Request Withdrawal
+                      Submit Withdrawal
                     </Button>
                 </DialogFooter>
 

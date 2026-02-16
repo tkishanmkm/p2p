@@ -15,7 +15,7 @@ import {
   getDocs,
   setDoc,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Withdrawal } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser } from './types';
 import { add } from 'date-fns';
 import { toDate } from '@/lib/utils';
 import { SUPPORTED_CRYPTOS, CHAINS } from './constants';
@@ -574,4 +574,3 @@ export async function sendCoinToUser(
 
   return transferId;
 }
-
