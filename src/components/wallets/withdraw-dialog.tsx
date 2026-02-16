@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -50,25 +50,36 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { prices, isLoading: arePricesLoading } = usePrices();
-  
-  const isMultiChain = wallet?.crypto === 'USDT';
-  const chains = SUPPORTED_CRYPTOS.find(c => c.name === wallet?.crypto)?.chains || [];
+
+  const chains = useMemo(() => SUPPORTED_CRYPTOS.find(c => c.name === wallet?.crypto)?.chains || [], [wallet?.crypto]);
+  const isMultiChain = chains.length > 1;
 
   const form = useForm<WithdrawFormValues>({
     resolver: zodResolver(withdrawSchema),
     defaultValues: {
-      isMultiChain,
+      isMultiChain: isMultiChain,
     },
   });
+
+  useEffect(() => {
+      form.reset({
+          isMultiChain: isMultiChain,
+          address: '',
+          amount: undefined,
+          chain: chains.length === 1 ? chains[0] : '',
+          password: '',
+      });
+  }, [open, wallet, isMultiChain, chains, form]);
   
   const watchedAmount = form.watch('amount');
   const watchedChain = form.watch('chain');
+  const selectedChain = isMultiChain ? watchedChain : chains[0];
 
-  const feeKey = wallet?.crypto === 'USDT' 
-    ? `USDT-${watchedChain}` 
+  const feeKey = wallet?.crypto && selectedChain 
+    ? `${wallet.crypto}-${selectedChain}` 
     : wallet?.crypto;
 
-  const feeInUsd = feeKey ? FIXED_WITHDRAWAL_FEES_USD[feeKey] || 0 : 0;
+  const feeInUsd = feeKey ? FIXED_WITHDRAWAL_FEES_USD[feeKey] || FIXED_WITHDRAWAL_FEES_USD[wallet!.crypto] || 0 : 0;
   const cryptoPrice = wallet ? prices[wallet.crypto] : 0;
   const feeInCrypto = cryptoPrice > 0 ? feeInUsd / cryptoPrice : 0;
 
@@ -92,11 +103,10 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
     setIsLoading(true);
 
     try {
-      // Re-authenticate user before proceeding
       const credential = EmailAuthProvider.credential(auth.currentUser.email, values.password);
       await reauthenticateWithCredential(auth.currentUser, credential);
       
-      const chainToUse = isMultiChain ? values.chain! : wallet.chain;
+      const chainToUse = isMultiChain ? values.chain! : chains[0];
       await createWithdrawalRequest(firestore, user, wallet.crypto, chainToUse, values.amount, values.address, feeInCrypto);
       toast({
           title: "Withdrawal Request Submitted",

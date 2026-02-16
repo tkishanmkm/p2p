@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -38,9 +37,9 @@ const CRYPTO_KEYS: Record<CryptoCurrency, keyof FormValues> = {
   ETH: 'eth_chains',
   LTC: 'ltc_chains',
   USDT: 'usdt_chains',
-  BNB: 'usdt_chains', // Fallback, shouldn't be used
-  MATIC: 'usdt_chains', // Fallback
-  TRX: 'usdt_chains', // Fallback
+  BNB: 'usdt_chains', 
+  MATIC: 'usdt_chains', 
+  TRX: 'usdt_chains',
 };
 
 export default function DepositAddressSetsPage() {
@@ -98,7 +97,9 @@ export default function DepositAddressSetsPage() {
     (Object.keys(data) as Array<keyof FormValues>).forEach(key => {
       const crypto = key.split('_')[0].toUpperCase() as CryptoCurrency;
       data[key].forEach(entry => {
-        addresses[`${crypto}-${entry.chain}`] = entry.address;
+        if (entry.chain && entry.address) {
+          addresses[`${crypto}-${entry.chain}`] = entry.address;
+        }
       });
     });
 
@@ -148,9 +149,10 @@ export default function DepositAddressSetsPage() {
       ) : (
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <Accordion type="multiple" className="w-full space-y-4" defaultValue={['BTC']}>
+            <Accordion type="multiple" className="w-full space-y-4" defaultValue={['USDT']}>
               {SUPPORTED_CRYPTOS.map(crypto => {
                 const formKey = CRYPTO_KEYS[crypto.name];
+                if (!formKey) return null;
                 const { fields, append, remove } = fieldArrays[formKey];
                 return (
                   <Card as={AccordionItem} value={crypto.name} key={crypto.name}>
@@ -167,7 +169,7 @@ export default function DepositAddressSetsPage() {
                               render={({ field }) => (
                                 <FormItem className="flex-1">
                                   <FormLabel>Chain</FormLabel>
-                                  <FormControl><Input placeholder="e.g., ERC20" {...field} /></FormControl>
+                                  <FormControl><Input placeholder="e.g., ERC20, Bitcoin" {...field} /></FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -178,7 +180,7 @@ export default function DepositAddressSetsPage() {
                               render={({ field }) => (
                                 <FormItem className="flex-1">
                                   <FormLabel>Deposit Address</FormLabel>
-                                  <FormControl><Input placeholder="0x..." {...field} /></FormControl>
+                                  <FormControl><Input placeholder="Enter the full address" {...field} /></FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
