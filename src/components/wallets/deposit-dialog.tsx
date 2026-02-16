@@ -13,9 +13,8 @@ import { Button } from "@/components/ui/button";
 import QRCode from "qrcode.react";
 import { UserWallet } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { Copy } from "lucide-react";
+import { Copy, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { AlertTriangle } from "lucide-react";
 
 interface DepositDialogProps {
   open: boolean;
@@ -36,9 +35,9 @@ export function DepositDialog({ open, onOpenChange, wallet }: DepositDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Deposit {wallet?.crypto}</DialogTitle>
+          <DialogTitle>Deposit {wallet?.crypto} ({wallet?.chain})</DialogTitle>
           <DialogDescription>
-            Send only {wallet?.crypto} to this address.
+            Send only {wallet?.crypto} on the {wallet?.chain} network.
           </DialogDescription>
         </DialogHeader>
 
@@ -55,7 +54,7 @@ export function DepositDialog({ open, onOpenChange, wallet }: DepositDialogProps
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Important</AlertTitle>
                     <AlertDescription>
-                        Sending any other asset to this address will result in the permanent loss of your funds.
+                        Sending any other coin or sending {wallet?.crypto} on a different network (e.g., BEP20 instead of ERC20) will result in the permanent loss of your funds.
                     </AlertDescription>
                 </Alert>
             </div>

@@ -19,6 +19,7 @@ export type UserWallet = {
   id: string;
   userId: string;
   crypto: CryptoCurrency;
+  chain?: string;
   balance: number;
   lockedBalance: number;
   updatedAt: string;

@@ -23,8 +23,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { SUPPORTED_CRYPTOS, CHAINS } from '@/lib/constants';
 import { createMissingUserWallets } from '@/lib/wallet';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
     switch (crypto) {
@@ -61,11 +62,23 @@ export default function WalletPage() {
   
   const isLoading = isUserLoading || areWalletsLoading || areDepositsLoading || areWithdrawalsLoading;
   
-   const missingWallets = useMemo(() => {
-    if (!wallets) return SUPPORTED_CRYPTOS.map(c => c.name);
-    const existingCryptoNames = wallets.map(w => w.crypto);
-    return SUPPORTED_CRYPTOS.filter(c => !existingCryptoNames.includes(c.name)).map(c => c.name);
-  }, [wallets]);
+  const allPossibleWallets = useMemo(() => {
+    const all = [];
+    for (const crypto of SUPPORTED_CRYPTOS) {
+        for (const chain of CHAINS[crypto.name]) {
+            all.push({ crypto: crypto.name, chain, id: `${crypto.name}-${chain}` });
+        }
+    }
+    return all;
+  }, []);
+
+  const missingWallets = useMemo(() => {
+    if (!wallets) return allPossibleWallets.map(w => `${w.crypto} (${w.chain})`);
+    const existingWalletIds = wallets.map(w => w.id);
+    return allPossibleWallets
+      .filter(w => !existingWalletIds.includes(w.id))
+      .map(w => `${w.crypto} (${w.chain})`);
+  }, [wallets, allPossibleWallets]);
 
   const handleCreateMissing = async () => {
     if (!firestore || !user || !wallets) return;
@@ -139,47 +152,55 @@ export default function WalletPage() {
         </Card>
       )}
 
-      {wallets && wallets.length === 0 && !missingWallets.length && (
+      {wallets && wallets.length === 0 && missingWallets.length === 0 && (
         <Card>
           <CardHeader><CardTitle>No Wallets Yet</CardTitle></CardHeader>
           <CardContent>Create wallets to start using crypto. Some may be created on your first deposit.</CardContent>
         </Card>
       )}
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {wallets && wallets.map(wallet => (
-          <Card key={wallet.crypto}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{wallet.crypto}</CardTitle>
-                <CryptoLogo crypto={wallet.crypto} className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(6)}</div>
-              <p className="text-xs text-muted-foreground">Available: {(wallet.balance || 0).toFixed(6)}</p>
-               <p className="text-xs text-muted-foreground">Locked: {(wallet.lockedBalance || 0).toFixed(6)}</p>
-            </CardContent>
-            <CardFooter className="flex gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="w-full">
-                      <Button size="sm" className="flex-1 w-full" onClick={() => handleDepositClick(wallet)} disabled={!wallet.depositAddress}>
-                        <ArrowDown className="mr-2 h-4 w-4"/>Deposit
-                      </Button>
-                    </div>
-                  </TooltipTrigger>
-                  {!wallet.depositAddress && (
-                    <TooltipContent>
-                      <p>Deposit address not yet generated.</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </TooltipProvider>
-              <Button size="sm" variant="outline" className="flex-1" onClick={() => handleWithdrawClick(wallet)}><ArrowUp className="mr-2 h-4 w-4"/>Withdraw</Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      {wallets && wallets.length > 0 && (
+        <Carousel className="w-full mb-8">
+            <CarouselContent className="-ml-4">
+                {wallets.map(wallet => (
+                    <CarouselItem key={wallet.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">{wallet.crypto} <span className="text-muted-foreground">({wallet.chain})</span></CardTitle>
+                                <CryptoLogo crypto={wallet.crypto} className="h-5 w-5 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                            <div className="text-2xl font-bold">{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(6)}</div>
+                            <p className="text-xs text-muted-foreground">Available: {(wallet.balance || 0).toFixed(6)}</p>
+                            <p className="text-xs text-muted-foreground">Locked: {(wallet.lockedBalance || 0).toFixed(6)}</p>
+                            </CardContent>
+                            <CardFooter className="flex gap-2">
+                            <TooltipProvider>
+                                <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="w-full">
+                                    <Button size="sm" className="flex-1 w-full" onClick={() => handleDepositClick(wallet)} disabled={!wallet.depositAddress}>
+                                        <ArrowDown className="mr-2 h-4 w-4"/>Deposit
+                                    </Button>
+                                    </div>
+                                </TooltipTrigger>
+                                {!wallet.depositAddress && (
+                                    <TooltipContent>
+                                    <p>Deposit address not yet generated.</p>
+                                    </TooltipContent>
+                                )}
+                                </Tooltip>
+                            </TooltipProvider>
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => handleWithdrawClick(wallet)}><ArrowUp className="mr-2 h-4 w-4"/>Withdraw</Button>
+                            </CardFooter>
+                        </Card>
+                    </CarouselItem>
+                ))}
+            </CarouselContent>
+            {wallets.length > 1 && <CarouselPrevious className="hidden sm:flex" />}
+            {wallets.length > 1 && <CarouselNext className="hidden sm:flex" />}
+        </Carousel>
+      )}
 
       <Card>
         <CardHeader>
@@ -283,4 +304,3 @@ export default function WalletPage() {
     </>
   );
 }
-    

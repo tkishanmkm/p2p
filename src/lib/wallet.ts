@@ -1,5 +1,4 @@
 
-
 'use client';
 import {
   Firestore,
@@ -16,10 +15,10 @@ import {
   getDocs,
   setDoc,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Withdrawal } from './types';
 import { add } from 'date-fns';
 import { toDate } from '@/lib/utils';
-import { SUPPORTED_CRYPTOS } from './constants';
+import { SUPPORTED_CRYPTOS, CHAINS } from './constants';
 
 function generateId(prefix: string, length: number) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -36,20 +35,25 @@ export async function createMissingUserWallets(
   existingWallets: UserWallet[]
 ): Promise<void> {
   const batch = writeBatch(db);
-  const existingCryptoNames = existingWallets.map(w => w.crypto);
+  const existingWalletIds = existingWallets.map(w => w.id);
 
   SUPPORTED_CRYPTOS.forEach(crypto => {
-    if (!existingCryptoNames.includes(crypto.name)) {
-      const walletRef = doc(db, "users", userId, "wallets", crypto.name);
-      batch.set(walletRef, {
-        id: crypto.name,
-        userId: userId,
-        crypto: crypto.name,
-        balance: 0,
-        lockedBalance: 0,
-        updatedAt: new Date().toISOString(),
-      });
-    }
+    const chains = CHAINS[crypto.name];
+    chains.forEach(chain => {
+      const walletId = `${crypto.name}-${chain}`;
+      if (!existingWalletIds.includes(walletId)) {
+        const walletRef = doc(db, "users", userId, "wallets", walletId);
+        batch.set(walletRef, {
+          id: walletId,
+          userId: userId,
+          crypto: crypto.name,
+          chain: chain,
+          balance: 0,
+          lockedBalance: 0,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    });
   });
 
   await batch.commit();
@@ -475,35 +479,11 @@ export async function cancelTrade(db: Firestore, tradeId: string, reason: string
 export async function requestWithdrawal(
   db: Firestore,
   withdrawalData: Omit<Withdrawal, 'id' | 'status' | 'createdAt'>
-): Promise<void> {
-  const userWalletRef = doc(db, "users", withdrawalData.userId, "wallets", withdrawalData.crypto);
-  const withdrawalRef = doc(collection(db, `users/${withdrawalData.userId}/withdrawals`));
-
-  await runTransaction(db, async (transaction) => {
-    const walletDoc = await transaction.get(userWalletRef);
-    if (!walletDoc.exists()) {
-      throw new Error(`Wallet for ${withdrawalData.crypto} not found.`);
-    }
-
-    const wallet = walletDoc.data() as UserWallet;
-    if ((wallet.balance || 0) < withdrawalData.amount) {
-      throw new Error("Insufficient available balance.");
-    }
-
-    // Move funds from available to locked balance
-    transaction.update(userWalletRef, {
-      balance: (wallet.balance || 0) - withdrawalData.amount,
-      lockedBalance: (wallet.lockedBalance || 0) + withdrawalData.amount,
-      updatedAt: new Date().toISOString(),
-    });
-
-    // Create the withdrawal request document
-    transaction.set(withdrawalRef, {
-      ...withdrawalData,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    });
-  });
+) {
+    // This is a client-side stub. The actual withdrawal logic is handled by the backend API.
+    // The frontend should call the backend API endpoint directly.
+    // This function will not be used in the final implementation.
+    console.warn("requestWithdrawal is a client-side stub and should not be used. Call the backend API directly.");
 }
 
 export async function sendCoinToUser(

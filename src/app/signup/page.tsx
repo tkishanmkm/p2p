@@ -33,7 +33,7 @@ import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserL
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SECURITY_QUESTIONS, SUPPORTED_CRYPTOS } from "@/lib/constants";
+import { SECURITY_QUESTIONS, SUPPORTED_CRYPTOS, CHAINS } from "@/lib/constants";
 import { countries } from "@/lib/countries";
 import * as bip39 from 'bip39';
 
@@ -153,17 +153,22 @@ function SignupFormComponent() {
       };
       batch.set(userDocRef, newUserDoc);
 
-      // Create initial wallets
+      // Create initial wallets for each chain
       SUPPORTED_CRYPTOS.forEach(crypto => {
-          const walletRef = doc(firestore, "users", newUser.uid, "wallets", crypto.name);
-          batch.set(walletRef, {
-              id: crypto.name,
-              userId: newUser.uid,
-              crypto: crypto.name,
-              balance: 0,
-              lockedBalance: 0,
-              updatedAt: new Date().toISOString(),
-          });
+        const chains = CHAINS[crypto.name] || [crypto.name];
+        chains.forEach(chain => {
+            const walletId = `${crypto.name}-${chain}`;
+            const walletRef = doc(firestore, "users", newUser.uid, "wallets", walletId);
+            batch.set(walletRef, {
+                id: walletId,
+                userId: newUser.uid,
+                crypto: crypto.name,
+                chain: chain,
+                balance: 0,
+                lockedBalance: 0,
+                updatedAt: new Date().toISOString(),
+            });
+        });
       });
       
       await batch.commit();
