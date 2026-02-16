@@ -25,5 +25,5 @@ if (!admin.apps.length) {
 
 // We export the services even if initialization failed, but they might not work.
 // The app should handle cases where these services are not available.
-export const firestoreAdmin = admin.firestore();
-export const authAdmin = admin.auth();
+export const firestoreAdmin = admin.apps.length ? admin.firestore() : {} as admin.firestore.Firestore;
+export const authAdmin = admin.apps.length ? admin.auth() : {} as admin.auth.Auth;
