@@ -1,0 +1,29 @@
+{
+  "name": "tradeflow-functions",
+  "version": "1.0.0",
+  "description": "Cloud Functions for the TradeFlow Custodial Wallet System",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "ethers": "^6.13.1",
+    "firebase-admin": "^12.2.0",
+    "firebase-functions": "^5.0.1",
+    "tronweb": "^6.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^20.12.12"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "private": true
+}

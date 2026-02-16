@@ -1,0 +1,11 @@
+{
+  "keys": {
+    "admin_master_seed": "polar empty bid mobile then filter nest icon memory jar gather neck",
+    "infura_api_key": "070d997e6a7940cb814cd37c4dea5015",
+    "trongrid_api_key": "fc214d5e-49a6-4526-a042-92dc67a750e4"
+  },
+  "rpc": {
+    "eth_url": "https://mainnet.infura.io/v3/070d997e6a7940cb814cd37c4dea5015",
+    "tron_url": "https://api.trongrid.io"
+  }
+}
