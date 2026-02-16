@@ -288,6 +288,15 @@ export default function WalletPage() {
                         </div>
                       </div>
                     )}
+                    {'txHash' in selectedTx && selectedTx.txHash && (
+                       <div className="flex justify-between items-start gap-4">
+                        <span className="text-muted-foreground">Blockchain TxID:</span> 
+                         <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-right break-all">{selectedTx.txHash}</span>
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedTx.txHash!)}><Copy className="h-3 w-3"/></Button>
+                        </div>
+                      </div>
+                    )}
                      {'txId' in selectedTx && selectedTx.txId && (
                        <div className="flex justify-between items-start gap-4">
                         <span className="text-muted-foreground">Blockchain TxID:</span> 

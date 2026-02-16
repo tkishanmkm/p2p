@@ -61,6 +61,7 @@ export type Withdrawal = {
   address: string;
   amount: number;
   status: 'pending' | 'approved' | 'declined' | 'cancelled';
+  txHash?: string;
   adminId?: string;
   createdAt: string;
 };

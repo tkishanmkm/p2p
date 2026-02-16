@@ -2,32 +2,63 @@
 import { firestoreAdmin } from '@/lib/firebase-admin';
 import { getEthWallet, getBscWallet, tron, ethProvider, bscProvider } from '@/lib/blockchain-server';
 import { ethers } from 'ethers';
-import type { CryptoCurrency, UserWallet } from '@/lib/types';
+import type { CryptoCurrency, User, UserWallet } from '@/lib/types';
 
 // ERC20 ABI for transfer
 const erc20ABI = ["function transfer(address to, uint amount) returns (bool)"];
 
 const getGasMultiplier = () => Number(process.env.GAS_MULTIPLIER) || 2;
 
-async function updateUserBalance(userId: string, crypto: CryptoCurrency, chain: string, amountToDeduct: number) {
+async function executeWithdrawalAndUpdateLedger(
+    userId: string,
+    crypto: CryptoCurrency,
+    chain: string,
+    amount: number,
+    toAddress: string,
+    txHash: string
+) {
   const walletId = `${crypto}-${chain}`;
   const userWalletRef = firestoreAdmin.collection('users').doc(userId).collection('wallets').doc(walletId);
+  const withdrawalRef = firestoreAdmin.collection('users').doc(userId).collection('withdrawals').doc();
+  const userDocRef = firestoreAdmin.collection('users').doc(userId);
 
   return firestoreAdmin.runTransaction(async (transaction) => {
     const userWalletSnap = await transaction.get(userWalletRef);
-    if (!userWalletSnap.exists) throw new Error('User wallet not found for this chain.');
-    const userWallet = userWalletSnap.data() as UserWallet;
+    const userDocSnap = await transaction.get(userDocRef);
 
-    if (userWallet.balance < amountToDeduct) {
-      throw new Error('Insufficient balance');
+    if (!userWalletSnap.exists) throw new Error('User wallet not found for this chain.');
+    if (!userDocSnap.exists) throw new Error('User profile not found.');
+
+    const userWallet = userWalletSnap.data() as UserWallet;
+    const userData = userDocSnap.data() as User;
+
+    if ((userWallet.balance || 0) < amount) {
+        throw new Error('Insufficient balance. This should have been checked client-side.');
     }
 
+    // 1. Decrement balance
     transaction.update(userWalletRef, {
-      balance: userWallet.balance - amountToDeduct,
-      updatedAt: new Date().toISOString(),
+        balance: (userWallet.balance || 0) - amount,
+        updatedAt: new Date().toISOString(),
     });
+    
+    // 2. Create withdrawal record
+    const withdrawalRecord = {
+        id: withdrawalRef.id,
+        userId: userId,
+        userDisplayName: userData.userId || 'N/A',
+        crypto,
+        chain,
+        address: toAddress,
+        amount,
+        status: 'approved',
+        txHash: txHash,
+        createdAt: new Date().toISOString(),
+    };
+    transaction.set(withdrawalRef, withdrawalRecord);
   });
 }
+
 
 async function getContractAddresses(crypto: CryptoCurrency) {
     const docRef = firestoreAdmin.collection('_config').doc('contracts');
@@ -51,7 +82,6 @@ async function withdrawErc20(userId: string, chain: 'ERC20' | 'BEP20', amount: n
 
     const contract = new ethers.Contract(contractAddress, erc20ABI, wallet);
 
-    // For ERC20, amount needs to be in the smallest unit (e.g., wei for ETH-based tokens)
     const decimals = 6; // Standard for USDT
     const parsedAmount = ethers.parseUnits(amount.toString(), decimals);
 
@@ -59,7 +89,6 @@ async function withdrawErc20(userId: string, chain: 'ERC20' | 'BEP20', amount: n
     const gasPrice = gasPriceResult.gasPrice || ethers.parseUnits('5', 'gwei');
     const multipliedGas = (gasPrice * BigInt(getGasMultiplier()));
 
-    // Estimate gas for the token transfer
     const gasEstimate = await contract.transfer.estimateGas(toAddress, parsedAmount);
 
     const tx = await contract.transfer(toAddress, parsedAmount, {
@@ -67,29 +96,30 @@ async function withdrawErc20(userId: string, chain: 'ERC20' | 'BEP20', amount: n
         gasPrice: multipliedGas,
     });
 
-    await updateUserBalance(userId, 'USDT', chain, amount);
+    await executeWithdrawalAndUpdateLedger(userId, 'USDT', chain, amount, toAddress, tx.hash);
+
     console.log(`${chain} Withdrawal Tx:`, tx.hash);
     return tx.hash;
 }
 
 async function withdrawTrc20(userId: string, amount: number, toAddress: string) {
     const contracts = await getContractAddresses('USDT');
-    const contractAddress = contracts?.['TRC20']; // e.g., "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+    const contractAddress = contracts?.['TRC20'];
      if (!contractAddress) {
         throw new Error(`USDT contract address for TRC20 not configured.`);
     }
     
-    // For TRC20, amount is also in smallest unit (sun for USDT on Tron)
     const decimals = 6;
     const parsedAmount = amount * Math.pow(10, decimals);
     
     const contract = await tron.contract().at(contractAddress);
     const tx = await contract.transfer(toAddress, parsedAmount).send({
-        feeLimit: 100_000_000, // 100 TRX, a generous limit
+        feeLimit: 100_000_000,
         shouldPollResponse: false
     });
+
+    await executeWithdrawalAndUpdateLedger(userId, 'USDT', 'TRC20', amount, toAddress, tx);
     
-    await updateUserBalance(userId, 'USDT', 'TRC20', amount);
     console.log('TRC20 Withdrawal Tx:', tx);
     return tx;
 }
@@ -108,15 +138,17 @@ async function withdrawNative(userId: string, crypto: 'ETH' | 'LTC' | 'BTC', amo
             value: value,
             gasPrice: multipliedGas
         });
-        await updateUserBalance(userId, crypto, 'ERC20', amount);
+
+        await executeWithdrawalAndUpdateLedger(userId, crypto, 'ERC20', amount, toAddress, tx.hash);
+
         console.log('ETH Withdrawal Tx:', tx.hash);
         return tx.hash;
     }
-    // BTC and LTC withdrawals are complex and require a full node or trusted third-party API.
-    // This is a placeholder for the logic.
+    
     console.log(`${crypto} withdrawal simulated: ${amount} to ${toAddress}`);
-    await updateUserBalance(userId, crypto, crypto === 'BTC' ? 'Bitcoin' : 'Litecoin', amount);
-    return `simulated-${crypto.toLowerCase()}-txid-${Date.now()}`;
+    const txHash = `simulated-${crypto.toLowerCase()}-txid-${Date.now()}`;
+    await executeWithdrawalAndUpdateLedger(userId, crypto, crypto === 'BTC' ? 'Bitcoin' : 'Litecoin', amount, toAddress, txHash);
+    return txHash;
 }
 
 export async function withdraw(userId: string, crypto: CryptoCurrency, chain: string, amount: number, address: string) {
