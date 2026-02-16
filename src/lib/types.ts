@@ -27,12 +27,17 @@ export type UserWallet = {
   depositAddress?: string; // Optional deposit address
 };
 
-export type CryptoDepositAddress = {
-  id: string;
-  crypto: CryptoCurrency;
-  chain: string;
-  address: string;
-  qrCodeUrl: string;
+export type DepositAddressSet = {
+  id: string; // "1", "2", ... "20"
+  setName: string; // e.g., "Set 1"
+  addresses: {
+    'BTC-Bitcoin'?: string;
+    'LTC-Litecoin'?: string;
+    'ETH-ERC20'?: string;
+    'USDT-ERC20'?: string;
+    'USDT-TRC20'?: string;
+    'USDT-BEP20'?: string;
+  };
 };
 
 export type Deposit = {

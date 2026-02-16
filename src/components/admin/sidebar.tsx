@@ -44,7 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const settingsItems = [
     { href: "/adminnarayan/appearance", label: "Appearance", icon: Brush },
-    { href: "/adminnarayan/settings/wallet", label: "Wallet Settings", icon: Wallet },
+    { href: "/adminnarayan/settings/deposit-address-sets", label: "Deposit Sets", icon: Wallet },
     { href: "/adminnarayan/settings/data", label: "Data Management", icon: Database },
     { href: "/adminnarayan/settings/seed", label: "Seed Data", icon: Beaker },
     { href: "/adminnarayan/settings/backfill-wallets", label: "Backfill Wallets", icon: DatabaseZap },
