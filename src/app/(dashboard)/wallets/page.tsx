@@ -22,6 +22,34 @@ import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
 import { cancelWithdrawalRequest } from '@/lib/wallet';
 import { FIXED_WITHDRAWAL_FEES_USD } from '@/lib/constants';
 import { usePrices } from '@/context/price-context';
+import { statusColors } from '@/lib/status-colors';
+
+function DepositsHistory({ deposits, onRowClick }: { deposits: Deposit[] | null, onRowClick: (deposit: Deposit) => void }) {
+  if (!deposits?.length) {
+    return <p className="text-center text-muted-foreground py-4">No deposit history.</p>;
+  }
+  return (
+    <Table>
+        <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+        <TableBody>
+            {deposits?.map(d => (
+                <TableRow key={d.id} onClick={() => d.status === 'pending' && onRowClick(d)} className={d.status === 'pending' ? "cursor-pointer hover:bg-muted/50" : ""}>
+                    <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
+                    <TableCell>{d.amount}</TableCell>
+                    <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[d.status])}>{d.status.replace(/_/g, ' ')}</Badge></TableCell>
+                    <TableCell>{toDate(d.createdAt)?.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="icon">
+                            <Eye className="h-4 w-4"/>
+                        </Button>
+                    </TableCell>
+                </TableRow>
+            ))}
+        </TableBody>
+    </Table>
+  );
+}
+
 
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
@@ -231,21 +259,7 @@ export default function WalletPage() {
                 </TabsList>
                 <TabsContent value="deposits" className="mt-4">
                      {areDepositsLoading ? <Skeleton className="h-24 w-full" /> : (
-                        <Table>
-                            <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {deposits?.map(d => (
-                                    <TableRow key={d.id} onClick={() => handleHistoryRowClick(d)} className="cursor-pointer">
-                                        <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
-                                        <TableCell>{d.amount}</TableCell>
-                                        <TableCell><Badge variant="outline" className="capitalize">{d.status.replace(/_/g, ' ')}</Badge></TableCell>
-                                        <TableCell>{toDate(d.createdAt)?.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right"><Button variant="ghost" size="icon"><Eye className="h-4 w-4"/></Button></TableCell>
-                                    </TableRow>
-                                ))}
-                                {!deposits?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No deposit history.</TableCell></TableRow>}
-                            </TableBody>
-                        </Table>
+                        <DepositsHistory deposits={deposits} onRowClick={handleHistoryRowClick} />
                      )}
                 </TabsContent>
                 <TabsContent value="withdrawals" className="mt-4">
@@ -257,7 +271,7 @@ export default function WalletPage() {
                                     <TableRow key={w.id} onClick={() => handleHistoryRowClick(w)} className="cursor-pointer">
                                         <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
                                         <TableCell>{w.amount}</TableCell>
-                                        <TableCell><Badge variant="outline" className="capitalize">{w.status}</Badge></TableCell>
+                                        <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>{w.status}</Badge></TableCell>
                                         <TableCell>{toDate(w.createdAt)?.toLocaleString()}</TableCell>
                                         <TableCell className="text-right"><Button variant="ghost" size="icon"><Eye className="h-4 w-4"/></Button></TableCell>
                                     </TableRow>
@@ -288,7 +302,7 @@ export default function WalletPage() {
                     </div>
                      <div className="flex justify-between">
                       <span className="text-muted-foreground">Status:</span> 
-                      <Badge variant="outline" className="capitalize">
+                      <Badge variant="outline" className={cn("capitalize", statusColors[selectedTx.status])}>
                         {'status' in selectedTx ? selectedTx.status.replace(/_/g, ' ') : 'N/A'}
                       </Badge>
                     </div>

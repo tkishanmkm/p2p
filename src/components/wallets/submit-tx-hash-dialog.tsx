@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -42,6 +42,13 @@ export function SubmitTxHashDialog({ open, onOpenChange, deposit }: SubmitTxHash
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+
+  useEffect(() => {
+    // Reset form when dialog is closed or deposit changes
+    if (!open) {
+        form.reset({ txId: "" });
+    }
+  }, [open, deposit, form])
 
   async function onSubmit(values: FormValues) {
     if (!deposit) return;
