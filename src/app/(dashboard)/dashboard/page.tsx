@@ -72,6 +72,8 @@ export default function DashboardPage() {
   );
   const { data: wallets, isLoading: areWalletsLoading } = useCollection<UserWallet>(walletsRef);
   
+  const walletsWithBalance = useMemo(() => wallets?.filter(w => (w.balance || 0) > 0) || [], [wallets]);
+
   const totalWalletValueUSD =
     wallets?.reduce((acc, wallet) => {
       const value = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
@@ -159,11 +161,11 @@ export default function DashboardPage() {
                         </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {wallets?.map((wallet) => {
+                        {walletsWithBalance.map((wallet) => {
                             const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
                             const valueConverted = valueUSD * exchangeRate;
                             return (
-                            <TableRow key={wallet.crypto}>
+                            <TableRow key={wallet.id}>
                                 <TableCell>
                                 <div className="flex items-center gap-3">
                                     <CryptoLogo crypto={wallet.crypto} />
@@ -177,21 +179,21 @@ export default function DashboardPage() {
                             </TableRow>
                             );
                         })}
-                        {(!wallets || wallets.length === 0) && (
+                        {(!walletsWithBalance || walletsWithBalance.length === 0) && (
                             <TableRow>
                             <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
-                                No wallets created yet.
+                                No wallets with balance. Deposit funds to get started.
                             </TableCell>
                             </TableRow>
                         )}
                         </TableBody>
                     </Table>
                     <div className="md:hidden space-y-4">
-                        {wallets?.map((wallet) => {
+                        {walletsWithBalance.map((wallet) => {
                             const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
                             const valueConverted = valueUSD * exchangeRate;
                             return (
-                                <Card key={wallet.crypto}>
+                                <Card key={wallet.id}>
                                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                                         <div className="flex items-center gap-2">
                                             <CryptoLogo crypto={wallet.crypto} />
@@ -210,9 +212,9 @@ export default function DashboardPage() {
                                 </Card>
                             )
                         })}
-                         {(!wallets || wallets.length === 0) && (
+                         {(!walletsWithBalance || walletsWithBalance.length === 0) && (
                             <div className="text-center text-muted-foreground py-10">
-                                No wallets created yet.
+                                No wallets with balance.
                             </div>
                         )}
                     </div>

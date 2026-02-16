@@ -1,31 +1,39 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import type { UserWallet, CryptoCurrency, Deposit, Withdrawal } from '@/lib/types';
-import { WalletDisplayCard } from '@/components/wallets/wallet-display-card';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Eye, Copy, RefreshCw } from 'lucide-react';
+import { Loader2, ArrowDown, ArrowUp, Copy, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { toDate } from '@/lib/utils';
+import { toDate, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SUPPORTED_CRYPTOS } from '@/lib/constants';
-import { createUserWallets } from '@/lib/wallet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Skeleton } from '@/components/ui/skeleton';
+import { DepositDialog } from '@/components/wallets/deposit-dialog';
+import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
+import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
+  
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isCreatingWallets, setIsCreatingWallets] = useState(false);
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [selectedWalletForDialog, setSelectedWalletForDialog] = useState<UserWallet | null>(null);
 
+  // State for USDT-specific actions
+  const [isUsdtChainSelectorOpen, setIsUsdtChainSelectorOpen] = useState(false);
+  const [usdtAction, setUsdtAction] = useState<'deposit' | 'withdraw' | null>(null);
+  const [selectedUsdtChain, setSelectedUsdtChain] = useState<string>('');
 
   const walletsRef = useMemoFirebase(
     () => (user ? collection(firestore, `users/${user.uid}/wallets`) : null),
@@ -38,53 +46,68 @@ export default function WalletPage() {
 
   const withdrawalsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/withdrawals`), orderBy('createdAt', 'desc')) : null, [firestore, user]);
   const { data: withdrawals, isLoading: areWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
-  
+
   const isLoading = isUserLoading || areWalletsLoading || areDepositsLoading || areWithdrawalsLoading;
-  
-  const existingWalletChains = useMemo(() => wallets?.map(w => w.id) || [], [wallets]);
-  const allPossibleWallets = useMemo(() => {
-    const all = [];
-    for (const crypto of SUPPORTED_CRYPTOS) {
-        for (const chain of crypto.chains) {
-            all.push({ crypto: crypto.name, chain, id: `${crypto.name}-${chain}` });
-        }
-    }
-    return all;
-  }, []);
 
-  const missingWallets = useMemo(() => {
-    if (!wallets) return allPossibleWallets;
-    return allPossibleWallets.filter(w => !existingWalletChains.includes(w.id));
-  }, [wallets, allPossibleWallets, existingWalletChains]);
-
-  const groupedWallets = useMemo(() => {
+  const walletSummary = useMemo(() => {
     if (!wallets) return {};
-    return wallets.reduce((acc, wallet) => {
-      const crypto = wallet.crypto;
-      if (!acc[crypto]) {
-        acc[crypto] = [];
-      }
-      acc[crypto].push(wallet);
-      return acc;
-    }, {} as Record<string, UserWallet[]>);
+    
+    const summary: Record<string, { totalBalance: number; totalLockedBalance: number; chains: UserWallet[] }> = {};
+    
+    // Initialize for the 4 main coins to ensure they always appear
+    const mainCoins: CryptoCurrency[] = ['BTC', 'ETH', 'LTC', 'USDT'];
+    mainCoins.forEach(coin => {
+      summary[coin] = { totalBalance: 0, totalLockedBalance: 0, chains: [] };
+    });
+
+    wallets.forEach(wallet => {
+        if (summary[wallet.crypto]) {
+            summary[wallet.crypto].totalBalance += wallet.balance || 0;
+            summary[wallet.crypto].totalLockedBalance += wallet.lockedBalance || 0;
+            summary[wallet.crypto].chains.push(wallet);
+        }
+    });
+
+    const orderedSummary: Record<string, any> = {};
+    mainCoins.forEach(coin => {
+        orderedSummary[coin] = summary[coin];
+    });
+
+    return orderedSummary;
   }, [wallets]);
 
-
-  const handleCreateMissing = async () => {
-    if (!user || !firestore) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'Please log in to create wallets.' });
-        return;
-    }
-    setIsCreatingWallets(true);
-    try {
-        await createUserWallets(user.uid);
-        toast({ title: 'Wallet Creation Successful', description: 'Your new wallets have been created.' });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not create wallets.' });
-    } finally {
-        setIsCreatingWallets(false);
+  const handleDepositClick = (wallet?: UserWallet) => {
+    if (wallet) {
+      setSelectedWalletForDialog(wallet);
+      setIsDepositOpen(true);
     }
   };
+
+  const handleWithdrawClick = (wallet?: UserWallet) => {
+    if (wallet) {
+      setSelectedWalletForDialog(wallet);
+      setIsWithdrawOpen(true);
+    }
+  };
+
+  const handleUsdtActionClick = (action: 'deposit' | 'withdraw') => {
+      setUsdtAction(action);
+      setSelectedUsdtChain(''); // Reset selection
+      setIsUsdtChainSelectorOpen(true);
+  }
+
+  const handleUsdtChainSelectAndContinue = () => {
+      if (!walletSummary['USDT']) return;
+      const selected = walletSummary['USDT'].chains.find(c => c.chain === selectedUsdtChain);
+      if (selected) {
+          setIsUsdtChainSelectorOpen(false);
+          if (usdtAction === 'deposit') {
+              handleDepositClick(selected);
+          } else if (usdtAction === 'withdraw') {
+              handleWithdrawClick(selected);
+          }
+      }
+  }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -104,43 +127,91 @@ export default function WalletPage() {
     );
   }
   
+  const CoinLogo = ({ coin, className }: { coin: string, className?: string }) => {
+    switch (coin) {
+      case 'BTC': return <BtcLogo className={className} />;
+      case 'ETH': return <EthLogo className={className} />;
+      case 'LTC': return <LtcLogo className={className} />;
+      case 'USDT': return <UsdtLogo className={className} />;
+      default: return null;
+    }
+  }
+
   return (
     <>
+      <DepositDialog open={isDepositOpen} onOpenChange={setIsDepositOpen} wallet={selectedWalletForDialog} />
+      <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} wallet={selectedWalletForDialog} />
+      
+      <Dialog open={isUsdtChainSelectorOpen} onOpenChange={setIsUsdtChainSelectorOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select USDT Network</DialogTitle>
+            <DialogDescription>Please select the network for your {usdtAction} action.</DialogDescription>
+          </DialogHeader>
+          {walletSummary['USDT']?.chains.length > 0 ? (
+            <>
+              <RadioGroup value={selectedUsdtChain} onValueChange={setSelectedUsdtChain} className="my-4 space-y-2">
+                {walletSummary['USDT'].chains.map(chainWallet => (
+                  <Label key={chainWallet.chain} htmlFor={chainWallet.chain} className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-muted/50 has-[:checked]:border-primary">
+                    <span>{chainWallet.chain}</span>
+                    <RadioGroupItem value={chainWallet.chain} id={chainWallet.chain} />
+                  </Label>
+                ))}
+              </RadioGroup>
+              <Button onClick={handleUsdtChainSelectAndContinue} disabled={!selectedUsdtChain}>
+                Continue
+              </Button>
+            </>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">No USDT wallets found.</p>
+          )}
+        </DialogContent>
+      </Dialog>
+      
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-semibold md:text-2xl">My Wallets</h1>
       </div>
-
-       {missingWallets.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Create Wallets</CardTitle>
-            <CardDescription>
-              Click the button below to generate wallets for all supported assets.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={handleCreateMissing} disabled={isCreatingWallets}>
-              {isCreatingWallets && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Missing Wallets
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {wallets && wallets.length === 0 && missingWallets.length === 0 && (
-        <Card>
-          <CardHeader><CardTitle>No Wallets Yet</CardTitle></CardHeader>
-          <CardContent>Please create wallets to start using the platform.</CardContent>
-        </Card>
-      )}
       
-      {wallets && wallets.length > 0 && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 mb-8">
-            {Object.entries(groupedWallets).map(([crypto, walletsForCoin]) => (
-                <WalletDisplayCard key={crypto} coin={crypto as CryptoCurrency} wallets={walletsForCoin} />
-            ))}
-        </div>
-      )}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 mb-8">
+        {Object.entries(walletSummary).map(([coin, data]) => {
+          if (!data) return null;
+          const isMultiChain = coin === 'USDT' && data.chains.length > 1;
+          const totalBalance = data.totalBalance + data.totalLockedBalance;
+
+          return (
+            <Card key={coin}>
+              <CardHeader className="flex flex-row items-start justify-between pb-2">
+                <CardTitle className="text-xl font-bold">{coin}</CardTitle>
+                <CoinLogo coin={coin} className="h-8 w-8 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="text-3xl font-bold">{totalBalance.toFixed(6)}</div>
+                  <p className="text-xs text-muted-foreground">Total Balance</p>
+                </div>
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Available:</span>
+                    <span>{data.totalBalance.toFixed(6)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Locked:</span>
+                    <span>{data.totalLockedBalance.toFixed(6)}</span>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex gap-2">
+                <Button size="sm" className="w-full" onClick={() => isMultiChain ? handleUsdtActionClick('deposit') : handleDepositClick(data.chains[0])}>
+                    <ArrowDown className="mr-2 h-4 w-4" />Deposit
+                </Button>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => isMultiChain ? handleUsdtActionClick('withdraw') : handleWithdrawClick(data.chains[0])}>
+                    <ArrowUp className="mr-2 h-4 w-4" />Withdraw
+                </Button>
+              </CardFooter>
+            </Card>
+          )
+        })}
+      </div>
 
       <Card>
         <CardHeader>
