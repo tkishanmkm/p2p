@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import { authAdmin } from '@/lib/firebase-admin';
 import { withdraw } from '@/lib/wallet-server';
@@ -27,4 +26,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message || 'An internal error occurred.' }, { status: 500 });
   }
 }
-
