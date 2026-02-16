@@ -1,5 +1,4 @@
 
-
 import type { CryptoCurrency, SupportedCrypto, Language } from './types';
 
 export const APP_NAME = 'Tradenaire';
@@ -15,7 +14,7 @@ export const CHAINS: Record<CryptoCurrency, string[]> = {
   BTC: ['Bitcoin'],
   LTC: ['Litecoin'],
   ETH: ['ERC20'],
-  USDT: ['ERC20', 'TRC20', 'BEP20'],
+  USDT: ['ERC20', 'TRC20', 'BEP20', 'Polygon', 'Arbitrum', 'Base'],
 };
 
 

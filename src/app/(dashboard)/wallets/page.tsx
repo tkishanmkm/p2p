@@ -4,13 +4,13 @@
 import { useState, useMemo } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import { UserWallet, CryptoCurrency, Deposit, Withdrawal } from '@/lib/types';
+import type { UserWallet, CryptoCurrency, Deposit, Withdrawal } from '@/lib/types';
 import { DepositDialog } from '@/components/wallets/deposit-dialog';
 import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { WalletDisplayCard } from '@/components/wallets/wallet-display-card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowDown, ArrowUp, Copy, Eye, HelpCircle } from 'lucide-react';
-import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
+import { Loader2, Eye, Copy } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -22,27 +22,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { SUPPORTED_CRYPTOS, CHAINS } from '@/lib/constants';
 import { createMissingUserWallets } from '@/lib/wallet';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-
-const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
-    switch (crypto) {
-        case 'BTC': return <BtcLogo className={className} />;
-        case 'ETH': return <EthLogo className={className} />;
-        case 'LTC': return <LtcLogo className={className} />;
-        case 'USDT': return <UsdtLogo className={className} />;
-        default: return null;
-    }
-}
+import { SUPPORTED_CRYPTOS, CHAINS } from '@/lib/constants';
 
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
-  const [selectedWallet, setSelectedWallet] = useState<UserWallet | null>(null);
-  const [isDepositOpen, setIsDepositOpen] = useState(false);
-  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isCreatingWallets, setIsCreatingWallets] = useState(false);
@@ -79,6 +64,19 @@ export default function WalletPage() {
       .filter(w => !existingWalletIds.includes(w.id))
       .map(w => `${w.crypto} (${w.chain})`);
   }, [wallets, allPossibleWallets]);
+  
+  const groupedWallets = useMemo(() => {
+    if (!wallets) return {};
+    return wallets.reduce((acc, wallet) => {
+      const crypto = wallet.crypto;
+      if (!acc[crypto]) {
+        acc[crypto] = [];
+      }
+      acc[crypto].push(wallet);
+      return acc;
+    }, {} as Record<string, UserWallet[]>);
+  }, [wallets]);
+
 
   const handleCreateMissing = async () => {
     if (!firestore || !user || !wallets) return;
@@ -103,24 +101,6 @@ export default function WalletPage() {
     setIsDetailsOpen(true);
   }
 
-  const handleDepositClick = (wallet: UserWallet) => {
-    if (!wallet.depositAddress) {
-      toast({
-        variant: 'default',
-        title: "Address Not Ready",
-        description: "Your unique deposit address is being generated. Please check back in a few moments.",
-      });
-      return;
-    }
-    setSelectedWallet(wallet);
-    setIsDepositOpen(true);
-  };
-  
-  const handleWithdrawClick = (wallet: UserWallet) => {
-    setSelectedWallet(wallet);
-    setIsWithdrawOpen(true);
-  };
-
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -140,15 +120,15 @@ export default function WalletPage() {
           <CardHeader>
             <CardTitle>Missing Wallets</CardTitle>
             <CardDescription>
-              You can create wallets for the following cryptocurrencies: {missingWallets.join(', ')}
+              You can create wallets for the following: {missingWallets.join(', ')}
             </CardDescription>
           </CardHeader>
-          <CardFooter>
+          <CardContent>
             <Button onClick={handleCreateMissing} disabled={isCreatingWallets}>
               {isCreatingWallets && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Missing Wallets
             </Button>
-          </CardFooter>
+          </CardContent>
         </Card>
       )}
 
@@ -160,46 +140,11 @@ export default function WalletPage() {
       )}
       
       {wallets && wallets.length > 0 && (
-        <Carousel className="w-full mb-8">
-            <CarouselContent className="-ml-4">
-                {wallets.map(wallet => (
-                    <CarouselItem key={wallet.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium">{wallet.crypto} <span className="text-muted-foreground">({wallet.chain})</span></CardTitle>
-                                <CryptoLogo crypto={wallet.crypto} className="h-5 w-5 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                            <div className="text-2xl font-bold">{((wallet.balance || 0) + (wallet.lockedBalance || 0)).toFixed(6)}</div>
-                            <p className="text-xs text-muted-foreground">Available: {(wallet.balance || 0).toFixed(6)}</p>
-                            <p className="text-xs text-muted-foreground">Locked: {(wallet.lockedBalance || 0).toFixed(6)}</p>
-                            </CardContent>
-                            <CardFooter className="flex gap-2">
-                            <TooltipProvider>
-                                <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <div className="w-full">
-                                    <Button size="sm" className="flex-1 w-full" onClick={() => handleDepositClick(wallet)} disabled={!wallet.depositAddress}>
-                                        <ArrowDown className="mr-2 h-4 w-4"/>Deposit
-                                    </Button>
-                                    </div>
-                                </TooltipTrigger>
-                                {!wallet.depositAddress && (
-                                    <TooltipContent>
-                                    <p>Deposit address not yet generated.</p>
-                                    </TooltipContent>
-                                )}
-                                </Tooltip>
-                            </TooltipProvider>
-                            <Button size="sm" variant="outline" className="flex-1" onClick={() => handleWithdrawClick(wallet)}><ArrowUp className="mr-2 h-4 w-4"/>Withdraw</Button>
-                            </CardFooter>
-                        </Card>
-                    </CarouselItem>
-                ))}
-            </CarouselContent>
-            {wallets.length > 1 && <CarouselPrevious className="hidden sm:flex" />}
-            {wallets.length > 1 && <CarouselNext className="hidden sm:flex" />}
-        </Carousel>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 mb-8">
+            {Object.entries(groupedWallets).map(([crypto, walletsForCoin]) => (
+                <WalletDisplayCard key={crypto} coin={crypto as CryptoCurrency} wallets={walletsForCoin} />
+            ))}
+        </div>
       )}
 
       <Card>
@@ -218,7 +163,7 @@ export default function WalletPage() {
                         <TableBody>
                             {deposits?.map(d => (
                                 <TableRow key={d.id}>
-                                    <TableCell>{d.crypto}</TableCell>
+                                    <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
                                     <TableCell>{d.amount}</TableCell>
                                     <TableCell><Badge variant="outline" className="capitalize">{d.status.replace(/_/g, ' ')}</Badge></TableCell>
                                     <TableCell>{toDate(d.createdAt)?.toLocaleString()}</TableCell>
@@ -235,7 +180,7 @@ export default function WalletPage() {
                         <TableBody>
                             {withdrawals?.map(w => (
                                 <TableRow key={w.id}>
-                                    <TableCell>{w.crypto}</TableCell>
+                                    <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
                                     <TableCell>{w.amount}</TableCell>
                                     <TableCell><Badge variant="outline" className="capitalize">{w.status}</Badge></TableCell>
                                     <TableCell>{toDate(w.createdAt)?.toLocaleString()}</TableCell>
@@ -250,16 +195,6 @@ export default function WalletPage() {
         </CardContent>
       </Card>
 
-      <DepositDialog
-        open={isDepositOpen}
-        onOpenChange={setIsDepositOpen}
-        wallet={selectedWallet}
-      />
-      <WithdrawDialog
-        open={isWithdrawOpen}
-        onOpenChange={setIsWithdrawOpen}
-        wallet={selectedWallet}
-      />
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DialogContent>
               <DialogHeader>
