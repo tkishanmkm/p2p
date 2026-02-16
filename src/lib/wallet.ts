@@ -29,37 +29,6 @@ function generateId(prefix: string, length: number) {
   return prefix + result;
 }
 
-export async function createMissingUserWallets(
-  db: Firestore,
-  userId: string,
-  existingWallets: UserWallet[]
-): Promise<void> {
-  const batch = writeBatch(db);
-  const existingWalletIds = existingWallets.map(w => w.id);
-
-  SUPPORTED_CRYPTOS.forEach(crypto => {
-    const chains = CHAINS[crypto.name];
-    chains.forEach(chain => {
-      const walletId = `${crypto.name}-${chain}`;
-      if (!existingWalletIds.includes(walletId)) {
-        const walletRef = doc(db, "users", userId, "wallets", walletId);
-        batch.set(walletRef, {
-          id: walletId,
-          userId: userId,
-          crypto: crypto.name,
-          chain: chain,
-          balance: 0,
-          lockedBalance: 0,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-    });
-  });
-
-  await batch.commit();
-}
-
-
 export async function initiateTrade(
   db: Firestore,
   initiatorId: string,
@@ -280,7 +249,7 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
     transaction.set(buyerNotificationRef, {
         userId: trade.buyerId,
         message: `Seller has released crypto for trade ${trade.tradeId}. Funds are on their way to your wallet.`,
-        link: `/trade/${tradeId}`,
+        link: `/trade/${trade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),
     });

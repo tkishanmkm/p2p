@@ -22,8 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { createMissingUserWallets } from '@/lib/wallet';
 import { SUPPORTED_CRYPTOS, CHAINS } from '@/lib/constants';
+import axios from 'axios';
 
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
@@ -79,15 +79,18 @@ export default function WalletPage() {
 
 
   const handleCreateMissing = async () => {
-    if (!firestore || !user || !wallets) return;
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'Please log in to create wallets.' });
+        return;
+    }
     setIsCreatingWallets(true);
     try {
-      await createMissingUserWallets(firestore, user.uid, wallets);
-      toast({ title: 'Wallets Created', description: 'Your new wallets are being set up. Addresses will appear shortly.' });
+        await axios.post('/api/wallet/estimate-fee', { setup: true, userId: user.uid });
+        toast({ title: 'Wallet Creation Initiated', description: 'Your new wallets are being set up. Please refresh in a moment.' });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not create wallets.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not create wallets.' });
     } finally {
-      setIsCreatingWallets(false);
+        setIsCreatingWallets(false);
     }
   };
 
