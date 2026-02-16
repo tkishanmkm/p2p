@@ -1,10 +1,11 @@
 
+
 import type { CryptoCurrency, SupportedCrypto, Language } from './types';
 
 export const APP_NAME = 'Tradenaire';
 
 export const SUPPORTED_CRYPTOS: SupportedCrypto[] = [
-  { name: 'USDT', chains: ["ERC20", "TRC20", "BEP20", "Polygon", "Arbitrum", "Base"] },
+  { name: 'USDT', chains: ["ERC20", "TRC20", "BEP20"] },
   { name: 'BTC', chains: ["Bitcoin"] },
   { name: 'ETH', chains: ["ERC20"] },
   { name: 'LTC', chains: ["Litecoin"] },
@@ -14,7 +15,7 @@ export const CHAINS: Record<CryptoCurrency, string[]> = {
   BTC: ['Bitcoin'],
   LTC: ['Litecoin'],
   ETH: ['ERC20'],
-  USDT: ['ERC20', 'TRC20', 'BEP20', 'Polygon', 'Arbitrum', 'Base'],
+  USDT: ['ERC20', 'TRC20', 'BEP20'],
   BNB: [], // Kept for type consistency, but no longer a primary asset
   MATIC: [], // Kept for type consistency, but no longer a primary asset
   TRX: [], // Kept for type consistency, but no longer a primary asset
@@ -27,9 +28,6 @@ export const FIXED_WITHDRAWAL_FEES_USD: { [key: string]: number } = {
   'USDT-ERC20': 4,
   'USDT-TRC20': 2,
   'USDT-BEP20': 2,
-  'USDT-Polygon': 2,
-  'USDT-Arbitrum': 2,
-  'USDT-Base': 2,
 };
 
 
@@ -76,3 +74,4 @@ export const AD_TAGS = [
   "No verification",
   "Invoice accepted",
 ];
+
