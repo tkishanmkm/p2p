@@ -11,9 +11,9 @@ export const SUPPORTED_CRYPTOS: SupportedCrypto[] = [
 ];
 
 export const CHAINS: Record<CryptoCurrency, string[]> = {
-  BTC: ['BTC'],
-  LTC: ['LTC'],
-  ETH: ['ETH'],
+  BTC: ['Bitcoin'],
+  LTC: ['Litecoin'],
+  ETH: ['ERC20'],
   USDT: ['ERC20', 'TRC20', 'BEP20'],
 };
 

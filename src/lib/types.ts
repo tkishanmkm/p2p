@@ -1,4 +1,3 @@
-
 export type CryptoCurrency = "BTC" | "ETH" | "USDT" | "LTC";
 
 export type UserWallet = {
@@ -15,19 +14,29 @@ export type CryptoDepositAddress = {
 export type Deposit = {
   id: string;
   userId: string;
+  userDisplayName: string;
   crypto: CryptoCurrency;
+  chain: string;
   amount: number;
-  txId: string;
-  status: string;
-  createdAt: number;
+  txId?: string;
+  walletAddress: string;
+  qrCodeUrl: string;
+  status: 'pending' | 'awaiting_confirmation' | 'approved' | 'declined' | 'expired';
+  finalAmount?: number;
+  adminId?: string;
+  createdAt: string;
+  timerEnd: string;
 };
 
 export type Withdrawal = {
   id: string;
   userId: string;
+  userDisplayName: string;
   crypto: CryptoCurrency;
-  amount: number;
+  chain: string;
   address: string;
-  status: string;
-  createdAt: number;
+  amount: number;
+  status: 'pending' | 'approved' | 'declined' | 'cancelled';
+  adminId?: string;
+  createdAt: string;
 };
