@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -73,7 +72,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
     }
     setIsLoading(true);
     try {
-      const chainToUse = isMultiChain ? values.chain! : wallet.chain;
+      const chainToUse = isMultiChain ? values.chain! : (chains[0] || '');
       const newDeposit = await createDepositRequest(firestore, user.uid, user.displayName, walletIndex, wallet.crypto, chainToUse, values.amount);
       setCreatedDeposit(newDeposit);
       setStep(2);
@@ -121,9 +120,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                                 <FormItem>
                                     <FormLabel>Network</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger>
-                                        </FormControl>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                                         </SelectContent>
@@ -144,6 +141,16 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                             </FormItem>
                         )}
                     />
+                     <Alert>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Instructions</AlertTitle>
+                        <AlertDescription className="text-xs space-y-1">
+                            <p>1. Enter the exact amount you wish to deposit.</p>
+                            <p>2. For USDT, select the correct destination network.</p>
+                            <p>3. After creating the request, you will receive a unique deposit address. Send your crypto to this address from your personal wallet or exchange.</p>
+                            <p>4. After sending, return to your wallet history to submit the transaction hash (TxID).</p>
+                        </AlertDescription>
+                    </Alert>
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading} className="w-full">
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
