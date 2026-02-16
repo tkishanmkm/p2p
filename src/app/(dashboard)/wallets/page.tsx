@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import type { UserWallet, CryptoCurrency, Deposit, Withdrawal } from '@/lib/types';
+import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import type { UserWallet, CryptoCurrency, Deposit, Withdrawal, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowDown, ArrowUp, Copy, Eye } from 'lucide-react';
@@ -16,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Skeleton } from '@/components/ui/skeleton';
 import { DepositDialog } from '@/components/wallets/deposit-dialog';
 import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
+import { SubmitTxHashDialog } from '@/components/wallets/submit-tx-hash-dialog';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -23,14 +25,19 @@ import { Label } from '@/components/ui/label';
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
+
+  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, "users", user.uid) : null), [firestore, user]);
+  const { data: userData } = useDoc<User>(userDocRef);
+
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
+  const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isSubmitTxHashOpen, setIsSubmitTxHashOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedWalletForDialog, setSelectedWalletForDialog] = useState<UserWallet | null>(null);
 
-  // State for USDT-specific actions
   const [isUsdtChainSelectorOpen, setIsUsdtChainSelectorOpen] = useState(false);
   const [usdtAction, setUsdtAction] = useState<'deposit' | 'withdraw' | null>(null);
   const [selectedUsdtChain, setSelectedUsdtChain] = useState<string>('');
@@ -54,27 +61,25 @@ export default function WalletPage() {
     
     const summary: Record<string, { totalBalance: number; totalLockedBalance: number; chains: UserWallet[] }> = {};
     
-    // Initialize for the 4 main coins to ensure they always appear
     const mainCoins: CryptoCurrency[] = ['BTC', 'ETH', 'LTC', 'USDT'];
     mainCoins.forEach(coin => {
       summary[coin] = { totalBalance: 0, totalLockedBalance: 0, chains: [] };
     });
 
     wallets.forEach(wallet => {
-        if (summary[wallet.crypto]) {
-            summary[wallet.crypto].totalBalance += wallet.balance || 0;
-            summary[wallet.crypto].totalLockedBalance += wallet.lockedBalance || 0;
-            summary[wallet.crypto].chains.push(wallet);
-        }
+      if (summary[wallet.crypto]) {
+          summary[wallet.crypto].totalBalance += wallet.balance || 0;
+          summary[wallet.crypto].totalLockedBalance += wallet.lockedBalance || 0;
+          summary[wallet.crypto].chains.push(wallet);
+      }
     });
 
-    const orderedSummary: Record<string, any> = {};
-    mainCoins.forEach(coin => {
-        orderedSummary[coin] = summary[coin];
-    });
-
-    return orderedSummary;
+    return mainCoins.reduce((acc, coin) => {
+        acc[coin] = summary[coin];
+        return acc;
+    }, {} as typeof summary);
   }, [wallets]);
+
 
   const handleDepositClick = (wallet?: UserWallet) => {
     if (wallet) {
@@ -92,7 +97,7 @@ export default function WalletPage() {
 
   const handleUsdtActionClick = (action: 'deposit' | 'withdraw') => {
       setUsdtAction(action);
-      setSelectedUsdtChain(''); // Reset selection
+      setSelectedUsdtChain('');
       setIsUsdtChainSelectorOpen(true);
   }
 
@@ -114,10 +119,15 @@ export default function WalletPage() {
     toast({ title: "Copied to clipboard" });
   };
   
-  const openDetails = (tx: Deposit | Withdrawal) => {
-    setSelectedTx(tx);
-    setIsDetailsOpen(true);
-  }
+  const handleHistoryRowClick = (tx: Deposit | Withdrawal) => {
+    if ('status' in tx && tx.status === 'pending') {
+        setSelectedDeposit(tx);
+        setIsSubmitTxHashOpen(true);
+    } else {
+        setSelectedTx(tx);
+        setIsDetailsOpen(true);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -139,8 +149,9 @@ export default function WalletPage() {
 
   return (
     <>
-      <DepositDialog open={isDepositOpen} onOpenChange={setIsDepositOpen} wallet={selectedWalletForDialog} />
+      <DepositDialog open={isDepositOpen} onOpenChange={setIsDepositOpen} wallet={selectedWalletForDialog} walletIndex={userData?.walletIndex} />
       <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} wallet={selectedWalletForDialog} />
+      <SubmitTxHashDialog open={isSubmitTxHashOpen} onOpenChange={setIsSubmitTxHashOpen} deposit={selectedDeposit} />
       
       <Dialog open={isUsdtChainSelectorOpen} onOpenChange={setIsUsdtChainSelectorOpen}>
         <DialogContent>
@@ -229,12 +240,12 @@ export default function WalletPage() {
                             <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {deposits?.map(d => (
-                                    <TableRow key={d.id}>
+                                    <TableRow key={d.id} onClick={() => handleHistoryRowClick(d)} className={d.status === 'pending' ? 'cursor-pointer' : ''}>
                                         <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
                                         <TableCell>{d.amount}</TableCell>
                                         <TableCell><Badge variant="outline" className="capitalize">{d.status.replace(/_/g, ' ')}</Badge></TableCell>
                                         <TableCell>{toDate(d.createdAt)?.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => openDetails(d)}><Eye className="h-4 w-4"/></Button></TableCell>
+                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleHistoryRowClick(d)}><Eye className="h-4 w-4"/></Button></TableCell>
                                     </TableRow>
                                 ))}
                                 {!deposits?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No deposit history.</TableCell></TableRow>}
@@ -248,12 +259,12 @@ export default function WalletPage() {
                             <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {withdrawals?.map(w => (
-                                    <TableRow key={w.id}>
+                                    <TableRow key={w.id} onClick={() => handleHistoryRowClick(w)} className="cursor-pointer">
                                         <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
                                         <TableCell>{w.amount}</TableCell>
                                         <TableCell><Badge variant="outline" className="capitalize">{w.status}</Badge></TableCell>
                                         <TableCell>{toDate(w.createdAt)?.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => openDetails(w)}><Eye className="h-4 w-4"/></Button></TableCell>
+                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleHistoryRowClick(w)}><Eye className="h-4 w-4"/></Button></TableCell>
                                     </TableRow>
                                 ))}
                                 {!withdrawals?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No withdrawal history.</TableCell></TableRow>}

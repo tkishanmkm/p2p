@@ -15,16 +15,10 @@ import {
   getDocs,
   setDoc,
 } from 'firebase/firestore';
-import { functions, httpsCallable } from '@/lib/firebase-functions';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Withdrawal } from './types';
-import { add } from 'date-fns';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Withdrawal, Deposit } from './types';
+import { add, isPast } from 'date-fns';
 import { toDate } from '@/lib/utils';
 import { SUPPORTED_CRYPTOS, CHAINS } from './constants';
-
-export async function createUserWallets(userId: string): Promise<void> {
-    const createUserWalletsFunction = httpsCallable(functions, 'onUserCreate');
-    await createUserWalletsFunction({ userId });
-}
 
 function generateId(prefix: string, length: number) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -447,4 +441,88 @@ export async function sendCoinToUser(
   });
 
   return transferId;
+}
+
+
+/**
+ * Creates a new deposit request document.
+ */
+export async function createDepositRequest(
+  db: Firestore,
+  userId: string,
+  userDisplayName: string,
+  walletIndex: number,
+  crypto: CryptoCurrency,
+  chain: string,
+  amount: number
+): Promise<Deposit> {
+  if (amount <= 0) {
+    throw new Error("Deposit amount must be positive.");
+  }
+
+  // Determine the address ID based on the user's assigned walletIndex
+  const addressSetId = ((walletIndex - 1) % 20) + 1;
+  const addressDocRef = doc(db, "crypto_deposit_addresses", String(addressSetId));
+  
+  const addressDoc = await getDoc(addressDocRef);
+  if (!addressDoc.exists()) {
+    throw new Error(`Deposit address set #${addressSetId} is not configured by the admin.`);
+  }
+
+  const addresses = addressDoc.data()?.addresses;
+  const addressKey = `${crypto}-${chain}`;
+  const depositAddress = addresses?.[addressKey];
+
+  if (!depositAddress) {
+    throw new Error(`Deposit address for ${crypto} on ${chain} is not configured in set #${addressSetId}.`);
+  }
+  
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${depositAddress}`;
+
+  const newDeposit: Omit<Deposit, 'id'> = {
+    userId,
+    userDisplayName,
+    crypto,
+    chain,
+    amount,
+    walletAddress: depositAddress,
+    qrCodeUrl,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    timerEnd: add(new Date(), { hours: 3 }).toISOString(),
+  };
+
+  const depositCollectionRef = collection(db, 'deposits');
+  const newDocRef = await addDoc(depositCollectionRef, newDeposit);
+
+  return { ...newDeposit, id: newDocRef.id };
+}
+
+/**
+ * Updates a pending deposit with a transaction hash, moving it to 'awaiting_confirmation'.
+ */
+export async function confirmDepositWithTxId(db: Firestore, depositId: string, txId: string): Promise<void> {
+  if (!txId.trim()) {
+    throw new Error("Transaction Hash cannot be empty.");
+  }
+  const depositRef = doc(db, "deposits", depositId);
+
+  await runTransaction(db, async (transaction) => {
+    const depositDoc = await transaction.get(depositRef);
+    if (!depositDoc.exists()) {
+      throw new Error("Deposit request not found.");
+    }
+    const depositData = depositDoc.data() as Deposit;
+    if (depositData.status !== 'pending') {
+      throw new Error("This deposit is no longer awaiting payment confirmation.");
+    }
+    if (isPast(toDate(depositData.timerEnd)!)) {
+      transaction.update(depositRef, { status: 'expired' });
+      throw new Error("This deposit request has expired.");
+    }
+    transaction.update(depositRef, {
+      status: 'awaiting_confirmation',
+      txId: txId
+    });
+  });
 }
