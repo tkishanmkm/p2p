@@ -20,6 +20,18 @@ export const CHAINS: Record<CryptoCurrency, string[]> = {
   TRX: [], // Kept for type consistency, but no longer a primary asset
 };
 
+export const FIXED_WITHDRAWAL_FEES_USD: { [key: string]: number } = {
+  'BTC': 4,
+  'LTC': 4,
+  'ETH': 4,
+  'USDT-ERC20': 4,
+  'USDT-TRC20': 2,
+  'USDT-BEP20': 2,
+  'USDT-Polygon': 2,
+  'USDT-Arbitrum': 2,
+  'USDT-Base': 2,
+};
+
 
 export const LANGUAGES: Language[] = [
   { code: 'en', name: 'English', nativeName: 'English' },

@@ -263,7 +263,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     const [buyerWalletDoc, buyerUserDoc, sellerUserDoc] = await Promise.all([
       transaction.get(buyerWalletRef),
       transaction.get(buyerUserRef),
-      transaction.get(sellerUserDoc),
+      transaction.get(sellerUserRef),
     ]);
     
     const fee = trade.escrowFee || (trade.amount * 0.01);
@@ -525,4 +525,78 @@ export async function confirmDepositWithTxId(db: Firestore, depositId: string, t
       txId: txId
     });
   });
+}
+
+export async function createWithdrawalRequest(
+  db: Firestore,
+  user: AppUser,
+  crypto: CryptoCurrency,
+  chain: string,
+  amount: number,
+  address: string,
+  fee: number,
+): Promise<void> {
+  const withdrawalRef = doc(collection(db, "users", user.id, "withdrawals"));
+  const userWalletRef = doc(db, 'users', user.id, 'wallets', `${crypto}-${chain}`);
+
+  await runTransaction(db, async (transaction) => {
+      const walletDoc = await transaction.get(userWalletRef);
+      if (!walletDoc.exists()) {
+          throw new Error("Wallet not found.");
+      }
+      const walletData = walletDoc.data() as UserWallet;
+
+      if ((walletData.balance || 0) < amount) {
+          throw new Error("Insufficient available balance.");
+      }
+      
+      transaction.update(userWalletRef, {
+          balance: (walletData.balance || 0) - amount,
+          lockedBalance: (walletData.lockedBalance || 0) + amount,
+          updatedAt: new Date().toISOString(),
+      });
+      
+      transaction.set(withdrawalRef, {
+          userId: user.id,
+          userDisplayName: user.userId,
+          crypto,
+          chain,
+          amount,
+          address,
+          fee,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+      });
+  });
+}
+
+export async function cancelWithdrawalRequest(db: Firestore, userId: string, withdrawalId: string): Promise<void> {
+    const withdrawalRef = doc(db, 'users', userId, 'withdrawals', withdrawalId);
+
+    await runTransaction(db, async (transaction) => {
+        const withdrawalDoc = await transaction.get(withdrawalRef);
+        if (!withdrawalDoc.exists()) throw new Error("Withdrawal request not found.");
+
+        const withdrawal = withdrawalDoc.data() as Withdrawal;
+        if (withdrawal.status !== 'pending') throw new Error("Only pending withdrawals can be cancelled.");
+
+        const walletRef = doc(db, 'users', userId, 'wallets', `${withdrawal.crypto}-${withdrawal.chain}`);
+        const walletDoc = await transaction.get(walletRef);
+        if (!walletDoc.exists()) throw new Error("Wallet not found. Critical error.");
+        
+        const wallet = walletDoc.data() as UserWallet;
+        if ((wallet.lockedBalance || 0) < withdrawal.amount) {
+            throw new Error("Insufficient locked balance to cancel. Critical error.");
+        }
+
+        // Return funds from locked to available balance
+        transaction.update(walletRef, {
+            balance: (wallet.balance || 0) + withdrawal.amount,
+            lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
+            updatedAt: new Date().toISOString(),
+        });
+
+        // Mark withdrawal as cancelled
+        transaction.update(withdrawalRef, { status: "cancelled" });
+    });
 }

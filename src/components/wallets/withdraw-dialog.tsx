@@ -16,6 +16,8 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { createWithdrawalRequest } from '@/lib/wallet';
+import { usePrices } from '@/context/price-context';
+import { FIXED_WITHDRAWAL_FEES_USD } from '@/lib/constants';
 
 const withdrawSchema = z.object({
   address: z.string().min(1, "Recipient address is required."),
@@ -34,12 +36,20 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { prices, isLoading: arePricesLoading } = usePrices();
   
   const form = useForm<WithdrawFormValues>({
     resolver: zodResolver(withdrawSchema),
   });
   
   const watchedAmount = form.watch('amount');
+
+  const feeKey = wallet?.crypto === 'USDT' ? `USDT-${wallet.chain}` : wallet?.crypto;
+  const feeInUsd = feeKey ? FIXED_WITHDRAWAL_FEES_USD[feeKey] || 0 : 0;
+  const cryptoPrice = wallet ? prices[wallet.crypto] : 0;
+  const feeInCrypto = cryptoPrice > 0 ? feeInUsd / cryptoPrice : 0;
+
+  const amountToReceive = Math.max(0, (watchedAmount || 0) - feeInCrypto);
 
   async function onSubmit(values: WithdrawFormValues) {
     if (!user || !wallet) {
@@ -56,7 +66,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
     
     setIsLoading(true);
     try {
-        await createWithdrawalRequest(firestore, user, wallet.crypto, wallet.chain, values.amount, values.address);
+        await createWithdrawalRequest(firestore, user, wallet.crypto, wallet.chain, values.amount, values.address, feeInCrypto);
         toast({
             title: "Withdrawal Request Submitted",
             description: `Your request to withdraw ${values.amount} ${wallet.crypto} is awaiting admin approval.`,
@@ -120,6 +130,17 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
                         </FormItem>
                     )}
                 />
+
+                 <div className="text-sm space-y-1 border rounded-md p-3 bg-secondary/50">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Fee:</span>
+                        {arePricesLoading ? <Skeleton className="h-4 w-20" /> : <span className="font-medium">{feeInCrypto.toFixed(8)} {wallet?.crypto} (~${feeInUsd.toFixed(2)})</span>}
+                    </div>
+                     <div className="flex justify-between">
+                        <span className="text-muted-foreground">You will receive:</span>
+                        {arePricesLoading ? <Skeleton className="h-4 w-24" /> : <span className="font-semibold">{amountToReceive.toFixed(8)} {wallet?.crypto}</span>}
+                    </div>
+                </div>
                 
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />

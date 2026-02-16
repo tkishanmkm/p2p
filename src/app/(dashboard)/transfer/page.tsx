@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useMemo, useEffect, useState } from 'react';
@@ -33,6 +34,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -46,7 +54,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Send, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
+import { Loader2, Send, ArrowUp, ArrowDown, AlertCircle, Copy } from 'lucide-react';
 import { CryptoCurrency, User, UserWallet, CoinTransfer } from '@/lib/types';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { toDate } from '@/lib/utils';
@@ -68,11 +76,13 @@ function TransferHistoryTable({
   isLoading,
   type,
   currentUsername,
+  onRowClick
 }: {
   transfers: CoinTransfer[] | null;
   isLoading: boolean;
   type: 'sent' | 'received';
   currentUsername: string;
+  onRowClick: (transfer: CoinTransfer) => void;
 }) {
   return (
     <Table>
@@ -94,7 +104,7 @@ function TransferHistoryTable({
         )}
         {!isLoading &&
           transfers?.map((t) => (
-            <TableRow key={t.id}>
+            <TableRow key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
               <TableCell className="font-mono text-xs">{t.publicId}</TableCell>
               <TableCell>
                 {type === 'sent' ? t.recipientUsername : t.senderUsername}
@@ -128,6 +138,9 @@ export default function TransferPage() {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  const [selectedTransfer, setSelectedTransfer] = useState<CoinTransfer | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthLoading && !authUser) {
@@ -267,6 +280,16 @@ export default function TransferPage() {
         setIsProcessing(false);
     }
   }
+
+  const handleRowClick = (transfer: CoinTransfer) => {
+    setSelectedTransfer(transfer);
+    setIsDetailsOpen(true);
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied to clipboard" });
+  };
 
   if (isAuthLoading || !authUser) {
     return (
@@ -447,6 +470,7 @@ export default function TransferPage() {
                   isLoading={isLoadingReceived}
                   type="received"
                   currentUsername={authUser?.displayName || ''}
+                  onRowClick={handleRowClick}
                 />
               </TabsContent>
               <TabsContent value="sent" className="mt-4">
@@ -455,14 +479,31 @@ export default function TransferPage() {
                   isLoading={isLoadingSent}
                   type="sent"
                   currentUsername={authUser?.displayName || ''}
+                  onRowClick={handleRowClick}
                 />
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
       </div>
+
+       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Transfer Details</DialogTitle>
+                <DialogDescription>Public ID: {selectedTransfer?.publicId}</DialogDescription>
+            </DialogHeader>
+            {selectedTransfer && (
+                 <div className="space-y-4 py-4 text-sm">
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">System ID</span><div className="flex items-center gap-2"><span className="font-mono text-xs">{selectedTransfer.id}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedTransfer.id!)}><Copy className="h-3 w-3" /></Button></div></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Sender</span><span className="font-medium">{selectedTransfer.senderUsername}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Recipient</span><span className="font-medium">{selectedTransfer.recipientUsername}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Amount</span><Badge variant="outline">{selectedTransfer.amount.toFixed(8)} {selectedTransfer.crypto}</Badge></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Date</span><span className="font-medium">{toDate(selectedTransfer.createdAt)?.toLocaleString()}</span></div>
+                </div>
+            )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
-
-    
