@@ -4,12 +4,12 @@
 import { useState, useMemo } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import { UserWallet, CryptoDepositAddress, CryptoCurrency, Deposit, Withdrawal } from '@/lib/types';
+import { UserWallet, CryptoCurrency, Deposit, Withdrawal } from '@/lib/types';
 import { DepositDialog } from '@/components/wallets/deposit-dialog';
 import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowDown, ArrowUp, Copy, Eye } from 'lucide-react';
+import { Loader2, ArrowDown, ArrowUp, Copy, Eye, HelpCircle } from 'lucide-react';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,11 +19,10 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
     switch (crypto) {
@@ -38,7 +37,7 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?:
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
-  const [selectedCrypto, setSelectedCrypto] = useState<CryptoCurrency | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<UserWallet | null>(null);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
@@ -50,19 +49,13 @@ export default function WalletPage() {
   );
   const { data: wallets, isLoading: areWalletsLoading } = useCollection<UserWallet>(walletsRef);
 
-  const depositAddressesRef = useMemoFirebase(
-    () => (firestore ? collection(firestore, "crypto_deposit_addresses") : null),
-    [firestore]
-  );
-  const { data: depositAddresses, isLoading: areAddressesLoading } = useCollection<CryptoDepositAddress>(depositAddressesRef);
-
   const depositsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'deposits'), where('userId', '==', user.uid), orderBy('createdAt', 'desc')) : null, [firestore, user]);
   const { data: deposits, isLoading: areDepositsLoading } = useCollection<Deposit>(depositsQuery);
 
   const withdrawalsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/withdrawals`), orderBy('createdAt', 'desc')) : null, [firestore, user]);
   const { data: withdrawals, isLoading: areWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
   
-  const isLoading = isUserLoading || areWalletsLoading || areAddressesLoading || areDepositsLoading || areWithdrawalsLoading;
+  const isLoading = isUserLoading || areWalletsLoading || areDepositsLoading || areWithdrawalsLoading;
   
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -74,6 +67,24 @@ export default function WalletPage() {
     setIsDetailsOpen(true);
   }
 
+  const handleDepositClick = (wallet: UserWallet) => {
+    if (!wallet.depositAddress) {
+      toast({
+        variant: 'default',
+        title: "Address Not Ready",
+        description: "Your unique deposit address is being generated. Please check back in a few moments.",
+      });
+      return;
+    }
+    setSelectedWallet(wallet);
+    setIsDepositOpen(true);
+  };
+  
+  const handleWithdrawClick = (wallet: UserWallet) => {
+    setSelectedWallet(wallet);
+    setIsWithdrawOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -82,8 +93,6 @@ export default function WalletPage() {
     );
   }
   
-  const selectedDepositAddress = depositAddresses?.find(a => a.crypto === selectedCrypto);
-
   return (
     <>
       <div className="flex items-center justify-between mb-6">
@@ -110,8 +119,23 @@ export default function WalletPage() {
                <p className="text-xs text-muted-foreground">Locked: {(wallet.lockedBalance || 0).toFixed(6)}</p>
             </CardContent>
             <CardFooter className="flex gap-2">
-              <Button size="sm" className="flex-1" onClick={() => { setSelectedCrypto(wallet.crypto); setIsDepositOpen(true); }}><ArrowDown className="mr-2 h-4 w-4"/>Deposit</Button>
-              <Button size="sm" variant="outline" className="flex-1" onClick={() => { setSelectedCrypto(wallet.crypto); setIsWithdrawOpen(true); }}><ArrowUp className="mr-2 h-4 w-4"/>Withdraw</Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="w-full">
+                      <Button size="sm" className="flex-1 w-full" onClick={() => handleDepositClick(wallet)} disabled={!wallet.depositAddress}>
+                        <ArrowDown className="mr-2 h-4 w-4"/>Deposit
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  {!wallet.depositAddress && (
+                    <TooltipContent>
+                      <p>Deposit address not yet generated.</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => handleWithdrawClick(wallet)}><ArrowUp className="mr-2 h-4 w-4"/>Withdraw</Button>
             </CardFooter>
           </Card>
         ))}
@@ -168,14 +192,12 @@ export default function WalletPage() {
       <DepositDialog
         open={isDepositOpen}
         onOpenChange={setIsDepositOpen}
-        selectedCrypto={selectedCrypto}
-        depositAddress={depositAddresses?.find(a => a.crypto === selectedCrypto)}
+        wallet={selectedWallet}
       />
       <WithdrawDialog
         open={isWithdrawOpen}
         onOpenChange={setIsWithdrawOpen}
-        userWallets={wallets || []}
-        selectedCrypto={selectedCrypto}
+        wallet={selectedWallet}
       />
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DialogContent>

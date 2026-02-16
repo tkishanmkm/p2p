@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import QRCode from "qrcode.react";
-import { CryptoDepositAddress, CryptoCurrency } from "@/lib/types";
+import { UserWallet } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Copy } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
@@ -20,16 +20,15 @@ import { AlertTriangle } from "lucide-react";
 interface DepositDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedCrypto: CryptoCurrency | null;
-  depositAddress: CryptoDepositAddress | undefined;
+  wallet: UserWallet | null;
 }
 
-export function DepositDialog({ open, onOpenChange, selectedCrypto, depositAddress }: DepositDialogProps) {
+export function DepositDialog({ open, onOpenChange, wallet }: DepositDialogProps) {
   const { toast } = useToast();
 
   const handleCopy = () => {
-    if (!depositAddress?.address) return;
-    navigator.clipboard.writeText(depositAddress.address);
+    if (!wallet?.depositAddress) return;
+    navigator.clipboard.writeText(wallet.depositAddress);
     toast({ title: "Address Copied!" });
   };
 
@@ -37,19 +36,19 @@ export function DepositDialog({ open, onOpenChange, selectedCrypto, depositAddre
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Deposit {selectedCrypto}</DialogTitle>
+          <DialogTitle>Deposit {wallet?.crypto}</DialogTitle>
           <DialogDescription>
-            Send only {selectedCrypto} ({depositAddress?.chain}) to this address.
+            Send only {wallet?.crypto} to this address.
           </DialogDescription>
         </DialogHeader>
 
-        {depositAddress ? (
+        {wallet?.depositAddress ? (
             <div className="flex flex-col items-center gap-4 my-4">
                 <div className="p-4 bg-white rounded-lg">
-                    <QRCode value={depositAddress.address} size={200} />
+                    <QRCode value={wallet.depositAddress} size={200} />
                 </div>
                 <div className="flex items-center gap-2 p-2 bg-muted rounded-md w-full">
-                    <p className="font-mono text-sm break-all text-center flex-grow">{depositAddress.address}</p>
+                    <p className="font-mono text-sm break-all text-center flex-grow">{wallet.depositAddress}</p>
                     <Button variant="ghost" size="icon" onClick={handleCopy}><Copy className="h-4 w-4" /></Button>
                 </div>
                  <Alert variant="destructive">
@@ -62,7 +61,7 @@ export function DepositDialog({ open, onOpenChange, selectedCrypto, depositAddre
             </div>
         ) : (
              <div className="py-8 text-center text-muted-foreground">
-                <p>Deposit address for {selectedCrypto} is not configured.</p>
+                <p>Deposit address for {wallet?.crypto} is not available.</p>
              </div>
         )}
 

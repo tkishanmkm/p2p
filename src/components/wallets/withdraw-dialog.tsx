@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,12 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { UserWallet, CryptoCurrency } from "@/lib/types";
+import { UserWallet } from "@/lib/types";
 import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { CHAINS } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { requestWithdrawal } from '@/lib/wallet';
 
 const withdrawSchema = z.object({
   chain: z.string().min(1, "Please select a network/chain."),
@@ -29,12 +30,11 @@ type WithdrawFormValues = z.infer<typeof withdrawSchema>;
 interface WithdrawDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userWallets: UserWallet[];
-  selectedCrypto: CryptoCurrency | null;
+  wallet: UserWallet | null;
 }
 
-export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto }: WithdrawDialogProps) {
-  const { user } = useFirebase();
+export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogProps) {
+  const { user, firestore } = useFirebase();
   const { toast } = useToast();
   const [availableChains, setAvailableChains] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,26 +43,24 @@ export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto
     resolver: zodResolver(withdrawSchema),
   });
 
-  const selectedWallet = userWallets.find(w => w.crypto === selectedCrypto);
-
   useEffect(() => {
-    if (open && selectedCrypto) {
+    if (open && wallet) {
       form.reset({
         chain: '',
         address: '',
         amount: undefined,
       });
-      setAvailableChains(CHAINS[selectedCrypto] || []);
+      setAvailableChains(CHAINS[wallet.crypto] || []);
     }
-  }, [open, selectedCrypto, form]);
+  }, [open, wallet, form]);
 
   async function onSubmit(values: WithdrawFormValues) {
-    if (!user || !selectedCrypto) {
-        toast({ variant: 'destructive', title: 'Error', description: 'User or crypto not selected.' });
+    if (!user || !firestore || !wallet) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Cannot process withdrawal request.' });
         return;
     }
 
-    if (selectedWallet && values.amount > selectedWallet.balance) {
+    if (values.amount > wallet.balance) {
       form.setError("amount", {
         type: "manual",
         message: "Amount exceeds available balance.",
@@ -72,26 +70,23 @@ export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto
     
     setIsLoading(true);
     try {
-      // This assumes a backend API endpoint is available at /api/withdraw
-      const res = await axios.post('/api/withdraw', { 
-          userId: user.uid, 
-          crypto: selectedCrypto, 
-          amount: values.amount, 
-          address: values.address 
+      await requestWithdrawal(firestore, {
+        userId: user.uid,
+        userDisplayName: user.displayName || 'N/A',
+        crypto: wallet.crypto,
+        chain: values.chain,
+        address: values.address,
+        amount: values.amount,
       });
       
-      if (res.data.success) {
-        toast({
-            title: "Withdrawal Initiated",
-            description: `Your withdrawal is processing. TxID: ${res.data.txHash}`,
-        });
-        onOpenChange(false);
-      } else {
-          throw new Error(res.data.error || 'Unknown backend error.');
-      }
+      toast({
+          title: "Withdrawal Request Submitted",
+          description: `Your request to withdraw ${values.amount} ${wallet.crypto} is pending approval.`,
+      });
+      onOpenChange(false);
+      
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || "An unknown error occurred.";
-      toast({ variant: 'destructive', title: "Withdrawal Failed", description: errorMessage });
+      toast({ variant: 'destructive', title: "Withdrawal Failed", description: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -108,8 +103,8 @@ export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Withdraw {selectedCrypto}</DialogTitle>
-          <DialogDescription>Your request will be processed by the backend wallet system.</DialogDescription>
+          <DialogTitle>Withdraw {wallet?.crypto}</DialogTitle>
+          <DialogDescription>Your request will be reviewed by an administrator.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -152,7 +147,7 @@ export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto
                         <FormLabel>Amount</FormLabel>
                         <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
                         <FormDescription>
-                            {selectedWallet ? `Available: ${selectedWallet.balance.toFixed(8)} ${selectedWallet.crypto}` : ''}
+                            {wallet ? `Available: ${wallet.balance.toFixed(8)} ${wallet.crypto}` : ''}
                         </FormDescription>
                         <FormMessage />
                         </FormItem>

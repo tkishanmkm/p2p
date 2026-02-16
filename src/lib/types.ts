@@ -1,3 +1,4 @@
+
 'use client';
 import { Timestamp } from "firebase/firestore";
 
@@ -21,6 +22,7 @@ export type UserWallet = {
   balance: number;
   lockedBalance: number;
   updatedAt: string;
+  depositAddress?: string;
 };
 
 export type CryptoDepositAddress = {
