@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,32 +13,22 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Copy, AlertTriangle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { useFirebase } from '@/firebase';
-import type { UserWallet, Deposit, CryptoCurrency } from '@/lib/types';
-import { createDepositRequest, confirmDepositWithTxId } from '@/lib/wallet';
-import { SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import type { UserWallet, Deposit, CryptoCurrency, DepositAddressSet } from '@/lib/types';
+import { createDepositRequest } from '@/lib/wallet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useCountdown } from '@/hooks/use-countdown';
+import { Skeleton } from '../ui/skeleton';
+import { doc } from 'firebase/firestore';
 
 const amountSchema = z.object({
   amount: z.coerce.number().positive("Amount must be a positive number."),
   chain: z.string().optional(),
-  isMultiChain: z.boolean().optional(),
 }).refine(data => {
-    if (data.isMultiChain) {
-        return !!data.chain;
-    }
+    // This validation will be handled dynamically based on available chains
     return true;
-}, {
-    message: "Please select a network for USDT.",
-    path: ["chain"],
 });
 type AmountFormValues = z.infer<typeof amountSchema>;
-
-const txIdSchema = z.object({
-  txId: z.string().min(10, "Please enter a valid transaction hash."),
-});
-type TxIdFormValues = z.infer<typeof txIdSchema>;
 
 interface DepositDialogProps {
   open: boolean;
@@ -55,20 +45,40 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   const [createdDeposit, setCreatedDeposit] = useState<Deposit | null>(null);
   const countdown = useCountdown(createdDeposit?.timerEnd || new Date(0));
 
-  const isMultiChain = wallet?.crypto === 'USDT';
-  const chains = SUPPORTED_CRYPTOS.find(c => c.name === wallet?.crypto)?.chains || [];
-  
-  const amountForm = useForm<AmountFormValues>({
-    resolver: zodResolver(amountSchema),
-    defaultValues: {
-        isMultiChain: isMultiChain
+  const addressSetRef = useMemoFirebase(() => (firestore && walletIndex) ? doc(firestore, "crypto_deposit_addresses", String(walletIndex)) : null, [firestore, walletIndex]);
+  const { data: addressSetData, isLoading: isAddressSetLoading } = useDoc<DepositAddressSet>(addressSetRef);
+
+  const availableChains = useMemo(() => {
+    if (!addressSetData || !wallet) return [];
+    const chains: string[] = [];
+    for (const key in addressSetData.addresses) {
+        if (key.startsWith(`${wallet.crypto}-`)) {
+            const chainName = key.substring(wallet.crypto.length + 1);
+            chains.push(chainName);
+        }
     }
+    return chains;
+  }, [addressSetData, wallet]);
+  
+  const showChainSelector = availableChains.length > 1;
+
+  const amountForm = useForm<AmountFormValues>({
+    resolver: zodResolver(amountSchema.refine(data => {
+        if (showChainSelector) return !!data.chain;
+        return true;
+    }, {
+        message: "Please select a network.",
+        path: ["chain"],
+    })),
   });
 
-  const txIdForm = useForm<TxIdFormValues>({
-    resolver: zodResolver(txIdSchema),
-    defaultValues: { txId: "" }
-  });
+  useEffect(() => {
+    // If only one chain is available, pre-select it
+    if (availableChains.length === 1) {
+        amountForm.setValue('chain', availableChains[0]);
+    }
+  }, [availableChains, amountForm]);
+
 
   const handleCreateRequest = async (values: AmountFormValues) => {
     if (!wallet || !user || !user.displayName || walletIndex === undefined) {
@@ -77,7 +87,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
     }
     setIsLoading(true);
     try {
-      const chainToUse = isMultiChain ? values.chain! : (chains[0] || '');
+      const chainToUse = values.chain!;
       const newDeposit = await createDepositRequest(firestore, user.uid, user.displayName, walletIndex, wallet.crypto, chainToUse, values.amount);
       setCreatedDeposit(newDeposit);
       setStep(2);
@@ -88,21 +98,6 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
     }
   };
 
-  const handleConfirmDeposit = async (values: TxIdFormValues) => {
-    if (!createdDeposit) return;
-    setIsLoading(true);
-    try {
-      await confirmDepositWithTxId(firestore, createdDeposit.id, values.txId);
-      toast({ title: 'Transaction Submitted', description: 'Your deposit is now awaiting admin confirmation.' });
-      handleOpenChange(false); // Close dialog
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Submission Failed', description: error.message });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Address Copied!" });
@@ -111,14 +106,29 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       setTimeout(() => {
-          amountForm.reset({ isMultiChain: isMultiChain });
-          txIdForm.reset();
+          amountForm.reset();
           setStep(1);
           setCreatedDeposit(null);
       }, 300);
     }
     onOpenChange(isOpen);
   };
+  
+  const bitcoinInstructions = "Ensure you are sending Bitcoin (BTC) from a wallet on the Bitcoin network. Other assets sent to this address may be lost.";
+  const ethereumInstructions = "Ensure you are sending Ethereum (ETH) from a wallet on the Ethereum (ERC20) network. Other assets sent to this address may be lost.";
+  const litecoinInstructions = "Ensure you are sending Litecoin (LTC) from a wallet on the Litecoin network. Other assets sent to this address may be lost.";
+  const usdtInstructions = "Ensure you select the correct network (e.g., ERC20, TRC20, BEP20) that matches your sending wallet. Sending to the wrong network may result in a permanent loss of funds.";
+  
+  const instructionsMap: Record<CryptoCurrency, string> = {
+    BTC: bitcoinInstructions,
+    ETH: ethereumInstructions,
+    LTC: litecoinInstructions,
+    USDT: usdtInstructions,
+    BNB: "",
+    MATIC: "",
+    TRX: ""
+  }
+  const currentInstruction = wallet ? instructionsMap[wallet.crypto] : "";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -128,12 +138,13 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
             <DialogHeader>
                 <DialogTitle>Deposit {wallet?.crypto}</DialogTitle>
                 <DialogDescription>
-                    Enter the amount and network you wish to deposit. A request will be created with a unique address.
+                    Enter the amount and network you wish to deposit.
                 </DialogDescription>
             </DialogHeader>
             <Form {...amountForm}>
                 <form onSubmit={amountForm.handleSubmit(handleCreateRequest)} className="space-y-4 pt-4">
-                    {isMultiChain && (
+                    {isAddressSetLoading && <Skeleton className="h-20 w-full" />}
+                    {!isAddressSetLoading && showChainSelector && (
                         <FormField
                             control={amountForm.control}
                             name="chain"
@@ -143,7 +154,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                            {availableChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -166,15 +177,13 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Instructions</AlertTitle>
                         <AlertDescription className="text-xs space-y-1">
-                            <p>1. Enter the exact amount you wish to deposit.</p>
-                            <p>2. Ensure you are sending via the correct network.</p>
-                            <p>3. After creating the request, you will receive a unique deposit address. Send your crypto to this address.</p>
-                            <p>4. After sending, return here to submit the transaction hash (TxID).</p>
+                           <p>{currentInstruction}</p>
+                           <p>After creating the request, you must send the crypto to the unique address shown and then submit the transaction hash (TxID).</p>
                         </AlertDescription>
                     </Alert>
                     <DialogFooter>
-                        <Button type="submit" disabled={isLoading} className="w-full">
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button type="submit" disabled={isLoading || isAddressSetLoading} className="w-full">
+                            {(isLoading || isAddressSetLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Create Deposit Request
                         </Button>
                     </DialogFooter>
@@ -183,62 +192,18 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
             </>
         )}
         {step === 2 && createdDeposit && (
-            <>
-            <DialogHeader>
-                <DialogTitle>Confirm Your Deposit</DialogTitle>
+            // This step is now handled by the SubmitTxHashDialog
+            // This logic is moved there and triggered from the history table.
+            // Keeping this structure allows for future re-integration if the UX flow changes back.
+             <DialogHeader>
+                <DialogTitle>Request Created!</DialogTitle>
                 <DialogDescription>
-                    Send exactly {createdDeposit.amount} {createdDeposit.crypto} to the address below and submit the transaction hash.
+                    Your deposit request for {createdDeposit.amount} {createdDeposit.crypto} has been created. You can find it in your transaction history on the Wallets page to submit your transaction hash.
                 </DialogDescription>
+                 <DialogFooter>
+                    <Button onClick={() => handleOpenChange(false)}>Close</Button>
+                </DialogFooter>
             </DialogHeader>
-            <div className="flex flex-col items-center gap-4 my-4">
-                {countdown.isFinished ? (
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Request Expired</AlertTitle>
-                        <AlertDescription>
-                            This deposit request has expired. Please create a new one.
-                        </AlertDescription>
-                    </Alert>
-                ) : (
-                    <>
-                         <div className="text-center p-2 border rounded-md w-full">
-                            <p className="text-sm font-semibold">Time Remaining to Confirm:</p>
-                            <p className="text-lg font-mono text-destructive">{`${String(countdown.hours).padStart(2, '0')}:${String(countdown.minutes).padStart(2, '0')}:${String(countdown.seconds).padStart(2, '0')}`}</p>
-                        </div>
-                        <div className="p-4 bg-white rounded-lg">
-                            <QRCode value={`${createdDeposit.crypto.toLowerCase()}:${createdDeposit.walletAddress}?amount=${createdDeposit.amount}`} size={160} />
-                        </div>
-                        <div className="flex items-center gap-2 p-2 bg-muted rounded-md w-full">
-                            <p className="font-mono text-sm break-all text-center flex-grow">{createdDeposit.walletAddress}</p>
-                            <Button variant="ghost" size="icon" onClick={() => handleCopy(createdDeposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
-                        </div>
-                    </>
-                )}
-            </div>
-             {!countdown.isFinished && (
-                <Form {...txIdForm}>
-                    <form onSubmit={txIdForm.handleSubmit(handleConfirmDeposit)} className="space-y-4">
-                        <FormField
-                            control={txIdForm.control}
-                            name="txId"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Transaction Hash (TxID)</FormLabel>
-                                <FormControl><Input placeholder="Enter the transaction hash from your wallet" {...field} /></FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <DialogFooter>
-                            <Button type="submit" disabled={isLoading} className="w-full">
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Submit Confirmation
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
-             )}
-            </>
         )}
       </DialogContent>
     </Dialog>

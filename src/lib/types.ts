@@ -1,4 +1,3 @@
-
 'use client';
 import { Timestamp } from "firebase/firestore";
 
@@ -31,12 +30,7 @@ export type DepositAddressSet = {
   id: string; // "1", "2", ... "20"
   setName: string; // e.g., "Set 1"
   addresses: {
-    'BTC-Bitcoin'?: string;
-    'LTC-Litecoin'?: string;
-    'ETH-ERC20'?: string;
-    'USDT-ERC20'?: string;
-    'USDT-TRC20'?: string;
-    'USDT-BEP20'?: string;
+    [key: string]: string; // e.g., "BTC-Bitcoin": "...", "USDT-ERC20": "..."
   };
 };
 
