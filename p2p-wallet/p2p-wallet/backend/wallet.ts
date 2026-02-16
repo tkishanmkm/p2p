@@ -1,7 +1,8 @@
+
 import { firestore } from 'firebase-admin';
-import { getEvmWallet, tron, estimateGasFeeNative } from './blockchain';
+import { getEvmWallet, tronWeb as tron, estimateGasFeeNative } from './blockchain';
 import { ethers } from 'ethers';
-import { CryptoCurrency, UserWallet } from './types';
+import type { CryptoCurrency, UserWallet, User } from './types';
 
 const erc20ABI = ["function transfer(address to, uint amount) returns (bool)"];
 const getGasMultiplier = () => Number(process.env.GAS_MULTIPLIER) || 2;
@@ -17,18 +18,12 @@ async function executeOnChainWithdrawal(crypto: CryptoCurrency, chain: string, a
     case 'Polygon':
     case 'Arbitrum':
     case 'Base': {
-      if (crypto !== 'ETH' && !contractAddress) throw new Error(`${crypto} contract address for ${chain} not configured.`);
+      if (crypto !== 'USDT') throw new Error (`Withdrawal for ${crypto} on EVM chains not yet configured, only USDT.`);
+      if (!contractAddress) throw new Error(`${crypto} contract address for ${chain} not configured.`);
+
       const wallet = await getEvmWallet(chain);
-      
-      if (['ETH', 'BNB', 'MATIC'].includes(crypto) && !contractAddress) {
-        const feeData = await wallet.provider?.getFeeData();
-        const gasPrice = feeData?.gasPrice || ethers.parseUnits('5', 'gwei');
-        const tx = await wallet.sendTransaction({ to: toAddress, value: ethers.parseEther(amount.toString()), gasPrice: gasPrice * BigInt(getGasMultiplier()) });
-        return tx.hash;
-      }
-      
       const contract = new ethers.Contract(contractAddress, erc20ABI, wallet);
-      const decimals = (crypto === 'USDT') ? 6 : 18;
+      const decimals = 6; // USDT typically has 6
       const parsedAmount = ethers.parseUnits(amount.toString(), decimals);
       const feeData = await wallet.provider?.getFeeData();
       const gasPrice = feeData?.gasPrice || ethers.parseUnits('5', 'gwei');
@@ -36,7 +31,7 @@ async function executeOnChainWithdrawal(crypto: CryptoCurrency, chain: string, a
       return tx.hash;
     }
     case 'TRC20': {
-        const decimals = (crypto === 'USDT') ? 6 : (crypto === 'TRX' ? 6 : 0);
+        const decimals = (crypto === 'USDT') ? 6 : 6; // TRX is also 6 decimals (SUN)
         const parsedAmount = amount * Math.pow(10, decimals);
         
         if (crypto === 'TRX') {
@@ -44,10 +39,21 @@ async function executeOnChainWithdrawal(crypto: CryptoCurrency, chain: string, a
             return tx.txid;
         }
 
-        if (!contractAddress) throw new Error(`${crypto} contract address for TRC20 not configured.`);
-        const contract = await tron.contract().at(contractAddress);
-        const txId = await contract.transfer(toAddress, parsedAmount).send({ feeLimit: 150_000_000, shouldPollResponse: false });
-        return txId;
+        if (crypto === 'USDT') {
+          if (!contractAddress) throw new Error(`${crypto} contract address for TRC20 not configured.`);
+          const contract = await tron.contract().at(contractAddress);
+          const txId = await contract.transfer(toAddress, parsedAmount).send({ feeLimit: 150_000_000, shouldPollResponse: false });
+          return txId;
+        }
+
+        throw new Error(`Unsupported crypto ${crypto} on TRC20`);
+    }
+     case 'Native_ETH': {
+      const wallet = await getEvmWallet('ERC20');
+      const feeData = await wallet.provider?.getFeeData();
+      const gasPrice = feeData?.gasPrice || ethers.parseUnits('5', 'gwei');
+      const tx = await wallet.sendTransaction({ to: toAddress, value: ethers.parseEther(amount.toString()), gasPrice: gasPrice * BigInt(getGasMultiplier()) });
+      return tx.hash;
     }
     default:
       throw new Error(`On-chain execution for ${crypto} on ${chain} is not supported.`);
@@ -80,7 +86,8 @@ export async function withdraw(userId: string, crypto: CryptoCurrency, chain: st
         throw new Error(`Insufficient balance. Required: ${totalDeduction.toFixed(8)} ${crypto}, but only ${userWallet.balance.toFixed(8)} ${crypto} is available.`);
     }
     
-    const txHash = await executeOnChainWithdrawal(crypto, chain, amount, address);
+    const executionChain = (crypto === 'ETH' && chain === 'ERC20') ? 'Native_ETH' : chain;
+    const txHash = await executeOnChainWithdrawal(crypto, executionChain, amount, address);
 
     if (!txHash) {
         throw new Error("On-chain transaction failed to return a transaction hash.");
@@ -94,7 +101,7 @@ export async function withdraw(userId: string, crypto: CryptoCurrency, chain: st
         const userSnap = await transaction.get(userDocRef);
         
         const currentWallet = walletSnap.data() as UserWallet;
-        const currentUser = userSnap.data() as any;
+        const currentUser = userSnap.data() as User;
 
         transaction.update(userWalletRef, {
             balance: (currentWallet.balance || 0) - totalDeduction,

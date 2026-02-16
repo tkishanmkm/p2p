@@ -1,3 +1,4 @@
+
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
@@ -9,7 +10,7 @@ if (!admin.apps.length) {
         };
 
         if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
-            console.warn('Firebase Admin SDK configuration is missing in environment variables.');
+            console.warn('Firebase Admin SDK configuration is missing in environment variables. Server-side features may not work.');
         } else {
             admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount),

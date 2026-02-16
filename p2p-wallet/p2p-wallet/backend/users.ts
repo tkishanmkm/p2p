@@ -1,3 +1,4 @@
+
 import { firestore } from './firebase-admin';
 import { getEVMAddress, getTRONAddress } from './blockchain';
 
@@ -8,7 +9,7 @@ export async function createUserWallets(userId: string) {
 
   const index = await firestore.runTransaction(async (tx) => {
     const doc = await tx.get(counterRef);
-    const current = doc.exists ? (doc.data()!.value || 0) : 0;
+    const current = doc.exists ? (doc.data()?.value || 0) : 0;
     tx.set(counterRef, { value: current + 1 });
     return current;
   });
