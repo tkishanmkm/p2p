@@ -1,4 +1,5 @@
 
+
 'use client';
 import {
   Firestore,
@@ -15,7 +16,7 @@ import {
   getDocs,
   setDoc,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Withdrawal } from './types';
 import { add } from 'date-fns';
 import { toDate } from '@/lib/utils';
 import { SUPPORTED_CRYPTOS, CHAINS } from './constants';
@@ -86,7 +87,17 @@ export async function initiateTrade(
         throw new Error("You cannot trade with yourself.");
     }
     
-    const sellerWalletRef = doc(db, 'users', sellerId, 'wallets', ad.crypto);
+    // For a multi-chain system, we need to know which wallet to lock.
+    // Assuming the ad is specific to one chain, which it should be.
+    // If an ad can support multiple chains for one crypto (e.g. USDT on ERC20 & TRC20),
+    // this logic would need to be more complex, likely decided by the initiator.
+    // For now, let's assume one chain per ad, inferred from the first payment method or an explicit field.
+    // A robust solution would be to add a `chain` field to the P2PAd type.
+    // Let's make an assumption for now: if USDT, default to ERC20 for locking logic.
+    const chainForCrypto = ad.crypto === 'USDT' ? 'ERC20' : CHAINS[ad.crypto][0];
+    const sellerWalletId = `${ad.crypto}-${chainForCrypto}`;
+    
+    const sellerWalletRef = doc(db, 'users', sellerId, 'wallets', sellerWalletId);
     const buyerDocRef = doc(db, 'users', buyerId);
     const sellerDocRef = doc(db, 'users', sellerId);
     const newTradeRef = doc(collection(db, 'trades'));
@@ -100,7 +111,7 @@ export async function initiateTrade(
         ]);
 
       if (!sellerWalletDoc.exists()) {
-        throw new Error("Seller's wallet does not exist.");
+        throw new Error(`Seller's ${sellerWalletId} wallet does not exist.`);
       }
        if (!buyerDoc.exists()) {
         throw new Error("Buyer's profile does not exist.");
@@ -242,7 +253,11 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
     const trade = tradeDoc.data() as Trade;
     if (trade.status !== 'paid' && trade.status !== 'disputed') throw new Error("This trade is not ready for release.");
 
-    const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', trade.crypto);
+    // This needs to be determined from the trade context
+    const chainForCrypto = trade.crypto === 'USDT' ? 'ERC20' : CHAINS[trade.crypto][0];
+    const sellerWalletId = `${trade.crypto}-${chainForCrypto}`;
+    const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', sellerWalletId);
+
     const sellerWalletDoc = await transaction.get(sellerWalletRef);
     if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
 
@@ -287,9 +302,13 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     if (trade.status !== 'released') throw new Error("Funds have not been released by the seller.");
     if (trade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
     if (trade.claimedByBuyer) throw new Error("Funds have already been claimed.");
+    
+    // This needs to be determined from the trade context
+    const chainForCrypto = trade.crypto === 'USDT' ? 'ERC20' : CHAINS[trade.crypto][0];
+    const buyerWalletId = `${trade.crypto}-${chainForCrypto}`;
 
     // Construct refs inside the transaction
-    const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', trade.crypto);
+    const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', buyerWalletId);
     const buyerUserRef = doc(db, 'users', buyerId);
     const sellerUserRef = doc(db, 'users', trade.sellerId);
     const sellerNotificationRef = doc(collection(db, 'users', trade.sellerId, 'notifications'));
@@ -312,8 +331,9 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         balance: currentBalance + amountToBuyer,
         lockedBalance: currentLockedBalance,
         crypto: trade.crypto,
+        chain: chainForCrypto,
         userId: buyerId,
-        id: trade.crypto,
+        id: buyerWalletId,
         updatedAt: new Date().toISOString(),
     }, { merge: true });
 
@@ -418,7 +438,9 @@ export async function cancelTrade(db: Firestore, tradeId: string, reason: string
     // Only return funds from escrow if the trade was active (not yet paid).
     // If it was paid/disputed, cancellation implies an issue an admin should review, funds are not auto-returned.
     if (trade.status === 'active') {
-      const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
+       const chainForCrypto = trade.crypto === 'USDT' ? 'ERC20' : CHAINS[trade.crypto][0];
+       const sellerWalletId = `${trade.crypto}-${chainForCrypto}`;
+       const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", sellerWalletId);
       const sellerWalletDoc = await transaction.get(sellerWalletRef);
 
       if (sellerWalletDoc.exists()) {
@@ -503,9 +525,14 @@ export async function sendCoinToUser(
   }
   const recipientDoc = recipientSnapshot.docs[0];
   const recipient = { id: recipientDoc.id, ...(recipientDoc.data() as AppUser) };
+  
+  // For simplicity, this function will transfer between the 'default' chain wallets
+  // e.g., BTC-Bitcoin, ETH-ERC20, LTC-Litecoin, USDT-ERC20
+  const chainForCrypto = CHAINS[crypto][0];
+  const walletId = `${crypto}-${chainForCrypto}`;
 
-  const senderWalletRef = doc(db, "users", sender.uid, "wallets", crypto);
-  const recipientWalletRef = doc(db, "users", recipient.id, "wallets", crypto);
+  const senderWalletRef = doc(db, "users", sender.uid, "wallets", walletId);
+  const recipientWalletRef = doc(db, "users", recipient.id, "wallets", walletId);
   const transferRef = doc(collection(db, "transfers"));
   
   let transferId = "";
@@ -534,9 +561,10 @@ export async function sendCoinToUser(
       transaction.set(recipientWalletRef, {
         balance: amount,
         lockedBalance: 0,
-        crypto,
+        crypto: crypto,
+        chain: chainForCrypto,
         userId: recipient.id,
-        id: crypto,
+        id: walletId,
         updatedAt: new Date().toISOString(),
       });
     }
@@ -573,4 +601,35 @@ export async function sendCoinToUser(
   });
 
   return transferId;
+}
+
+export async function requestWithdrawal(db: Firestore, userId: string, userDisplayName: string, wallet: UserWallet, amount: number, address: string) {
+    if (amount > wallet.balance) {
+        throw new Error("Withdrawal amount cannot exceed available balance.");
+    }
+
+    const userWalletRef = doc(db, 'users', userId, 'wallets', wallet.id);
+    const withdrawalRef = doc(collection(db, 'users', userId, 'withdrawals'));
+    
+    await runTransaction(db, async (transaction) => {
+        // Lock the funds in the user's wallet
+        transaction.update(userWalletRef, {
+            balance: wallet.balance - amount,
+            lockedBalance: wallet.lockedBalance + amount,
+            updatedAt: new Date().toISOString(),
+        });
+        
+        // Create the withdrawal request document
+        const newWithdrawal: Omit<Withdrawal, 'id'> = {
+            userId,
+            userDisplayName,
+            crypto: wallet.crypto,
+            chain: wallet.chain,
+            amount,
+            address,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+        };
+        transaction.set(withdrawalRef, newWithdrawal);
+    });
 }

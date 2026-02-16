@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,9 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { CHAINS } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { requestWithdrawal } from '@/lib/wallet';
 
 const withdrawSchema = z.object({
-  chain: z.string().min(1, "Please select a network/chain."),
   address: z.string().min(1, "Recipient address is required."),
   amount: z.coerce.number().positive("Amount must be a positive number."),
 });
@@ -32,9 +33,8 @@ interface WithdrawDialogProps {
 }
 
 export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogProps) {
-  const { user } = useFirebase();
+  const { user, firestore } = useFirebase();
   const { toast } = useToast();
-  const [availableChains, setAvailableChains] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<WithdrawFormValues>({
@@ -42,18 +42,16 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
   });
 
   useEffect(() => {
-    if (open && wallet) {
+    if (open) {
       form.reset({
-        chain: '',
         address: '',
         amount: undefined,
       });
-      setAvailableChains(CHAINS[wallet.crypto] || []);
     }
   }, [open, wallet, form]);
 
   async function onSubmit(values: WithdrawFormValues) {
-    if (!user || !wallet) {
+    if (!user || !wallet || !firestore || !user.displayName) {
         toast({ variant: 'destructive', title: 'Error', description: 'Cannot process withdrawal request.' });
         return;
     }
@@ -68,25 +66,12 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
     
     setIsLoading(true);
     try {
-      const idToken = await user.getIdToken();
-      const res = await axios.post('/api/wallet/withdraw', {
-          idToken,
-          crypto: wallet.crypto,
-          chain: values.chain,
-          amount: values.amount,
-          address: values.address,
-      });
-      
-      if (res.data.success) {
+        await requestWithdrawal(firestore, user.uid, user.displayName, wallet, values.amount, values.address);
         toast({
-            title: "Withdrawal Submitted",
-            description: `Your withdrawal of ${values.amount} ${wallet.crypto} is being processed. Tx: ${res.data.txHash}`,
+            title: "Withdrawal Request Submitted",
+            description: `Your request to withdraw ${values.amount} ${wallet.crypto} is pending admin approval.`,
         });
         onOpenChange(false);
-      } else {
-        throw new Error(res.data.error || 'An unknown error occurred.');
-      }
-      
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || "An unknown error occurred during withdrawal.";
       toast({ variant: 'destructive', title: "Withdrawal Failed", description: errorMessage });
@@ -106,36 +91,17 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Withdraw {wallet?.crypto}</DialogTitle>
-          <DialogDescription>Withdrawals are processed directly on the blockchain. Fees will apply.</DialogDescription>
+          <DialogTitle>Withdraw {wallet?.crypto} ({wallet?.chain})</DialogTitle>
+          <DialogDescription>Withdrawal requests are reviewed by an administrator. This is not an instant on-chain transaction.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                     control={form.control}
-                    name="chain"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Network / Chain</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={availableChains.length === 0}>
-                            <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select network" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {availableChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <FormField
-                    control={form.control}
                     name="address"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Recipient Address</FormLabel>
+                        <FormLabel>Recipient Address ({wallet?.chain})</FormLabel>
                         <FormControl><Input placeholder="Enter the destination address" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
@@ -171,7 +137,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
                     </DialogClose>
                     <Button type="submit" disabled={isLoading}>
                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit Withdrawal
+                      Submit Request
                     </Button>
                 </DialogFooter>
 

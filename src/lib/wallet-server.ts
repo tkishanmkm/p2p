@@ -1,4 +1,5 @@
 
+
 import { firestoreAdmin } from '@/lib/firebase-admin';
 import { ethWallet, bscWallet, tron, ethProvider, bscProvider } from '@/lib/blockchain-server';
 import { ethers } from 'ethers';
@@ -55,7 +56,8 @@ async function withdrawErc20(userId: string, chain: 'ERC20' | 'BEP20', amount: n
     const decimals = 6; // Standard for USDT
     const parsedAmount = ethers.parseUnits(amount.toString(), decimals);
 
-    const gasPrice = (await provider.getGasPrice()) || ethers.parseUnits('5', 'gwei');
+    const gasPriceResult = await provider.getFeeData();
+    const gasPrice = gasPriceResult.gasPrice || ethers.parseUnits('5', 'gwei');
     const multipliedGas = (gasPrice * BigInt(getGasMultiplier()));
 
     // Estimate gas for the token transfer
@@ -95,7 +97,9 @@ async function withdrawTrc20(userId: string, amount: number, toAddress: string) 
 
 async function withdrawNative(userId: string, crypto: 'ETH' | 'LTC' | 'BTC', amount: number, toAddress: string) {
     if (crypto === 'ETH') {
-        const gasPrice = (await ethProvider.getGasPrice()) || ethers.parseUnits('5', 'gwei');
+        const gasPriceResult = await ethProvider.getFeeData();
+        const gasPrice = gasPriceResult.gasPrice || ethers.parseUnits('5', 'gwei');
+
         const multipliedGas = (gasPrice * BigInt(getGasMultiplier()));
         const value = ethers.parseEther(amount.toString());
 

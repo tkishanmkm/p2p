@@ -1,4 +1,5 @@
 
+
 'use client';
 import { Timestamp } from "firebase/firestore";
 
@@ -16,10 +17,10 @@ export type Language = {
 }
 
 export type UserWallet = {
-  id: string;
+  id: string; // Composite ID, e.g., "USDT-TRC20"
   userId: string;
   crypto: CryptoCurrency;
-  chain?: string;
+  chain: string; // e.g., "ERC20", "TRC20", "Bitcoin"
   balance: number;
   lockedBalance: number;
   updatedAt: string;

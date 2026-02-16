@@ -1,4 +1,5 @@
 
+
 import type { CryptoCurrency, SupportedCrypto, Language } from './types';
 
 export const APP_NAME = 'Tradenaire';
