@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -215,13 +214,13 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
                     </AlertDescription>
                 </Alert>
                 
-                 <DialogFooter className="gap-2 sm:justify-end">
+                 <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
                     <DialogClose asChild>
-                        <Button type="button" variant="secondary">Cancel</Button>
+                        <Button type="button" variant="secondary" className="w-full sm:w-auto">Cancel</Button>
                     </DialogClose>
-                    <Button type="submit" disabled={isLoading}>
+                    <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit Request
+                      Withdraw
                     </Button>
                 </DialogFooter>
             </form>
