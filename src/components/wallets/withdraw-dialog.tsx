@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -30,9 +30,10 @@ interface WithdrawDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userWallets: UserWallet[];
+  selectedCrypto: CryptoCurrency | null;
 }
 
-export function WithdrawDialog({ open, onOpenChange, userWallets }: WithdrawDialogProps) {
+export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto }: WithdrawDialogProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const [availableChains, setAvailableChains] = useState<string[]>([]);
@@ -47,16 +48,23 @@ export function WithdrawDialog({ open, onOpenChange, userWallets }: WithdrawDial
     }
   });
 
-  const selectedCrypto = form.watch('crypto');
-  const selectedWallet = userWallets.find(w => w.crypto === selectedCrypto);
-
-  const handleCryptoChange = (value: CryptoCurrency) => {
+  const handleCryptoChange = useCallback((value: CryptoCurrency) => {
     form.setValue('crypto', value);
     setAvailableChains(CHAINS[value] || []);
     form.setValue('chain', ''); // Reset chain on crypto change
     form.clearErrors('amount'); // Clear amount error
-  };
-  
+  }, [form]);
+
+  useEffect(() => {
+    if (open && selectedCrypto) {
+      handleCryptoChange(selectedCrypto);
+    }
+  }, [open, selectedCrypto, handleCryptoChange]);
+
+
+  const currentSelectedCrypto = form.watch('crypto');
+  const selectedWallet = userWallets.find(w => w.crypto === currentSelectedCrypto);
+
   async function onSubmit(values: WithdrawFormValues) {
     if (!firestore || !user) return;
 
@@ -76,7 +84,6 @@ export function WithdrawDialog({ open, onOpenChange, userWallets }: WithdrawDial
         description: "Your request has been submitted for approval.",
       });
       onOpenChange(false);
-      form.reset();
     } catch (error: any) {
       toast({ variant: 'destructive', title: "Withdrawal Failed", description: error.message });
     } finally {
@@ -84,11 +91,15 @@ export function WithdrawDialog({ open, onOpenChange, userWallets }: WithdrawDial
     }
   }
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      form.reset({ crypto: '', chain: '', address: '', amount: undefined });
+    }
+    onOpenChange(isOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen) form.reset();
-      onOpenChange(isOpen);
-    }}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Request a Withdrawal</DialogTitle>
@@ -102,7 +113,7 @@ export function WithdrawDialog({ open, onOpenChange, userWallets }: WithdrawDial
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Coin</FormLabel>
-                        <Select onValueChange={(v) => handleCryptoChange(v as CryptoCurrency)} defaultValue={field.value}>
+                        <Select onValueChange={(v) => handleCryptoChange(v as CryptoCurrency)} value={field.value}>
                             <FormControl>
                             <SelectTrigger><SelectValue placeholder="Select asset" /></SelectTrigger>
                             </FormControl>

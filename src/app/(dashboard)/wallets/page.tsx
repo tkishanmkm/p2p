@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { UserWallet, CryptoDepositAddress, CryptoCurrency, Deposit, Withdrawal } from '@/lib/types';
 import { DepositDialog } from '@/components/wallets/deposit-dialog';
 import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
@@ -169,12 +169,13 @@ export default function WalletPage() {
         open={isDepositOpen}
         onOpenChange={setIsDepositOpen}
         selectedCrypto={selectedCrypto}
-        depositAddresses={depositAddresses || []}
+        depositAddress={depositAddresses?.find(a => a.crypto === selectedCrypto)}
       />
       <WithdrawDialog
         open={isWithdrawOpen}
         onOpenChange={setIsWithdrawOpen}
         userWallets={wallets || []}
+        selectedCrypto={selectedCrypto}
       />
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DialogContent>
@@ -193,7 +194,7 @@ export default function WalletPage() {
                     </div>
                      <div className="flex justify-between">
                       <span className="text-muted-foreground">Status:</span> 
-                      <Badge variant="outline" className="capitalize">{selectedTx.status.replace(/_/g, ' ')}</Badge>
+                      <Badge variant="outline" className="capitalize">{('status' in selectedTx && selectedTx.status) ? selectedTx.status.replace(/_/g, ' ') : 'N/A'}</Badge>
                     </div>
                     {'address' in selectedTx && (
                        <div className="flex justify-between items-start gap-4">
