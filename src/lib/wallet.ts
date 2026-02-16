@@ -21,15 +21,10 @@ import { add } from 'date-fns';
 import { toDate } from '@/lib/utils';
 import { SUPPORTED_CRYPTOS, CHAINS } from './constants';
 
-// THIS FUNCTION IS A CLIENT-SIDE TRIGGER FOR A SERVER-SIDE PROCESS
 export async function createUserWallets(userId: string): Promise<void> {
-  const createUserWalletsFunction = httpsCallable(functions, 'onUserCreate');
-  await createUserWalletsFunction({ userId });
+    const createUserWalletsFunction = httpsCallable(functions, 'onUserCreate');
+    await createUserWalletsFunction({ userId });
 }
-
-// All other functions like initiateTrade, markTradeAsPaid, etc., remain largely the same
-// as they are primarily Firestore ledger operations, but we must ensure they use the correct
-// multi-chain wallet IDs.
 
 function generateId(prefix: string, length: number) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

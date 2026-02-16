@@ -24,7 +24,7 @@ export type UserWallet = {
   balance: number;
   lockedBalance: number;
   updatedAt: string;
-  depositAddress: string;
+  depositAddress?: string; // Optional deposit address
 };
 
 export type CryptoDepositAddress = {
@@ -42,7 +42,7 @@ export type Deposit = {
   crypto: CryptoCurrency;
   chain: string;
   amount: number;
-  txId?: string; // Optional at first
+  txId?: string; // Optional at first, provided by user
   walletAddress: string; // The address the user must send to
   qrCodeUrl: string; // The QR for that address
   status: 'pending' | 'awaiting_confirmation' | 'approved' | 'declined' | 'expired'; // More specific statuses

@@ -215,7 +215,7 @@
         },
         "status": {
           "type": "string",
-          "description": "Status of the deposit (pending, approved, declined, expired)."
+          "description": "Status of the deposit (pending, awaiting_confirmation, approved, declined, expired)."
         },
         "timerEnd": {
           "type": "string",

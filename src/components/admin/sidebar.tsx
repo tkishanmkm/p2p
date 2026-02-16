@@ -57,7 +57,7 @@ export function AdminSidebar() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const pendingDepositsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'deposits'), where('status', '==', 'awaiting_confirmation')) : null, [firestore]);
+  const pendingDepositsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'deposits'), where('status', '==', 'awaiting_confirmation')) : null, [firestore]);
   const { data: pendingDeposits } = useCollection<Deposit>(pendingDepositsQuery);
   
   const pendingWithdrawalsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'withdrawals'), where('status', '==', 'pending')) : null, [firestore]);

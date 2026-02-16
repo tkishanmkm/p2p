@@ -38,14 +38,6 @@ export function WalletDisplayCard({ coin, wallets }: WalletDisplayCardProps) {
     const hasMultipleChains = wallets.length > 1;
 
     const handleDepositClick = () => {
-        if (!selectedWallet.depositAddress) {
-            toast({
-                variant: 'default',
-                title: "Address Not Ready",
-                description: "Your unique deposit address is being generated. Please check back in a few moments.",
-            });
-            return;
-        }
         setIsDepositOpen(true);
     };
 
@@ -99,22 +91,9 @@ export function WalletDisplayCard({ coin, wallets }: WalletDisplayCardProps) {
                     </div>
                 </CardContent>
                 <CardFooter className="flex gap-2">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="w-full">
-                                    <Button size="sm" className="w-full" onClick={handleDepositClick} disabled={!selectedWallet?.depositAddress}>
-                                        <ArrowDown className="mr-2 h-4 w-4" />Deposit
-                                    </Button>
-                                </div>
-                            </TooltipTrigger>
-                            {!selectedWallet?.depositAddress && (
-                                <TooltipContent>
-                                    <p>Deposit address not yet generated.</p>
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
-                    </TooltipProvider>
+                    <Button size="sm" className="w-full" onClick={handleDepositClick}>
+                        <ArrowDown className="mr-2 h-4 w-4" />Deposit
+                    </Button>
                     <Button size="sm" variant="outline" className="w-full" onClick={handleWithdrawClick}>
                         <ArrowUp className="mr-2 h-4 w-4" />Withdraw
                     </Button>
