@@ -5,25 +5,19 @@ import { useState, useMemo } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import type { UserWallet, CryptoCurrency, Deposit, Withdrawal } from '@/lib/types';
-import { DepositDialog } from '@/components/wallets/deposit-dialog';
-import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
 import { WalletDisplayCard } from '@/components/wallets/wallet-display-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Eye, Copy } from 'lucide-react';
+import { Loader2, Eye, Copy, RefreshCw } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toDate } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { SUPPORTED_CRYPTOS, CHAINS } from '@/lib/constants';
-import axios from 'axios';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { createUserWallets } from '@/lib/wallet';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
@@ -47,10 +41,11 @@ export default function WalletPage() {
   
   const isLoading = isUserLoading || areWalletsLoading || areDepositsLoading || areWithdrawalsLoading;
   
+  const existingWalletChains = useMemo(() => wallets?.map(w => w.id) || [], [wallets]);
   const allPossibleWallets = useMemo(() => {
     const all = [];
     for (const crypto of SUPPORTED_CRYPTOS) {
-        for (const chain of CHAINS[crypto.name]) {
+        for (const chain of crypto.chains) {
             all.push({ crypto: crypto.name, chain, id: `${crypto.name}-${chain}` });
         }
     }
@@ -58,13 +53,10 @@ export default function WalletPage() {
   }, []);
 
   const missingWallets = useMemo(() => {
-    if (!wallets) return allPossibleWallets.map(w => `${w.crypto} (${w.chain})`);
-    const existingWalletIds = wallets.map(w => w.id);
-    return allPossibleWallets
-      .filter(w => !existingWalletIds.includes(w.id))
-      .map(w => `${w.crypto} (${w.chain})`);
-  }, [wallets, allPossibleWallets]);
-  
+    if (!wallets) return allPossibleWallets;
+    return allPossibleWallets.filter(w => !existingWalletChains.includes(w.id));
+  }, [wallets, allPossibleWallets, existingWalletChains]);
+
   const groupedWallets = useMemo(() => {
     if (!wallets) return {};
     return wallets.reduce((acc, wallet) => {
@@ -79,14 +71,14 @@ export default function WalletPage() {
 
 
   const handleCreateMissing = async () => {
-    if (!user) {
+    if (!user || !firestore) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'Please log in to create wallets.' });
         return;
     }
     setIsCreatingWallets(true);
     try {
-        await axios.post('/api/wallet/estimate-fee', { setup: true, userId: user.uid });
-        toast({ title: 'Wallet Creation Initiated', description: 'Your new wallets are being set up. Please refresh in a moment.' });
+        await createUserWallets(user.uid);
+        toast({ title: 'Wallet Creation Successful', description: 'Your new wallets have been created.' });
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not create wallets.' });
     } finally {
@@ -121,9 +113,9 @@ export default function WalletPage() {
        {missingWallets.length > 0 && (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Missing Wallets</CardTitle>
+            <CardTitle>Create Wallets</CardTitle>
             <CardDescription>
-              You can create wallets for the following: {missingWallets.join(', ')}
+              Click the button below to generate wallets for all supported assets.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -138,7 +130,7 @@ export default function WalletPage() {
       {wallets && wallets.length === 0 && missingWallets.length === 0 && (
         <Card>
           <CardHeader><CardTitle>No Wallets Yet</CardTitle></CardHeader>
-          <CardContent>Create wallets to start using crypto. Some may be created on your first deposit.</CardContent>
+          <CardContent>Please create wallets to start using the platform.</CardContent>
         </Card>
       )}
       
@@ -161,38 +153,42 @@ export default function WalletPage() {
                     <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
                 </TabsList>
                 <TabsContent value="deposits" className="mt-4">
-                    <Table>
-                        <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                            {deposits?.map(d => (
-                                <TableRow key={d.id}>
-                                    <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
-                                    <TableCell>{d.amount}</TableCell>
-                                    <TableCell><Badge variant="outline" className="capitalize">{d.status.replace(/_/g, ' ')}</Badge></TableCell>
-                                    <TableCell>{toDate(d.createdAt)?.toLocaleString()}</TableCell>
-                                    <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => openDetails(d)}><Eye className="h-4 w-4"/></Button></TableCell>
-                                </TableRow>
-                            ))}
-                             {!deposits?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No deposit history.</TableCell></TableRow>}
-                        </TableBody>
-                    </Table>
+                     {areDepositsLoading ? <Skeleton className="h-24 w-full" /> : (
+                        <Table>
+                            <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {deposits?.map(d => (
+                                    <TableRow key={d.id}>
+                                        <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
+                                        <TableCell>{d.amount}</TableCell>
+                                        <TableCell><Badge variant="outline" className="capitalize">{d.status.replace(/_/g, ' ')}</Badge></TableCell>
+                                        <TableCell>{toDate(d.createdAt)?.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => openDetails(d)}><Eye className="h-4 w-4"/></Button></TableCell>
+                                    </TableRow>
+                                ))}
+                                {!deposits?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No deposit history.</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                     )}
                 </TabsContent>
                 <TabsContent value="withdrawals" className="mt-4">
-                    <Table>
-                        <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                            {withdrawals?.map(w => (
-                                <TableRow key={w.id}>
-                                    <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
-                                    <TableCell>{w.amount}</TableCell>
-                                    <TableCell><Badge variant="outline" className="capitalize">{w.status}</Badge></TableCell>
-                                    <TableCell>{toDate(w.createdAt)?.toLocaleString()}</TableCell>
-                                    <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => openDetails(w)}><Eye className="h-4 w-4"/></Button></TableCell>
-                                </TableRow>
-                            ))}
-                            {!withdrawals?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No withdrawal history.</TableCell></TableRow>}
-                        </TableBody>
-                    </Table>
+                     {areWithdrawalsLoading ? <Skeleton className="h-24 w-full" /> : (
+                        <Table>
+                            <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {withdrawals?.map(w => (
+                                    <TableRow key={w.id}>
+                                        <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
+                                        <TableCell>{w.amount}</TableCell>
+                                        <TableCell><Badge variant="outline" className="capitalize">{w.status}</Badge></TableCell>
+                                        <TableCell>{toDate(w.createdAt)?.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => openDetails(w)}><Eye className="h-4 w-4"/></Button></TableCell>
+                                    </TableRow>
+                                ))}
+                                {!withdrawals?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No withdrawal history.</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                     )}
                 </TabsContent>
             </Tabs>
         </CardContent>

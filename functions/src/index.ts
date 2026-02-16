@@ -14,7 +14,8 @@ admin.initializeApp();
  * Triggered when a new user signs up. Creates their initial set of wallets.
  */
 export const onUserCreate = functions.auth.user().onCreate(async (user) => {
-    await createUserWallets(user);
+    functions.logger.info(`New user registered: ${user.uid}. Creating wallets.`);
+    await createUserWallets(user.uid);
 });
 
 
@@ -27,6 +28,7 @@ export const onUserCreate = functions.auth.user().onCreate(async (user) => {
 export const scheduledDepositScanner = functions.pubsub
     .schedule("every 1 minutes")
     .onRun(async (context) => {
+        functions.logger.info("Starting scheduled deposit scan...");
         try {
             await scanForDeposits();
         } catch (error) {
