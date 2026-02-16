@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -146,7 +147,11 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                         <AlertTitle>Instructions</AlertTitle>
                         <AlertDescription className="text-xs space-y-1">
                             <p>1. Enter the exact amount you wish to deposit.</p>
-                            <p>2. For USDT, select the correct destination network.</p>
+                             {isMultiChain ? (
+                                <p>2. Select the correct destination network (e.g., ERC20, TRC20).</p>
+                            ) : (
+                                <p>2. Ensure you are sending via the <span className="font-bold">{chains[0]}</span> network.</p>
+                            )}
                             <p>3. After creating the request, you will receive a unique deposit address. Send your crypto to this address from your personal wallet or exchange.</p>
                             <p>4. After sending, return to your wallet history to submit the transaction hash (TxID).</p>
                         </AlertDescription>

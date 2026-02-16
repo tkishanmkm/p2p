@@ -97,17 +97,7 @@ export default function AdminLoginPage() {
                 const { user: newUser } = newUserCredential;
                 await updateProfile(newUser, { displayName: values.adminId });
                 
-                const newSessionId = await createUserSession(firestore, newUser);
-                if (newSessionId) {
-                    sessionStorage.setItem('sessionId', newSessionId);
-                }
-
-                // Immediately create the admin role document for the new user.
-                const adminRoleRef = doc(firestore, 'admins', newUser.uid);
-                await setDoc(adminRoleRef, { role: "admin", createdAt: new Date().toISOString() });
-
-                // Also create a corresponding /users document to make the account more robust,
-                // but flag it so it can be filtered out of user lists.
+                // Create user document FIRST to prevent race conditions
                 const userDocRef = doc(firestore, 'users', newUser.uid);
                 await setDoc(userDocRef, {
                     id: newUser.uid,
@@ -132,6 +122,15 @@ export default function AdminLoginPage() {
                     isAdminAccount: true, // Special flag to identify admin profile
                     blockedUsers: [],
                 });
+
+                // Then create admin role and session
+                const adminRoleRef = doc(firestore, 'admins', newUser.uid);
+                await setDoc(adminRoleRef, { role: "admin", createdAt: new Date().toISOString() });
+
+                const newSessionId = await createUserSession(firestore, newUser);
+                if (newSessionId) {
+                    sessionStorage.setItem('sessionId', newSessionId);
+                }
                 
                 toast({
                     title: "Admin Account Created",
