@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toDate, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/dialog";
 import { Skeleton } from '@/components/ui/skeleton';
 import { DepositDialog } from '@/components/wallets/deposit-dialog';
 import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
@@ -33,13 +33,15 @@ export default function WalletPage() {
 
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
-  const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
   
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isSubmitTxHashOpen, setIsSubmitTxHashOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  
   const [selectedWalletForDialog, setSelectedWalletForDialog] = useState<UserWallet | null>(null);
+  const [totalBalanceForDialog, setTotalBalanceForDialog] = useState<number | undefined>(undefined);
+
 
   const [isUsdtChainSelectorOpen, setIsUsdtChainSelectorOpen] = useState(false);
   const [usdtAction, setUsdtAction] = useState<'deposit' | 'withdraw' | null>(null);
@@ -92,9 +94,10 @@ export default function WalletPage() {
     }
   };
 
-  const handleWithdrawClick = (wallet?: UserWallet) => {
+  const handleWithdrawClick = (wallet?: UserWallet, totalBalance?: number) => {
     if (wallet) {
       setSelectedWalletForDialog(wallet);
+      setTotalBalanceForDialog(totalBalance);
       setIsWithdrawOpen(true);
     }
   };
@@ -108,13 +111,32 @@ export default function WalletPage() {
   const handleUsdtChainSelectAndContinue = () => {
       const usdtData = walletSummary.find(w => w.coin === 'USDT');
       if (!usdtData) return;
-      const selected = usdtData.chains.find(c => c.chain === selectedUsdtChain);
-      if (selected) {
+      
+      const chainExists = usdtData.chains.some(c => c.chain === selectedUsdtChain);
+      let walletForAction: UserWallet;
+
+      if (chainExists) {
+        walletForAction = usdtData.chains.find(c => c.chain === selectedUsdtChain)!;
+      } else {
+        // If wallet for the selected chain doesn't exist, create a shell for the dialog.
+        // The backend logic will handle creating the actual wallet doc if needed.
+        walletForAction = {
+            id: `USDT-${selectedUsdtChain}`,
+            userId: user!.uid,
+            crypto: 'USDT',
+            chain: selectedUsdtChain,
+            balance: 0,
+            lockedBalance: 0,
+            updatedAt: new Date().toISOString()
+        }
+      }
+
+      if (walletForAction) {
           setIsUsdtChainSelectorOpen(false);
           if (usdtAction === 'deposit') {
-              handleDepositClick(selected);
+              handleDepositClick(walletForAction);
           } else if (usdtAction === 'withdraw') {
-              handleWithdrawClick(selected);
+              handleWithdrawClick(walletForAction, usdtData.totalBalance);
           }
       }
   }
@@ -125,27 +147,23 @@ export default function WalletPage() {
   };
   
   const handleHistoryRowClick = (tx: Deposit | Withdrawal) => {
-    setSelectedTx(tx);
-    if ('status' in tx && tx.status === 'pending') {
-      if('txId' in tx) { // It's a deposit
+    const isDeposit = 'walletAddress' in tx;
+    if (isDeposit && tx.status === 'pending') {
         setSelectedDeposit(tx);
         setIsSubmitTxHashOpen(true);
-      } else { // It's a withdrawal
-         setSelectedWithdrawal(tx);
-         setIsDetailsOpen(true);
-      }
     } else {
+        setSelectedTx(tx);
         setIsDetailsOpen(true);
     }
   };
   
-  const handleCancelWithdrawal = async () => {
-    if (!firestore || !user || !selectedWithdrawal) return;
+  const handleCancelWithdrawal = async (withdrawal: Withdrawal) => {
+    if (!firestore || !user || !withdrawal) return;
     try {
-      await cancelWithdrawalRequest(firestore, user.uid, selectedWithdrawal.id);
+      await cancelWithdrawalRequest(firestore, user.uid, withdrawal.id);
       toast({ title: "Withdrawal Cancelled", description: "Your funds have been returned to your available balance." });
       setIsDetailsOpen(false);
-      setSelectedWithdrawal(null);
+      setSelectedTx(null);
     } catch(e: any) {
        toast({ variant: 'destructive', title: 'Cancellation Failed', description: e.message });
     }
@@ -172,7 +190,7 @@ export default function WalletPage() {
   return (
     <>
       <DepositDialog open={isDepositOpen} onOpenChange={setIsDepositOpen} wallet={selectedWalletForDialog} walletIndex={userData?.walletIndex} />
-      <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} wallet={selectedWalletForDialog} />
+      <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} wallet={selectedWalletForDialog} totalAvailableBalance={totalBalanceForDialog} />
       <SubmitTxHashDialog open={isSubmitTxHashOpen} onOpenChange={setIsSubmitTxHashOpen} deposit={selectedDeposit} />
       
       <Dialog open={isUsdtChainSelectorOpen} onOpenChange={setIsUsdtChainSelectorOpen}>
@@ -181,23 +199,17 @@ export default function WalletPage() {
             <DialogTitle>Select USDT Network</DialogTitle>
             <DialogDescription>Please select the network for your {usdtAction} action.</DialogDescription>
           </DialogHeader>
-          {walletSummary.find(w => w.coin === 'USDT')?.chains.length ?? 0 > 0 ? (
-            <>
-              <RadioGroup value={selectedUsdtChain} onValueChange={setSelectedUsdtChain} className="my-4 space-y-2">
-                {walletSummary.find(w => w.coin === 'USDT')?.chains.map(chainWallet => (
-                  <Label key={chainWallet.chain} htmlFor={chainWallet.chain} className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-muted/50 has-[:checked]:border-primary">
-                    <span>{chainWallet.chain}</span>
-                    <RadioGroupItem value={chainWallet.chain} id={chainWallet.chain} />
-                  </Label>
-                ))}
-              </RadioGroup>
-              <Button onClick={handleUsdtChainSelectAndContinue} disabled={!selectedUsdtChain}>
-                Continue
-              </Button>
-            </>
-          ) : (
-            <p className="text-center text-muted-foreground py-4">No USDT wallets found.</p>
-          )}
+          <RadioGroup value={selectedUsdtChain} onValueChange={setSelectedUsdtChain} className="my-4 space-y-2">
+            {(SUPPORTED_CRYPTOS.find(c => c.name === 'USDT')?.chains || []).map(chain => (
+                <Label key={chain} htmlFor={chain} className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-muted/50 has-[:checked]:border-primary">
+                <span>{chain}</span>
+                <RadioGroupItem value={chain} id={chain} />
+                </Label>
+            ))}
+          </RadioGroup>
+          <Button onClick={handleUsdtChainSelectAndContinue} disabled={!selectedUsdtChain}>
+            Continue
+          </Button>
         </DialogContent>
       </Dialog>
       
@@ -209,7 +221,7 @@ export default function WalletPage() {
         {walletSummary.map((data) => {
           const { coin, totalBalance, totalLockedBalance, chains } = data;
           if (!data) return null;
-          const isMultiChain = coin === 'USDT' && chains.length > 1;
+          const isMultiChain = coin === 'USDT';
           const totalWalletBalance = totalBalance + totalLockedBalance;
 
           return (
@@ -238,7 +250,7 @@ export default function WalletPage() {
                 <Button size="sm" className="w-full" onClick={() => isMultiChain ? handleUsdtActionClick('deposit') : handleDepositClick(chains[0])}>
                     <ArrowDown className="mr-2 h-4 w-4" />Deposit
                 </Button>
-                <Button size="sm" variant="outline" className="w-full" onClick={() => isMultiChain ? handleUsdtActionClick('withdraw') : handleWithdrawClick(chains[0])}>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => isMultiChain ? handleUsdtActionClick('withdraw') : handleWithdrawClick(chains[0], totalBalance)}>
                     <ArrowUp className="mr-2 h-4 w-4" />Withdraw
                 </Button>
               </CardFooter>
@@ -268,7 +280,7 @@ export default function WalletPage() {
                                         <TableCell>{d.amount}</TableCell>
                                         <TableCell><Badge variant="outline" className="capitalize">{d.status.replace(/_/g, ' ')}</Badge></TableCell>
                                         <TableCell>{toDate(d.createdAt)?.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleHistoryRowClick(d)}><Eye className="h-4 w-4"/></Button></TableCell>
+                                        <TableCell className="text-right"><Button variant="ghost" size="icon"><Eye className="h-4 w-4"/></Button></TableCell>
                                     </TableRow>
                                 ))}
                                 {!deposits?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No deposit history.</TableCell></TableRow>}
@@ -287,7 +299,7 @@ export default function WalletPage() {
                                         <TableCell>{w.amount}</TableCell>
                                         <TableCell><Badge variant="outline" className="capitalize">{w.status}</Badge></TableCell>
                                         <TableCell>{toDate(w.createdAt)?.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleHistoryRowClick(w)}><Eye className="h-4 w-4"/></Button></TableCell>
+                                        <TableCell className="text-right"><Button variant="ghost" size="icon"><Eye className="h-4 w-4"/></Button></TableCell>
                                     </TableRow>
                                 ))}
                                 {!withdrawals?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No withdrawal history.</TableCell></TableRow>}
@@ -316,7 +328,9 @@ export default function WalletPage() {
                     </div>
                      <div className="flex justify-between">
                       <span className="text-muted-foreground">Status:</span> 
-                      <Badge variant="outline" className="capitalize">{('status' in selectedTx && selectedTx.status) ? selectedTx.status.replace(/_/g, ' ') : 'N/A'}</Badge>
+                      <Badge variant="outline" className="capitalize">
+                        {'status' in selectedTx ? selectedTx.status.replace(/_/g, ' ') : 'N/A'}
+                      </Badge>
                     </div>
                     {'address' in selectedTx && (
                        <div className="flex justify-between items-start gap-4">
@@ -327,16 +341,16 @@ export default function WalletPage() {
                         </div>
                       </div>
                     )}
-                    {'txHash' in selectedTx && selectedTx.txHash && (
+                    {'walletAddress' in selectedTx && (
                        <div className="flex justify-between items-start gap-4">
-                        <span className="text-muted-foreground">Blockchain TxID:</span> 
-                         <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-right break-all">{selectedTx.txHash}</span>
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedTx.txHash!)}><Copy className="h-3 w-3"/></Button>
+                        <span className="text-muted-foreground">Deposit Address:</span> 
+                        <div className="flex items-center gap-2">
+                           <span className="font-mono text-xs text-right break-all">{selectedTx.walletAddress}</span>
+                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedTx.walletAddress)}><Copy className="h-3 w-3"/></Button>
                         </div>
                       </div>
                     )}
-                     {'txId' in selectedTx && selectedTx.txId && (
+                    {'txId' in selectedTx && selectedTx.txId && (
                        <div className="flex justify-between items-start gap-4">
                         <span className="text-muted-foreground">Blockchain TxID:</span> 
                          <div className="flex items-center gap-2">
@@ -356,7 +370,7 @@ export default function WalletPage() {
                     )}
                 </div>
               )}
-              {selectedWithdrawal && selectedWithdrawal.status === 'pending' && (
+              {selectedTx && 'address' in selectedTx && selectedTx.status === 'pending' && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive" className="w-full mt-4">Cancel Withdrawal</Button>
@@ -370,7 +384,7 @@ export default function WalletPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Back</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleCancelWithdrawal}>
+                            <AlertDialogAction onClick={() => handleCancelWithdrawal(selectedTx as Withdrawal)}>
                                 Yes, Cancel
                             </AlertDialogAction>
                         </AlertDialogFooter>

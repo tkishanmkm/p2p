@@ -30,9 +30,10 @@ interface WithdrawDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   wallet: UserWallet | null;
+  totalAvailableBalance?: number;
 }
 
-export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogProps) {
+export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalance }: WithdrawDialogProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -50,13 +51,15 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
   const feeInCrypto = cryptoPrice > 0 ? feeInUsd / cryptoPrice : 0;
 
   const amountToReceive = Math.max(0, (watchedAmount || 0) - feeInCrypto);
+  const availableBalance = totalAvailableBalance !== undefined ? totalAvailableBalance : wallet?.balance || 0;
+
 
   async function onSubmit(values: WithdrawFormValues) {
     if (!user || !wallet) {
         toast({ variant: 'destructive', title: 'Error', description: 'Cannot process withdrawal request.' });
         return;
     }
-    if (values.amount > wallet.balance) {
+    if (values.amount > availableBalance) {
       form.setError("amount", {
         type: "manual",
         message: "Amount exceeds available balance.",
@@ -82,7 +85,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
   
   const handleSetMax = () => {
       if (!wallet) return;
-      form.setValue('amount', wallet.balance, { shouldValidate: true });
+      form.setValue('amount', availableBalance, { shouldValidate: true });
   }
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -124,7 +127,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet }: WithdrawDialogPro
                             <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-2" onClick={handleSetMax}>Max</Button>
                         </div>
                         <FormDescription>
-                            {wallet ? `Available: ${wallet.balance.toFixed(8)} ${wallet.crypto}` : ''}
+                            {wallet ? `Available: ${availableBalance.toFixed(8)} ${wallet.crypto}` : ''}
                         </FormDescription>
                         <FormMessage />
                         </FormItem>
