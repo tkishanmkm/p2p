@@ -1,235 +1,164 @@
 import { firestore } from 'firebase-admin';
-import { ethWallet, ethProvider, tron, getETHDepositAddress, getTRXDepositAddress, getBTCDepositAddress, getLTCDepositAddress, defaultGasMultiplier, networks } from './blockchain';
+import { getEvmWallet, tron, estimateGasFeeNative } from './blockchain';
 import { ethers } from 'ethers';
-import * as bitcoin from 'bitcoinjs-lib';
-import * as bip32 from 'bip32';
-import bip39 from 'bip39';
+import { CryptoCurrency, UserWallet } from './types';
 
-// ------------------ Types ------------------
-interface UserWallet {
-  userId: string;
-  crypto: string;
-  balance: number;
-  lockedBalance: number;
-}
+const erc20ABI = ["function transfer(address to, uint amount) returns (bool)"];
+const getGasMultiplier = () => Number(process.env.GAS_MULTIPLIER) || 2;
 
-interface P2PWallet {
-  balance: number; // service fees collected
-}
+// Central withdrawal execution logic
+async function executeOnChainWithdrawal(crypto: CryptoCurrency, chain: string, amount: number, toAddress: string): Promise<string> {
+  const contracts = await getContractAddresses(crypto);
+  const contractAddress = contracts?.[chain];
 
-const p2pWallet: P2PWallet = { balance: 0 };
+  switch (chain) {
+    case 'ERC20':
+    case 'BEP20':
+    case 'Polygon':
+    case 'Arbitrum':
+    case 'Base': {
+      if (crypto !== 'ETH' && !contractAddress) throw new Error(`${crypto} contract address for ${chain} not configured.`);
+      const wallet = await getEvmWallet(chain);
+      
+      if (['ETH', 'BNB', 'MATIC'].includes(crypto) && !contractAddress) {
+        const feeData = await wallet.provider?.getFeeData();
+        const gasPrice = feeData?.gasPrice || ethers.parseUnits('5', 'gwei');
+        const tx = await wallet.sendTransaction({ to: toAddress, value: ethers.parseEther(amount.toString()), gasPrice: gasPrice * BigInt(getGasMultiplier()) });
+        return tx.hash;
+      }
+      
+      const contract = new ethers.Contract(contractAddress, erc20ABI, wallet);
+      const decimals = (crypto === 'USDT') ? 6 : 18;
+      const parsedAmount = ethers.parseUnits(amount.toString(), decimals);
+      const feeData = await wallet.provider?.getFeeData();
+      const gasPrice = feeData?.gasPrice || ethers.parseUnits('5', 'gwei');
+      const tx = await contract.transfer(toAddress, parsedAmount, { gasPrice: gasPrice * BigInt(getGasMultiplier()) });
+      return tx.hash;
+    }
+    case 'TRC20': {
+        const decimals = (crypto === 'USDT') ? 6 : (crypto === 'TRX' ? 6 : 0);
+        const parsedAmount = amount * Math.pow(10, decimals);
+        
+        if (crypto === 'TRX') {
+            const tx = await tron.trx.sendTransaction(toAddress, parsedAmount);
+            return tx.txid;
+        }
 
-// ------------------ Deposit Logic ------------------
-export async function depositToUser(userWalletRef: firestore.DocumentReference, amount: number) {
-  const walletSnap = await userWalletRef.get();
-  const walletData = walletSnap.data() as UserWallet;
-  const newBalance = (walletData?.balance || 0) + amount;
-  await userWalletRef.update({ balance: newBalance });
-  return newBalance;
-}
-
-// ------------------ Withdrawal Logic ------------------
-export async function withdrawETH(userWalletRef: firestore.DocumentReference, to: string, amount: number) {
-  const walletSnap = await userWalletRef.get();
-  const walletData = walletSnap.data() as UserWallet;
-
-  // Estimate gas fee
-  const gasPrice = await ethProvider.getGasPrice();
-  const gasFee = parseFloat(ethers.formatEther(gasPrice * 21000));
-  const serviceFee = gasFee; // as per your spec
-
-  // Total deduction from user wallet
-  const totalDeduct = amount + gasFee + serviceFee;
-
-  if ((walletData.balance || 0) < totalDeduct) throw new Error('Insufficient balance');
-
-  // Deduct balance
-  await userWalletRef.update({ balance: walletData.balance - totalDeduct });
-
-  // Add service fee to P2P wallet
-  p2pWallet.balance += serviceFee;
-
-  // Send ETH (amount + gas handled by multiplier)
-  const tx = await ethWallet.sendTransaction({
-    to,
-    value: ethers.parseEther(amount.toString()),
-    gasPrice: gasPrice * defaultGasMultiplier
-  });
-
-  console.log('ETH withdrawal tx:', tx.hash);
-  return tx.hash;
-}
-
-export async function withdrawTRX(userWalletRef: firestore.DocumentReference, to: string, amount: number, tokenContract?: string) {
-  const walletSnap = await userWalletRef.get();
-  const walletData = walletSnap.data() as UserWallet;
-
-  // Fee limit for TRC20
-  const feeLimit = 100_000_000;
-  const totalDeduct = amount + feeLimit * 2; // gas + service fee
-
-  if ((walletData.balance || 0) < totalDeduct) throw new Error('Insufficient balance');
-
-  // Deduct user wallet
-  await userWalletRef.update({ balance: walletData.balance - totalDeduct });
-
-  // Add service fee to P2P
-  p2pWallet.balance += feeLimit;
-
-  if (tokenContract) {
-    const contract = await tron.contract().at(tokenContract);
-    const tx = await contract.transfer(to, amount).send({ feeLimit: feeLimit * defaultGasMultiplier });
-    console.log('TRC20 withdrawal tx:', tx);
-    return tx;
-  } else {
-    // TRX transfer
-    const tx = await tron.trx.sendTransaction(to, amount);
-    console.log('TRX withdrawal tx:', tx);
-    return tx;
+        if (!contractAddress) throw new Error(`${crypto} contract address for TRC20 not configured.`);
+        const contract = await tron.contract().at(contractAddress);
+        const txId = await contract.transfer(toAddress, parsedAmount).send({ feeLimit: 150_000_000, shouldPollResponse: false });
+        return txId;
+    }
+    default:
+      throw new Error(`On-chain execution for ${crypto} on ${chain} is not supported.`);
   }
 }
 
-// ------------------ BTC / LTC Withdrawals (simulation) ------------------
-export async function withdrawBTC(userWalletRef: firestore.DocumentReference, to: string, amount: number) {
-  const walletSnap = await userWalletRef.get();
-  const walletData = walletSnap.data() as UserWallet;
-
-  // Simulate BTC fee (for example 0.0001 BTC)
-  const gasFee = 0.0001;
-  const serviceFee = gasFee;
-
-  const totalDeduct = amount + gasFee + serviceFee;
-  if ((walletData.balance || 0) < totalDeduct) throw new Error('Insufficient balance');
-
-  await userWalletRef.update({ balance: walletData.balance - totalDeduct });
-  p2pWallet.balance += serviceFee;
-
-  // TODO: Implement real BTC transaction using bitcoinjs-lib + node RPC
-  console.log(`BTC withdrawal simulated: ${amount} BTC to ${to}`);
-  return { txid: 'simulated-btc-txid' };
+async function getContractAddresses(crypto: CryptoCurrency) {
+    if (crypto !== 'USDT') return {};
+    const docRef = firestore.collection('_config').doc('contracts');
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
+        console.warn('Contract addresses configuration document (_config/contracts) not found.');
+        return {};
+    };
+    return docSnap.data()?.[crypto] || {};
 }
 
-export async function withdrawLTC(userWalletRef: firestore.DocumentReference, to: string, amount: number) {
-  const walletSnap = await userWalletRef.get();
-  const walletData = walletSnap.data() as UserWallet;
-
-  const gasFee = 0.001; // LTC example fee
-  const serviceFee = gasFee;
-
-  const totalDeduct = amount + gasFee + serviceFee;
-  if ((walletData.balance || 0) < totalDeduct) throw new Error('Insufficient balance');
-
-  await userWalletRef.update({ balance: walletData.balance - totalDeduct });
-  p2pWallet.balance += serviceFee;
-
-  console.log(`LTC withdrawal simulated: ${amount} LTC to ${to}`);
-  return { txid: 'simulated-ltc-txid' };
-}
-
-// ------------------ Generate Deposit Addresses ------------------
-export function getDepositAddress(userIndex: number, crypto: string) {
-  switch (crypto) {
-    case networks.ETH: return getETHDepositAddress(userIndex);
-    case networks.TRX: return getTRXDepositAddress(userIndex);
-    case networks.BTC: return getBTCDepositAddress(userIndex);
-    case networks.LTC: return getLTCDepositAddress(userIndex);
-    default: throw new Error('Unsupported crypto');
-  }import { firestore } from 'firebase-admin';
-  import { ethWallet, ethProvider, tron, getDepositAddress, networks } from './blockchain';
-  import { ethers } from 'ethers';
-  
-  // ---------------- Types ----------------
-  interface UserWallet {
-    balance: number;
-    lockedBalance: number;
-    crypto: string;
-  }
-  
-  // ---------------- Firestore References ----------------
-  function getUserWalletRef(userId: string, crypto: string) {
-    return firestore().collection('users').doc(userId).collection('wallets').doc(crypto);
-  }
-  
-  function getP2PWalletRef(crypto: string) {
-    return firestore().collection('admin_wallets').doc(crypto);
-  }
-  
-  // ---------------- Gas + Service Fee ----------------
-  const GAS_MULTIPLIER = Number(process.env.GAS_MULTIPLIER) || 2;
-  
-  // ---------------- Withdraw ETH / ERC20 ----------------
-  export async function withdrawETH(userId: string, amount: number, toAddress: string) {
-    const userWalletRef = getUserWalletRef(userId, 'ETH');
+// Main withdrawal function to be called from API
+export async function withdraw(userId: string, crypto: CryptoCurrency, chain: string, amount: number, address: string) {
+    const { totalFee } = await getEstimatedFee(crypto, chain);
+    const totalDeduction = amount + totalFee;
+    const walletId = `${crypto}-${chain}`;
+    const userWalletRef = firestore.collection('users').doc(userId).collection('wallets').doc(walletId);
+    
     const userWalletSnap = await userWalletRef.get();
-    if (!userWalletSnap.exists) throw new Error('User wallet not found');
+    if (!userWalletSnap.exists) throw new Error('User wallet not found for this crypto/chain combination.');
+    
     const userWallet = userWalletSnap.data() as UserWallet;
-  
-    // Estimate gas
-    const gasPrice = await ethProvider.getGasPrice();
-    const gasFee = parseFloat(ethers.formatEther(gasPrice * 21000)); // ETH gas estimate
-    const serviceFee = gasFee; // service fee = gas
-  
-    const totalDeduct = amount + gasFee + serviceFee;
-  
-    if (userWallet.balance < totalDeduct) throw new Error('Insufficient balance');
-  
-    // Deduct from user wallet
-    await userWalletRef.update({ balance: userWallet.balance - totalDeduct });
-  
-    // Add service fee to P2P account (internal)
-    const p2pWalletRef = getP2PWalletRef('ETH');
-    const p2pSnap = await p2pWalletRef.get();
-    const p2pWallet = p2pSnap.exists ? p2pSnap.data() as UserWallet : { balance: 0 };
-    await p2pWalletRef.set({ balance: (p2pWallet.balance || 0) + serviceFee }, { merge: true });
-  
-    // Send actual withdrawal on-chain (user amount + gas only)
-    const tx = await ethWallet.sendTransaction({
-      to: toAddress,
-      value: ethers.parseEther(amount.toString()),
-      gasPrice: gasPrice * 2
+    if ((userWallet.balance || 0) < totalDeduction) {
+        throw new Error(`Insufficient balance. Required: ${totalDeduction.toFixed(8)} ${crypto}, but only ${userWallet.balance.toFixed(8)} ${crypto} is available.`);
+    }
+    
+    const txHash = await executeOnChainWithdrawal(crypto, chain, amount, address);
+
+    if (!txHash) {
+        throw new Error("On-chain transaction failed to return a transaction hash.");
+    }
+    
+    const withdrawalRef = firestore.collection('users').doc(userId).collection('withdrawals').doc();
+    const userDocRef = firestore.collection('users').doc(userId);
+
+    await firestore.runTransaction(async (transaction) => {
+        const walletSnap = await transaction.get(userWalletRef);
+        const userSnap = await transaction.get(userDocRef);
+        
+        const currentWallet = walletSnap.data() as UserWallet;
+        const currentUser = userSnap.data() as any;
+
+        transaction.update(userWalletRef, {
+            balance: (currentWallet.balance || 0) - totalDeduction,
+            updatedAt: new Date().toISOString(),
+        });
+        
+        transaction.set(withdrawalRef, {
+            id: withdrawalRef.id,
+            userId: userId,
+            userDisplayName: currentUser.userId || 'N/A',
+            crypto,
+            chain,
+            address,
+            amount: amount,
+            fee: totalFee,
+            status: 'approved',
+            txHash: txHash,
+            createdAt: new Date().toISOString(),
+        });
     });
-  
-    console.log('ETH Withdrawal Tx:', tx.hash);
-    return tx.hash;
-  }
-  
-  // ---------------- Withdraw TRC20 ----------------
-  export async function withdrawTRC20(userId: string, amount: number, toAddress: string, tokenContract: string) {
-    const userWalletRef = getUserWalletRef(userId, 'USDT');
-    const userWalletSnap = await userWalletRef.get();
-    if (!userWalletSnap.exists) throw new Error('User wallet not found');
-    const userWallet = userWalletSnap.data() as UserWallet;
-  
-    const contract = await tron.contract().at(tokenContract);
-    const feeLimit = 100_000_000; // energy/gas
-    const serviceFee = feeLimit;
-  
-    const totalDeduct = amount + feeLimit + serviceFee;
-    if (userWallet.balance < totalDeduct) throw new Error('Insufficient balance');
-  
-    // Deduct from user wallet
-    await userWalletRef.update({ balance: userWallet.balance - totalDeduct });
-  
-    // Add service fee to P2P account
-    const p2pWalletRef = getP2PWalletRef('USDT');
-    const p2pSnap = await p2pWalletRef.get();
-    const p2pWallet = p2pSnap.exists ? p2pSnap.data() as UserWallet : { balance: 0 };
-    await p2pWalletRef.set({ balance: (p2pWallet.balance || 0) + serviceFee }, { merge: true });
-  
-    // Send on-chain
-    const tx = await contract.transfer(toAddress, amount).send({ feeLimit: feeLimit * GAS_MULTIPLIER });
-    console.log('TRC20 Withdrawal Tx:', tx);
-    return tx;
-  }
-  
-  // ---------------- Withdraw BTC / LTC (Simulation) ----------------
-  export async function withdrawBTC(userId: string, amount: number, toAddress: string) {
-    console.log(`BTC withdrawal simulated: ${amount} to ${toAddress}`);
-    // TODO: integrate bitcoinjs-lib / full node to send BTC
-  }
-  
-  export async function withdrawLTC(userId: string, amount: number, toAddress: string) {
-    console.log(`LTC withdrawal simulated: ${amount} to ${toAddress}`);
-    // TODO: integrate litecoin-lib / full node to send LTC
-  }
+
+    return txHash;
+}
+
+// Fee estimation logic
+async function getPriceInUsd(symbol: string): Promise<number> {
+    if (symbol === 'USDT') return 1.0;
+
+    const coingeckoIds: Record<string, string> = {
+        ETH: 'ethereum',
+        BNB: 'binancecoin',
+        TRX: 'tron',
+        BTC: 'bitcoin',
+        LTC: 'litecoin',
+        MATIC: 'matic-network',
+    };
+    const id = coingeckoIds[symbol];
+    if (!id) throw new Error(`Unsupported symbol for price lookup: ${symbol}`);
+    
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`);
+    if (!res.ok) throw new Error(`Failed to fetch price for ${symbol}`);
+    const data = await res.json();
+    return data[id]?.usd || 0;
+}
+
+export async function getEstimatedFee(crypto: CryptoCurrency, chain: string): Promise<{ gasFee: number; serviceFee: number; totalFee: number }> {
+    const { fee: nativeFeeAmount, nativeSymbol } = await estimateGasFeeNative(chain);
+
+    if (crypto === nativeSymbol) {
+        const gasFee = nativeFeeAmount;
+        const serviceFee = gasFee;
+        return { gasFee, serviceFee, totalFee: gasFee + serviceFee };
+    }
+
+    const nativeTokenPriceUsd = await getPriceInUsd(nativeSymbol);
+    const withdrawalTokenPriceUsd = await getPriceInUsd(crypto);
+
+    if (withdrawalTokenPriceUsd === 0) {
+        throw new Error(`Could not determine price for ${crypto} to calculate fee.`);
+    }
+
+    const feeInUsd = nativeFeeAmount * nativeTokenPriceUsd;
+    const gasFeeInWithdrawalCrypto = feeInUsd / withdrawalTokenPriceUsd;
+    const serviceFee = gasFeeInWithdrawalCrypto;
+
+    return { gasFee: gasFeeInWithdrawalCrypto, serviceFee, totalFee: gasFeeInWithdrawalCrypto * 2 };
 }

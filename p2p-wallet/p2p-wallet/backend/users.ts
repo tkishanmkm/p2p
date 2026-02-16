@@ -1,39 +1,63 @@
-import { firestore } from 'firebase-admin';
-import { getDepositAddress, networks } from './blockchain';
+import { firestore } from './firebase-admin';
+import { getEVMAddress, getTRONAddress } from './blockchain';
 
-// ---------------- Types ----------------
-interface UserWallet {
-  crypto: string;
-  balance: number;
-  lockedBalance: number;
-  depositAddress: string;
-}
-
-// ---------------- Firestore References ----------------
-function getUserWalletRef(userId: string, crypto: string) {
-  return firestore().collection('users').doc(userId).collection('wallets').doc(crypto);
-}
-
-// ---------------- Create Wallets for a New User ----------------
 export async function createUserWallets(userId: string) {
-  const supportedCoins = ['BTC', 'ETH', 'LTC', 'USDT', 'BSC']; // add more if needed
 
-  for (let i = 0; i < supportedCoins.length; i++) {
-    const crypto = supportedCoins[i];
-    const walletRef = getUserWalletRef(userId, crypto);
+  // Step 1: Assign unique index
+  const counterRef = firestore.collection("system").doc("walletCounter");
 
-    // Generate deposit address based on user index
-    const depositAddress = getDepositAddress(i, networks[crypto as keyof typeof networks]);
+  const index = await firestore.runTransaction(async (tx) => {
+    const doc = await tx.get(counterRef);
+    const current = doc.exists ? (doc.data()!.value || 0) : 0;
+    tx.set(counterRef, { value: current + 1 });
+    return current;
+  });
 
-    // Initialize wallet
-    const walletData: UserWallet = {
-      crypto,
-      balance: 0,
-      lockedBalance: 0,
-      depositAddress
-    };
+  // Save index to user
+  await firestore.collection("users").doc(userId).update({
+    walletIndex: index
+  });
 
-    await walletRef.set(walletData);
-    console.log(`Wallet created for user ${userId} - ${crypto}: ${depositAddress}`);
+  const walletsRef = firestore
+    .collection("users")
+    .doc(userId)
+    .collection("wallets");
+
+  const evmAddress = getEVMAddress(index);
+  const tronAddress = getTRONAddress(index);
+
+  const walletsToCreate = [
+    { coin: 'ETH', chain: 'ERC20', address: evmAddress },
+    { coin: 'BNB', chain: 'BEP20', address: evmAddress },
+    { coin: 'MATIC', chain: 'Polygon', address: evmAddress },
+    { coin: 'USDT', chain: 'ERC20', address: evmAddress },
+    { coin: 'USDT', chain: 'BEP20', address: evmAddress },
+    { coin: 'USDT', chain: 'Polygon', address: evmAddress },
+    { coin: 'USDT', chain: 'Arbitrum', address: evmAddress },
+    { coin: 'USDT', chain: 'Base', address: evmAddress },
+    { coin: 'TRX', chain: 'TRC20', address: tronAddress },
+    { coin: 'USDT', chain: 'TRC20', address: tronAddress },
+    // BTC/LTC are optional and need different logic
+    // { coin: 'BTC', chain: 'Bitcoin', address: '...'},
+    // { coin: 'LTC', chain: 'Litecoin', address: '...'}
+  ];
+
+  const batch = firestore.batch();
+  for (const wallet of walletsToCreate) {
+      const walletId = `${wallet.coin}-${wallet.chain}`;
+      const docRef = walletsRef.doc(walletId);
+      batch.set(docRef, {
+          id: walletId,
+          userId,
+          crypto: wallet.coin,
+          chain: wallet.chain,
+          depositAddress: wallet.address,
+          balance: 0,
+          lockedBalance: 0,
+          updatedAt: new Date().toISOString()
+      });
   }
+
+  await batch.commit();
+  console.log(`Wallets created for user ${userId} with index ${index}`);
 }

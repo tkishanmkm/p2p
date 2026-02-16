@@ -1,74 +1,96 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { ethers } from 'ethers';
+import { ethers, HDNodeWallet } from 'ethers';
 import TronWeb from 'tronweb';
-import bip39 from 'bip39';
-import hdkey from 'ethereumjs-wallet/hdkey';
-import * as bip32 from 'bip32';
-import * as bitcoin from 'bitcoinjs-lib';
 
-// ------------------ CONFIG ------------------
-const seedPhrase = process.env.ADMIN_MASTER_SEED!;
-const INFURA_KEY = process.env.INFURA_API_KEY!;
-const TRONGRID_KEY = process.env.TRONGRID_API_KEY!;
-const GAS_MULTIPLIER = Number(process.env.GAS_MULTIPLIER || 2);
+// --- CONFIGURATION ---
+const seedPhrase = process.env.ADMIN_MASTER_SEED;
+const INFURA_KEY = process.env.INFURA_API_KEY;
+const TRONGRID_API_KEY = process.env.TRONGRID_API_KEY;
+const BSC_RPC_URL = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/';
+const POLYGON_RPC_URL = process.env.POLYGON_RPC_URL;
+const ARBITRUM_RPC_URL = process.env.ARBITRUM_RPC_URL;
+const BASE_RPC_URL = process.env.BASE_RPC_URL;
 
-// ------------------ ETH / ERC20 / BSC ------------------
-export const ethProvider = new ethers.JsonRpcProvider(`https://mainnet.infura.io/v3/${INFURA_KEY}`);
-const hdWallet = hdkey.fromMasterSeed(bip39.mnemonicToSeedSync(seedPhrase));
-export const ethWallet = new ethers.Wallet(
-  hdWallet.derivePath(`m/44'/60'/0'/0/0`).getWallet().getPrivateKey(),
-  ethProvider
-);
 
-export function getETHDepositAddress(index = 0) {
-  const wallet = hdWallet.derivePath(`m/44'/60'/0'/0/${index}`).getWallet();
-  return '0x' + wallet.getAddress().toString('hex');
+if (!seedPhrase) {
+    console.warn("CRITICAL: ADMIN_MASTER_SEED environment variable not set. On-chain operations will fail.");
 }
 
-// ------------------ TRON / TRC20 ------------------
-const tronPrivKey = hdWallet.derivePath(`m/44'/195'/0'/0/0`).getWallet().getPrivateKey().toString('hex');
+// --- PROVIDERS SETUP ---
+export const ethProvider = new ethers.JsonRpcProvider(`https://mainnet.infura.io/v3/${INFURA_KEY}`);
+export const bscProvider = new ethers.JsonRpcProvider(BSC_RPC_URL);
+export const polygonProvider = new ethers.JsonRpcProvider(POLYGON_RPC_URL);
+export const arbitrumProvider = new ethers.JsonRpcProvider(ARBITRUM_RPC_URL);
+export const baseProvider = new ethers.JsonRpcProvider(BASE_RPC_URL);
+
 export const tron = new TronWeb({
   fullHost: 'https://api.trongrid.io',
-  privateKey: tronPrivKey
+  headers: { "TRON-PRO-API-KEY": TRONGRID_API_KEY },
 });
 
-export function getTRXDepositAddress(index = 0) {
-  const wallet = hdWallet.derivePath(`m/44'/195'/0'/0/${index}`).getWallet();
-  return TronWeb.address.fromPrivateKey(wallet.getPrivateKey().toString('hex'));
+// --- WALLET INITIALIZATION (LAZY LOADED) ---
+let evmWallet: ethers.Wallet;
+
+async function initializeWallets() {
+  if (evmWallet || !seedPhrase) return; // Initialize only once
+
+  const hdNode = HDNodeWallet.fromPhrase(seedPhrase);
+  const ethWalletNode = hdNode.derivePath(`m/44'/60'/0'/0/0`);
+  evmWallet = new ethers.Wallet(ethWalletNode.privateKey);
+  
+  const tronWalletNode = HDNodeWallet.fromPhrase(seedPhrase).derivePath(`m/44'/195'/0'/0/0`);
+  if (tronWalletNode.privateKey) {
+    tron.setPrivateKey(tronWalletNode.privateKey.slice(2)); // remove 0x
+  }
 }
 
-// ------------------ BTC ------------------
-const btcRoot = bip32.fromSeed(bip39.mnemonicToSeedSync(seedPhrase), bitcoin.networks.bitcoin);
-export function getBTCDepositAddress(index = 0) {
-  const child = btcRoot.derivePath(`m/44'/0'/0'/0/${index}`);
-  const { address } = bitcoin.payments.p2pkh({ pubkey: child.publicKey });
-  return address!;
-}
-
-// ------------------ LTC ------------------
-const litecoinNetwork = {
-  messagePrefix: '\x19Litecoin Signed Message:\n',
-  bech32: 'ltc',
-  bip32: { public: 0x019da462, private: 0x019d9cfe },
-  pubKeyHash: 0x30,
-  scriptHash: 0x32,
-  wif: 0xb0
+// --- EXPORTED GETTERS ---
+export const getEvmWallet = async (chain: string) => { 
+    await initializeWallets();
+    switch (chain) {
+        case 'ERC20':
+        case 'ETH':
+            return evmWallet.connect(ethProvider);
+        case 'BEP20':
+        case 'BSC':
+            return evmWallet.connect(bscProvider);
+        case 'Polygon':
+        case 'MATIC':
+            return evmWallet.connect(polygonProvider);
+        case 'Arbitrum':
+            return evmWallet.connect(arbitrumProvider);
+        case 'Base':
+            return evmWallet.connect(baseProvider);
+        default:
+            throw new Error(`Unsupported EVM chain for wallet: ${chain}`);
+    }
 };
-const ltcRoot = bip32.fromSeed(bip39.mnemonicToSeedSync(seedPhrase), litecoinNetwork);
-export function getLTCDepositAddress(index = 0) {
-  const child = ltcRoot.derivePath(`m/44'/2'/0'/0/${index}`);
-  const { address } = bitcoin.payments.p2pkh({ pubkey: child.publicKey, network: litecoinNetwork });
-  return address!;
+
+// --- ADDRESS DERIVATION FUNCTIONS ---
+export function getEVMAddress(index: number): string {
+  if (!seedPhrase) throw new Error("Admin seed phrase is not configured.");
+  const hdNode = HDNodeWallet.fromPhrase(seedPhrase);
+  const child = hdNode.derivePath(`m/44'/60'/0'/0/${index}`);
+  return child.address;
 }
 
-// ------------------ UTILITY ------------------
+export function getTRONAddress(index: number): string {
+    if (!seedPhrase) throw new Error("Admin seed phrase is not configured.");
+    const wallet = HDNodeWallet.fromPhrase(seedPhrase).derivePath(`m/44'/195'/0'/0/index`);
+    if(!wallet.privateKey) throw new Error("Could not derive Tron private key");
+    return TronWeb.address.fromPrivateKey(wallet.privateKey.slice(2));
+}
+
+// --- UTILITY ---
 export const networks = {
-  ETH: 'ETH',
-  TRX: 'TRX',
-  BTC: 'BTC',
-  LTC: 'LTC'
+    ETH: 'ETH',
+    TRX: 'TRX',
+    BTC: 'BTC',
+    LTC: 'LTC',
+    BSC: 'BSC',
+    POLYGON: 'POLYGON',
+    ARBITRUM: 'ARBITRUM',
+    BASE: 'BASE'
 };
-
-export const defaultGasMultiplier = GAS_MULTIPLIER;

@@ -1,43 +1,35 @@
 import express from 'express';
-import { withdrawETH, withdrawTRC20 } from '../wallet';
-import { firestore } from '../firebase-admin';
+import { withdraw } from '../wallet';
+import { auth } from '../firebase-admin';
 import cors from 'cors';
+import { CryptoCurrency } from '../types';
 
 const router = express.Router();
 router.use(cors());
 
 router.post('/', async (req, res) => {
-  const { userId, crypto, amount, address } = req.body;
+  const { userId, crypto, chain, amount, address, idToken } = req.body;
 
-  if (!userId || !crypto || !amount || !address) {
-    return res.status(400).json({ error: 'Missing parameters' });
+  if (!idToken) {
+    return res.status(401).json({ error: 'Unauthorized: Missing ID token.' });
+  }
+
+  if (!userId || !crypto || !chain || !amount || !address) {
+    return res.status(400).json({ error: 'Missing parameters: userId, crypto, chain, amount, and address are required.' });
   }
 
   try {
-    // Fetch user wallet from Firestore
-    const walletDoc = await firestore.collection('users').doc(userId).collection('wallets').doc(crypto).get();
-    if (!walletDoc.exists) return res.status(404).json({ error: 'Wallet not found' });
-
-    const userWallet = walletDoc.data();
-
-    let txHash;
-    if (crypto === 'ETH' || crypto === 'USDT' || crypto === 'BSC') {
-      txHash = await withdrawETH(userWallet, address, amount);
-    } else if (crypto === 'TRC20') {
-      txHash = await withdrawTRC20(userWallet, address, amount, 'TRON_USDT_CONTRACT_ADDRESS');
-    } else {
-      return res.status(400).json({ error: 'Unsupported crypto' });
+    const decodedToken = await auth.verifyIdToken(idToken);
+    if (decodedToken.uid !== userId) {
+        return res.status(403).json({ error: 'Forbidden: ID token does not match user ID.' });
     }
-
-    // Update Firestore wallet after withdrawal
-    await firestore.collection('users').doc(userId).collection('wallets').doc(crypto).update({
-      balance: userWallet.balance,
-    });
+    
+    const txHash = await withdraw(userId, crypto as CryptoCurrency, chain, Number(amount), address);
 
     res.json({ success: true, txHash });
   } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error('Withdrawal API error:', err);
+    res.status(500).json({ error: err.message || 'An internal error occurred.' });
   }
 });
 
