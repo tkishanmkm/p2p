@@ -159,7 +159,7 @@ export default function AdminUsersPage() {
                     <TableRow key={user.id}>
                     <TableCell className="font-medium">
                         <Button variant="link" asChild className="p-0 h-auto">
-                            <Link href={`/adminnarayan/users/${user.id}`}>
+                            <Link href={`/adminnarayan/users/${user.userId}`}>
                                 <div>{user.userId}</div>
                                 {user.oldUserId && <div className="text-xs text-muted-foreground">(was {user.oldUserId})</div>}
                             </Link>
@@ -204,7 +204,7 @@ export default function AdminUsersPage() {
                             <div className="flex justify-between items-start">
                                 <div>
                                     <CardTitle>
-                                        <Link href={`/adminnarayan/users/${user.id}`} className="hover:underline">
+                                        <Link href={`/adminnarayan/users/${user.userId}`} className="hover:underline">
                                             {user.userId}
                                         </Link>
                                     </CardTitle>

@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, doc, orderBy, documentId, limit } from 'firebase/firestore';
 import type { User, P2PAd, Trade, UserWallet, Deposit, Withdrawal, AdminLog, Session } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -59,14 +58,16 @@ export default function AdminUserDetailPage() {
   const { firestore } = useFirebase();
   const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
   const [isAdjustBalanceOpen, setIsAdjustBalanceOpen] = useState(false);
-  const userId = Array.isArray(params.userId) ? params.userId[0] : params.userId;
+  const username = Array.isArray(params.username) ? params.username[0] : params.username;
   const { toast } = useToast();
 
-  const userRef = useMemoFirebase(
-    () => (firestore && userId ? doc(firestore, 'users', userId) : null),
-    [firestore, userId]
+  const userQuery = useMemoFirebase(
+    () => (firestore && username ? query(collection(firestore, 'users'), where('userId', '==', username), limit(1)) : null),
+    [firestore, username]
   );
-  const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
+  const { data: users, isLoading: isUserLoading } = useCollection<User>(userQuery);
+  const user = users?.[0];
+  const userId = user?.id;
   
   // Data states
   const [ads, setAds] = useState<P2PAd[] | null>(null);
@@ -227,7 +228,7 @@ export default function AdminUserDetailPage() {
   }
 
   if (!user) {
-    return <Card><CardHeader><CardTitle>User Not Found</CardTitle><CardDescription>The user with ID "{userId}" does not exist.</CardDescription></CardHeader></Card>;
+    return <Card><CardHeader><CardTitle>User Not Found</CardTitle><CardDescription>The user with ID "{username}" does not exist.</CardDescription></CardHeader></Card>;
   }
   
   const getCountryName = (code?: string) => code ? countries.find(c => c.code === code)?.name : 'N/A';
@@ -350,7 +351,7 @@ export default function AdminUserDetailPage() {
                                             <Avatar className="h-8 w-8">
                                                 {bu.photoURL ? <AvatarImage src={bu.photoURL} alt={bu.userId} /> : <AvatarFallback><DefaultAvatar /></AvatarFallback>}
                                             </Avatar>
-                                            <Link href={`/adminnarayan/users/${bu.id}`} className="font-medium hover:underline">{bu.userId}</Link>
+                                            <Link href={`/adminnarayan/users/${bu.userId}`} className="font-medium hover:underline">{bu.userId}</Link>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">

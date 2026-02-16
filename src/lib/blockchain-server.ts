@@ -1,7 +1,4 @@
 
-import dotenv from 'dotenv';
-dotenv.config();
-
 import { ethers } from 'ethers';
 import TronWeb from 'tronweb';
 import bip39 from 'bip39';
