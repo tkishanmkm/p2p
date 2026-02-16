@@ -16,9 +16,8 @@ import {
   getDocs,
   setDoc,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Deposit, Withdrawal } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser } from './types';
 import { add } from 'date-fns';
-import type { User as AuthUser } from 'firebase/auth';
 import { toDate } from '@/lib/utils';
 import { SUPPORTED_CRYPTOS } from './constants';
 
@@ -473,74 +472,6 @@ export async function cancelTrade(db: Firestore, tradeId: string, reason: string
   });
 }
 
-export async function requestWithdrawal(
-  db: Firestore,
-  user: AuthUser,
-  values: Omit<Withdrawal, 'id' | 'createdAt' | 'status' | 'userId' | 'userDisplayName'>
-): Promise<void> {
-  const walletRef = doc(db, "users", user.uid, "wallets", values.crypto);
-
-  await runTransaction(db, async (transaction) => {
-    const walletDoc = await transaction.get(walletRef);
-    if (!walletDoc.exists()) {
-      throw new Error("You do not have a wallet for this currency.");
-    }
-    const wallet = walletDoc.data() as UserWallet;
-    if ((wallet.balance || 0) < values.amount) {
-      throw new Error("Insufficient available balance.");
-    }
-
-    // Move funds from available to locked
-    transaction.update(walletRef, {
-      balance: (wallet.balance || 0) - values.amount,
-      lockedBalance: (wallet.lockedBalance || 0) + values.amount,
-      updatedAt: new Date().toISOString(),
-    });
-
-    // Create withdrawal request
-    const withdrawalCollectionRef = collection(db, "users", user.uid, "withdrawals");
-    const newWithdrawalRef = doc(withdrawalCollectionRef); 
-
-    const newWithdrawalData = {
-      userId: user.uid,
-      userDisplayName: user.displayName || 'Unknown',
-      crypto: values.crypto as CryptoCurrency,
-      chain: values.chain,
-      address: values.address,
-      amount: values.amount,
-      status: 'pending' as const,
-      createdAt: new Date().toISOString(),
-    };
-    
-    transaction.set(newWithdrawalRef, newWithdrawalData);
-  });
-}
-
-export async function cancelWithdrawal(db: Firestore, withdrawal: Withdrawal): Promise<void> {
-    const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
-    const walletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
-
-    await runTransaction(db, async (transaction) => {
-        const walletDoc = await transaction.get(walletRef);
-        if (!walletDoc.exists()) throw new Error("Wallet not found.");
-        
-        const wallet = walletDoc.data() as UserWallet;
-        if ((wallet.lockedBalance || 0) < withdrawal.amount) {
-            throw new Error("Insufficient locked balance to return.");
-        }
-
-        // Return funds from locked to available balance
-        transaction.update(walletRef, {
-            balance: (wallet.balance || 0) + withdrawal.amount,
-            lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
-            updatedAt: new Date().toISOString(),
-        });
-
-        // Update withdrawal status
-        transaction.update(withdrawalRef, { status: 'cancelled' });
-    });
-}
-
 export async function sendCoinToUser(
   db: Firestore,
   sender: { uid: string; displayName: string | null },
@@ -638,61 +569,4 @@ export async function sendCoinToUser(
   });
 
   return transferId;
-}
-
-/**
- * Creates a deposit request document.
- */
-export async function createDepositRequest(
-  db: Firestore,
-  user: AuthUser,
-  values: Omit<Deposit, 'id' | 'createdAt' | 'status' | 'userId' | 'userDisplayName' | 'timerEnd'>
-): Promise<Deposit> {
-  const depositCollectionRef = collection(db, "deposits");
-  const newDepositRef = doc(depositCollectionRef);
-  
-  const depositData: Omit<Deposit, 'id'> = {
-    userId: user.uid,
-    userDisplayName: user.displayName || 'Unknown',
-    crypto: values.crypto,
-    chain: values.chain,
-    amount: values.amount,
-    status: 'pending',
-    walletAddress: values.walletAddress,
-    qrCodeUrl: values.qrCodeUrl,
-    timerEnd: add(new Date(), { hours: 1 }).toISOString(), // e.g., 1 hour expiry
-    createdAt: new Date().toISOString(),
-  };
-
-  await setDoc(newDepositRef, depositData);
-  
-  return { id: newDepositRef.id, ...depositData };
-}
-
-/**
- * Allows a user to confirm they have made a deposit by providing a transaction ID.
- * This moves the deposit request from 'pending' to 'awaiting_confirmation'.
- */
-export async function confirmDeposit(db: Firestore, depositId: string, txId: string): Promise<void> {
-  if (!txId.trim()) {
-    throw new Error("A transaction ID is required to confirm the deposit.");
-  }
-  
-  const depositRef = doc(db, "deposits", depositId);
-
-  await runTransaction(db, async (transaction) => {
-    const depositDoc = await transaction.get(depositRef);
-    if (!depositDoc.exists()) {
-      throw new Error("Deposit request not found.");
-    }
-    const depositData = depositDoc.data();
-    if (depositData.status !== 'pending') {
-      throw new Error(`Cannot confirm a deposit that is in the '${depositData.status}' state.`);
-    }
-
-    transaction.update(depositRef, {
-      status: "awaiting_confirmation",
-      txId: txId,
-    });
-  });
 }

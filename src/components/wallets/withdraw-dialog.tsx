@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import axios from 'axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
@@ -12,13 +14,11 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { UserWallet, CryptoCurrency } from "@/lib/types";
 import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { requestWithdrawal } from '@/lib/wallet';
 import { CHAINS } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 const withdrawSchema = z.object({
-  crypto: z.string().min(1, "Please select a cryptocurrency."),
   chain: z.string().min(1, "Please select a network/chain."),
   address: z.string().min(1, "Recipient address is required."),
   amount: z.coerce.number().positive("Amount must be a positive number."),
@@ -34,39 +34,33 @@ interface WithdrawDialogProps {
 }
 
 export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto }: WithdrawDialogProps) {
-  const { firestore, user } = useFirebase();
+  const { user } = useFirebase();
   const { toast } = useToast();
   const [availableChains, setAvailableChains] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<WithdrawFormValues>({
     resolver: zodResolver(withdrawSchema),
-    defaultValues: {
-      crypto: '',
-      chain: '',
-      address: '',
-    }
   });
 
-  const handleCryptoChange = useCallback((value: CryptoCurrency) => {
-    form.setValue('crypto', value);
-    setAvailableChains(CHAINS[value] || []);
-    form.setValue('chain', ''); // Reset chain on crypto change
-    form.clearErrors('amount'); // Clear amount error
-  }, [form]);
+  const selectedWallet = userWallets.find(w => w.crypto === selectedCrypto);
 
   useEffect(() => {
     if (open && selectedCrypto) {
-      handleCryptoChange(selectedCrypto);
+      form.reset({
+        chain: '',
+        address: '',
+        amount: undefined,
+      });
+      setAvailableChains(CHAINS[selectedCrypto] || []);
     }
-  }, [open, selectedCrypto, handleCryptoChange]);
-
-
-  const currentSelectedCrypto = form.watch('crypto');
-  const selectedWallet = userWallets.find(w => w.crypto === currentSelectedCrypto);
+  }, [open, selectedCrypto, form]);
 
   async function onSubmit(values: WithdrawFormValues) {
-    if (!firestore || !user) return;
+    if (!user || !selectedCrypto) {
+        toast({ variant: 'destructive', title: 'Error', description: 'User or crypto not selected.' });
+        return;
+    }
 
     if (selectedWallet && values.amount > selectedWallet.balance) {
       form.setError("amount", {
@@ -78,14 +72,26 @@ export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto
     
     setIsLoading(true);
     try {
-      await requestWithdrawal(firestore, user, values);
-      toast({
-        title: "Withdrawal Requested",
-        description: "Your request has been submitted for approval.",
+      // This assumes a backend API endpoint is available at /api/withdraw
+      const res = await axios.post('/api/withdraw', { 
+          userId: user.uid, 
+          crypto: selectedCrypto, 
+          amount: values.amount, 
+          address: values.address 
       });
-      onOpenChange(false);
+      
+      if (res.data.success) {
+        toast({
+            title: "Withdrawal Initiated",
+            description: `Your withdrawal is processing. TxID: ${res.data.txHash}`,
+        });
+        onOpenChange(false);
+      } else {
+          throw new Error(res.data.error || 'Unknown backend error.');
+      }
     } catch (error: any) {
-      toast({ variant: 'destructive', title: "Withdrawal Failed", description: error.message });
+      const errorMessage = error.response?.data?.error || error.message || "An unknown error occurred.";
+      toast({ variant: 'destructive', title: "Withdrawal Failed", description: errorMessage });
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +99,7 @@ export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      form.reset({ crypto: '', chain: '', address: '', amount: undefined });
+      form.reset();
     }
     onOpenChange(isOpen);
   };
@@ -102,37 +108,11 @@ export function WithdrawDialog({ open, onOpenChange, userWallets, selectedCrypto
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Request a Withdrawal</DialogTitle>
-          <DialogDescription>Your request will be reviewed by an admin. Funds will be locked until approved or declined.</DialogDescription>
+          <DialogTitle>Withdraw {selectedCrypto}</DialogTitle>
+          <DialogDescription>Your request will be processed by the backend wallet system.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                    control={form.control}
-                    name="crypto"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Coin</FormLabel>
-                        <Select onValueChange={(v) => handleCryptoChange(v as CryptoCurrency)} value={field.value}>
-                            <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select asset" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {userWallets.map(w => (
-                                <SelectItem key={w.crypto} value={w.crypto}>
-                                    <div className="flex justify-between w-full">
-                                        <span>{w.crypto}</span>
-                                        <span className="text-muted-foreground ml-4">{w.balance.toFixed(6)} available</span>
-                                    </div>
-                                </SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
                 <FormField
                     control={form.control}
                     name="chain"
