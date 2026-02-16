@@ -1,4 +1,5 @@
 
+
 'use client';
 import {
   Firestore,
@@ -666,4 +667,32 @@ export async function createDepositRequest(
   await setDoc(newDepositRef, depositData);
   
   return { id: newDepositRef.id, ...depositData };
+}
+
+/**
+ * Allows a user to confirm they have made a deposit by providing a transaction ID.
+ * This moves the deposit request from 'pending' to 'awaiting_confirmation'.
+ */
+export async function confirmDeposit(db: Firestore, depositId: string, txId: string): Promise<void> {
+  if (!txId.trim()) {
+    throw new Error("A transaction ID is required to confirm the deposit.");
+  }
+  
+  const depositRef = doc(db, "deposits", depositId);
+
+  await runTransaction(db, async (transaction) => {
+    const depositDoc = await transaction.get(depositRef);
+    if (!depositDoc.exists()) {
+      throw new Error("Deposit request not found.");
+    }
+    const depositData = depositDoc.data();
+    if (depositData.status !== 'pending') {
+      throw new Error(`Cannot confirm a deposit that is in the '${depositData.status}' state.`);
+    }
+
+    transaction.update(depositRef, {
+      status: "awaiting_confirmation",
+      txId: txId,
+    });
+  });
 }

@@ -284,13 +284,12 @@ export default function AdminUserDetailPage() {
                         <DetailItem icon={<KeyRound size={20} />} label="Security Answer" value={user.securityAnswer} />
                      </div>
                 </SectionCard>
-                 <SectionCard title="Security & Wallet">
+                 <SectionCard title="Security">
                     <div className="space-y-4">
-                        <DetailItem icon={<ShieldCheck size={20} />} label="12-Word Seed Phrase" value={user.seedPhrase} />
                         <Alert variant="destructive">
                           <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>Highly Sensitive Information</AlertTitle>
-                          <AlertDescription>Do not share this seed phrase with anyone. It provides full access to the user's wallet.</AlertDescription>
+                          <AlertTitle>Seed Phrase Information</AlertTitle>
+                          <AlertDescription>The user's 12-word seed phrase is stored but is not displayed here for security reasons. Access to this key should be tightly controlled and only used for emergency recovery through secure backend procedures.</AlertDescription>
                         </Alert>
                     </div>
                 </SectionCard>
