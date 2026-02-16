@@ -2,7 +2,7 @@
 import * as functions from "firebase-functions";
 
 export const ERC20_USDT_CONTRACT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
-export const TRC20_USDT_CONTRACT = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj";
+export const TRC20_USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 
 export const ETH_CONFIRMATIONS = 12;
 export const TRON_CONFIRMATIONS = 20;
