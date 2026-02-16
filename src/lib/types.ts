@@ -60,6 +60,7 @@ export type Withdrawal = {
   chain: string;
   address: string;
   amount: number;
+  fee?: number; // Total transaction fee
   status: 'pending' | 'approved' | 'declined' | 'cancelled';
   txHash?: string;
   adminId?: string;

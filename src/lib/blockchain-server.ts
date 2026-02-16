@@ -88,3 +88,52 @@ export async function getDepositAddress(userIndex: number, crypto: string, chain
       throw new Error(`Unsupported crypto/chain for address generation: ${crypto}/${chain}`);
   }
 }
+
+export async function estimateGasFeeNative(chain: string): Promise<{ fee: number; nativeSymbol: 'ETH' | 'BNB' | 'TRX' | 'BTC' | 'LTC' }> {
+  await initializeWallets();
+  try {
+    switch (chain) {
+      case 'ERC20': {
+        const provider = ethProvider;
+        const feeData = await provider.getFeeData();
+        const gasPrice = feeData.gasPrice || ethers.parseUnits('5', 'gwei');
+        const gasLimit = BigInt(65000);
+        const gasCost = gasLimit * gasPrice;
+        return { fee: parseFloat(ethers.formatEther(gasCost)), nativeSymbol: 'ETH' };
+      }
+      case 'BEP20': {
+        const provider = bscProvider;
+        const feeData = await provider.getFeeData();
+        const gasPrice = feeData.gasPrice || ethers.parseUnits('3', 'gwei');
+        const gasLimit = BigInt(65000);
+        const gasCost = gasLimit * gasPrice;
+        return { fee: parseFloat(ethers.formatEther(gasCost)), nativeSymbol: 'BNB' };
+      }
+      case 'TRC20':
+        return { fee: 30, nativeSymbol: 'TRX' };
+      case 'Bitcoin':
+        return { fee: 0.0001, nativeSymbol: 'BTC' };
+      case 'Litecoin':
+        return { fee: 0.001, nativeSymbol: 'LTC' };
+      case 'Native_ETH': {
+        const provider = ethProvider;
+        const feeData = await provider.getFeeData();
+        const gasPrice = feeData.gasPrice || ethers.parseUnits('5', 'gwei');
+        const gasLimit = BigInt(21000);
+        const gasCost = gasLimit * gasPrice;
+        return { fee: parseFloat(ethers.formatEther(gasCost)), nativeSymbol: 'ETH' };
+      }
+      default:
+        throw new Error(`Unsupported chain for fee estimation: ${chain}`);
+    }
+  } catch (error) {
+    console.error(`Failed to estimate gas for ${chain}:`, error);
+    if (chain === 'ERC20') return { fee: 0.001, nativeSymbol: 'ETH' };
+    if (chain === 'BEP20') return { fee: 0.005, nativeSymbol: 'BNB' };
+    if (chain === 'TRC20') return { fee: 30, nativeSymbol: 'TRX' };
+    if (chain === 'Bitcoin') return { fee: 0.0001, nativeSymbol: 'BTC' };
+    if (chain === 'Litecoin') return { fee: 0.001, nativeSymbol: 'LTC' };
+    if (chain === 'Native_ETH') return { fee: 0.0005, nativeSymbol: 'ETH' };
+    throw new Error('Fee estimation failed with fallback.');
+  }
+}
