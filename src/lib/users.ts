@@ -1,5 +1,5 @@
 'use client';
-import { Firestore, doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc, writeBatch, limit, getDoc } from 'firebase/firestore';
+import { Firestore, doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, addDoc, writeBatch, limit, getDoc, setDoc } from 'firebase/firestore';
 import type { User as AuthUser } from 'firebase/auth';
 import { countries } from './countries';
 import type { Trade } from './types';
@@ -89,15 +89,10 @@ export async function unblockUser(db: Firestore, currentUserId: string, targetUs
  */
 export async function createUserSession(db: Firestore, user: AuthUser): Promise<string | undefined> {
   if (!user) return;
-  
-  const batch = writeBatch(db);
 
   // 1. Create session document
-  const sessionsCollectionRef = collection(db, "users", user.uid, "sessions");
-  const sessionDocRef = doc(sessionsCollectionRef);
-  
+  const sessionDocRef = doc(collection(db, "users", user.uid, "sessions"));
   const simulatedIp = `192.168.1.${Math.floor(Math.random() * 254) + 1}`;
-
   const sessionData = {
     userId: user.uid,
     userAgent: navigator.userAgent,
@@ -105,17 +100,17 @@ export async function createUserSession(db: Firestore, user: AuthUser): Promise<
     lastLogin: new Date().toISOString(),
     isActive: true,
   };
-  batch.set(sessionDocRef, sessionData);
+  await setDoc(sessionDocRef, sessionData);
 
-  // 2. Update user's IP-based country to simulate real-time detection
+  // 2. Update user's IP-based country using set with merge to avoid "No document to update" error
   const userDocRef = doc(db, "users", user.uid);
   const randomIpCountry = countries[Math.floor(Math.random() * countries.length)].code;
-  batch.update(userDocRef, { ipBasedCountry: randomIpCountry });
-
-  await batch.commit();
+  
+  await setDoc(userDocRef, { ipBasedCountry: randomIpCountry }, { merge: true });
 
   return sessionDocRef.id;
 }
+
 
 /**
  * Logs out specified sessions by marking them as inactive.

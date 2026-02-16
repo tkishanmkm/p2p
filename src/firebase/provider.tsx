@@ -2,7 +2,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, updateDoc } from 'firebase/firestore';
+import { Firestore, doc, setDoc } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
@@ -109,7 +109,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       const userDocRef = doc(firestore, 'users', userAuthState.user.uid);
 
       const updateLastActive = () => {
-        updateDoc(userDocRef, { lastActive: new Date().toISOString() }).catch((error) => {
+        // Use setDoc with merge to prevent "No document to update" error on initial signup
+        setDoc(userDocRef, { lastActive: new Date().toISOString() }, { merge: true }).catch((error) => {
           // Don't show toast, just log it. This is a background task.
           console.warn("Failed to update last active time:", error.message);
         });
