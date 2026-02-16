@@ -472,6 +472,40 @@ export async function cancelTrade(db: Firestore, tradeId: string, reason: string
   });
 }
 
+export async function requestWithdrawal(
+  db: Firestore,
+  withdrawalData: Omit<Withdrawal, 'id' | 'status' | 'createdAt'>
+): Promise<void> {
+  const userWalletRef = doc(db, "users", withdrawalData.userId, "wallets", withdrawalData.crypto);
+  const withdrawalRef = doc(collection(db, `users/${withdrawalData.userId}/withdrawals`));
+
+  await runTransaction(db, async (transaction) => {
+    const walletDoc = await transaction.get(userWalletRef);
+    if (!walletDoc.exists()) {
+      throw new Error(`Wallet for ${withdrawalData.crypto} not found.`);
+    }
+
+    const wallet = walletDoc.data() as UserWallet;
+    if ((wallet.balance || 0) < withdrawalData.amount) {
+      throw new Error("Insufficient available balance.");
+    }
+
+    // Move funds from available to locked balance
+    transaction.update(userWalletRef, {
+      balance: (wallet.balance || 0) - withdrawalData.amount,
+      lockedBalance: (wallet.lockedBalance || 0) + withdrawalData.amount,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Create the withdrawal request document
+    transaction.set(withdrawalRef, {
+      ...withdrawalData,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    });
+  });
+}
+
 export async function sendCoinToUser(
   db: Firestore,
   sender: { uid: string; displayName: string | null },

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -23,6 +24,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { createMissingUserWallets } from '@/lib/wallet';
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
     switch (crypto) {
@@ -42,6 +45,8 @@ export default function WalletPage() {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isCreatingWallets, setIsCreatingWallets] = useState(false);
+
 
   const walletsRef = useMemoFirebase(
     () => (user ? collection(firestore, `users/${user.uid}/wallets`) : null),
@@ -57,6 +62,25 @@ export default function WalletPage() {
   
   const isLoading = isUserLoading || areWalletsLoading || areDepositsLoading || areWithdrawalsLoading;
   
+   const missingWallets = useMemo(() => {
+    if (!wallets) return SUPPORTED_CRYPTOS.map(c => c.name);
+    const existingCryptoNames = wallets.map(w => w.crypto);
+    return SUPPORTED_CRYPTOS.filter(c => !existingCryptoNames.includes(c.name)).map(c => c.name);
+  }, [wallets]);
+
+  const handleCreateMissing = async () => {
+    if (!firestore || !user || !wallets) return;
+    setIsCreatingWallets(true);
+    try {
+      await createMissingUserWallets(firestore, user.uid, wallets);
+      toast({ title: 'Wallets Created', description: 'Your new wallets are being set up. Addresses will appear shortly.' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not create wallets.' });
+    } finally {
+      setIsCreatingWallets(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copied to clipboard" });
@@ -99,7 +123,24 @@ export default function WalletPage() {
         <h1 className="text-lg font-semibold md:text-2xl">My Wallets</h1>
       </div>
 
-      {wallets && wallets.length === 0 && (
+       {missingWallets.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Missing Wallets</CardTitle>
+            <CardDescription>
+              You can create wallets for the following cryptocurrencies: {missingWallets.join(', ')}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button onClick={handleCreateMissing} disabled={isCreatingWallets}>
+              {isCreatingWallets && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Missing Wallets
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
+      {wallets && wallets.length === 0 && !missingWallets.length && (
         <Card>
           <CardHeader><CardTitle>No Wallets Yet</CardTitle></CardHeader>
           <CardContent>Create wallets to start using crypto. Some may be created on your first deposit.</CardContent>
