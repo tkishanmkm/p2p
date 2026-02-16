@@ -477,7 +477,8 @@ export async function createDepositRequest(
     throw new Error(`Deposit address for ${crypto} on ${chain} is not configured in set #${addressSetId}.`);
   }
   
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${depositAddress}`;
+  const qrCodeValue = `${depositAddress}?amount=${amount}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeValue)}`;
 
   const newDeposit: Omit<Deposit, 'id'> = {
     userId,
@@ -486,7 +487,7 @@ export async function createDepositRequest(
     chain,
     amount,
     walletAddress: depositAddress,
-    qrCodeUrl,
+    qrCodeUrl: qrCodeUrl,
     status: 'pending',
     createdAt: new Date().toISOString(),
     timerEnd: add(new Date(), { hours: 3 }).toISOString(),
