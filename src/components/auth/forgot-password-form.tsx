@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -66,7 +67,8 @@ export function ForgotPasswordForm() {
         });
       } else {
         const doc = querySnapshot.docs[0];
-        setUserDoc({ id: doc.id, ...doc.data() } as User);
+        const userData = doc.data() as Omit<User, 'id'>;
+        setUserDoc({ id: doc.id, ...userData });
         setStep(2);
       }
     } catch (error) {
@@ -77,10 +79,10 @@ export function ForgotPasswordForm() {
   };
 
   const handleResetPassword = (values: ResetPasswordValues) => {
-    if (!userDoc) return;
+    if (!userDoc || !('securityAnswer' in userDoc)) return;
     setIsLoading(true);
 
-    if (values.securityAnswer.toLowerCase() !== userDoc.securityAnswer?.toLowerCase()) {
+    if (values.securityAnswer.toLowerCase() !== (userDoc.securityAnswer as string)?.toLowerCase()) {
       resetPasswordForm.setError("securityAnswer", {
         type: "manual",
         message: "The security answer is incorrect.",
@@ -117,7 +119,7 @@ export function ForgotPasswordForm() {
     );
   }
 
-  if (step === 2 && userDoc) {
+  if (step === 2 && userDoc && 'securityQuestion' in userDoc) {
     return (
       <Form {...resetPasswordForm}>
         <form onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-6">
