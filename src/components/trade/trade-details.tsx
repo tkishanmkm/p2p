@@ -172,9 +172,13 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
                 )}
              </div>
              {isDisputeWaiting && (
-                <div className="text-center p-2 border rounded-md">
-                    <p className="text-sm font-semibold">Dispute option available in:</p>
-                    <p className="text-lg font-mono text-destructive">{`${String(disputeCountdown.hours).padStart(2, '0')}:${String(disputeCountdown.minutes).padStart(2, '0')}:${String(disputeCountdown.seconds).padStart(2, '0')}`}</p>
+                <div className="text-center p-4 border rounded-lg bg-secondary/50">
+                    <p className="text-sm font-semibold mb-2">Dispute option available in:</p>
+                    <div className="flex justify-center gap-2">
+                      <div className="flex flex-col items-center p-2 bg-background rounded-md w-16 shadow-inner"><span className="text-2xl font-mono text-destructive font-bold">{String(disputeCountdown.hours).padStart(2, '0')}</span><span className="text-xs text-muted-foreground">HRS</span></div>
+                      <div className="flex flex-col items-center p-2 bg-background rounded-md w-16 shadow-inner"><span className="text-2xl font-mono text-destructive font-bold">{String(disputeCountdown.minutes).padStart(2, '0')}</span><span className="text-xs text-muted-foreground">MIN</span></div>
+                      <div className="flex flex-col items-center p-2 bg-background rounded-md w-16 shadow-inner"><span className="text-2xl font-mono text-destructive font-bold">{String(disputeCountdown.seconds).padStart(2, '0')}</span><span className="text-xs text-muted-foreground">SEC</span></div>
+                    </div>
                 </div>
             )}
         </div>
@@ -537,11 +541,13 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
         )}
 
         {trade.status === 'active' && (
-            <div className="text-center p-2 border rounded-md">
-                <p className="text-sm font-semibold">Time Remaining to Pay:</p>
-                <p className="text-lg font-mono text-destructive">
-                    {paymentTimeRemaining.isFinished ? '--:--:--' : `${String(paymentTimeRemaining.hours).padStart(2, '0')}:${String(paymentTimeRemaining.minutes).padStart(2, '0')}:${String(paymentTimeRemaining.seconds).padStart(2, '0')}`}
-                </p>
+             <div className="text-center p-4 border rounded-lg bg-secondary/50">
+                <p className="text-sm font-semibold mb-2">Time Remaining to Pay:</p>
+                <div className="flex justify-center gap-2">
+                    <div className="flex flex-col items-center p-2 bg-background rounded-md w-16 shadow-inner"><span className="text-2xl font-mono text-destructive font-bold">{String(paymentTimeRemaining.hours).padStart(2, '0')}</span><span className="text-xs text-muted-foreground">HRS</span></div>
+                    <div className="flex flex-col items-center p-2 bg-background rounded-md w-16 shadow-inner"><span className="text-2xl font-mono text-destructive font-bold">{String(paymentTimeRemaining.minutes).padStart(2, '0')}</span><span className="text-xs text-muted-foreground">MIN</span></div>
+                    <div className="flex flex-col items-center p-2 bg-background rounded-md w-16 shadow-inner"><span className="text-2xl font-mono text-destructive font-bold">{String(paymentTimeRemaining.seconds).padStart(2, '0')}</span><span className="text-xs text-muted-foreground">SEC</span></div>
+                </div>
             </div>
         )}
         

@@ -17,11 +17,24 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { createWithdrawalRequest } from '@/lib/wallet';
 import { usePrices } from '@/context/price-context';
-import { FIXED_WITHDRAWAL_FEES_USD } from '@/lib/constants';
+import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 
 const withdrawSchema = z.object({
   address: z.string().min(1, "Recipient address is required."),
   amount: z.coerce.number().positive("Amount must be a positive number."),
+  chain: z.string().optional(),
+  password: z.string().min(1, "Your password is required to authorize this withdrawal."),
+  isMultiChain: z.boolean().optional(),
+}).refine(data => {
+    if (data.isMultiChain) {
+        return !!data.chain;
+    }
+    return true;
+}, {
+    message: "Please select a network.",
+    path: ["chain"],
 });
 
 type WithdrawFormValues = z.infer<typeof withdrawSchema>;
@@ -34,18 +47,28 @@ interface WithdrawDialogProps {
 }
 
 export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalance }: WithdrawDialogProps) {
-  const { firestore, user } = useFirebase();
+  const { firestore, user, auth } = useFirebase();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { prices, isLoading: arePricesLoading } = usePrices();
   
+  const isMultiChain = wallet?.crypto === 'USDT';
+  const chains = SUPPORTED_CRYPTOS.find(c => c.name === wallet?.crypto)?.chains || [];
+
   const form = useForm<WithdrawFormValues>({
     resolver: zodResolver(withdrawSchema),
+    defaultValues: {
+      isMultiChain,
+    },
   });
   
   const watchedAmount = form.watch('amount');
+  const watchedChain = form.watch('chain');
 
-  const feeKey = wallet?.crypto === 'USDT' ? `USDT-${wallet.chain}` : wallet?.crypto;
+  const feeKey = wallet?.crypto === 'USDT' 
+    ? `USDT-${watchedChain}` 
+    : wallet?.crypto;
+
   const feeInUsd = feeKey ? FIXED_WITHDRAWAL_FEES_USD[feeKey] || 0 : 0;
   const cryptoPrice = wallet ? prices[wallet.crypto] : 0;
   const feeInCrypto = cryptoPrice > 0 ? feeInUsd / cryptoPrice : 0;
@@ -55,8 +78,8 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
 
 
   async function onSubmit(values: WithdrawFormValues) {
-    if (!user || !wallet) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Cannot process withdrawal request.' });
+    if (!user || !wallet || !auth?.currentUser?.email) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Cannot process withdrawal request. User or wallet data missing.' });
         return;
     }
     if (values.amount > availableBalance) {
@@ -68,15 +91,25 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
     }
     
     setIsLoading(true);
+
     try {
-        await createWithdrawalRequest(firestore, user, wallet.crypto, wallet.chain, values.amount, values.address, feeInCrypto);
-        toast({
-            title: "Withdrawal Request Submitted",
-            description: `Your request to withdraw ${values.amount} ${wallet.crypto} is awaiting admin approval.`,
-        });
-        onOpenChange(false);
+      // Re-authenticate user before proceeding
+      const credential = EmailAuthProvider.credential(auth.currentUser.email, values.password);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      
+      const chainToUse = isMultiChain ? values.chain! : wallet.chain;
+      await createWithdrawalRequest(firestore, user, wallet.crypto, chainToUse, values.amount, values.address, feeInCrypto);
+      toast({
+          title: "Withdrawal Request Submitted",
+          description: `Your request to withdraw ${values.amount} ${wallet.crypto} is awaiting admin approval.`,
+      });
+      onOpenChange(false);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || "An unknown error occurred during withdrawal.";
+      let errorMessage = error.message || "An unknown error occurred during withdrawal.";
+      if (error.code === 'auth/wrong-password') {
+          errorMessage = "The password you entered is incorrect.";
+          form.setError("password", { type: "manual", message: errorMessage });
+      }
       toast({ variant: 'destructive', title: "Withdrawal Failed", description: errorMessage });
     } finally {
       setIsLoading(false);
@@ -90,7 +123,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      form.reset();
+      form.reset({ isMultiChain });
     }
     onOpenChange(isOpen);
   };
@@ -99,17 +132,35 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Request Withdrawal: {wallet?.crypto} ({wallet?.chain})</DialogTitle>
+          <DialogTitle>Request Withdrawal: {wallet?.crypto}</DialogTitle>
           <DialogDescription>Withdrawal requests are reviewed and processed by an administrator.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                 {isMultiChain && (
+                    <FormField
+                        control={form.control}
+                        name="chain"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Network</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
                 <FormField
                     control={form.control}
                     name="address"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Recipient Address ({wallet?.chain})</FormLabel>
+                        <FormLabel>Recipient Address</FormLabel>
                         <FormControl><Input placeholder="Enter the destination address" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
@@ -129,6 +180,17 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
                         <FormDescription>
                             {wallet ? `Available: ${availableBalance.toFixed(8)} ${wallet.crypto}` : ''}
                         </FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Your Password</FormLabel>
+                        <FormControl><Input type="password" placeholder="Enter password to confirm" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}

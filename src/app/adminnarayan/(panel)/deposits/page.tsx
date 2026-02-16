@@ -1,6 +1,6 @@
 
 
-"use client";
+'use client';
 
 import { useState, useEffect, useMemo } from "react";
 import { useFirebase } from "@/firebase";
@@ -56,6 +56,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import QRCode from "qrcode.react";
+
 
 const statusColors: Record<Deposit['status'], string> = {
   pending: "border-gray-500/50 text-gray-600 bg-gray-50",
@@ -446,6 +448,20 @@ export default function AdminDepositsPage() {
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Date Requested</span><span className="font-medium">{toDate(selectedDeposit.createdAt)?.toLocaleString()}</span></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Expires</span><span className="font-medium">{toDate(selectedDeposit.timerEnd)?.toLocaleString()}</span></div>
                             {selectedDeposit.adminId && <div className="flex justify-between items-center"><span className="text-muted-foreground">Processed by Admin</span><span className="font-mono text-xs">{selectedDeposit.adminId}</span></div>}
+                            
+                             <div className="flex flex-col items-center gap-2 pt-4">
+                                <div className="p-2 bg-white rounded-lg">
+                                    <QRCode value={
+                                        (selectedDeposit.crypto === 'BTC' || selectedDeposit.crypto === 'LTC')
+                                        ? `${selectedDeposit.crypto.toLowerCase()}:${selectedDeposit.walletAddress}?amount=${selectedDeposit.amount}`
+                                        : selectedDeposit.walletAddress
+                                    } size={128} />
+                                </div>
+                                 <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full">
+                                    <p className="font-mono text-xs break-all text-center flex-grow">{selectedDeposit.walletAddress}</p>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(selectedDeposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </DialogContent>

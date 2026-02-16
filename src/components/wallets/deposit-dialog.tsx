@@ -21,11 +21,23 @@ import { useToast } from "@/hooks/use-toast";
 import { Copy, AlertTriangle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useFirebase } from '@/firebase';
-import type { UserWallet, Deposit } from '@/lib/types';
+import type { UserWallet, Deposit, CryptoCurrency } from '@/lib/types';
 import { createDepositRequest } from '@/lib/wallet';
+import { SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const formSchema = z.object({
   amount: z.coerce.number().positive("Amount must be a positive number."),
+  chain: z.string().optional(),
+  isMultiChain: z.boolean().optional(),
+}).refine(data => {
+    if (data.isMultiChain) {
+        return !!data.chain;
+    }
+    return true;
+}, {
+    message: "Please select a network for USDT.",
+    path: ["chain"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -44,8 +56,14 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   const [step, setStep] = useState(1);
   const [createdDeposit, setCreatedDeposit] = useState<Deposit | null>(null);
 
+  const isMultiChain = wallet?.crypto === 'USDT';
+  const chains = SUPPORTED_CRYPTOS.find(c => c.name === wallet?.crypto)?.chains || [];
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+        isMultiChain: isMultiChain
+    }
   });
 
   const handleCreateRequest = async (values: FormValues) => {
@@ -55,7 +73,8 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
     }
     setIsLoading(true);
     try {
-      const newDeposit = await createDepositRequest(firestore, user.uid, user.displayName, walletIndex, wallet.crypto, wallet.chain, values.amount);
+      const chainToUse = isMultiChain ? values.chain! : wallet.chain;
+      const newDeposit = await createDepositRequest(firestore, user.uid, user.displayName, walletIndex, wallet.crypto, chainToUse, values.amount);
       setCreatedDeposit(newDeposit);
       setStep(2);
     } catch (error: any) {
@@ -73,7 +92,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       setTimeout(() => {
-          form.reset();
+          form.reset({ isMultiChain: isMultiChain });
           setStep(1);
           setCreatedDeposit(null);
       }, 300); // Delay to allow animation
@@ -87,13 +106,33 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
         {step === 1 && (
             <>
             <DialogHeader>
-                <DialogTitle>Deposit {wallet?.crypto} ({wallet?.chain})</DialogTitle>
+                <DialogTitle>Deposit {wallet?.crypto}</DialogTitle>
                 <DialogDescription>
-                    Enter the amount you wish to deposit. A request will be created with a unique address.
+                    Enter the amount and network you wish to deposit to. A request will be created with a unique address.
                 </DialogDescription>
             </DialogHeader>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleCreateRequest)} className="space-y-4 pt-4">
+                    {isMultiChain && (
+                        <FormField
+                            control={form.control}
+                            name="chain"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Network</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
                     <FormField
                         control={form.control}
                         name="amount"
@@ -120,12 +159,12 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
             <DialogHeader>
                 <DialogTitle>Deposit Request Created</DialogTitle>
                 <DialogDescription>
-                    Send exactly {createdDeposit.amount} {createdDeposit.crypto} to the address below.
+                    Send exactly {createdDeposit.amount} {createdDeposit.crypto} ({createdDeposit.chain}) to the address below.
                 </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col items-center gap-4 my-4">
                 <div className="p-4 bg-white rounded-lg">
-                    <QRCode value={createdDeposit.walletAddress} size={200} />
+                     <QRCode value={`${createdDeposit.crypto.toLowerCase()}:${createdDeposit.walletAddress}?amount=${createdDeposit.amount}`} size={200} />
                 </div>
                 <div className="flex items-center gap-2 p-2 bg-muted rounded-md w-full">
                     <p className="font-mono text-sm break-all text-center flex-grow">{createdDeposit.walletAddress}</p>

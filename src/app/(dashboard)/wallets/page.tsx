@@ -19,14 +19,14 @@ import { DepositDialog } from '@/components/wallets/deposit-dialog';
 import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
 import { SubmitTxHashDialog } from '@/components/wallets/submit-tx-hash-dialog';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { cancelWithdrawalRequest } from '@/lib/wallet';
 import { FIXED_WITHDRAWAL_FEES_USD } from '@/lib/constants';
+import { usePrices } from '@/context/price-context';
 
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
+  const { prices, fiatRates } = usePrices();
 
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, "users", user.uid) : null), [firestore, user]);
   const { data: userData } = useDoc<User>(userDocRef);
@@ -42,11 +42,6 @@ export default function WalletPage() {
   const [selectedWalletForDialog, setSelectedWalletForDialog] = useState<UserWallet | null>(null);
   const [totalBalanceForDialog, setTotalBalanceForDialog] = useState<number | undefined>(undefined);
 
-
-  const [isUsdtChainSelectorOpen, setIsUsdtChainSelectorOpen] = useState(false);
-  const [usdtAction, setUsdtAction] = useState<'deposit' | 'withdraw' | null>(null);
-  const [selectedUsdtChain, setSelectedUsdtChain] = useState<string>('');
-
   const walletsRef = useMemoFirebase(
     () => (user ? collection(firestore, `users/${user.uid}/wallets`) : null),
     [firestore, user]
@@ -59,7 +54,7 @@ export default function WalletPage() {
   const withdrawalsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/withdrawals`), orderBy('createdAt', 'desc')) : null, [firestore, user]);
   const { data: withdrawals, isLoading: areWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
 
-  const isLoading = isUserLoading || areWalletsLoading || areDepositsLoading || areWithdrawalsLoading;
+  const isLoading = isUserLoading || areWalletsLoading || areDepositsLoading;
 
   const walletSummary = useMemo(() => {
     if (!wallets) return [];
@@ -79,67 +74,53 @@ export default function WalletPage() {
       }
     });
 
-    return Object.values(summary).sort((a, b) => {
-        const totalA = a.totalBalance + a.totalLockedBalance;
-        const totalB = b.totalBalance + b.totalLockedBalance;
-        return totalB - totalA;
+    const preferredCurrency = userData?.preferredCurrency || 'USD';
+    const exchangeRate = fiatRates[preferredCurrency] || 1;
+
+    // Calculate fiat value for sorting
+    const summaryWithValue = Object.values(summary).map(s => {
+        const totalCrypto = s.totalBalance + s.totalLockedBalance;
+        const priceInUsd = prices[s.coin] || 0;
+        const fiatValue = totalCrypto * priceInUsd * exchangeRate;
+        return { ...s, fiatValue };
     });
-  }, [wallets]);
+    
+    // Sort by fiatValue from high to low
+    summaryWithValue.sort((a, b) => b.fiatValue - a.fiatValue);
+    
+    return summaryWithValue;
 
+  }, [wallets, userData, prices, fiatRates]);
 
-  const handleDepositClick = (wallet?: UserWallet) => {
-    if (wallet) {
-      setSelectedWalletForDialog(wallet);
-      setIsDepositOpen(true);
-    }
+  const handleDepositClick = (coin: CryptoCurrency) => {
+    const walletShell: UserWallet = {
+        id: coin,
+        userId: user!.uid,
+        crypto: coin,
+        chain: '', 
+        balance: 0,
+        lockedBalance: 0,
+        updatedAt: '',
+    };
+    setSelectedWalletForDialog(walletShell);
+    setIsDepositOpen(true);
   };
 
-  const handleWithdrawClick = (wallet?: UserWallet, totalBalance?: number) => {
-    if (wallet) {
-      setSelectedWalletForDialog(wallet);
-      setTotalBalanceForDialog(totalBalance);
-      setIsWithdrawOpen(true);
-    }
+  const handleWithdrawClick = (coin: CryptoCurrency, totalBalance: number) => {
+      const walletShell: UserWallet = {
+        id: coin,
+        userId: user!.uid,
+        crypto: coin,
+        chain: '',
+        balance: totalBalance,
+        lockedBalance: 0,
+        updatedAt: '',
+    };
+    setSelectedWalletForDialog(walletShell);
+    setTotalBalanceForDialog(totalBalance);
+    setIsWithdrawOpen(true);
   };
 
-  const handleUsdtActionClick = (action: 'deposit' | 'withdraw') => {
-      setUsdtAction(action);
-      setSelectedUsdtChain('');
-      setIsUsdtChainSelectorOpen(true);
-  }
-
-  const handleUsdtChainSelectAndContinue = () => {
-      const usdtData = walletSummary.find(w => w.coin === 'USDT');
-      if (!usdtData) return;
-      
-      const chainExists = usdtData.chains.some(c => c.chain === selectedUsdtChain);
-      let walletForAction: UserWallet;
-
-      if (chainExists) {
-        walletForAction = usdtData.chains.find(c => c.chain === selectedUsdtChain)!;
-      } else {
-        // If wallet for the selected chain doesn't exist, create a shell for the dialog.
-        // The backend logic will handle creating the actual wallet doc if needed.
-        walletForAction = {
-            id: `USDT-${selectedUsdtChain}`,
-            userId: user!.uid,
-            crypto: 'USDT',
-            chain: selectedUsdtChain,
-            balance: 0,
-            lockedBalance: 0,
-            updatedAt: new Date().toISOString()
-        }
-      }
-
-      if (walletForAction) {
-          setIsUsdtChainSelectorOpen(false);
-          if (usdtAction === 'deposit') {
-              handleDepositClick(walletForAction);
-          } else if (usdtAction === 'withdraw') {
-              handleWithdrawClick(walletForAction, usdtData.totalBalance);
-          }
-      }
-  }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -193,26 +174,6 @@ export default function WalletPage() {
       <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} wallet={selectedWalletForDialog} totalAvailableBalance={totalBalanceForDialog} />
       <SubmitTxHashDialog open={isSubmitTxHashOpen} onOpenChange={setIsSubmitTxHashOpen} deposit={selectedDeposit} />
       
-      <Dialog open={isUsdtChainSelectorOpen} onOpenChange={setIsUsdtChainSelectorOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Select USDT Network</DialogTitle>
-            <DialogDescription>Please select the network for your {usdtAction} action.</DialogDescription>
-          </DialogHeader>
-          <RadioGroup value={selectedUsdtChain} onValueChange={setSelectedUsdtChain} className="my-4 space-y-2">
-            {(SUPPORTED_CRYPTOS.find(c => c.name === 'USDT')?.chains || []).map(chain => (
-                <Label key={chain} htmlFor={chain} className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-muted/50 has-[:checked]:border-primary">
-                <span>{chain}</span>
-                <RadioGroupItem value={chain} id={chain} />
-                </Label>
-            ))}
-          </RadioGroup>
-          <Button onClick={handleUsdtChainSelectAndContinue} disabled={!selectedUsdtChain}>
-            Continue
-          </Button>
-        </DialogContent>
-      </Dialog>
-      
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-semibold md:text-2xl">My Wallets</h1>
       </div>
@@ -221,7 +182,6 @@ export default function WalletPage() {
         {walletSummary.map((data) => {
           const { coin, totalBalance, totalLockedBalance, chains } = data;
           if (!data) return null;
-          const isMultiChain = coin === 'USDT';
           const totalWalletBalance = totalBalance + totalLockedBalance;
 
           return (
@@ -247,10 +207,10 @@ export default function WalletPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex gap-2">
-                <Button size="sm" className="w-full" onClick={() => isMultiChain ? handleUsdtActionClick('deposit') : handleDepositClick(chains[0])}>
+                <Button size="sm" className="w-full" onClick={() => handleDepositClick(coin)}>
                     <ArrowDown className="mr-2 h-4 w-4" />Deposit
                 </Button>
-                <Button size="sm" variant="outline" className="w-full" onClick={() => isMultiChain ? handleUsdtActionClick('withdraw') : handleWithdrawClick(chains[0], totalBalance)}>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => handleWithdrawClick(coin, totalBalance)}>
                     <ArrowUp className="mr-2 h-4 w-4" />Withdraw
                 </Button>
               </CardFooter>
@@ -359,12 +319,12 @@ export default function WalletPage() {
                         </div>
                       </div>
                     )}
-                    {'fee' in selectedTx && selectedTx.fee && (
+                    {'fee' in selectedTx && (selectedTx as Withdrawal).fee !== undefined && (
                        <div className="flex justify-between items-start gap-4">
                         <span className="text-muted-foreground">Network Fee:</span> 
                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-right break-all">{selectedTx.fee.toFixed(8)} {selectedTx.crypto}</span>
-                            <span className="text-muted-foreground text-xs">(~${FIXED_WITHDRAWAL_FEES_USD[selectedTx.crypto]?.toFixed(2)})</span>
+                            <span className="font-mono text-xs text-right break-all">{(selectedTx as Withdrawal).fee!.toFixed(8)} {selectedTx.crypto}</span>
+                            <span className="text-muted-foreground text-xs">(~${(FIXED_WITHDRAWAL_FEES_USD[`${selectedTx.crypto}-${(selectedTx as Withdrawal).chain}`] || FIXED_WITHDRAWAL_FEES_USD[selectedTx.crypto] || 0).toFixed(2)})</span>
                         </div>
                       </div>
                     )}
