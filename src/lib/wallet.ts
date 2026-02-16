@@ -476,16 +476,6 @@ export async function cancelTrade(db: Firestore, tradeId: string, reason: string
   });
 }
 
-export async function requestWithdrawal(
-  db: Firestore,
-  withdrawalData: Omit<Withdrawal, 'id' | 'status' | 'createdAt'>
-) {
-    // This is a client-side stub. The actual withdrawal logic is handled by the backend API.
-    // The frontend should call the backend API endpoint directly.
-    // This function will not be used in the final implementation.
-    console.warn("requestWithdrawal is a client-side stub and should not be used. Call the backend API directly.");
-}
-
 export async function sendCoinToUser(
   db: Firestore,
   sender: { uid: string; displayName: string | null },
@@ -584,3 +574,4 @@ export async function sendCoinToUser(
 
   return transferId;
 }
+
