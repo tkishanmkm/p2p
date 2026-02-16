@@ -8,9 +8,6 @@ export const SUPPORTED_CRYPTOS: SupportedCrypto[] = [
   { name: 'BTC', chains: ["Bitcoin"] },
   { name: 'ETH', chains: ["ERC20"] },
   { name: 'LTC', chains: ["Litecoin"] },
-  { name: 'BNB', chains: ["BEP20"] },
-  { name: 'MATIC', chains: ["Polygon"] },
-  { name: 'TRX', chains: ["TRC20"] },
 ];
 
 export const CHAINS: Record<CryptoCurrency, string[]> = {
@@ -18,9 +15,9 @@ export const CHAINS: Record<CryptoCurrency, string[]> = {
   LTC: ['Litecoin'],
   ETH: ['ERC20'],
   USDT: ['ERC20', 'TRC20', 'BEP20', 'Polygon', 'Arbitrum', 'Base'],
-  BNB: ['BEP20'],
-  MATIC: ['Polygon'],
-  TRX: ['TRC20'],
+  BNB: [], // Kept for type consistency, but no longer a primary asset
+  MATIC: [], // Kept for type consistency, but no longer a primary asset
+  TRX: [], // Kept for type consistency, but no longer a primary asset
 };
 
 

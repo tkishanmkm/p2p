@@ -47,7 +47,7 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?:
     }
 };
 
-const supportedCoins: CryptoCurrency[] = ['BTC', 'LTC', 'ETH', 'TRX'];
+const supportedCoins: CryptoCurrency[] = ['BTC', 'LTC', 'ETH'];
 
 export default function DepositPage() {
   const { user, db } = useFirebase();

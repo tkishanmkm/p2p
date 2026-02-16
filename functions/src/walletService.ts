@@ -41,7 +41,7 @@ export async function createUserWallets(user: admin.auth.UserRecord): Promise<vo
     const walletConfigs = [
       { id: "ETH-ERC20", address: evmAddress, lastBlock: initialBlockMainnet },
       { id: "USDT-ERC20", address: evmAddress, lastBlock: initialBlockMainnet },
-      { id: "TRX-TRC20", address: tronAddress, lastBlock: 0 },
+      // { id: "TRX-TRC20", address: tronAddress, lastBlock: 0 }, // Removed as per request
       { id: "USDT-TRC20", address: tronAddress, lastBlock: 0 },
     ];
 
