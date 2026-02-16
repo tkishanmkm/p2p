@@ -121,6 +121,7 @@ function SignupFormComponent() {
       // 4. Create Firestore user document
       const userDocRef = doc(firestore, "users", newUser.uid);
       const dob = new Date(parseInt(values.year), parseInt(values.month) - 1, parseInt(values.day));
+      const walletIndex = Math.floor(Math.random() * 20) + 1; // Random index from 1-20
 
       const newUserDoc = {
           id: newUser.uid,
@@ -144,6 +145,7 @@ function SignupFormComponent() {
           photoURL: "",
           preferredCurrency: "USD",
           blockedUsers: [],
+          walletIndex: walletIndex,
       };
       await setDoc(userDocRef, newUserDoc);
 
