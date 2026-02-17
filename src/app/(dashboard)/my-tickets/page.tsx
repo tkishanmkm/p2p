@@ -15,7 +15,7 @@ import { useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function MyTicketsPage() {
-    const { user: authUser, isUserLoading } = useFirebase();
+    const { user: authUser, isUserLoading, firestore } = useFirebase();
     const router = useRouter();
 
     useEffect(() => {
@@ -25,8 +25,8 @@ export default function MyTicketsPage() {
     }, [isUserLoading, authUser, router]);
 
     const ticketsQuery = useMemoFirebase(
-        () => (authUser?.displayName ? query(collection(undefined, "support_tickets"), where("userId", "==", authUser.displayName), orderBy("createdAt", "desc")) : null),
-        [authUser?.displayName]
+        () => (authUser?.displayName && firestore ? query(collection(firestore, "support_tickets"), where("userId", "==", authUser.displayName), orderBy("createdAt", "desc")) : null),
+        [authUser?.displayName, firestore]
     );
     const { data: tickets, isLoading: areTicketsLoading } = useCollection<SupportTicket>(ticketsQuery);
     
