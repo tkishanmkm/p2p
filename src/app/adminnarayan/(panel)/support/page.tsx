@@ -110,7 +110,8 @@ export default function AdminSupportPage() {
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>User ID</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Username</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Submitted At</TableHead>
                     <TableHead>
@@ -119,9 +120,10 @@ export default function AdminSupportPage() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {isLoading && <TableRow><TableCell colSpan={4} className="text-center">Loading tickets...</TableCell></TableRow>}
+                {isLoading && <TableRow><TableCell colSpan={5} className="text-center">Loading tickets...</TableCell></TableRow>}
                 {!isLoading && tickets && tickets.length > 0 ? tickets.map((ticket) => (
                     <TableRow key={ticket.id} onClick={() => handleViewDetails(ticket)} className="cursor-pointer">
+                    <TableCell className="font-medium">{ticket.email}</TableCell>
                     <TableCell className="font-medium">{ticket.userId || 'N/A'}</TableCell>
                     <TableCell>
                         <Badge variant={
@@ -152,7 +154,7 @@ export default function AdminSupportPage() {
                     </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={4} className="text-center h-24">
+                        <TableCell colSpan={5} className="text-center h-24">
                             No support tickets found.
                         </TableCell>
                     </TableRow>
@@ -166,7 +168,7 @@ export default function AdminSupportPage() {
                   <Card key={ticket.id} onClick={() => handleViewDetails(ticket)}>
                        <CardHeader>
                             <div className="flex justify-between items-start">
-                                <CardTitle className="text-base">{ticket.userId}</CardTitle>
+                                <CardTitle className="text-base">{ticket.email}</CardTitle>
                                  <Badge variant={ticket.status === 'Open' ? 'destructive' : ticket.status === 'In Progress' ? 'default' : 'outline'}>
                                     {ticket.status}
                                 </Badge>
@@ -186,7 +188,7 @@ export default function AdminSupportPage() {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Support Ticket Details</DialogTitle>
-                 {selectedTicket && <DialogDescription>From: {selectedTicket.userId} | Submitted: {toDate(selectedTicket.createdAt)?.toLocaleString()}</DialogDescription>}
+                 {selectedTicket && <DialogDescription>From: {selectedTicket.email} | User: {selectedTicket.userId || 'N/A'} | Submitted: {toDate(selectedTicket.createdAt)?.toLocaleString()}</DialogDescription>}
             </DialogHeader>
             {selectedTicket && (
                 <div className="space-y-4 py-4">

@@ -214,7 +214,8 @@ export type PaymentMethod = {
 
 export type SupportTicket = {
     id: string;
-    userId: string;
+    email: string;
+    userId?: string;
     message: string;
     status: 'Open' | 'In Progress' | 'Closed';
     createdAt: string;

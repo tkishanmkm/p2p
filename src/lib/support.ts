@@ -7,9 +7,9 @@ export async function createSupportTicket(
   ticketData: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>
 ): Promise<void> {
   const ticketsCollection = collection(db, 'support_tickets');
-  const newTicket = {
+  const newTicket: Omit<SupportTicket, 'id'> = {
     ...ticketData,
-    status: 'Open' as 'Open',
+    status: 'Open',
     createdAt: new Date().toISOString(),
   };
   await addDoc(ticketsCollection, newTicket);

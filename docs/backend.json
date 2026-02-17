@@ -792,25 +792,14 @@
       "type": "object",
       "description": "Represents a user-submitted support ticket.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "userId": {
-          "type": "string"
-        },
-        "message": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string",
-          "enum": ["Open", "In Progress", "Closed"]
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "userId": { "type": "string", "description": "The user's username, if provided." },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["Open", "In Progress", "Closed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "userId", "message", "status", "createdAt"]
+      "required": ["id", "email", "message", "status", "createdAt"]
     },
     "AdminRole": {
       "title": "AdminRole",

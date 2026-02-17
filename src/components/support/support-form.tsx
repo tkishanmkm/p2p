@@ -23,7 +23,8 @@ import { createSupportTicket } from "@/lib/support"
 import { Loader2 } from "lucide-react"
 
 const supportFormSchema = z.object({
-  userId: z.string().min(1, "Your User ID is required to submit a ticket."),
+  email: z.string().email("Please enter a valid email address."),
+  username: z.string().optional(),
   message: z.string().min(20, "Message must be at least 20 characters long.").max(1000, "Message cannot exceed 1000 characters."),
 })
 
@@ -35,14 +36,16 @@ export function SupportForm() {
     const form = useForm<z.infer<typeof supportFormSchema>>({
       resolver: zodResolver(supportFormSchema),
       defaultValues: {
-        userId: "",
+        email: "",
+        username: "",
         message: "",
       },
     })
 
     useEffect(() => {
-      if (user?.displayName) {
-        form.setValue('userId', user.displayName);
+      if (user) {
+        form.setValue('email', user.email || '');
+        form.setValue('username', user.displayName || '');
       }
     }, [user, form]);
 
@@ -53,15 +56,20 @@ export function SupportForm() {
     }
     setIsSubmitting(true);
     try {
-      await createSupportTicket(firestore, values);
+      await createSupportTicket(firestore, {
+        email: values.email,
+        userId: values.username,
+        message: values.message,
+      });
       toast({
           title: "Support Ticket Submitted",
-          description: "Our team will get back to you shortly via in-app notifications.",
+          description: "Our team will get back to you shortly via in-app notifications if you provided a username, or via email.",
       })
-      form.reset()
-       if (user?.displayName) {
-        form.setValue('userId', user.displayName);
-      }
+      form.reset({
+        email: user?.email || '',
+        username: user?.displayName || '',
+        message: '',
+      })
     } catch(error: any) {
        toast({ variant: "destructive", title: "Submission Failed", description: "Could not submit your ticket. Please try again." });
     } finally {
@@ -80,15 +88,30 @@ export function SupportForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
+             <FormField
               control={form.control}
-              name="userId"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Your User ID</FormLabel>
+                  <FormLabel>Your Email Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="YourUniqueUserID" {...field} disabled={!!user} />
+                    <Input placeholder="you@example.com" {...field} />
                   </FormControl>
+                  <FormDescription>We will use this email to contact you.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="YourTradenanceUsername" {...field} />
+                  </FormControl>
+                   <FormDescription>If this issue is related to your account, please provide your username.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -107,7 +130,7 @@ export function SupportForm() {
                     />
                   </FormControl>
                   <FormDescription>
-                    Please provide any relevant information like Trade IDs. Responses will be sent as in-app notifications.
+                    Please provide any relevant information like Trade IDs.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
