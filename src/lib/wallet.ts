@@ -14,6 +14,7 @@ import {
   limit,
   getDocs,
   setDoc,
+  orderBy,
 } from 'firebase/firestore';
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Withdrawal, Deposit } from './types';
 import { add, isPast } from 'date-fns';
@@ -541,27 +542,32 @@ export async function createWithdrawalRequest(
     const q = query(userWalletsRef, where("crypto", "==", crypto));
     const withdrawalRef = doc(collection(db, "users", user.id, "withdrawals"));
 
-    await runTransaction(db, async (transaction) => {
-        const walletsSnapshot = await getDocs(q); // Use getDocs within a transaction
-        const userWallets = walletsSnapshot.docs.map(d => ({ ...d.data(), id: d.id } as UserWallet));
+    // Fetch wallet data outside the transaction
+    const walletsSnapshot = await getDocs(q);
+    const walletDocsWithRefs = walletsSnapshot.docs.map(d => ({ ref: d.ref, data: d.data() as UserWallet }));
 
-        const totalAvailableBalance = userWallets.reduce((sum, w) => sum + (w.balance || 0), 0);
+    await runTransaction(db, async (transaction) => {
+        // Read the current state of wallets inside the transaction
+        const liveWalletDocs = await Promise.all(walletDocsWithRefs.map(w => transaction.get(w.ref)));
+        const liveWallets = liveWalletDocs.map(d => ({ id: d.id, ...d.data() } as UserWallet));
+
+        const totalAvailableBalance = liveWallets.reduce((sum, w) => sum + (w.balance || 0), 0);
 
         if (totalAvailableBalance < amount) {
             throw new Error("Insufficient available balance across all networks.");
         }
         
         let amountToDeduct = amount;
-        const walletsWithBalance = userWallets.filter(w => w.balance > 0);
-        walletsWithBalance.sort((a, b) => (b.balance || 0) - (a.balance || 0));
+        // Sort by balance to deduct from the largest wallets first
+        liveWallets.sort((a, b) => (b.balance || 0) - (a.balance || 0));
 
-        for (const wallet of walletsWithBalance) {
+        for (const wallet of liveWallets) {
             if (amountToDeduct <= 0) break;
             
             const deductFromThisWallet = Math.min(wallet.balance || 0, amountToDeduct);
             if (deductFromThisWallet > 0) {
-                const walletRef = doc(db, 'users', user.id, 'wallets', wallet.id);
-                transaction.update(walletRef, {
+                const walletRefToUpdate = doc(db, 'users', user.id, 'wallets', wallet.id);
+                transaction.update(walletRefToUpdate, {
                     balance: (wallet.balance || 0) - deductFromThisWallet,
                     lockedBalance: (wallet.lockedBalance || 0) + deductFromThisWallet,
                 });
@@ -569,7 +575,7 @@ export async function createWithdrawalRequest(
             }
         }
         
-        if (amountToDeduct > 0) {
+        if (amountToDeduct > 0.00000001) { // Allow for tiny floating point inaccuracies
             throw new Error("Could not deduct full amount. This is a critical error.");
         }
 
@@ -590,43 +596,28 @@ export async function createWithdrawalRequest(
 export async function cancelWithdrawalRequest(db: Firestore, userId: string, withdrawalId: string): Promise<void> {
     const withdrawalRef = doc(db, 'users', userId, 'withdrawals', withdrawalId);
 
+    // Get withdrawal data to know which crypto to query for
+    const withdrawalSnap = await getDoc(withdrawalRef);
+    if (!withdrawalSnap.exists()) throw new Error("Withdrawal request not found.");
+    const withdrawal = withdrawalSnap.data() as Withdrawal;
+
+    // Get all wallet refs for that crypto outside the transaction
+    const walletsRef = collection(db, 'users', userId, 'wallets');
+    const allWalletsForCryptoQuery = query(walletsRef, where("crypto", "==", withdrawal.crypto));
+    const allWalletsSnapshot = await getDocs(allWalletsForCryptoQuery);
+    const walletDocRefsToProcess = allWalletsSnapshot.docs.map(d => d.ref);
+
     await runTransaction(db, async (transaction) => {
         const withdrawalDoc = await transaction.get(withdrawalRef);
-        if (!withdrawalDoc.exists()) throw new Error("Withdrawal request not found.");
+        if (!withdrawalDoc.exists()) throw new Error("Withdrawal request not found inside transaction.");
 
-        const withdrawal = withdrawalDoc.data() as Withdrawal;
-        if (withdrawal.status !== 'pending') throw new Error("Only pending withdrawals can be cancelled.");
-
-        // Instead of a single wallet, we need to find which wallet holds the locked balance.
-        // The current logic incorrectly locks funds on one chain. A better approach is to
-        // just return the funds to the most liquid wallet.
-        const walletsRef = collection(db, 'users', userId, 'wallets');
-        const q = query(walletsRef, where("crypto", "==", withdrawal.crypto), orderBy('balance', 'desc'), limit(1));
-        const walletsSnapshot = await getDocs(q); // getDocs is ok inside transaction
+        const currentWithdrawal = withdrawalDoc.data() as Withdrawal;
+        if (currentWithdrawal.status !== 'pending') throw new Error("Only pending withdrawals can be cancelled.");
         
-        let walletToRefundRef;
-        let walletToRefundData;
-
-        if (!walletsSnapshot.empty) {
-            const walletDoc = walletsSnapshot.docs[0];
-            walletToRefundRef = walletDoc.ref;
-            walletToRefundData = walletDoc.data() as UserWallet;
-        } else {
-             // If no wallet exists, create one to return funds to.
-            const newWalletId = `${withdrawal.crypto}-${CHAINS[withdrawal.crypto][0]}`;
-            walletToRefundRef = doc(db, 'users', userId, 'wallets', newWalletId);
-            walletToRefundData = { balance: 0, lockedBalance: 0 }; // Shell data
-        }
+        const walletDocs = await Promise.all(walletDocRefsToProcess.map(ref => transaction.get(ref)));
+        const userWallets = walletDocs.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() } as UserWallet));
         
-        // This is complex. The funds are locked across multiple wallets. We need to unlock them.
-        // The original createWithdrawalRequest logic was flawed. Let's fix it AND this.
-        
-        // Correct logic: find the wallets with locked balance and return it.
-        const allWalletsForCryptoQuery = query(collection(db, 'users', userId, 'wallets'), where("crypto", "==", withdrawal.crypto));
-        const allWalletsSnapshot = await getDocs(allWalletsForCryptoQuery);
-        const userWallets = allWalletsSnapshot.docs.map(d => ({ ...d.data(), id: d.id } as UserWallet));
-
-        let amountToReturn = withdrawal.amount;
+        let amountToReturn = currentWithdrawal.amount;
         userWallets.sort((a,b) => (b.lockedBalance || 0) - (a.lockedBalance || 0));
 
         for (const wallet of userWallets) {
@@ -643,14 +634,19 @@ export async function cancelWithdrawalRequest(db: Firestore, userId: string, wit
             }
         }
         
-        if (amountToReturn > 0) {
-            // This indicates a data inconsistency.
-            console.error("Could not find enough locked funds to cancel withdrawal. Refunding to most liquid wallet as fallback.");
-            transaction.update(walletToRefundRef, {
-                balance: (walletToRefundData.balance || 0) + amountToReturn
-            });
+        if (amountToReturn > 0.00000001) { // Allow for tiny floating point inaccuracies
+            console.error(`Could not find enough locked funds (${amountToReturn} ${currentWithdrawal.crypto}) to cancel withdrawal ${withdrawalId}. This indicates a data inconsistency.`);
+            // As a safe fallback, refund to the wallet with the highest balance.
+            userWallets.sort((a,b) => (b.balance || 0) - (a.balance || 0));
+            const mainWallet = userWallets[0];
+            if (mainWallet) {
+                 const walletRef = doc(db, 'users', userId, 'wallets', mainWallet.id);
+                 const currentBalance = mainWallet.balance || 0;
+                 transaction.update(walletRef, { balance: currentBalance + amountToReturn });
+            } else {
+                 throw new Error(`Critical Error: No wallet found for user ${userId} to refund ${amountToReturn} ${currentWithdrawal.crypto}.`);
+            }
         }
-
 
         // Mark withdrawal as cancelled
         transaction.update(withdrawalRef, { status: "cancelled" });
