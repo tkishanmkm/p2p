@@ -75,8 +75,10 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
     // If only one chain is available, pre-select it
     if (availableChains.length === 1) {
         amountForm.setValue('chain', availableChains[0]);
+    } else {
+        amountForm.setValue('chain', undefined);
     }
-  }, [availableChains, amountForm]);
+  }, [availableChains, amountForm, open]);
 
 
   const handleCreateRequest = async (values: AmountFormValues) => {
@@ -143,19 +145,23 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
             <Form {...amountForm}>
                 <form onSubmit={amountForm.handleSubmit(handleCreateRequest)} className="space-y-4 pt-4">
                     {isAddressSetLoading && <Skeleton className="h-20 w-full" />}
-                    {!isAddressSetLoading && showChainSelector && (
-                        <FormField
+                    {!isAddressSetLoading && (
+                       <FormField
                             control={amountForm.control}
                             name="chain"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Network</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {availableChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    {showChainSelector ? (
+                                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                {availableChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Input value={availableChains[0] || 'Loading...'} disabled />
+                                    )}
                                     <FormMessage />
                                 </FormItem>
                             )}
