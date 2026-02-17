@@ -3,16 +3,16 @@
 'use client';
 
 import {
+  Firestore,
   doc,
   runTransaction,
   writeBatch,
-  Firestore,
   updateDoc,
   collection,
   arrayRemove,
   setDoc,
 } from "firebase/firestore";
-import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket } from "./types";
+import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket, AppUser } from "./types";
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from "./wallet";
 import { CHAINS } from "./constants";
 
@@ -262,6 +262,7 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
     let systemMessageText: string;
 
     if (winnerId === trade.sellerId) {
+      // Logic for when SELLER wins: Cancel the trade and return funds from escrow
       finalTradeStatus = 'cancelled';
       if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to return.");
       transaction.update(sellerWalletRef, {
@@ -272,16 +273,70 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
       transaction.update(tradeRef, { status: finalTradeStatus });
       systemMessageText = `Dispute resolved. The trade has been awarded to the seller (${winnerUsername}) and is now cancelled.`;
 
-    } else { // Winner is buyer
+    } else { // Winner is BUYER: Release the funds fully to them
       finalTradeStatus = 'released';
+      
+      const buyerWalletId = `${trade.crypto}-${trade.chain}`;
+      const buyerWalletRef = doc(db, 'users', trade.buyerId, 'wallets', buyerWalletId);
+      const buyerUserRef = doc(db, 'users', trade.buyerId);
+      const sellerUserRef = doc(db, 'users', trade.sellerId);
+      
+      const [buyerWalletDoc, buyerUserDoc, sellerUserDoc] = await Promise.all([
+          transaction.get(buyerWalletRef),
+          transaction.get(buyerUserRef),
+          transaction.get(sellerUserRef),
+      ]);
+
+      // 1. Decrement seller's locked balance
       if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to release.");
       transaction.update(sellerWalletRef, {
-        balance: sellerWallet.balance || 0, // Preserve available balance
         lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
         updatedAt: new Date().toISOString()
       });
-      transaction.update(tradeRef, { status: finalTradeStatus });
-      systemMessageText = `Dispute resolved. The trade has been awarded to the buyer (${winnerUsername}). The crypto has been released.`;
+      
+      // 2. Calculate fees and credit buyer
+      const fee = trade.escrowFee || (trade.amount * 0.01);
+      const amountToBuyer = trade.amount - fee;
+      const walletData = buyerWalletDoc.data() as UserWallet | undefined;
+      transaction.set(buyerWalletRef, {
+        balance: (walletData?.balance || 0) + amountToBuyer,
+        lockedBalance: (walletData?.lockedBalance || 0),
+        crypto: trade.crypto,
+        chain: trade.chain,
+        userId: trade.buyerId,
+        id: buyerWalletId,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+
+      // 3. Log escrow fee
+      const ledgerRef = doc(collection(db, "escrow_ledger"));
+      transaction.set(ledgerRef, {
+          tradeId: trade.tradeId,
+          feeAmount: fee,
+          crypto: trade.crypto,
+          createdAt: new Date().toISOString()
+      });
+
+      // 4. Update stats for both users
+      if (buyerUserDoc.exists()) transaction.update(buyerUserRef, {
+          completedTrades: (buyerUserDoc.data().completedTrades || 0) + 1,
+          tradeVolume: (buyerUserDoc.data().tradeVolume || 0) + (trade.fiatAmountInUSD || 0),
+          lastTradeAt: new Date().toISOString(),
+      });
+       if (sellerUserDoc.exists()) transaction.update(sellerUserRef, {
+          completedTrades: (sellerUserDoc.data().completedTrades || 0) + 1,
+          tradeVolume: (sellerUserDoc.data().tradeVolume || 0) + (trade.fiatAmountInUSD || 0),
+          lastTradeAt: new Date().toISOString(),
+      });
+
+      // 5. Update trade status
+      transaction.update(tradeRef, { 
+          status: finalTradeStatus, 
+          releasedAt: new Date().toISOString(),
+          claimedByBuyer: true // Mark as claimed since admin did it
+      });
+
+      systemMessageText = `Dispute resolved. The trade has been awarded to the buyer (${winnerUsername}) and is now completed.`;
     }
 
     // Update dispute doc
@@ -307,8 +362,8 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
 
     const winnerNotifRef = doc(collection(db, 'users', winnerId, 'notifications'));
     const winnerMessage = finalTradeStatus === 'released'
-        ? `Congratulations! You have won the dispute for trade ${trade.tradeId}. The crypto has been released to your wallet.`
-        : `You have won the dispute for trade ${trade.tradeId}. The trade has been cancelled and the crypto returned to the seller.`;
+        ? `Congratulations! You have won the dispute for trade ${trade.tradeId}. The crypto has been added to your wallet.`
+        : `You have won the dispute for trade ${trade.tradeId}. The trade has been cancelled.`;
     transaction.set(winnerNotifRef, {
         userId: winnerId,
         message: winnerMessage,
@@ -318,7 +373,7 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
     });
 
     const loserNotifRef = doc(collection(db, 'users', opponentId, 'notifications'));
-    const loserMessage = `The dispute for trade ${trade.tradeId} has been resolved in favor of the other party. The trade is now ${finalTradeStatus}.`;
+    const loserMessage = `The dispute for trade ${trade.tradeId} has been resolved in favor of the other party. The trade is now ${finalTradeStatus === 'released' ? 'completed' : 'cancelled'}.`;
     transaction.set(loserNotifRef, {
         userId: opponentId,
         message: loserMessage,
