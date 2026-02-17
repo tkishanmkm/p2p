@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useCountdown } from '@/hooks/use-countdown';
 import { Skeleton } from '../ui/skeleton';
 import { doc } from 'firebase/firestore';
+import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 
 const amountSchema = z.object({
   amount: z.coerce.number().positive("Amount must be a positive number."),
@@ -48,16 +49,10 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   const { data: addressSetData, isLoading: isAddressSetLoading } = useDoc<DepositAddressSet>(addressSetRef);
 
   const availableChains = useMemo(() => {
-    if (!addressSetData || !wallet) return [];
-    const chains: string[] = [];
-    for (const key in addressSetData.addresses) {
-        if (key.startsWith(`${wallet.crypto}-`)) {
-            const chainName = key.substring(wallet.crypto.length + 1);
-            chains.push(chainName);
-        }
-    }
-    return chains;
-  }, [addressSetData, wallet]);
+    if (!wallet) return [];
+    const supported = SUPPORTED_CRYPTOS.find(c => c.name === wallet.crypto);
+    return supported?.chains || [];
+  }, [wallet]);
   
   const showChainSelector = availableChains.length > 1;
 
@@ -115,9 +110,9 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
     onOpenChange(isOpen);
   };
   
-  const bitcoinInstructions = "Ensure you are sending Bitcoin (BTC) from a wallet on the Bitcoin network. Other assets sent to this address may be lost.";
-  const ethereumInstructions = "Ensure you are sending Ethereum (ETH) from a wallet on the Ethereum (ERC20) network. Other assets sent to this address may be lost.";
-  const litecoinInstructions = "Ensure you are sending Litecoin (LTC) from a wallet on the Litecoin network. Other assets sent to this address may be lost.";
+  const bitcoinInstructions = "Ensure you are sending Bitcoin (BTC) from a wallet on the BTC network. Other assets sent to this address may be lost.";
+  const ethereumInstructions = "Ensure you are sending Ethereum (ETH) from a wallet on the ETH network. Other assets sent to this address may be lost.";
+  const litecoinInstructions = "Ensure you are sending Litecoin (LTC) from a wallet on the LTC network. Other assets sent to this address may be lost.";
   const usdtInstructions = "Ensure you select the correct network (e.g., ERC20, TRC20, BEP20) that matches your sending wallet. Sending to the wrong network may result in a permanent loss of funds.";
   
   const instructionsMap: Record<CryptoCurrency, string> = {
@@ -197,10 +192,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
             </>
         )}
         {step === 2 && createdDeposit && (
-            // This step is now handled by the SubmitTxHashDialog
-            // This logic is moved there and triggered from the history table.
-            // Keeping this structure allows for future re-integration if the UX flow changes back.
-             <DialogHeader>
+            <DialogHeader>
                 <DialogTitle>Request Created!</DialogTitle>
                 <DialogDescription>
                     Your deposit request for {createdDeposit.amount} {createdDeposit.crypto} has been created. You can find it in your transaction history on the Wallets page to submit your transaction hash.
