@@ -29,7 +29,7 @@ import { useFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useState, Suspense } from "react";
 import { Loader2 } from "lucide-react";
-import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, UserCredential } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { createUserSession } from "@/lib/users";
 
@@ -65,37 +65,54 @@ function LoginFormComponent() {
     }
     setIsLoading(true);
 
+    let userCredential: UserCredential | null = null;
+    let finalError: any = null;
+
     try {
       await setPersistence(auth, browserLocalPersistence);
-      const dummyEmail = `${values.userId}@email.com`;
-      const userCredential = await signInWithEmailAndPassword(auth, dummyEmail, values.password);
 
-      // Create session document
-      const sessionId = await createUserSession(firestore, userCredential.user);
-      if (sessionId) {
-        sessionStorage.setItem('sessionId', sessionId);
-      }
-
-      // Check if the user is an admin
-      const adminDocRef = doc(firestore, "admins", userCredential.user.uid);
-      const adminDocSnap = await getDoc(adminDocRef);
-
-      if (adminDocSnap.exists() && adminDocSnap.data().role === 'admin') {
-        toast({ title: "Admin Login Successful", description: "Redirecting to admin dashboard..." });
-        router.push('/adminnarayan/dashboard');
-      } else {
-        // Verify a user document exists for non-admins for robustness
-        const userDocRef = doc(firestore, "users", userCredential.user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-
-        if (userDocSnap.exists()) {
-            toast({ title: "Logging In...", description: "Please wait while we log you in." });
-            router.push(redirectUrl || '/buy');
-        } else {
-            // This case should not happen in normal flow, but it's a safeguard.
-            await auth.signOut();
-            throw new Error("User profile not found. Please contact support.");
+      // Try modern email format first
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, `${values.userId}@email.com`, values.password);
+      } catch (e1) {
+        // If it fails, try the legacy format
+        try {
+            userCredential = await signInWithEmailAndPassword(auth, `${values.userId}@tradenance.app`, values.password);
+        } catch (e2) {
+            // If both fail, store the last error to show to the user
+            finalError = e2;
         }
+      }
+      
+      if (userCredential) {
+        // --- SUCCESS ---
+        const { user } = userCredential;
+        const sessionId = await createUserSession(firestore, user);
+        if (sessionId) {
+          sessionStorage.setItem('sessionId', sessionId);
+        }
+
+        const adminDocRef = doc(firestore, "admins", user.uid);
+        const adminDocSnap = await getDoc(adminDocRef);
+
+        if (adminDocSnap.exists() && adminDocSnap.data().role === 'admin') {
+          toast({ title: "Admin Login Successful", description: "Redirecting to admin dashboard..." });
+          router.push('/adminnarayan/dashboard');
+        } else {
+          const userDocRef = doc(firestore, "users", user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+
+          if (userDocSnap.exists()) {
+              toast({ title: "Logging In...", description: "Please wait while we log you in." });
+              router.push(redirectUrl || '/buy');
+          } else {
+              await auth.signOut();
+              throw new Error("User profile not found. Please contact support.");
+          }
+        }
+      } else {
+        // If userCredential is still null, it means both attempts failed.
+        throw finalError || new Error("Login failed. Please check your credentials.");
       }
 
     } catch (error: any) {
