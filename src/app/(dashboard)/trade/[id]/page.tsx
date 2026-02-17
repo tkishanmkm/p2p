@@ -113,7 +113,7 @@ function TradePageContent() {
       />
       
       {/* Desktop Layout */}
-      <div className="hidden md:grid md:grid-cols-[minmax(420px,1fr),2fr] gap-0 h-full overflow-hidden">
+      <div className="hidden md:grid md:grid-cols-[450px,1fr] gap-0 h-full overflow-hidden">
         <div className="h-full border-r">
           <TradeDetails trade={trade} ad={ad} currentUserRole={currentUserRole} />
         </div>
