@@ -67,7 +67,7 @@ function LoginFormComponent() {
 
     try {
       await setPersistence(auth, browserLocalPersistence);
-      const dummyEmail = `${values.userId}@tradenaire.app`;
+      const dummyEmail = `${values.userId}@tradenance.app`;
       const userCredential = await signInWithEmailAndPassword(auth, dummyEmail, values.password);
 
       // Create session document

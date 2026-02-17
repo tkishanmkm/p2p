@@ -8,7 +8,7 @@
     "statsPayments": "Métodos de pago",
     "statsTime": "Tiempo promedio de transacción",
     "howItWorksTitle": "Cómo empezar",
-    "howItWorksSubtitle": "Operar en Tradenaire es simple, seguro y rápido. Sigue estos tres pasos fáciles para comenzar tu experiencia P2P.",
+    "howItWorksSubtitle": "Operar en Tradenance es simple, seguro y rápido. Sigue estos tres pasos fáciles para comenzar tu experiencia P2P.",
     "step1Title": "1. Crea una cuenta",
     "step1Desc": "Regístrate gratis solo con un ID de usuario. Completa una verificación de identidad simple para asegurar tu cuenta y empezar a operar.",
     "step2Title": "2. Encuentra una oferta",
@@ -22,7 +22,7 @@
     "directTradingTitle": "Comercio directo",
     "directTradingDesc": "Sin intermediarios. Negocia directamente con otra persona, lo que puede ofrecer mejores tarifas y transacciones más rápidas.",
     "globalPaymentsTitle": "Métodos de pago globales",
-    "globalPaymentsDesc": "Elige entre cientos de métodos de pago, incluyendo transferencias bancarias locales, billeteras en línea y más, facilitando operaciones desde cualquier lugar.",
+    "globalPaymentsDesc": "Elige entre centenas de métodos de pago, incluyendo transferencias bancarias locales, billeteras en línea y más, facilitando operaciones desde cualquier lugar.",
     "controlTitle": "Tú tienes el control",
     "controlDesc": "Establece tus propios precios, define tus propios términos y elige con quién operar. P2P ofrece la libertad que las plataformas tradicionales no pueden brindar.",
     "securityTitle": "Tu seguridad es nuestra prioridad",
@@ -51,7 +51,7 @@
     "placeholder": "Elige tu ID de usuario"
   },
   "footer": {
-    "tagline": "Intercambio P2P de monedas seguro y fácil con un sistema de escrow confiable.",
+    "tagline": "Comercia con confianza. Tradenance proporciona una plataforma P2P segura con un sistema de escrow de confianza.",
     "company": "Empresa",
     "about": "Acerca de",
     "careers": "Carreras",

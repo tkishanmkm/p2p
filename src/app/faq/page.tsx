@@ -2,9 +2,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 
 const faqs = [
   {
-    question: 'What is TradeFlow?',
+    question: 'What is Tradenance?',
     answer:
-      'TradeFlow is a peer-to-peer (P2P) coin trading platform that allows users to buy and sell coins directly with each other. We provide a secure escrow service to protect both parties during a transaction.',
+      'Tradenance is a peer-to-peer (P2P) coin trading platform that allows users to buy and sell coins directly with each other. We provide a secure escrow service to protect both parties during a transaction.',
   },
   {
     question: 'How does the escrow service work?',
@@ -12,14 +12,14 @@ const faqs = [
       "When a trade is initiated, the seller's coin is locked in our secure escrow system. The seller can only release the coin to the buyer after they have confirmed receipt of payment. This prevents scams and ensures that both parties fulfill their obligations.",
   },
   {
-    question: 'What are the fees for using TradeFlow?',
+    question: 'What are the fees for using Tradenance?',
     answer:
-      'We charge a small, transparent fee on completed trades. The exact fee is displayed before you confirm a trade. There are no hidden charges for depositing or withdrawing coins from your TradeFlow wallet.',
+      'We charge a small, transparent fee on completed trades. The exact fee is displayed before you confirm a trade. There are no hidden charges for depositing or withdrawing coins from your Tradenance wallet.',
   },
   {
     question: 'What payment methods are supported?',
     answer:
-      'TradeFlow supports hundreds of payment methods from over 180 countries. These can include bank transfers, online wallets, and other local payment options. You can filter ads by your preferred payment method to find a suitable trade partner.',
+      'Tradenance supports hundreds of payment methods from over 180 countries. These can include bank transfers, online wallets, and other local payment options. You can filter ads by your preferred payment method to find a suitable trade partner.',
   },
   {
     question: 'What happens if there is a dispute?',
@@ -47,7 +47,7 @@ const faqs = [
       'Your reputation is based on your trading history and feedback from other users. To build a good reputation, always communicate clearly, pay on time, and release crypto promptly after confirming payment. Consistently positive trades will increase your feedback score, making you a more trusted trading partner.',
   },
   {
-    question: 'Are my coins safe in my TradeFlow wallet?',
+    question: 'Are my coins safe in my Tradenance wallet?',
     answer:
       'Yes. We use a combination of hot and cold storage solutions and multi-signature technology to ensure the highest level of security for your assets. You can also add extra security to your account by enabling two-factor authentication (2FA).',
   },
@@ -57,7 +57,7 @@ export default function FAQPage() {
   return (
     <div className="prose dark:prose-invert max-w-4xl mx-auto">
       <h1>Frequently Asked Questions</h1>
-      <p className="lead">Find answers to common questions about using the TradeFlow platform.</p>
+      <p className="lead">Find answers to common questions about using the Tradenance platform.</p>
       <Accordion type="single" collapsible className="w-full">
         {faqs.map((faq, index) => (
           <AccordionItem key={index} value={`item-${index}`}>

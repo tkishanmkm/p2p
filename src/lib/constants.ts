@@ -1,6 +1,6 @@
 import type { CryptoCurrency, SupportedCrypto, Language } from './types';
 
-export const APP_NAME = 'Tradenaire';
+export const APP_NAME = 'Tradenance';
 
 export const SUPPORTED_CRYPTOS: SupportedCrypto[] = [
   { name: 'USDT', chains: ["ERC20", "TRC20", "BEP20"] },

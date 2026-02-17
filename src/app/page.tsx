@@ -140,8 +140,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Why TradeFlow Section */}
-        <section id="why-tradeflow" className="py-16 md:py-24 lg:py-32 bg-secondary/30">
+        {/* Why Tradenance Section */}
+        <section id="why-tradenance" className="py-16 md:py-24 lg:py-32 bg-secondary/30">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto">
                 <h2 className="text-3xl md:text-4xl font-bold tracking-tight">{t('home.whyP2PTitle')}</h2>

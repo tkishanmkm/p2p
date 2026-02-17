@@ -111,7 +111,7 @@ function SignupFormComponent() {
       
       // 2. Create user with email/password
       await setPersistence(auth, browserLocalPersistence);
-      const dummyEmail = `${values.userId}@tradenaire.app`;
+      const dummyEmail = `${values.userId}@tradenance.app`;
       const userCredential = await createUserWithEmailAndPassword(auth, dummyEmail, values.password);
       const { user: newUser } = userCredential;
 
@@ -194,7 +194,7 @@ function SignupFormComponent() {
           </Link>
           <CardTitle className="text-2xl">Create an Account</CardTitle>
           <CardDescription>
-            Join Tradenaire to start trading securely.
+            Join Tradenance to start trading securely.
           </CardDescription>
         </CardHeader>
         <CardContent>

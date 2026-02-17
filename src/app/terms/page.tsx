@@ -4,10 +4,16 @@ export default function TermsPage() {
       <h1>Terms of Service</h1>
       <p className="text-muted-foreground">Last updated: {new Date().toLocaleDateString()}</p>
 
-      <h2>1. Introduction</h2>
+      <h2>1. Introduction & Our Role</h2>
       <p>
-        Welcome to TradeFlow! These Terms of Service ("Terms") govern your use of our peer-to-peer coin trading
-        platform. By accessing or using our Services, you agree to be bound by these Terms.
+        Welcome to Tradenance! These Terms of Service ("Terms") govern your use of our peer-to-peer cryptocurrency
+        trading platform. By accessing or using our Services, you agree to be bound by these Terms.
+      </p>
+      <p>
+        <strong>Important Disclaimer:</strong> Tradenance is a technology platform that connects users (buyers and sellers) for the purpose of executing peer-to-peer (P2P) transactions. We are not a party to any trade between users. We do not buy, sell, or exchange cryptocurrency ourselves. Our service is limited to providing the platform, facilitating communication, and offering an automated escrow service to secure transactions.
+      </p>
+       <p>
+        <strong>Limitation of Liability:</strong> Tradenance is not responsible for any loss, damage, or claim arising from any transaction between users. The responsibility for ensuring the legitimacy of a trade and the identity of a trade partner rests solely with you. We do not guarantee the completion of any trade or the integrity of any user. Our dispute resolution service is provided on a best-effort basis, and its outcome is based solely on the evidence provided by the users within the platform's chat.
       </p>
 
       <h2>2. Eligibility</h2>
@@ -24,15 +30,26 @@ export default function TermsPage() {
 
       <h2>4. General P2P Trading Rules</h2>
       <p>
-        TradeFlow is a platform that connects buyers and sellers. We are not a party to any trade. All trades are secured
-        by our automated escrow system. You agree to communicate with other users professionally and to not engage in
-        any fraudulent or illegal activities.
+        All trades on Tradenance are secured by our automated escrow system. You agree to communicate with other users professionally and to not engage in
+        any fraudulent or illegal activities. All communication and transactions must remain on the Tradenance platform.
       </p>
 
-      <h2 id="buyer-terms">5. Terms for Buyers</h2>
+      <h2 id="how-to-trade">5. How to Trade: A Step-by-Step Guide</h2>
+      <ol>
+        <li><strong>Find an Advertisement:</strong> Browse the "Buy" or "Sell" pages to find an ad that matches your desired cryptocurrency, fiat currency, and payment method. Review the trader's reputation (feedback score, number of trades) and the ad's terms carefully.</li>
+        <li><strong>Initiate the Trade:</strong> Enter the amount you wish to trade and click the "Buy" or "Sell" button. Once you initiate the trade, the cryptocurrency is locked in our secure escrow.</li>
+        <li><strong>Communicate in Chat:</strong> Use the trade chat to communicate with your partner. For sellers, this is where you provide your payment details. For buyers, this is where you confirm you are ready to pay.</li>
+        <li><strong>Payment (Buyer's Role):</strong> The buyer sends the agreed-upon fiat amount to the seller using the provided payment details. This must be done within the payment time limit shown in the trade.</li>
+        <li><strong>Confirm Payment (Buyer's Role):</strong> After sending the payment, the buyer MUST click the "Mark as Paid" button in the trade interface. This notifies the seller and prevents the trade from expiring.</li>
+        <li><strong>Verify Payment (Seller's Role):</strong> The seller must check their bank or payment account to confirm they have received the full payment. <strong>Do not rely on screenshots or payment proofs alone.</strong></li>
+        <li><strong>Release Crypto (Seller's Role):</strong> Once payment is confirmed, the seller must click the "Release Crypto" button. This transfers the cryptocurrency from escrow to the buyer's wallet, completing the trade.</li>
+      </ol>
+
+
+      <h2 id="buyer-terms">6. Terms for Buyers</h2>
       <ul>
         <li>
-          <strong>Initiating a Trade:</strong> By initiating a trade, you commit to paying the seller the agreed-upon
+          <strong>Commitment:</strong> By initiating a trade, you commit to paying the seller the agreed-upon
           amount using the specified payment method within the designated payment window.
         </li>
         <li>
@@ -44,62 +61,52 @@ export default function TermsPage() {
           payment. Falsely marking a trade as paid may result in a temporary or permanent ban from our platform.
         </li>
         <li>
-          <strong>Communication:</strong> Maintain clear communication with the seller through the trade chat. You must
+          <strong>On-Platform Communication:</strong> Maintain all communication with the seller through the Tradenance trade chat. You must
           not ask the seller for personal contact information, including social media handles, phone numbers, or email
           addresses.
         </li>
-        <li>
-          <strong>External Links:</strong> Do not send or click on any links that are not directly related to the payment
-          process. Do not attempt to communicate or trade outside of the TradeFlow platform.
-        </li>
       </ul>
 
-      <h2 id="seller-terms">6. Terms for Sellers</h2>
+      <h2 id="seller-terms">7. Terms for Sellers</h2>
       <ul>
         <li>
           <strong>Creating an Ad:</strong> You are responsible for the accuracy of your ad, including payment methods,
-          price, and terms. You must have the full amount of coin available in your TradeFlow wallet before creating a
+          price, and terms. You must have the full amount of cryptocurrency available in your Tradenance wallet before creating a
           sell ad.
         </li>
         <li>
           <strong>Confirming Payment:</strong> You must diligently check your payment account to confirm you have
-          received the full payment from the buyer before releasing the coin. Do not rely solely on the buyer's proof of
+          received the full payment from the buyer before releasing the cryptocurrency. Do not rely solely on the buyer's proof of
           payment.
         </li>
         <li>
           <strong>Releasing Cryptocurrency:</strong> Once you have confirmed receipt of payment, you must release the
-          coin from escrow promptly. Failure to do so after receiving payment will result in a dispute where the coin
+          cryptocurrency from escrow promptly. Failure to do so after receiving payment will result in a dispute where the cryptocurrency
           will be awarded to the buyer, and your account may be penalized.
         </li>
         <li>
-          <strong>Communication:</strong> Respond to your trade partner in a timely manner. You must not ask the buyer
-          for personal contact information, including social media handles, phone numbers, or email addresses.
-        </li>
-        <li>
-          <strong>External Links & Communication:</strong> You must not direct users to communicate or trade outside of
-          the TradeFlow platform. Do not send or request users to click on any unauthorized links.
+          <strong>On-Platform Communication:</strong> You must not direct users to communicate or trade outside of
+          the Tradenance platform. Do not send or request users to click on any unauthorized links.
         </li>
       </ul>
 
-      <h2>7. Dispute Resolution</h2>
+      <h2>8. Dispute Resolution</h2>
       <p>
-        In the event of a dispute, our moderation team will intervene. You agree to provide all necessary information,
-        including payment proofs and chat logs. Our decision is final and binding. Frivolous disputes may lead to
-        account suspension.
+        In the event of a dispute, our moderation team will intervene to mediate a resolution. As a neutral third party, our decision is based solely on the evidence provided by both parties within the Tradenance trade chat. You agree that Tradenance's decision in any dispute is final and binding. Tradenance is not liable for any losses resulting from a dispute.
       </p>
 
-      <h2>8. Fees</h2>
+      <h2>9. Fees</h2>
       <p>
         We charge a small, transparent fee for completed trades. This fee is used to maintain the platform and provide
         support services. The fee is clearly displayed before you enter a trade.
       </p>
 
-      <h2>9. Termination</h2>
+      <h2>10. Termination</h2>
       <p>We may terminate or suspend your account at our discretion for any reason, including violation of these Terms. </p>
 
-      <h2>10. Disclaimers</h2>
+      <h2>11. Disclaimers</h2>
       <p>
-        Coin trading involves significant risk. Our Services are provided "as is" without any warranties. We are not
+        Cryptocurrency trading involves significant risk. Our Services are provided "as is" without any warranties. We are not
         liable for any losses you may incur from trading.
       </p>
     </div>
