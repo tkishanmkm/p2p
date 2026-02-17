@@ -218,6 +218,7 @@ export type SupportTicket = {
     userId?: string;
     message: string;
     status: 'Open' | 'In Progress' | 'Closed';
+    resolutionNote?: string;
     createdAt: string;
 };
 

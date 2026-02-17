@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -562,6 +563,12 @@ export function DashboardHeader() {
                 <Link href="/trades">
                   <ArrowLeftRight className="mr-2 h-4 w-4" />
                   <span>My Trades</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/my-tickets">
+                  <LifeBuoy className="mr-2 h-4 w-4" />
+                  <span>My Tickets</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

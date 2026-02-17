@@ -44,7 +44,6 @@ export function SupportForm() {
 
     useEffect(() => {
       if (user) {
-        form.setValue('email', user.email || '');
         form.setValue('username', user.displayName || '');
       }
     }, [user, form]);
@@ -66,7 +65,7 @@ export function SupportForm() {
           description: "Our team will get back to you shortly via in-app notifications if you provided a username, or via email.",
       })
       form.reset({
-        email: user?.email || '',
+        email: "",
         username: user?.displayName || '',
         message: '',
       })
@@ -109,7 +108,7 @@ export function SupportForm() {
                 <FormItem>
                   <FormLabel>Username (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="YourTradenanceUsername" {...field} />
+                    <Input placeholder="YourTradenanceUsername" {...field} disabled={!!user} />
                   </FormControl>
                    <FormDescription>If this issue is related to your account, please provide your username.</FormDescription>
                   <FormMessage />

@@ -1,6 +1,6 @@
 
 
-"use client";
+'use client';
 
 import {
   doc,
@@ -329,9 +329,13 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
   });
 }
 
-export async function updateSupportTicketStatus(db: Firestore, ticketId: string, status: SupportTicket['status']) {
+export async function updateSupportTicketStatus(db: Firestore, ticketId: string, status: SupportTicket['status'], note?: string) {
   const ticketRef = doc(db, "support_tickets", ticketId);
-  await updateDoc(ticketRef, { status });
+  const updateData: { status: SupportTicket['status'], resolutionNote?: string } = { status };
+  if (note) {
+    updateData.resolutionNote = note;
+  }
+  await updateDoc(ticketRef, updateData);
 }
 
 /**

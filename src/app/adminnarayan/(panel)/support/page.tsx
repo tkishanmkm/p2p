@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal } from "lucide-react"
+import { MoreHorizontal, Loader2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +42,17 @@ import { useToast } from "@/hooks/use-toast";
 import { toDate } from "@/lib/utils";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { useState, useEffect } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const replySchema = z.object({
+  note: z.string().min(10, "Reply must be at least 10 characters long."),
+});
+type ReplyFormValues = z.infer<typeof replySchema>;
+
 
 export default function AdminSupportPage() {
   const { firestore } = useFirebase();
@@ -51,6 +62,11 @@ export default function AdminSupportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
+
+  const replyForm = useForm<ReplyFormValues>({
+    resolver: zodResolver(replySchema),
+  });
 
   useEffect(() => {
     if (isAdminLoading) return;
@@ -85,6 +101,24 @@ export default function AdminSupportPage() {
         setTickets(currentTickets => currentTickets?.map(t => t.id === ticketId ? {...t, status} : t) || null);
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+    }
+  };
+  
+  const handleOpenReplyDialog = (ticket: SupportTicket) => {
+    setSelectedTicket(ticket);
+    setIsReplyOpen(true);
+  };
+  
+  const handleReplySubmit = async (values: ReplyFormValues) => {
+    if (!firestore || !selectedTicket) return;
+    try {
+      await updateSupportTicketStatus(firestore, selectedTicket.id, 'Closed', values.note);
+      toast({ title: 'Ticket Closed', description: `Reply sent and ticket closed.` });
+      setTickets(currentTickets => currentTickets?.map(t => t.id === selectedTicket.id ? {...t, status: 'Closed', resolutionNote: values.note } : t) || null);
+      setIsReplyOpen(false);
+      replyForm.reset();
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Reply Failed', description: e.message });
     }
   };
   
@@ -147,7 +181,7 @@ export default function AdminSupportPage() {
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleViewDetails(ticket)}}>View Details</DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleStatusChange(ticket.id, 'In Progress')}}>Mark as In Progress</DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleStatusChange(ticket.id, 'Closed')}}>Close Ticket</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleOpenReplyDialog(ticket)}}>Reply & Close</DropdownMenuItem>
                         </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -194,8 +228,43 @@ export default function AdminSupportPage() {
                 <div className="space-y-4 py-4">
                     <h4 className="font-medium">Message:</h4>
                     <p className="text-sm p-4 bg-muted rounded-md text-muted-foreground whitespace-pre-wrap">{selectedTicket.message}</p>
+                     {selectedTicket.resolutionNote && (
+                        <div>
+                            <h4 className="font-medium">Admin Reply:</h4>
+                            <p className="text-sm p-4 bg-green-100 dark:bg-green-900/30 rounded-md whitespace-pre-wrap">{selectedTicket.resolutionNote}</p>
+                        </div>
+                    )}
                 </div>
             )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isReplyOpen} onOpenChange={setIsReplyOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Reply & Close Ticket</DialogTitle>
+                <DialogDescription>Your reply will be sent to the user and the ticket will be marked as closed.</DialogDescription>
+            </DialogHeader>
+             <Form {...replyForm}>
+                <form onSubmit={replyForm.handleSubmit(handleReplySubmit)} className="space-y-4">
+                  <FormField
+                    control={replyForm.control}
+                    name="note"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Your Reply</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Explain the resolution to the user..." {...field} className="min-h-[120px]"/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" disabled={replyForm.formState.isSubmitting} className="w-full">
+                    {replyForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Send Reply and Close
+                  </Button>
+                </form>
+              </Form>
         </DialogContent>
       </Dialog>
     </>
