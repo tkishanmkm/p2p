@@ -19,7 +19,7 @@ import type { Feedback, P2PAd, Trade, TradeStatus, Dispute, User } from '@/lib/t
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,14 +27,14 @@ import { Label } from "@/components/ui/label";
 
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, RefreshCw, Clock, Loader2, Flag, ThumbsUp, ThumbsDown, Shield, Eye } from 'lucide-react';
+import { AlertCircle, RefreshCw, Clock, Loader2, Flag, ThumbsUp, ThumbsDown, Shield, Eye, Gavel } from 'lucide-react';
 import { add } from 'date-fns';
 import { Input } from '../ui/input';
 import { collection, addDoc, doc, updateDoc, runTransaction } from 'firebase/firestore';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { useAdminStatus } from '@/hooks/use-admin-status';
-import { adminCancelTrade, adminMarkTradeAsPaid, adminReleaseFunds } from '@/lib/admin';
-import { AdminActionDialog, type AdminActionType } from '../admin/admin-action-dialog';
+import { adminCancelTrade, adminMarkTradeAsPaid, adminReleaseFunds, resolveDispute } from '@/lib/admin';
+import { AdminActionDialog } from '../admin/admin-action-dialog';
 import { Checkbox } from '../ui/checkbox';
 
 function DetailRow({ label, value, valueClass, isLink = false, href = '#' }: { label: string, value: string | React.ReactNode, valueClass?: string, isLink?: boolean, href?: string }) {
@@ -406,29 +406,38 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
 function AdminTradeActions({ trade }: { trade: Trade }) {
   const { firestore, user: adminUser } = useFirebase();
   const { toast } = useToast();
-  const [dialogState, setDialogState] = useState<{ open: boolean; action: AdminActionType | null; }>({ open: false, action: null });
+  const [dialogState, setDialogState] = useState<{ open: boolean; action: 'cancel' | 'paid' | 'release' | 'award_buyer' | 'award_seller' | null; }>({ open: false, action: null });
 
   const handleActionConfirm = async (reason: string) => {
     if (!dialogState.action || !adminUser || !firestore) return;
-
+    const { action } = dialogState;
+    
     try {
-        if (dialogState.action === 'cancel') {
-            await adminCancelTrade(firestore, trade, adminUser.uid, reason);
-        } else if (dialogState.action === 'paid') {
-            await adminMarkTradeAsPaid(firestore, trade, adminUser.uid, reason);
-        } else if (dialogState.action === 'release') {
-            await adminReleaseFunds(firestore, trade, adminUser.uid, reason);
+        if (action === 'cancel') await adminCancelTrade(firestore, trade, adminUser.uid, reason);
+        else if (action === 'paid') await adminMarkTradeAsPaid(firestore, trade, adminUser.uid, reason);
+        else if (action === 'release') await adminReleaseFunds(firestore, trade, adminUser.uid, reason);
+        else if (action === 'award_buyer' || action === 'award_seller') {
+            const disputesRef = collection(firestore, 'trades', trade.id, 'disputes');
+            const disputeSnap = await getDocs(query(disputesRef, where('status', '==', 'open'), limit(1)));
+            if (disputeSnap.empty) throw new Error("No open dispute found for this trade.");
+            const dispute = {id: disputeSnap.docs[0].id, ...disputeSnap.docs[0].data()} as Dispute;
+            const winnerId = action === 'award_buyer' ? trade.buyerId : trade.sellerId;
+            await resolveDispute(firestore, trade, dispute, winnerId, adminUser.uid, reason);
         }
         toast({ title: 'Admin Action Successful', description: 'The trade has been updated.' });
     } catch(e: any) {
         toast({ variant: 'destructive', title: 'Admin Action Failed', description: e.message });
+    } finally {
+        setDialogState({open: false, action: null});
     }
   }
 
-  const actionMap: Record<string, {label: string, action: 'cancel' | 'paid' | 'release'}> = {
-      cancel: { label: 'Cancel Trade', action: 'cancel' },
-      paid: { label: 'Mark as Paid', action: 'paid' },
-      release: { label: 'Release Funds', action: 'release' },
+  const actionMap = {
+      cancel: { label: 'Cancel Trade' },
+      paid: { label: 'Mark as Paid' },
+      release: { label: 'Release Funds' },
+      award_buyer: { label: 'Award to Buyer' },
+      award_seller: { label: 'Award to Seller' },
   }
 
   return (
@@ -447,16 +456,23 @@ function AdminTradeActions({ trade }: { trade: Trade }) {
                     Admin Controls
                 </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <Button variant="outline" onClick={() => setDialogState({ open: true, action: actionMap.cancel.action })}>
-                    {actionMap.cancel.label}
-                </Button>
-                 <Button variant="outline" onClick={() => setDialogState({ open: true, action: actionMap.paid.action })}>
-                    {actionMap.paid.label}
-                </Button>
-                <Button variant="outline" onClick={() => setDialogState({ open: true, action: actionMap.release.action })}>
-                    {actionMap.release.label}
-                </Button>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                 {trade.status === 'disputed' ? (
+                     <>
+                        <Button variant="outline" onClick={() => setDialogState({ open: true, action: 'award_buyer' })}>
+                           <Gavel className="mr-2 h-4 w-4" /> Award to Buyer
+                        </Button>
+                         <Button variant="outline" onClick={() => setDialogState({ open: true, action: 'award_seller' })}>
+                            <Gavel className="mr-2 h-4 w-4" /> Award to Seller
+                        </Button>
+                     </>
+                 ) : (
+                    <>
+                        <Button variant="outline" onClick={() => setDialogState({ open: true, action: 'cancel' })}>Cancel Trade</Button>
+                        <Button variant="outline" onClick={() => setDialogState({ open: true, action: 'paid' })}>Mark as Paid</Button>
+                        <Button variant="outline" onClick={() => setDialogState({ open: true, action: 'release' })}>Release Funds</Button>
+                    </>
+                 )}
             </CardContent>
         </Card>
       </>
@@ -515,7 +531,7 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
   ];
 
   const instructions = isBuying ? buyerInstructions : sellerInstructions;
-  const showActions = ['active', 'paid', 'disputed'].includes(trade.status);
+  const showActions = ['active', 'paid'].includes(trade.status);
 
   return (
     <Card className="flex flex-col h-full shadow-none border-0 rounded-none">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -184,7 +185,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading || isAddressSetLoading} className="w-full">
                             {(isLoading || isAddressSetLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Deposit
+                            Create Request
                         </Button>
                     </DialogFooter>
                 </form>

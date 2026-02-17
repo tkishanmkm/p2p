@@ -168,7 +168,7 @@ export default function AdminSupportPage() {
                         {ticket.status}
                         </Badge>
                     </TableCell>
-                    <TableCell>{toDate(ticket.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                    <TableCell>{toDate(ticket.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'}</TableCell>
                     <TableCell>
                         <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -207,7 +207,7 @@ export default function AdminSupportPage() {
                                     {ticket.status}
                                 </Badge>
                             </div>
-                            <CardDescription>{toDate(ticket.createdAt)?.toLocaleString() ?? 'N/A'}</CardDescription>
+                            <CardDescription>{toDate(ticket.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'}</CardDescription>
                       </CardHeader>
                       <CardContent>
                           <p className="text-sm text-muted-foreground line-clamp-3">{ticket.message}</p>
@@ -222,7 +222,7 @@ export default function AdminSupportPage() {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Support Ticket Details</DialogTitle>
-                 {selectedTicket && <DialogDescription>From: {selectedTicket.email} | User: {selectedTicket.userId || 'N/A'} | Submitted: {toDate(selectedTicket.createdAt)?.toLocaleString()}</DialogDescription>}
+                 {selectedTicket && <DialogDescription>From: {selectedTicket.email} | User: {selectedTicket.userId || 'N/A'} | Submitted: {toDate(selectedTicket.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</DialogDescription>}
             </DialogHeader>
             {selectedTicket && (
                 <div className="space-y-4 py-4">

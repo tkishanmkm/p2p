@@ -150,7 +150,7 @@ export default function AdminTransfersPage() {
                         </Link>
                     </TableCell>
                     <TableCell className="font-medium">{transfer.amount.toFixed(8)} {transfer.crypto}</TableCell>
-                    <TableCell>{toDate(transfer.createdAt)?.toLocaleString()}</TableCell>
+                    <TableCell>{toDate(transfer.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
                     </TableRow>
                 ))}
                 {!isLoading && !filteredTransfers?.length && (
@@ -169,7 +169,7 @@ export default function AdminTransfersPage() {
                   <Card key={transfer.id} onClick={() => handleRowClick(transfer)}>
                        <CardHeader>
                             <CardTitle className="text-base font-mono">{transfer.publicId}</CardTitle>
-                            <CardDescription>{toDate(transfer.createdAt)?.toLocaleString()}</CardDescription>
+                            <CardDescription>{toDate(transfer.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</CardDescription>
                        </CardHeader>
                         <CardContent className="text-sm space-y-2">
                            <div className="flex justify-between">
@@ -203,7 +203,7 @@ export default function AdminTransfersPage() {
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Sender</span><span className="font-medium">{selectedTransfer.senderUsername}</span></div>
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Recipient</span><span className="font-medium">{selectedTransfer.recipientUsername}</span></div>
                     <div className="flex justify-between items-center"><span className="text-muted-foreground">Amount</span><Badge variant="outline">{selectedTransfer.amount.toFixed(8)} {selectedTransfer.crypto}</Badge></div>
-                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Date</span><span className="font-medium">{toDate(selectedTransfer.createdAt)?.toLocaleString()}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Date</span><span className="font-medium">{toDate(selectedTransfer.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</span></div>
                 </div>
             )}
         </DialogContent>

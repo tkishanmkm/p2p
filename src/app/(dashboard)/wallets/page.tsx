@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -48,7 +47,7 @@ function DepositsHistory({ deposits, isLoading, onRowClick }: { deposits: Deposi
                     <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
                     <TableCell>{d.amount}</TableCell>
                     <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[d.status])}>{d.status.replace(/_/g, ' ')}</Badge></TableCell>
-                    <TableCell>{toDate(d.createdAt)?.toLocaleString()}</TableCell>
+                    <TableCell>{toDate(d.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
                     <TableCell className="text-right">
                         <Button variant="ghost" size="icon">
                             <Eye className="h-4 w-4"/>
@@ -281,7 +280,7 @@ export default function WalletPage() {
                                         <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
                                         <TableCell>{w.amount}</TableCell>
                                         <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>{w.status}</Badge></TableCell>
-                                        <TableCell>{toDate(w.createdAt)?.toLocaleString()}</TableCell>
+                                        <TableCell>{toDate(w.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
                                         <TableCell className="text-right"><Button variant="ghost" size="icon"><Eye className="h-4 w-4"/></Button></TableCell>
                                     </TableRow>
                                 ))}

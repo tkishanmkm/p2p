@@ -1,7 +1,4 @@
 
-
-
-
 'use client';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
@@ -75,7 +72,7 @@ function TradeInstructions({ trade, isBuyer }: { trade: Trade, isBuyer: boolean 
 
 // --- Sub-component: SystemMessage ---
 function SystemMessage({ title, children, timestamp, variant }: { title: string; children: React.ReactNode; timestamp: string, variant?: 'default' | 'destructive' | 'success' | 'warning' }) {
-    const timeString = toDate(timestamp)?.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) || '';
+    const timeString = toDate(timestamp)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) || '';
 
     const variants = {
         default: "bg-blue-100 border-blue-200 text-blue-900 dark:bg-blue-950/60 dark:border-blue-800/50 dark:text-blue-200",
@@ -270,7 +267,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
                         {msg.message && <p className="whitespace-pre-wrap">{msg.message}</p>}
                         {msg.mediaUrl && msg.mediaType === 'image' && (<a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer"><Image src={msg.mediaUrl} alt="Uploaded attachment" width={200} height={200} className="rounded-md mt-2 max-w-full h-auto" /></a>)}
                         {msg.mediaUrl && (msg.mediaType === 'video' || msg.mediaType === 'audio' || msg.mediaType === undefined) && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">View Attached File</a>}
-                        <p className="text-xs mt-1 opacity-70 text-right w-full">{toDate(msg.createdAt)?.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) ?? 'sending...'}</p>
+                        <p className="text-xs mt-1 opacity-70 text-right w-full">{toDate(msg.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'sending...'}</p>
                       </div>
                     </div>
                   );

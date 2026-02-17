@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -115,7 +116,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
       onOpenChange(false);
     } catch (error: any) {
       let errorMessage = error.message || "An unknown error occurred during withdrawal.";
-      if (error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/wrong-password' || error.code === "auth/invalid-credential") {
           errorMessage = "The password you entered is incorrect.";
           form.setError("password", { type: "manual", message: errorMessage });
       }

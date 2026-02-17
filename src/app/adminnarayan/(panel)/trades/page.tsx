@@ -152,7 +152,7 @@ export default function AdminTradesPage() {
                         {trade.status}
                         </Badge>
                     </TableCell>
-                    <TableCell>{toDate(trade.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                    <TableCell>{toDate(trade.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'}</TableCell>
                     <TableCell className="text-right">
                         <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()}>
                             <Link href={`/trade/${trade.id}`}>View</Link>
@@ -189,7 +189,7 @@ export default function AdminTradesPage() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Date</span>
-                            <span className="font-medium">{toDate(trade.createdAt)?.toLocaleDateString() ?? 'N/A'}</span>
+                            <span className="font-medium">{toDate(trade.createdAt)?.toLocaleDateString('default', { dateStyle: 'short' }) ?? 'N/A'}</span>
                           </div>
                       </CardContent>
                       <CardFooter>

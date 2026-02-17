@@ -107,7 +107,7 @@ function WithdrawalsTable({
                                     {w.status}
                                     </Badge>
                                 </TableCell>
-                                <TableCell>{toDate(w.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                                <TableCell>{toDate(w.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'}</TableCell>
                                 <TableCell className="text-right">
                                     {w.status === 'pending' && (
                                         <DropdownMenu>
@@ -390,7 +390,7 @@ export default function AdminWithdrawalsPage() {
                     </div>
                      <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Date Requested</span>
-                        <span className="font-medium">{toDate(selectedWithdrawal.createdAt)?.toLocaleString()}</span>
+                        <span className="font-medium">{toDate(selectedWithdrawal.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</span>
                     </div>
                      {selectedWithdrawal.adminId && <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Processed by Admin</span>

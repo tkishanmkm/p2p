@@ -197,7 +197,7 @@ export default function MyTradesPage() {
                         {trade.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{toDate(trade.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
+                    <TableCell>{toDate(trade.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/trade/${trade.id}`}><ArrowLeftRight className="mr-2 h-3 w-3"/>View</Link>
@@ -220,5 +220,3 @@ export default function MyTradesPage() {
     </>
   );
 }
-
-    

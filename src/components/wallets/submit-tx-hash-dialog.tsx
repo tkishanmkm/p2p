@@ -107,9 +107,9 @@ export function SubmitTxHashDialog({ open, onOpenChange, deposit }: SubmitTxHash
                             <div className="p-2 bg-white rounded-lg">
                                 <QRCode value={deposit.walletAddress} size={160} />
                             </div>
-                            <div className="flex items-center gap-2 p-2 bg-muted rounded-md w-full">
+                            <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full">
                                 <p className="font-mono text-xs break-all text-center flex-grow">{deposit.walletAddress}</p>
-                                <Button variant="ghost" size="icon" onClick={() => handleCopy(deposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(deposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
                             </div>
                         </div>
 

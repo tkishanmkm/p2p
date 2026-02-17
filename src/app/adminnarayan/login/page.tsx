@@ -81,8 +81,10 @@ export default function AdminLoginPage() {
             } catch (error: any) {
                 lastError = error;
                 if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-                  throw error; 
+                  // If we know the user exists but the password is wrong, stop trying other domains.
+                  break; 
                 }
+                // Continue to next domain if user not found, etc.
             }
         }
         
@@ -103,7 +105,7 @@ export default function AdminLoginPage() {
         } else if (lastError?.code === 'auth/user-not-found') {
             // All attempts failed with user-not-found, so now try to create the user (first-time setup)
             try {
-                const adminEmail = `${values.adminId}@email.com`;
+                const adminEmail = `${values.adminId}@email.com`; // Standardize creation with email.com
                 const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
                 const { user: newUser } = newUserCredential;
                 await updateProfile(newUser, { displayName: values.adminId });

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -447,7 +446,7 @@ export function DashboardHeader() {
                             <div className="flex flex-col">
                               <p className="text-sm leading-snug">{n.message}</p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                {toDate(n.createdAt)?.toLocaleString() ?? 'Invalid Date'}
+                                {toDate(n.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'Invalid Date'}
                               </p>
                             </div>
                           </Link>
