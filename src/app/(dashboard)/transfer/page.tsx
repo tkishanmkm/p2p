@@ -1,6 +1,6 @@
 
 
-"use client";
+'use client';
 
 import { useMemo, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -84,6 +84,22 @@ function TransferHistoryTable({
   currentUsername: string;
   onRowClick: (transfer: CoinTransfer) => void;
 }) {
+  if (isLoading) {
+    return (
+        <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+        </div>
+    );
+  }
+  if (!transfers || transfers.length === 0) {
+      return (
+        <div className="h-24 text-center flex items-center justify-center text-muted-foreground">
+            No {type} transfers yet.
+        </div>
+      );
+  }
   return (
     <Table>
       <TableHeader>
@@ -95,15 +111,7 @@ function TransferHistoryTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {isLoading && (
-          <TableRow>
-            <TableCell colSpan={4}>
-              <Skeleton className="h-10 w-full" />
-            </TableCell>
-          </TableRow>
-        )}
-        {!isLoading &&
-          transfers?.map((t) => (
+        {transfers?.map((t) => (
             <TableRow key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
               <TableCell className="font-mono text-xs">{t.publicId}</TableCell>
               <TableCell>
@@ -117,13 +125,6 @@ function TransferHistoryTable({
               </TableCell>
             </TableRow>
           ))}
-        {!isLoading && (!transfers || transfers.length === 0) && (
-          <TableRow>
-            <TableCell colSpan={4} className="h-24 text-center">
-              No {type} transfers yet.
-            </TableCell>
-          </TableRow>
-        )}
       </TableBody>
     </Table>
   );

@@ -25,7 +25,16 @@ import { FIXED_WITHDRAWAL_FEES_USD } from '@/lib/constants';
 import { usePrices } from '@/context/price-context';
 import { statusColors } from '@/lib/status-colors';
 
-function DepositsHistory({ deposits, onRowClick }: { deposits: Deposit[] | null, onRowClick: (deposit: Deposit) => void }) {
+function DepositsHistory({ deposits, isLoading, onRowClick }: { deposits: Deposit[] | null, isLoading: boolean, onRowClick: (deposit: Deposit) => void }) {
+  if (isLoading) {
+    return (
+        <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+        </div>
+    );
+  }
   if (!deposits?.length) {
     return <p className="text-center text-muted-foreground py-4">No deposit history.</p>;
   }
@@ -83,7 +92,7 @@ export default function WalletPage() {
   const withdrawalsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/withdrawals`), orderBy('createdAt', 'desc')) : null, [firestore, user]);
   const { data: withdrawals, isLoading: areWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
 
-  const isLoading = isUserLoading || areWalletsLoading || areDepositsLoading;
+  const isLoading = isUserLoading || areWalletsLoading;
 
   const walletSummary = useMemo(() => {
     if (!wallets) return [];
@@ -259,9 +268,7 @@ export default function WalletPage() {
                     <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
                 </TabsList>
                 <TabsContent value="deposits" className="mt-4">
-                     {areDepositsLoading ? <Skeleton className="h-24 w-full" /> : (
-                        <DepositsHistory deposits={deposits} onRowClick={handleHistoryRowClick} />
-                     )}
+                     <DepositsHistory deposits={deposits} isLoading={areDepositsLoading} onRowClick={handleHistoryRowClick} />
                 </TabsContent>
                 <TabsContent value="withdrawals" className="mt-4">
                      {areWithdrawalsLoading ? <Skeleton className="h-24 w-full" /> : (

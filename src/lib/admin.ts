@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import {
@@ -258,6 +259,7 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
 
     const winnerUsername = winnerId === trade.buyerId ? trade.buyer.username : trade.seller.username;
     let finalTradeStatus: 'cancelled' | 'released';
+    let systemMessageText: string;
 
     if (winnerId === trade.sellerId) {
       finalTradeStatus = 'cancelled';
@@ -268,6 +270,8 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
         updatedAt: new Date().toISOString()
       });
       transaction.update(tradeRef, { status: finalTradeStatus });
+      systemMessageText = `Dispute resolved. The trade has been awarded to the seller (${winnerUsername}) and is now cancelled.`;
+
     } else { // Winner is buyer
       finalTradeStatus = 'released';
       if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to release.");
@@ -277,6 +281,7 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
         updatedAt: new Date().toISOString()
       });
       transaction.update(tradeRef, { status: finalTradeStatus });
+      systemMessageText = `Dispute resolved. The trade has been awarded to the buyer (${winnerUsername}). The crypto has been released.`;
     }
 
     // Update dispute doc
@@ -292,7 +297,7 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
       tradeId: trade.id,
       senderId: 'system',
       senderUsername: 'System',
-      message: `Dispute resolved. The trade has been awarded to ${winnerUsername}. Final trade status: ${finalTradeStatus}.`,
+      message: systemMessageText,
       isModerator: true,
       createdAt: new Date().toISOString(),
     });
@@ -301,18 +306,22 @@ export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispu
     const opponentId = winnerId === trade.buyerId ? trade.sellerId : trade.buyerId;
 
     const winnerNotifRef = doc(collection(db, 'users', winnerId, 'notifications'));
+    const winnerMessage = finalTradeStatus === 'released'
+        ? `Congratulations! You have won the dispute for trade ${trade.tradeId}. The crypto has been released to your wallet.`
+        : `You have won the dispute for trade ${trade.tradeId}. The trade has been cancelled and the crypto returned to the seller.`;
     transaction.set(winnerNotifRef, {
         userId: winnerId,
-        message: `You have won the dispute for trade ${trade.tradeId}. The trade is now ${finalTradeStatus}.`,
+        message: winnerMessage,
         link: `/trade/${trade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),
     });
 
     const loserNotifRef = doc(collection(db, 'users', opponentId, 'notifications'));
+    const loserMessage = `The dispute for trade ${trade.tradeId} has been resolved in favor of the other party. The trade is now ${finalTradeStatus}.`;
     transaction.set(loserNotifRef, {
         userId: opponentId,
-        message: `The dispute for trade ${trade.tradeId} has been resolved in favor of the other party. The trade is now ${finalTradeStatus}.`,
+        message: loserMessage,
         link: `/trade/${trade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),
