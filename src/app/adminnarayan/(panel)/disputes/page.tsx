@@ -106,11 +106,12 @@ export default function AdminDisputesPage() {
     if (!disputes) return null;
     if (!searchTerm.trim()) return disputes;
     const lower = searchTerm.toLowerCase();
-    return disputes.filter(d => 
-        d.tradeId.toLowerCase().includes(lower) ||
-        d.openedBy.toLowerCase().includes(lower) ||
-        d.reason.toLowerCase().includes(lower)
-    );
+    return disputes.filter(d => {
+        const tradeIdMatch = d.tradeId?.toLowerCase().includes(lower);
+        const openedByMatch = d.openedBy?.toLowerCase().includes(lower);
+        const reasonMatch = d.reason?.toLowerCase().includes(lower);
+        return tradeIdMatch || openedByMatch || reasonMatch;
+    });
   }, [disputes, searchTerm]);
 
   const handleResolve = async () => {

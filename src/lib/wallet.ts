@@ -54,7 +54,11 @@ export async function initiateTrade(
         throw new Error("You cannot trade with yourself.");
     }
 
-    const chainForCrypto = ad.crypto === 'USDT' ? 'ERC20' : CHAINS[ad.crypto][0];
+    const chainForCrypto = CHAINS[ad.crypto]?.[0] || '';
+    if (!chainForCrypto) {
+      throw new Error(`No default chain configured for ${ad.crypto}.`);
+    }
+
     const sellerWalletId = `${ad.crypto}-${chainForCrypto}`;
     
     const sellerWalletRef = doc(db, 'users', sellerId, 'wallets', sellerWalletId);
@@ -104,6 +108,7 @@ export async function initiateTrade(
         buyerId: buyerId,
         sellerId: sellerId,
         crypto: ad.crypto,
+        chain: chainForCrypto,
         amount: cryptoAmount,
         escrowFee: cryptoFee,
         fiatCurrency: ad.fiatCurrency,
@@ -207,8 +212,7 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
     const trade = tradeDoc.data() as Trade;
     if (trade.status !== 'paid' && trade.status !== 'disputed') throw new Error("This trade is not ready for release.");
 
-    const chainForCrypto = trade.crypto === 'USDT' ? 'ERC20' : CHAINS[trade.crypto][0];
-    const sellerWalletId = `${trade.crypto}-${chainForCrypto}`;
+    const sellerWalletId = `${trade.crypto}-${trade.chain}`;
     const sellerWalletRef = doc(db, 'users', trade.sellerId, 'wallets', sellerWalletId);
 
     const sellerWalletDoc = await transaction.get(sellerWalletRef);
@@ -253,8 +257,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     if (trade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
     if (trade.claimedByBuyer) throw new Error("Funds have already been claimed.");
     
-    const chainForCrypto = trade.crypto === 'USDT' ? 'ERC20' : CHAINS[trade.crypto][0];
-    const buyerWalletId = `${trade.crypto}-${chainForCrypto}`;
+    const buyerWalletId = `${trade.crypto}-${trade.chain}`;
 
     const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', buyerWalletId);
     const buyerUserRef = doc(db, 'users', buyerId);
@@ -278,7 +281,7 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         balance: currentBalance + amountToBuyer,
         lockedBalance: currentLockedBalance,
         crypto: trade.crypto,
-        chain: chainForCrypto,
+        chain: trade.chain,
         userId: buyerId,
         id: buyerWalletId,
         updatedAt: new Date().toISOString(),
@@ -331,20 +334,15 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
   });
 }
 
-export async function cancelTrade(db: Firestore, tradeId: string, reason: string) {
-  const tradeRef = doc(db, "trades", tradeId);
+export async function cancelTrade(db: Firestore, trade: Trade, reason: string) {
+  const tradeRef = doc(db, 'trades', trade.id);
 
   await runTransaction(db, async (transaction) => {
-    const tradeDoc = await transaction.get(tradeRef);
-    if (!tradeDoc.exists()) return;
-    
-    const trade = tradeDoc.data() as Trade;
     if (["released", "cancelled", "expired"].includes(trade.status)) return;
     
-    if (trade.status === 'active') {
-       const chainForCrypto = trade.crypto === 'USDT' ? 'ERC20' : CHAINS[trade.crypto][0];
-       const sellerWalletId = `${trade.crypto}-${chainForCrypto}`;
-       const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", sellerWalletId);
+    if (trade.status === 'active' || trade.status === 'paid' || trade.status === 'disputed') {
+      const sellerWalletId = `${trade.crypto}-${trade.chain}`;
+      const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", sellerWalletId);
       const sellerWalletDoc = await transaction.get(sellerWalletRef);
 
       if (sellerWalletDoc.exists()) {
@@ -544,12 +542,11 @@ export async function createWithdrawalRequest(
 
     // Fetch wallet data outside the transaction
     const walletsSnapshot = await getDocs(q);
-    const walletDocsWithRefs = walletsSnapshot.docs.map(d => ({ ref: d.ref, data: d.data() as UserWallet }));
+    const walletDocRefsToProcess = walletsSnapshot.docs.map(d => d.ref);
 
     await runTransaction(db, async (transaction) => {
-        // Read the current state of wallets inside the transaction
-        const liveWalletDocs = await Promise.all(walletDocsWithRefs.map(w => transaction.get(w.ref)));
-        const liveWallets = liveWalletDocs.map(d => ({ id: d.id, ...d.data() } as UserWallet));
+        const liveWalletDocs = await Promise.all(walletDocRefsToProcess.map(ref => transaction.get(ref)));
+        const liveWallets = liveWalletDocs.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() } as UserWallet));
 
         const totalAvailableBalance = liveWallets.reduce((sum, w) => sum + (w.balance || 0), 0);
 

@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket } from "./types";
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from "./wallet";
+import { CHAINS } from "./constants";
 
 /**
  * Approves a deposit and updates the user's wallet balance in a single transaction.
@@ -245,7 +246,9 @@ export async function setUserHoldStatus(db: Firestore, userId: string, userDispl
 export async function resolveDispute(db: Firestore, trade: Trade, dispute: Dispute, winnerId: string, adminId: string) {
   const tradeRef = doc(db, "trades", trade.id);
   const disputeRef = doc(db, "trades", trade.id, "disputes", dispute.id);
-  const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
+  
+  const sellerWalletId = `${trade.crypto}-${trade.chain}`;
+  const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", sellerWalletId);
   const messagesCollectionRef = collection(db, 'trades', trade.id, 'messages');
 
   return runTransaction(db, async (transaction) => {
@@ -415,7 +418,7 @@ export async function adminUnblockUser(
 
 export async function adminCancelTrade(db: Firestore, trade: Trade, adminId: string, reason: string) {
     const fullReason = `Cancelled by administrator. Reason: ${reason}`;
-    await cancelTrade(db, trade.id, fullReason);
+    await cancelTrade(db, trade, fullReason);
     const adminLogRef = doc(collection(db, "admin_logs"));
     await setDoc(adminLogRef, {
         adminId,

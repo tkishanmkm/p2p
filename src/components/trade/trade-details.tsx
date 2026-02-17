@@ -144,7 +144,7 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
 
     const handleMarkAsPaid = async () => { if (!firestore) return; try { await markTradeAsPaid(firestore, trade.id); toast({ title: "Success", description: "Seller has been notified that you've paid." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
     const handleReleaseCrypto = async () => { if (!firestore) return; try { await releaseFundsFromEscrow(firestore, trade.id); toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
-    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade.id, 'Cancelled by user.'); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
+    const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade, 'Cancelled by user.'); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
 
     const canBuyerCancel = currentUserRole === 'buy' && trade.status === 'active';
     const canSellerRelease = currentUserRole === 'sell' && (trade.status === 'paid' || trade.status === 'disputed');
@@ -477,7 +477,7 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
       if (firestore && trade.status === 'active' && paymentTimeRemaining.isFinished) {
         try {
           const reason = "Trade expired: Payment window timed out.";
-          await cancelTrade(firestore, trade.id, reason);
+          await cancelTrade(firestore, trade, reason);
           // The page will re-render via useDoc hook in parent component.
         } catch (e) {
           console.error("Failed to auto-expire trade:", e);
@@ -485,7 +485,7 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
       }
     };
     expireTrade();
-  }, [paymentTimeRemaining.isFinished, trade.status, trade.id, firestore]);
+  }, [paymentTimeRemaining.isFinished, trade, firestore]);
 
   const feedbackRef = useMemoFirebase(() => firestore ? collection(firestore, 'trades', trade.id, 'feedback') : null, [firestore, trade.id]);
   const { data: feedbacks } = useCollection<Feedback>(feedbackRef);

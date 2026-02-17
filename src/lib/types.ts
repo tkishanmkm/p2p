@@ -144,6 +144,7 @@ export type Trade = {
   buyer: { username: string; country?: string };
   seller: { username: string; country?: string };
   crypto: CryptoCurrency;
+  chain: string;
   amount: number;
   escrowFee: number;
   fiatCurrency: string;
