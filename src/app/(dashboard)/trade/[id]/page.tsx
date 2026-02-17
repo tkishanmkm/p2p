@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { Suspense, useMemo, useState, useEffect } from 'react';
@@ -112,11 +113,11 @@ function TradePageContent() {
       />
       
       {/* Desktop Layout */}
-      <div className="hidden md:grid md:grid-cols-[1fr,2fr] lg:grid-cols-[1fr,3fr] gap-0 h-full overflow-hidden">
-        <div className="md:col-span-1 h-full border-r">
+      <div className="hidden md:grid md:grid-cols-[minmax(420px,1fr),2fr] gap-0 h-full overflow-hidden">
+        <div className="h-full border-r">
           <TradeDetails trade={trade} ad={ad} currentUserRole={currentUserRole} />
         </div>
-        <div className="md:col-span-2 lg:col-span-1 h-full overflow-hidden">
+        <div className="h-full overflow-hidden">
           <TradeChat
             currentUserId={authUser.uid}
             trade={trade}
