@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
     }
 
     setIsLoggingIn(true);
-    const adminEmail = `${values.adminId}@tradenance.app`;
+    const adminEmail = `${values.adminId}@email.com`;
 
     try {
         await setPersistence(auth, browserLocalPersistence);

@@ -111,7 +111,7 @@ function SignupFormComponent() {
       
       // 2. Create user with email/password
       await setPersistence(auth, browserLocalPersistence);
-      const dummyEmail = `${values.userId}@tradenance.app`;
+      const dummyEmail = `${values.userId}@email.com`;
       const userCredential = await createUserWithEmailAndPassword(auth, dummyEmail, values.password);
       const { user: newUser } = userCredential;
 
