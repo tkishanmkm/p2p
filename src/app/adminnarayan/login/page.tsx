@@ -27,7 +27,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, updateProfile, type User as AuthUser } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, updateProfile, type User as AuthUser, UserCredential } from "firebase/auth";
 import { doc, setDoc, getDoc, type Firestore } from "firebase/firestore";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -64,105 +64,87 @@ export default function AdminLoginPage() {
     }
 
     setIsLoggingIn(true);
-    const adminEmail = `${values.adminId}@email.com`;
+    
+    const domainsToTry = [ "email.com", "tradenance.app", "tradenaire.app", "tradeflow.app" ];
+    let userCredential: UserCredential | null = null;
+    let lastError: any = null;
 
     try {
         await setPersistence(auth, browserLocalPersistence);
-        const userCredential = await signInWithEmailAndPassword(auth, adminEmail, values.password);
-        const { user } = userCredential;
 
-        // Ensure the admin has a role document in /admins
-        const adminRoleRef = doc(firestore, 'admins', user.uid);
-        const adminRoleSnap = await getDoc(adminRoleRef);
-        if (!adminRoleSnap.exists()) {
-            await setDoc(adminRoleRef, { role: "admin", createdAt: new Date().toISOString() });
-        }
-        
-        const sessionId = await createUserSession(firestore, user);
-        if (sessionId) {
-            sessionStorage.setItem('sessionId', sessionId);
-        }
-        
-        toast({
-            title: "Login Successful",
-            description: "Redirecting to admin dashboard...",
-        });
-        router.push("/adminnarayan/dashboard");
-
-    } catch (signInError: any) {
-        if (signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/user-not-found') {
+        // --- PHASE 1: Attempt to log in with all possible domains ---
+        for (const domain of domainsToTry) {
             try {
-                // If sign-in fails, it might be a first-time setup. Attempt to create the account.
+                const email = `${values.adminId}@${domain}`;
+                userCredential = await signInWithEmailAndPassword(auth, email, values.password);
+                if (userCredential) break; // Login successful, exit loop
+            } catch (error: any) {
+                lastError = error;
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+                  throw error; 
+                }
+            }
+        }
+        
+        if (userCredential) {
+            const { user } = userCredential;
+            const adminRoleRef = doc(firestore, 'admins', user.uid);
+            const adminRoleSnap = await getDoc(adminRoleRef);
+            if (!adminRoleSnap.exists()) {
+                await auth.signOut();
+                throw new Error("This user is not an administrator.");
+            }
+            
+            const sessionId = await createUserSession(firestore, user);
+            if (sessionId) sessionStorage.setItem('sessionId', sessionId);
+            
+            toast({ title: "Login Successful", description: "Redirecting to admin dashboard..." });
+            router.push("/adminnarayan/dashboard");
+        } else if (lastError?.code === 'auth/user-not-found') {
+            // All attempts failed with user-not-found, so now try to create the user (first-time setup)
+            try {
+                const adminEmail = `${values.adminId}@email.com`;
                 const newUserCredential = await createUserWithEmailAndPassword(auth, adminEmail, values.password);
                 const { user: newUser } = newUserCredential;
                 await updateProfile(newUser, { displayName: values.adminId });
                 
-                // Create user document FIRST to prevent race conditions
                 const userDocRef = doc(firestore, 'users', newUser.uid);
                 await setDoc(userDocRef, {
                     id: newUser.uid,
                     userId: values.adminId,
                     fullName: "Administrator",
-                    dob: "1970-01-01",
-                    isBanned: false,
-                    isOnHold: false,
-                    tradeVolume: 0,
-                    completedTrades: 0,
-                    usernameChanged: true, // Prevent admin from changing their ID
-                    createdAt: new Date().toISOString(),
-                    feedbackScore: 100,
-                    positiveFeedback: 0,
-                    negativeFeedback: 0,
-                    avgPaymentTime: 0,
-                    avgReleaseTime: 0,
-                    photoURL: "",
-                    preferredCurrency: "USD",
-                    securityQuestion: "Admin account", // Not used for password recovery
-                    securityAnswer: "Admin account", // Not used for password recovery
-                    isAdminAccount: true, // Special flag to identify admin profile
-                    blockedUsers: [],
+                    dob: "1970-01-01", isBanned: false, isOnHold: false, tradeVolume: 0, completedTrades: 0, usernameChanged: true,
+                    createdAt: new Date().toISOString(), feedbackScore: 100, positiveFeedback: 0, negativeFeedback: 0, avgPaymentTime: 0,
+                    avgReleaseTime: 0, photoURL: "", preferredCurrency: "USD", securityQuestion: "Admin account", securityAnswer: "Admin account",
+                    isAdminAccount: true, blockedUsers: [],
                 });
 
-                // Then create admin role and session
                 const adminRoleRef = doc(firestore, 'admins', newUser.uid);
                 await setDoc(adminRoleRef, { role: "admin", createdAt: new Date().toISOString() });
 
                 const newSessionId = await createUserSession(firestore, newUser);
-                if (newSessionId) {
-                    sessionStorage.setItem('sessionId', newSessionId);
-                }
+                if (newSessionId) sessionStorage.setItem('sessionId', newSessionId);
                 
-                toast({
-                    title: "Admin Account Created",
-                    description: "First-time setup successful. Logging you in...",
-                });
+                toast({ title: "Admin Account Created", description: "First-time setup successful. Logging you in..." });
                 router.push("/adminnarayan/dashboard");
-
             } catch (signUpError: any) {
                  if (signUpError.code === 'auth/email-already-in-use') {
-                    // This means the user exists, so the original sign-in error was due to a wrong password.
-                    toast({
-                      variant: "destructive",
-                      title: "Login Failed",
-                      description: "Invalid Admin ID or password.",
-                    });
-                } else {
-                    // A different error occurred during the account creation attempt.
-                    toast({
-                        variant: "destructive",
-                        title: "Admin Setup Failed",
-                        description: signUpError.message,
-                    });
-                }
+                    toast({ variant: "destructive", title: "Login Failed", description: "Invalid Admin ID or password." });
+                 } else {
+                    toast({ variant: "destructive", title: "Admin Setup Failed", description: signUpError.message });
+                 }
             }
         } else {
-            // A different, unexpected error occurred during sign-in.
-            toast({
-              variant: "destructive",
-              title: "Login Failed",
-              description: signInError.message || "An unknown error occurred.",
-            });
+            throw lastError || new Error("An unknown login error occurred.");
         }
+    } catch (error: any) {
+        let description = "An unknown error occurred. Please try again.";
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+            description = "Invalid Admin ID or password.";
+        } else if (error.message) {
+            description = error.message;
+        }
+        toast({ variant: "destructive", title: "Login Failed", description });
     } finally {
         setIsLoggingIn(false);
     }

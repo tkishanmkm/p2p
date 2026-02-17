@@ -65,22 +65,29 @@ function LoginFormComponent() {
     }
     setIsLoading(true);
 
+    const domainsToTry = [
+      "email.com",         // Current standard
+      "tradenance.app",    // Previous standard
+      "tradenaire.app",    // Possible legacy name
+      "tradeflow.app"      // Possible legacy name
+    ];
     let userCredential: UserCredential | null = null;
-    let finalError: any = null;
+    let lastError: any = null;
 
     try {
       await setPersistence(auth, browserLocalPersistence);
 
-      // Try modern email format first
-      try {
-        userCredential = await signInWithEmailAndPassword(auth, `${values.userId}@email.com`, values.password);
-      } catch (e1) {
-        // If it fails, try the legacy format
+      for (const domain of domainsToTry) {
         try {
-            userCredential = await signInWithEmailAndPassword(auth, `${values.userId}@tradenance.app`, values.password);
-        } catch (e2) {
-            // If both fail, store the last error to show to the user
-            finalError = e2;
+          const email = `${values.userId}@${domain}`;
+          userCredential = await signInWithEmailAndPassword(auth, email, values.password);
+          if (userCredential) break; // Success, exit loop
+        } catch (error: any) {
+          lastError = error; // Store the error and continue to the next domain
+          // If we get invalid-credential, we know the user exists but password is wrong, no need to try other domains
+          if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+            break;
+          }
         }
       }
       
@@ -111,8 +118,8 @@ function LoginFormComponent() {
           }
         }
       } else {
-        // If userCredential is still null, it means both attempts failed.
-        throw finalError || new Error("Login failed. Please check your credentials.");
+        // If userCredential is still null after all attempts, throw the last recorded error.
+        throw lastError || new Error("Login failed. Please check your credentials.");
       }
 
     } catch (error: any) {
