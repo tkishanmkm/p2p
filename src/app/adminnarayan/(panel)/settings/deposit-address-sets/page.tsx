@@ -162,35 +162,47 @@ export default function DepositAddressSetsPage() {
                     </CardHeader>
                     <AccordionContent asChild>
                       <CardContent className="space-y-4">
-                        {fields.map((field, index) => (
-                          <div key={field.id} className="flex items-end gap-2 p-2 border rounded-md">
-                            <FormField
-                              control={control}
-                              name={`${formKey}.${index}.chain`}
-                              render={({ field }) => (
-                                <FormItem className="flex-1">
-                                  <FormLabel>Chain</FormLabel>
-                                  <FormControl><Input placeholder="e.g., ERC20, Bitcoin" {...field} /></FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={control}
-                              name={`${formKey}.${index}.address`}
-                              render={({ field }) => (
-                                <FormItem className="flex-1">
-                                  <FormLabel>Deposit Address</FormLabel>
-                                  <FormControl><Input placeholder="Enter the full address" {...field} /></FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
+                        {fields.map((field, index) => {
+                          const availableChains = SUPPORTED_CRYPTOS.find(c => c.name === crypto.name)?.chains || [];
+                          return (
+                            <div key={field.id} className="flex items-end gap-2 p-2 border rounded-md">
+                              <FormField
+                                control={control}
+                                name={`${formKey}.${index}.chain`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormLabel>Chain</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue placeholder="Select a chain" /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {availableChains.map(chain => (
+                                                <SelectItem key={chain} value={chain}>{chain}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={control}
+                                name={`${formKey}.${index}.address`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormLabel>Deposit Address</FormLabel>
+                                    <FormControl><Input placeholder="Enter the full address" {...field} /></FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
                         <Button type="button" variant="outline" size="sm" onClick={() => append({ chain: '', address: '' })}>
                           <PlusCircle className="mr-2 h-4 w-4" /> Add New {crypto.name} Chain
                         </Button>

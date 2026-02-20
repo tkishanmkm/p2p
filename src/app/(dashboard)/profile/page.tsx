@@ -6,12 +6,11 @@ import { doc } from "firebase/firestore";
 import type { User } from "@/lib/types";
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DefaultAvatar } from "@/components/icons";
 import { User as UserIcon, Calendar, CheckCircle, Clock, DollarSign, UserCheck, ThumbsUp, ThumbsDown, Loader2, Wallet } from "lucide-react";
-import Image from "next/image";
 import { toDate } from "@/lib/utils";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -65,7 +64,7 @@ export default function ProfilePage() {
                         <CardContent className="pt-6 flex flex-col items-center text-center">
                             <Avatar className="h-32 w-32 mb-4 border-4 border-secondary shadow-lg">
                                 {user.photoURL ? (
-                                    <Image src={user.photoURL} alt={user.userId} width={128} height={128} className="object-cover"/>
+                                    <AvatarImage src={user.photoURL} alt={user.userId} className="object-cover"/>
                                 ) : (
                                     <AvatarFallback className="bg-transparent">
                                         <DefaultAvatar />

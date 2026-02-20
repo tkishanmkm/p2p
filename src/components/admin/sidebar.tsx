@@ -47,7 +47,6 @@ const settingsItems = [
     { href: "/adminnarayan/settings/deposit-address-sets", label: "Deposit Sets", icon: Wallet },
     { href: "/adminnarayan/settings/assign-wallet-set", label: "Assign Wallet Sets", icon: DatabaseZap },
     { href: "/adminnarayan/settings/data", label: "Data Management", icon: Database },
-    { href: "/adminnarayan/settings/seed", label: "Seed Data", icon: Beaker },
     { href: "/adminnarayan/settings/backfill-wallets", label: "Backfill Wallets", icon: DatabaseZap },
     { href: "#", label: "Security Logs", icon: FileText },
 ]
