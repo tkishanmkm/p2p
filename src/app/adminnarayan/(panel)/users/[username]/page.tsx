@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -17,7 +18,7 @@ import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, KeyRound, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown, Globe, Smartphone, Monitor, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown, Globe, Smartphone, Monitor } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
 import { useAdminStatus } from '@/hooks/use-admin-status';
@@ -281,18 +282,8 @@ export default function AdminUserDetailPage() {
                         <DetailItem icon={<Globe size={20} />} label="IP-Based Country" value={getCountryName(user.ipBasedCountry)} />
                         <DetailItem icon={<Clock size={20} />} label="Member Since" value={createdDate ? `${format(createdDate, "PP")} (${formatDistanceToNow(createdDate)} ago)` : 'N/A'} />
                         <DetailItem icon={<DollarSign size={20} />} label="Preferred Currency" value={user.preferredCurrency || 'USD'} />
-                        <DetailItem icon={<KeyRound size={20} />} label="Security Question" value={user.securityQuestion} />
-                        <DetailItem icon={<KeyRound size={20} />} label="Security Answer" value={user.securityAnswer} />
+                        <DetailItem icon={<Wallet size={20} />} label="Wallet Set" value={user.walletIndex} />
                      </div>
-                </SectionCard>
-                 <SectionCard title="Security">
-                    <div className="space-y-4">
-                        <Alert variant="destructive">
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>Seed Phrase Information</AlertTitle>
-                          <AlertDescription>The user's 12-word seed phrase is stored but is not displayed here for security reasons. Access to this key should be tightly controlled and only used for emergency recovery through secure backend procedures.</AlertDescription>
-                        </Alert>
-                    </div>
                 </SectionCard>
                  <SectionCard title="User Statistics">
                     <div className="space-y-4">

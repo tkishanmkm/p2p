@@ -225,9 +225,9 @@ export default function WalletPage() {
     const exchangeRate = fiatRates[preferredCurrency] || 1;
 
     const summaryArray = Array.from(summaryMap.entries()).map(([coin, data]) => {
-        const totalCrypto = data.totalBalance + data.totalLockedBalance;
+        const availableCrypto = data.totalBalance;
         const priceInUsd = prices[coin] || 0;
-        data.fiatValue = totalCrypto * priceInUsd * exchangeRate;
+        data.fiatValue = availableCrypto * priceInUsd * exchangeRate;
         return { coin, ...data };
     });
     
