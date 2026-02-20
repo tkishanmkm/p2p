@@ -30,10 +30,10 @@ import { useState, Suspense } from "react";
 import { useFirebase } from "@/firebase";
 import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, setDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { countries } from "@/lib/countries";
-import { SECURITY_QUESTIONS } from "@/lib/constants";
+import { SECURITY_QUESTIONS, SUPPORTED_CRYPTOS } from "@/lib/constants";
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -148,6 +148,25 @@ function SignupFormComponent() {
           walletIndex: walletIndex,
       };
       await setDoc(userDocRef, newUserDoc);
+
+      // 5. Create wallet sub-documents for the new user
+      const walletBatch = writeBatch(firestore);
+      for (const crypto of SUPPORTED_CRYPTOS) {
+        for (const chain of crypto.chains) {
+          const walletId = `${crypto.name}-${chain}`;
+          const walletRef = doc(firestore, `users/${newUser.uid}/wallets/${walletId}`);
+          walletBatch.set(walletRef, {
+            id: walletId,
+            userId: newUser.uid,
+            crypto: crypto.name,
+            chain: chain,
+            balance: 0,
+            lockedBalance: 0,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+      await walletBatch.commit();
 
       toast({ title: "Account Created", description: "Your wallets are being set up. Redirecting..." });
       router.push('/buy');
