@@ -507,23 +507,6 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
   const showFeedbackSection = trade.status === 'released';
 
 
-  const buyerInstructions = [
-      "Do not forget to mark trade as 'Paid' after you have sent the money.",
-      "Always make payment within the given trade time limit.",
-      "If the time has expired, do not make the payment.",
-      "Never communicate or trade outside the platform.",
-      "Always verify the seller's payment details match the information in the chat.",
-  ];
-
-  const sellerInstructions = [
-      "Check for payment by logging into your account to confirm the transaction.",
-      "Do not release crypto based on payment proof (e.g., screenshots) alone.",
-      "Once payment is confirmed in your account, release the crypto promptly.",
-      "If the buyer doesn't pay within the time limit, the trade will automatically expire.",
-      "Never communicate or trade outside of the platform.",
-  ];
-
-  const instructions = isBuying ? buyerInstructions : sellerInstructions;
   const showActions = ['active', 'paid'].includes(trade.status);
 
   return (
@@ -550,41 +533,13 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
         )}
 
         {trade.status === 'active' && (
-            <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50">
-                <CardHeader className="text-center pb-2">
-                    <div className="flex items-center justify-center gap-2">
-                        <Clock className="h-5 w-5 text-amber-700 dark:text-amber-300" />
-                        <CardTitle className="text-amber-800 dark:text-amber-200">Payment Window</CardTitle>
-                    </div>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center gap-4">
-                    <div className="flex justify-center gap-2 sm:gap-4">
-                        <div className="flex flex-col items-center p-2 sm:p-3 bg-background rounded-lg w-20 sm:w-24 shadow-inner">
-                            <span className="text-3xl sm:text-4xl font-mono text-destructive font-bold">{String(paymentTimeRemaining.hours).padStart(2, '0')}</span>
-                            <span className="text-xs text-muted-foreground">HRS</span>
-                        </div>
-                        <div className="flex flex-col items-center p-2 sm:p-3 bg-background rounded-lg w-20 sm:w-24 shadow-inner">
-                            <span className="text-3xl sm:text-4xl font-mono text-destructive font-bold">{String(paymentTimeRemaining.minutes).padStart(2, '0')}</span>
-                            <span className="text-xs text-muted-foreground">MIN</span>
-                        </div>
-                        <div className="flex flex-col items-center p-2 sm:p-3 bg-background rounded-lg w-20 sm:w-24 shadow-inner">
-                            <span className="text-3xl sm:text-4xl font-mono text-destructive font-bold">{String(paymentTimeRemaining.seconds).padStart(2, '0')}</span>
-                            <span className="text-xs text-muted-foreground">SEC</span>
-                        </div>
-                    </div>
-                    <div className="w-full pt-2">
-                        <Alert variant="default" className="bg-transparent border-0 text-amber-900 dark:text-amber-200 p-0">
-                            <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
-                            <AlertTitle className="font-semibold text-amber-900 dark:text-amber-100">Instructions for {isBuying ? 'Buyer' : 'Seller'}</AlertTitle>
-                            <AlertDescription className="text-amber-800/90 dark:text-amber-200/90">
-                                <ul className="list-disc list-inside text-xs space-y-1.5 mt-2">
-                                    {instructions.map((step, i) => <li key={i}>{step}</li>)}
-                                </ul>
-                            </AlertDescription>
-                        </Alert>
-                    </div>
-                </CardContent>
-            </Card>
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Payment Window</AlertTitle>
+              <AlertDescription className="flex items-center gap-2">
+                Time remaining: <span className="font-semibold font-mono text-destructive">{`${String(paymentTimeRemaining.hours).padStart(2, '0')}:${String(paymentTimeRemaining.minutes).padStart(2, '0')}:${String(paymentTimeRemaining.seconds).padStart(2, '0')}`}</span>
+              </AlertDescription>
+            </Alert>
         )}
         
         <div className="space-y-2"><h4 className="font-semibold">Participants & Payment</h4><ParticipantRow label="Buyer" user={trade?.buyer} /><ParticipantRow label="Seller" user={trade?.seller} />{trade.paymentMethod && <DetailRow label="Payment Method" value={trade.paymentMethod} />}</div>

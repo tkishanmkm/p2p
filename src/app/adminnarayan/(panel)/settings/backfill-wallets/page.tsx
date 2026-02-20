@@ -45,32 +45,45 @@ export default function BackfillWalletsPage() {
 
             for (let i = 0; i < allUsers.length; i++) {
                 const user = allUsers[i];
+                
+                setLogs(prev => [...prev, `Processing user: ${user.userId} (${i + 1}/${allUsers.length})`]);
+
+                // Use batches for each user's wallets
                 const batch = writeBatch(firestore);
                 let batchHasWrites = false;
 
-                setLogs(prev => [...prev, `Processing user: ${user.userId} (${i + 1}/${allUsers.length})`]);
-
                 for (const crypto of SUPPORTED_CRYPTOS) {
-                    const walletRef = doc(firestore, `users/${user.id}/wallets/${crypto.name}`);
-                    const walletDoc = await getDoc(walletRef);
-                    if (!walletDoc.exists()) {
-                        batch.set(walletRef, {
-                            id: crypto.name,
-                            userId: user.id,
-                            crypto: crypto.name,
-                            balance: 0,
-                            lockedBalance: 0,
-                            updatedAt: new Date().toISOString(),
-                        });
-                        batchHasWrites = true;
-                        walletsCreated++;
-                        setLogs(prev => [...prev, `  - Queued ${crypto.name} wallet for ${user.userId}`]);
+                    for (const chain of crypto.chains) {
+                        const walletId = `${crypto.name}-${chain}`;
+                        const walletRef = doc(firestore, `users/${user.id}/wallets/${walletId}`);
+                        
+                        try {
+                            const walletDoc = await getDoc(walletRef);
+                            if (!walletDoc.exists()) {
+                                batch.set(walletRef, {
+                                    id: walletId,
+                                    userId: user.id,
+                                    crypto: crypto.name,
+                                    chain: chain,
+                                    balance: 0,
+                                    lockedBalance: 0,
+                                    updatedAt: new Date().toISOString(),
+                                });
+                                batchHasWrites = true;
+                                walletsCreated++;
+                                setLogs(prev => [...prev, `  - Queued ${walletId} wallet for ${user.userId}`]);
+                            }
+                        } catch (e) {
+                             setLogs(prev => [...prev, `  - ERROR checking wallet ${walletId} for ${user.userId}: ${(e as Error).message}`]);
+                        }
                     }
                 }
-
+                
                 if (batchHasWrites) {
-                    await batch.commit();
+                   await batch.commit();
+                   setLogs(prev => [...prev, `  - Committed wallets for ${user.userId}`]);
                 }
+
                 setProgress(((i + 1) / allUsers.length) * 100);
             }
 
@@ -96,7 +109,7 @@ export default function BackfillWalletsPage() {
                     <CardDescription className="flex items-start gap-2 pt-2">
                         <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500" />
                         <div>
-                            This tool scans all user accounts and creates missing wallets (BTC, ETH, LTC, USDT) with a zero balance. It should be run once if you have imported users or if wallets were not created on signup for some users. This operation is safe to run multiple times.
+                            This tool scans all user accounts and creates missing wallets for each supported coin and network (e.g., USDT-ERC20, USDT-TRC20) with a zero balance. This is essential for ensuring all users can deposit and withdraw correctly. This operation is safe to run multiple times.
                         </div>
                     </CardDescription>
                 </CardHeader>
@@ -124,7 +137,7 @@ export default function BackfillWalletsPage() {
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    This will scan all users and create any missing wallets. This is a safe operation but may take a while for a large number of users.
+                                    This will scan all users and create any missing wallets for all supported chains. This is a safe operation but may take a while for a large number of users.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

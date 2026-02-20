@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, AlertTriangle, Loader2 } from "lucide-react";
+import { Copy, AlertTriangle, Loader2, Clock, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import type { UserWallet, Deposit, CryptoCurrency, DepositAddressSet } from '@/lib/types';
@@ -23,6 +23,10 @@ import { doc } from 'firebase/firestore';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { add, isPast } from 'date-fns';
 import { toDate } from '@/lib/utils';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
+import { cn } from '@/lib/utils';
+
 
 const amountSchema = z.object({
   amount: z.coerce.number().positive("Amount must be a positive number."),
@@ -40,6 +44,16 @@ interface DepositDialogProps {
   onOpenChange: (open: boolean) => void;
   wallet: UserWallet | null;
   walletIndex: number | undefined;
+}
+
+const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
+    switch (crypto) {
+        case 'BTC': return <BtcLogo className={className} />;
+        case 'ETH': return <EthLogo className={className} />;
+        case 'LTC': return <LtcLogo className={className} />;
+        case 'USDT': return <UsdtLogo className={className} />;
+        default: return null;
+    }
 }
 
 export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: DepositDialogProps) {
@@ -226,10 +240,45 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                         </Alert>
                     ) : (
                         <>
-                            <div className="text-center p-2 border rounded-md">
-                                <p className="text-sm font-semibold">Time Remaining to Confirm:</p>
-                                <p className="text-lg font-mono text-destructive">{`${String(countdown.hours).padStart(2, '0')}:${String(countdown.minutes).padStart(2, '0')}:${String(countdown.seconds).padStart(2, '0')}`}</p>
-                            </div>
+                             <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50">
+                                <CardHeader className="text-center pb-2">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <CryptoLogo crypto={createdDeposit.crypto} className="h-6 w-6 text-amber-700 dark:text-amber-300" />
+                                        <CardTitle className="text-amber-800 dark:text-amber-200">Time Remaining</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="flex flex-col items-center gap-4">
+                                    <div className="flex justify-center gap-2 sm:gap-4">
+                                        <div className="flex flex-col items-center p-2 sm:p-3 bg-background rounded-lg w-20 sm:w-24 shadow-inner">
+                                            <span className="text-3xl sm:text-4xl font-mono text-destructive font-bold">{String(countdown.hours).padStart(2, '0')}</span>
+                                            <span className="text-xs text-muted-foreground">HRS</span>
+                                        </div>
+                                        <div className="flex flex-col items-center p-2 sm:p-3 bg-background rounded-lg w-20 sm:w-24 shadow-inner">
+                                            <span className="text-3xl sm:text-4xl font-mono text-destructive font-bold">{String(countdown.minutes).padStart(2, '0')}</span>
+                                            <span className="text-xs text-muted-foreground">MIN</span>
+                                        </div>
+                                        <div className="flex flex-col items-center p-2 sm:p-3 bg-background rounded-lg w-20 sm:w-24 shadow-inner">
+                                            <span className="text-3xl sm:text-4xl font-mono text-destructive font-bold">{String(countdown.seconds).padStart(2, '0')}</span>
+                                            <span className="text-xs text-muted-foreground">SEC</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-full pt-2">
+                                        <Alert variant="default" className="bg-transparent border-0 text-amber-900 dark:text-amber-200 p-0">
+                                            <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                                            <AlertTitle className="font-semibold text-amber-900 dark:text-amber-100">Instructions</AlertTitle>
+                                            <AlertDescription className="text-amber-800/90 dark:text-amber-200/90">
+                                                <ul className="list-disc list-inside text-xs space-y-1.5 mt-2">
+                                                    <li>{currentInstruction}</li>
+                                                    <li>Send exactly {createdDeposit.amount} {createdDeposit.crypto} to the address shown.</li>
+                                                    <li>After sending, copy the transaction hash (TxID) from your wallet.</li>
+                                                    <li>Paste the TxID below and submit to confirm your deposit.</li>
+                                                </ul>
+                                            </AlertDescription>
+                                        </Alert>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                             <div className="flex flex-col items-center gap-4 my-4">
                                 <div className="p-2 bg-white rounded-lg">
                                     <QRCode value={qrCodeValue} size={160} />
@@ -280,6 +329,7 @@ const instructionsMap: Record<CryptoCurrency, string> = {
     MATIC: "",
     TRX: ""
 };
+
 
 
 
