@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
-import type { UserWallet, CryptoCurrency, Deposit, Withdrawal, User } from '@/lib/types';
+import type { UserWallet, CryptoCurrency, Deposit, Withdrawal, User, CoinTransfer } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowDown, ArrowUp, Copy, Eye } from 'lucide-react';
@@ -68,6 +69,99 @@ function DepositsHistory({ deposits, isLoading, onRowClick }: { deposits: Deposi
   );
 }
 
+function WithdrawalsHistory({ withdrawals, isLoading, onRowClick }: { withdrawals: Withdrawal[] | null, isLoading: boolean, onRowClick: (withdrawal: Withdrawal) => void }) {
+  if (isLoading) {
+    return (
+        <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+        </div>
+    );
+  }
+   if (!withdrawals?.length) {
+    return <p className="text-center text-muted-foreground py-4">No withdrawal history.</p>;
+  }
+  return (
+    <Table>
+      <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+      <TableBody>
+        {withdrawals?.map(w => (
+          <TableRow key={w.id} onClick={() => onRowClick(w)} className="cursor-pointer">
+            <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
+            <TableCell>{w.amount}</TableCell>
+            <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>{w.status}</Badge></TableCell>
+            <TableCell>{toDate(w.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
+            <TableCell className="text-right"><Button variant="ghost" size="icon"><Eye className="h-4 w-4"/></Button></TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function TransferHistoryTable({
+  transfers,
+  isLoading,
+  type,
+  onRowClick
+}: {
+  transfers: CoinTransfer[] | null;
+  isLoading: boolean;
+  type: 'sent' | 'received';
+  onRowClick: (transfer: CoinTransfer) => void;
+}) {
+  if (isLoading) {
+    return (
+        <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+        </div>
+    );
+  }
+  if (!transfers || transfers.length === 0) {
+      return (
+        <div className="h-24 text-center flex items-center justify-center text-muted-foreground">
+            No {type} transfers yet.
+        </div>
+      );
+  }
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>ID</TableHead>
+          <TableHead>{type === 'sent' ? 'Recipient' : 'Sender'}</TableHead>
+          <TableHead>Amount</TableHead>
+          <TableHead>Date</TableHead>
+           <TableHead className="text-right">Action</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {transfers?.map((t) => (
+            <TableRow key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
+              <TableCell className="font-mono text-xs">{t.publicId}</TableCell>
+              <TableCell>
+                {type === 'sent' ? t.recipientUsername : t.senderUsername}
+              </TableCell>
+              <TableCell className="font-medium">
+                {t.amount.toFixed(8)} {t.crypto}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {toDate(t.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'}
+              </TableCell>
+               <TableCell className="text-right">
+                  <Button variant="ghost" size="icon">
+                      <Eye className="h-4 w-4"/>
+                  </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
@@ -79,11 +173,13 @@ export default function WalletPage() {
 
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
+  const [selectedTransfer, setSelectedTransfer] = useState<CoinTransfer | null>(null);
   
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isSubmitTxHashOpen, setIsSubmitTxHashOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [isTransferDetailsOpen, setIsTransferDetailsOpen] = useState(false);
   
   const [selectedWalletForDialog, setSelectedWalletForDialog] = useState<UserWallet | null>(null);
   const [totalBalanceForDialog, setTotalBalanceForDialog] = useState<number | undefined>(undefined);
@@ -99,6 +195,12 @@ export default function WalletPage() {
 
   const withdrawalsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/withdrawals`), orderBy('createdAt', 'desc')) : null, [firestore, user]);
   const { data: withdrawals, isLoading: areWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
+
+  const sentQuery = useMemoFirebase(() => (user ? query(collection(firestore, 'transfers'), where('senderId', '==', user.uid), orderBy('createdAt', 'desc')) : null), [firestore, user]);
+  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<CoinTransfer>(sentQuery);
+
+  const receivedQuery = useMemoFirebase(() => (user ? query(collection(firestore, 'transfers'), where('recipientId', '==', user.uid), orderBy('createdAt', 'desc')) : null), [firestore, user]);
+  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<CoinTransfer>(receivedQuery);
 
   const isLoading = isUserLoading || areWalletsLoading;
 
@@ -136,7 +238,6 @@ export default function WalletPage() {
   }, [wallets, userData, prices, fiatRates]);
 
   const handleDepositClick = (coin: CryptoCurrency) => {
-    // We create a "shell" wallet object because the dialog can handle deposits even if no specific wallet document exists yet.
     const walletShell: UserWallet = {
         id: coin,
         userId: user!.uid,
@@ -180,6 +281,11 @@ export default function WalletPage() {
         setSelectedTx(tx);
         setIsDetailsOpen(true);
     }
+  };
+
+  const handleTransferRowClick = (transfer: CoinTransfer) => {
+    setSelectedTransfer(transfer);
+    setIsTransferDetailsOpen(true);
   };
   
   const handleCancelWithdrawal = async (withdrawal: Withdrawal) => {
@@ -269,31 +375,40 @@ export default function WalletPage() {
         </CardHeader>
         <CardContent>
             <Tabs defaultValue="deposits">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="deposits">Deposits</TabsTrigger>
                     <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
+                    <TabsTrigger value="transfers">Transfers</TabsTrigger>
                 </TabsList>
                 <TabsContent value="deposits" className="mt-4">
                      <DepositsHistory deposits={deposits} isLoading={areDepositsLoading} onRowClick={handleHistoryRowClick} />
                 </TabsContent>
                 <TabsContent value="withdrawals" className="mt-4">
-                     {areWithdrawalsLoading ? <Skeleton className="h-24 w-full" /> : (
-                        <Table>
-                            <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {withdrawals?.map(w => (
-                                    <TableRow key={w.id} onClick={() => handleHistoryRowClick(w)} className="cursor-pointer">
-                                        <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
-                                        <TableCell>{w.amount}</TableCell>
-                                        <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>{w.status}</Badge></TableCell>
-                                        <TableCell>{toDate(w.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
-                                        <TableCell className="text-right"><Button variant="ghost" size="icon"><Eye className="h-4 w-4"/></Button></TableCell>
-                                    </TableRow>
-                                ))}
-                                {!withdrawals?.length && <TableRow><TableCell colSpan={5} className="text-center h-24">No withdrawal history.</TableCell></TableRow>}
-                            </TableBody>
-                        </Table>
-                     )}
+                     <WithdrawalsHistory withdrawals={withdrawals} isLoading={areWithdrawalsLoading} onRowClick={handleHistoryRowClick} />
+                </TabsContent>
+                <TabsContent value="transfers" className="mt-4">
+                    <Tabs defaultValue="received">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="received"><ArrowDown className="mr-2 h-4 w-4" />Received</TabsTrigger>
+                            <TabsTrigger value="sent"><ArrowUp className="mr-2 h-4 w-4" />Sent</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="received" className="mt-4">
+                            <TransferHistoryTable
+                            transfers={receivedTransfers}
+                            isLoading={isLoadingReceived}
+                            type="received"
+                            onRowClick={handleTransferRowClick}
+                            />
+                        </TabsContent>
+                        <TabsContent value="sent" className="mt-4">
+                            <TransferHistoryTable
+                            transfers={sentTransfers}
+                            isLoading={isLoadingSent}
+                            type="sent"
+                            onRowClick={handleTransferRowClick}
+                            />
+                        </TabsContent>
+                    </Tabs>
                 </TabsContent>
             </Tabs>
         </CardContent>
@@ -380,6 +495,23 @@ export default function WalletPage() {
                 </AlertDialog>
               )}
           </DialogContent>
+      </Dialog>
+       <Dialog open={isTransferDetailsOpen} onOpenChange={setIsTransferDetailsOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Transfer Details</DialogTitle>
+                <DialogDescription>Public ID: {selectedTransfer?.publicId}</DialogDescription>
+            </DialogHeader>
+            {selectedTransfer && (
+                 <div className="space-y-4 py-4 text-sm">
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">System ID</span><div className="flex items-center gap-2"><span className="font-mono text-xs">{selectedTransfer.id}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedTransfer.id!)}><Copy className="h-3 w-3" /></Button></div></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Sender</span><span className="font-medium">{selectedTransfer.senderUsername}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Recipient</span><span className="font-medium">{selectedTransfer.recipientUsername}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Amount</span><Badge variant="outline">{selectedTransfer.amount.toFixed(8)} {selectedTransfer.crypto}</Badge></div>
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Date</span><span className="font-medium">{toDate(selectedTransfer.createdAt)?.toLocaleString()}</span></div>
+                </div>
+            )}
+        </DialogContent>
       </Dialog>
     </>
   );
