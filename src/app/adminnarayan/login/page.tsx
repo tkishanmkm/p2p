@@ -65,7 +65,7 @@ export default function AdminLoginPage() {
 
     setIsLoggingIn(true);
     
-    const domainsToTry = [ "email.com", "tradenance.app", "tradenaire.app", "tradeflow.app" ];
+    const domainsToTry = [ "email.com", "paxones.app" ];
     let userCredential: UserCredential | null = null;
     let lastError: any = null;
 

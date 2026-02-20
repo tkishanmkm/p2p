@@ -194,7 +194,7 @@ function SignupFormComponent() {
           </Link>
           <CardTitle className="text-2xl">Create an Account</CardTitle>
           <CardDescription>
-            Join Tradenance to start trading securely.
+            Join Paxones to start trading securely.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -8,7 +8,7 @@
     "statsPayments": "支付方式",
     "statsTime": "平均交易时间",
     "howItWorksTitle": "如何开始",
-    "howItWorksSubtitle": "在 Tradenance 上交易简单、安全、快捷。按照以下三个简单步骤开始您的 P2P 之旅。",
+    "howItWorksSubtitle": "在 Paxones 上交易简单、安全、快捷。按照以下三个简单步骤开始您的 P2P 之旅。",
     "step1Title": "1. 创建账户",
     "step1Desc": "仅需一个用户 ID 即可免费注册。完成简单的身份验证以保护您的账户并开始交易。",
     "step2Title": "2. 查找广告",
@@ -51,7 +51,7 @@
     "placeholder": "选择您的用户 ID"
   },
   "footer": {
-    "tagline": "放心交易。Tradenance 提供一个带有可信托管系统的安全 P2P 平台。",
+    "tagline": "放心交易。Paxones 提供一个带有可信托管系统的安全 P2P 平台。",
     "company": "公司",
     "about": "关于我们",
     "careers": "职位",

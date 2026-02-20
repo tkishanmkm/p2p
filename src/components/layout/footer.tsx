@@ -6,7 +6,7 @@ import { useI18n } from "@/context/i18n-context";
 
 export function Footer() {
   const { t } = useI18n();
-  const currentYear = 2026;
+  const currentYear = new Date().getFullYear();
 
   const sections = [
     {

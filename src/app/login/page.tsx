@@ -66,10 +66,11 @@ function LoginFormComponent() {
     setIsLoading(true);
 
     const domainsToTry = [
-      "email.com",         // Current standard
-      "tradenance.app",    // Previous standard
-      "tradenaire.app",    // Possible legacy name
-      "tradeflow.app"      // Possible legacy name
+      "email.com",
+      "paxones.app",
+      "tradenance.app",
+      "tradenaire.app",
+      "tradeflow.app"
     ];
     let userCredential: UserCredential | null = null;
     let lastError: any = null;

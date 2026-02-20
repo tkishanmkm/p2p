@@ -2,14 +2,14 @@
 export default function CareersPage() {
   return (
     <div className="prose dark:prose-invert max-w-4xl mx-auto">
-      <h1>Careers at Tradenance</h1>
+      <h1>Careers at Paxones</h1>
       <p className="lead">
         Join our mission to build the future of peer-to-peer finance. We are a passionate team of innovators, thinkers, and builders dedicated to creating a more accessible global economy.
       </p>
 
       <h2>Why Work With Us?</h2>
       <p>
-        At Tradenance, you'll be part of a dynamic and fast-paced environment where your work has a real-world impact. We foster a culture of collaboration, ownership, and continuous learning. We are a remote-first company, offering the flexibility to work from anywhere.
+        At Paxones, you'll be part of a dynamic and fast-paced environment where your work has a real-world impact. We foster a culture of collaboration, ownership, and continuous learning. We are a remote-first company, offering the flexibility to work from anywhere.
       </p>
 
       <h2>Open Positions</h2>
@@ -40,7 +40,7 @@ export default function CareersPage() {
         To apply for a position, please send your resume and a cover letter to our careers email address. Please include the job title in the subject line. We look forward to hearing from you!
       </p>
       <p>
-        <strong>Email:</strong> careers@tradenance.app (Note: This is a fictional email address for demonstration.)
+        <strong>Email:</strong> careers@paxones.app (Note: This is a fictional email address for demonstration.)
       </p>
     </div>
   );

@@ -6,14 +6,14 @@ export default function TermsPage() {
 
       <h2>1. Introduction & Our Role</h2>
       <p>
-        Welcome to Tradenance! These Terms of Service ("Terms") govern your use of our peer-to-peer cryptocurrency
+        Welcome to Paxones! These Terms of Service ("Terms") govern your use of our peer-to-peer cryptocurrency
         trading platform. By accessing or using our Services, you agree to be bound by these Terms.
       </p>
       <p>
-        <strong>Important Disclaimer:</strong> Tradenance is a technology platform that connects users (buyers and sellers) for the purpose of executing peer-to-peer (P2P) transactions. We are not a party to any trade between users. We do not buy, sell, or exchange cryptocurrency ourselves. Our service is limited to providing the platform, facilitating communication, and offering an automated escrow service to secure transactions.
+        <strong>Important Disclaimer:</strong> Paxones is a technology platform that connects users (buyers and sellers) for the purpose of executing peer-to-peer (P2P) transactions. We are not a party to any trade between users. We do not buy, sell, or exchange cryptocurrency ourselves. Our service is limited to providing the platform, facilitating communication, and offering an automated escrow service to secure transactions.
       </p>
        <p>
-        <strong>Limitation of Liability:</strong> Tradenance is not responsible for any loss, damage, or claim arising from any transaction between users. The responsibility for ensuring the legitimacy of a trade and the identity of a trade partner rests solely with you. We do not guarantee the completion of any trade or the integrity of any user. Our dispute resolution service is provided on a best-effort basis, and its outcome is based solely on the evidence provided by the users within the platform's chat.
+        <strong>Limitation of Liability:</strong> Paxones is not responsible for any loss, damage, or claim arising from any transaction between users. The responsibility for ensuring the legitimacy of a trade and the identity of a trade partner rests solely with you. We do not guarantee the completion of any trade or the integrity of any user. Our dispute resolution service is provided on a best-effort basis, and its outcome is based solely on the evidence provided by the users within the platform's chat.
       </p>
 
       <h2>2. Eligibility</h2>
@@ -30,8 +30,8 @@ export default function TermsPage() {
 
       <h2>4. General P2P Trading Rules</h2>
       <p>
-        All trades on Tradenance are secured by our automated escrow system. You agree to communicate with other users professionally and to not engage in
-        any fraudulent or illegal activities. All communication and transactions must remain on the Tradenance platform.
+        All trades on Paxones are secured by our automated escrow system. You agree to communicate with other users professionally and to not engage in
+        any fraudulent or illegal activities. All communication and transactions must remain on the Paxones platform.
       </p>
 
       <h2 id="how-to-trade">5. How to Trade: A Step-by-Step Guide</h2>
@@ -61,7 +61,7 @@ export default function TermsPage() {
           payment. Falsely marking a trade as paid may result in a temporary or permanent ban from our platform.
         </li>
         <li>
-          <strong>On-Platform Communication:</strong> Maintain all communication with the seller through the Tradenance trade chat. You must
+          <strong>On-Platform Communication:</strong> Maintain all communication with the seller through the Paxones trade chat. You must
           not ask the seller for personal contact information, including social media handles, phone numbers, or email
           addresses.
         </li>
@@ -71,7 +71,7 @@ export default function TermsPage() {
       <ul>
         <li>
           <strong>Creating an Ad:</strong> You are responsible for the accuracy of your ad, including payment methods,
-          price, and terms. You must have the full amount of cryptocurrency available in your Tradenance wallet before creating a
+          price, and terms. You must have the full amount of cryptocurrency available in your Paxones wallet before creating a
           sell ad.
         </li>
         <li>
@@ -86,13 +86,13 @@ export default function TermsPage() {
         </li>
         <li>
           <strong>On-Platform Communication:</strong> You must not direct users to communicate or trade outside of
-          the Tradenance platform. Do not send or request users to click on any unauthorized links.
+          the Paxones platform. Do not send or request users to click on any unauthorized links.
         </li>
       </ul>
 
       <h2>8. Dispute Resolution</h2>
       <p>
-        In the event of a dispute, our moderation team will intervene to mediate a resolution. As a neutral third party, our decision is based solely on the evidence provided by both parties within the Tradenance trade chat. You agree that Tradenance's decision in any dispute is final and binding. Tradenance is not liable for any losses resulting from a dispute.
+        In the event of a dispute, our moderation team will intervene to mediate a resolution. As a neutral third party, our decision is based solely on the evidence provided by both parties within the Paxones trade chat. You agree that Paxones's decision in any dispute is final and binding. Paxones is not liable for any losses resulting from a dispute.
       </p>
 
       <h2>9. Fees</h2>
