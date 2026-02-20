@@ -20,6 +20,7 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ScrollArea } from '../ui/scroll-area';
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
     switch (crypto) {
@@ -184,48 +185,50 @@ export function AdCard({ ad }: AdCardProps) {
                     {ad.adType === 'buy' ? 'Buy' : 'Sell'} ad from {adCreator.username}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6 py-4">
-                  <div>
-                    <h4 className="font-semibold text-base mb-2">Trader Info</h4>
-                     <div className="space-y-2 text-sm p-3 border rounded-md bg-secondary/50">
-                        <div className="flex items-center gap-3">
-                           <Avatar className="h-10 w-10">
-                                <AvatarImage src={adCreator.photoURL} />
-                                <AvatarFallback><DefaultAvatar /></AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="font-semibold">{adCreator.username}</p>
-                                <p className="text-xs text-muted-foreground">Joined {adCreator.createdAt ? formatDistanceToNow(toDate(adCreator.createdAt)!) + ' ago' : 'N/A'}</p>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 pt-2">
-                           <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-muted-foreground" /> <span>{adCreator.completedTrades || 0} Trades</span></div>
-                           <div className="flex items-center gap-2"><ThumbsUp className="h-4 w-4 text-green-500" /> <span>{adCreator.positiveFeedback || 0}</span></div>
-                           <div className="flex items-center gap-2"><ThumbsDown className="h-4 w-4 text-red-500" /> <span>{adCreator.negativeFeedback || 0}</span></div>
-                           <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /> <span>{adCreator.avgReleaseTime || 'N/A'}m release</span></div>
-                        </div>
-                     </div>
-                  </div>
-                   <div>
-                    <h4 className="font-semibold text-base mb-2">Ad Info</h4>
-                    <div className="space-y-3 text-sm p-3 border rounded-md bg-secondary/50">
-                        <DetailRow label="Price" value={<div className="flex items-center gap-2">{adPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-muted-foreground">{ad.fiatCurrency} / {ad.crypto}</span></div>} />
-                        <DetailRow label="Limits" value={`${ad.minAmount.toLocaleString()} - ${ad.maxAmount.toLocaleString()} ${ad.fiatCurrency}`} />
-                        <DetailRow label="Payment Window" value={`${ad.paymentTimeLimit} minutes`} />
-                        <DetailRow label="Payment Methods" value={<div className="flex flex-wrap gap-1 justify-end">{ad.paymentMethods.map(pm => <Badge key={pm} variant="outline">{pm}</Badge>)}</div>} />
+                <ScrollArea className="max-h-[70vh]">
+                  <div className="space-y-6 py-4 pr-6">
+                    <div>
+                      <h4 className="font-semibold text-base mb-2">Trader Info</h4>
+                      <div className="space-y-2 text-sm p-3 border rounded-md bg-secondary/50">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                                  <AvatarImage src={adCreator.photoURL} />
+                                  <AvatarFallback><DefaultAvatar /></AvatarFallback>
+                              </Avatar>
+                              <div>
+                                  <p className="font-semibold">{adCreator.username}</p>
+                                  <p className="text-xs text-muted-foreground">Joined {adCreator.createdAt ? formatDistanceToNow(toDate(adCreator.createdAt)!) + ' ago' : 'N/A'}</p>
+                              </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-y-2 gap-x-4 pt-2">
+                            <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-muted-foreground" /> <span>{adCreator.completedTrades || 0} Trades</span></div>
+                            <div className="flex items-center gap-2"><ThumbsUp className="h-4 w-4 text-green-500" /> <span>{adCreator.positiveFeedback || 0}</span></div>
+                            <div className="flex items-center gap-2"><ThumbsDown className="h-4 w-4 text-red-500" /> <span>{adCreator.negativeFeedback || 0}</span></div>
+                            <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /> <span>{(adCreator.avgReleaseTime || 0).toFixed(1)}m release</span></div>
+                          </div>
+                      </div>
                     </div>
-                     <div className="space-y-2 text-sm p-3 border rounded-md bg-secondary/50 mt-2">
-                        <p className="font-medium">Terms & Conditions</p>
-                        <p className="text-muted-foreground whitespace-pre-wrap">{ad.terms}</p>
-                     </div>
-                      {ad.tags && ad.tags.length > 0 && (
-                        <div className="space-y-2 text-sm p-3 border rounded-md bg-secondary/50 mt-2">
-                            <p className="font-medium">Tags</p>
-                             <div className="flex flex-wrap gap-1">{ad.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}</div>
-                        </div>
-                      )}
-                   </div>
-                </div>
+                    <div>
+                      <h4 className="font-semibold text-base mb-2">Ad Info</h4>
+                      <div className="space-y-3 text-sm p-3 border rounded-md bg-secondary/50">
+                          <DetailRow label="Price" value={<div className="flex items-center gap-2">{adPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-muted-foreground">{ad.fiatCurrency} / {ad.crypto}</span></div>} />
+                          <DetailRow label="Limits" value={`${ad.minAmount.toLocaleString()} - ${ad.maxAmount.toLocaleString()} ${ad.fiatCurrency}`} />
+                          <DetailRow label="Payment Window" value={`${ad.paymentTimeLimit} minutes`} />
+                          <DetailRow label="Payment Methods" value={<div className="flex flex-wrap gap-1 justify-end">{ad.paymentMethods.map(pm => <Badge key={pm} variant="outline">{pm}</Badge>)}</div>} />
+                      </div>
+                      <div className="space-y-2 text-sm p-3 border rounded-md bg-secondary/50 mt-2">
+                          <p className="font-medium">Terms & Conditions</p>
+                          <p className="text-muted-foreground whitespace-pre-wrap">{ad.terms}</p>
+                      </div>
+                        {ad.tags && ad.tags.length > 0 && (
+                          <div className="space-y-2 text-sm p-3 border rounded-md bg-secondary/50 mt-2">
+                              <p className="font-medium">Tags</p>
+                              <div className="flex flex-wrap gap-1">{ad.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}</div>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                </ScrollArea>
               </DialogContent>
             </Dialog>
 
@@ -240,4 +243,3 @@ export function AdCard({ ad }: AdCardProps) {
     </Card>
   );
 }
-    
