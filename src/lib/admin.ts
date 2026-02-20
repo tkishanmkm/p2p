@@ -15,8 +15,9 @@ import {
   query,
   where,
   limit,
+  getDoc,
 } from "firebase/firestore";
-import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket, AppUser } from "./types";
+import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket, User as AppUser } from "./types";
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from "./wallet";
 import { CHAINS } from "./constants";
 

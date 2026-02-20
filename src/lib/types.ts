@@ -149,7 +149,7 @@ export type Trade = {
   escrowFee: number;
   fiatCurrency: string;
   fiatAmount: number;
-  fiatAmountInUSD: number;
+  fiatAmountInUSD?: number;
   paymentMethod: string;
   price: number;
   status: TradeStatus;

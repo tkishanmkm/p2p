@@ -135,7 +135,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
     if (trade.status === 'released' && !trade.claimedByBuyer && currentUserId === trade.buyerId && firestore) {
         const claim = async () => {
             try {
-                await claimFundsForTrade(firestore, trade.id, currentUserId);
+                await claimFundsForTrade(firestore, trade, currentUserId);
                 toast({ title: 'Funds Claimed', description: `The ${trade.crypto} has been added to your wallet.` });
             } catch (error: any) {
                 console.error("Auto-claiming funds failed:", error);
@@ -144,7 +144,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
         };
         claim();
     }
-  }, [trade.status, trade.claimedByBuyer, currentUserId, trade.id, trade.crypto, firestore, toast]);
+  }, [trade, currentUserId, firestore, toast]);
 
   const handleSendMessage = async (e: React.FormEvent, mediaUrl?: string, mediaType?: 'image' | 'video' | 'audio') => {
     e.preventDefault();
@@ -184,9 +184,25 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
   };
 
   const isBuyer = currentUserId === trade.buyerId;
+  
   const opponentLastActive = opponent?.lastActive ? toDate(opponent.lastActive) : null;
-  let activityText = 'Offline';
-  if (opponentLastActive) { activityText = `Seen ${formatDistanceToNow(opponentLastActive)} ago`; }
+  let activity = { text: 'Offline', dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
+
+  if (opponentLastActive) {
+    const diffMinutes = (new Date().getTime() - opponentLastActive.getTime()) / (1000 * 60);
+    const formattedDistance = formatDistanceToNow(opponentLastActive);
+
+    if (diffMinutes < 5) {
+      activity = { text: 'Active now', dotClass: 'bg-green-500', textClass: 'text-green-600' };
+    } else if (diffMinutes < 60) {
+      activity = { text: `${formattedDistance} ago`, dotClass: 'bg-green-500', textClass: 'text-green-600' };
+    } else if (diffMinutes < 24 * 60) {
+      activity = { text: `${formattedDistance} ago`, dotClass: 'bg-yellow-600', textClass: 'text-yellow-600' };
+    } else {
+      activity = { text: `${formattedDistance} ago`, dotClass: 'bg-gray-500', textClass: 'text-muted-foreground' };
+    }
+  }
+
 
   return (
     <Card className="flex flex-col h-full">
@@ -202,7 +218,12 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
                         {opponent?.country && <FlagIcon countryCode={opponent.country} />}
                         <Button variant="ghost" size="icon" onClick={onInfoClick} className="h-6 w-6"><InfoIcon className="h-4 w-4" /></Button>
                     </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2"><span>{activityText}</span></div>
+                     <div className="flex items-center gap-2 mt-1">
+                        <div className={cn('h-2 w-2 rounded-full', activity.dotClass)} />
+                        <p className={cn("text-xs", activity.textClass)}>
+                            {activity.text}
+                        </p>
+                    </div>
                 </div>
             </div>
             <div className="text-right">
