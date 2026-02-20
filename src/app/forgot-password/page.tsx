@@ -17,9 +17,9 @@ export default function ForgotPasswordPage() {
           <Link href="/" className="flex justify-center mb-4">
             <Logo />
           </Link>
-          <CardTitle className="text-2xl">Forgot Password</CardTitle>
+          <CardTitle className="text-2xl">Recover Account</CardTitle>
           <CardDescription>
-            Recover your account using your User ID and security question.
+            Follow the instructions below to recover your account.
           </CardDescription>
         </CardHeader>
         <CardContent>

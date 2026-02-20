@@ -332,8 +332,7 @@ export default function WalletPage() {
         {walletSummary.map((data) => {
           const { coin, totalBalance, totalLockedBalance } = data;
           if (!data) return null;
-          const totalWalletBalance = totalBalance + totalLockedBalance;
-
+          
           return (
             <Card key={coin}>
               <CardHeader className="flex flex-row items-start justify-between pb-2">
@@ -342,16 +341,12 @@ export default function WalletPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <div className="text-3xl font-bold">{totalWalletBalance.toFixed(6)}</div>
-                  <p className="text-xs text-muted-foreground">Total Balance</p>
+                  <div className="text-3xl font-bold">{totalBalance.toFixed(6)}</div>
+                  <p className="text-xs text-muted-foreground">Available Balance</p>
                 </div>
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Available:</span>
-                    <span>{totalBalance.toFixed(6)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Locked:</span>
+                    <span className="text-muted-foreground">Locked in Trades:</span>
                     <span>{totalLockedBalance.toFixed(6)}</span>
                   </div>
                 </div>

@@ -93,18 +93,6 @@
           "description": "Timestamp of when the user was last active.",
           "format": "date-time"
         },
-        "securityQuestion": {
-            "type": "string",
-            "description": "A security question chosen by the user for account recovery."
-        },
-        "securityAnswer": {
-            "type": "string",
-            "description": "The answer to the security question (should be encrypted)."
-        },
-        "seedPhrase": {
-            "type": "string",
-            "description": "The 12-word mnemonic seed phrase for the user's multi-coin wallet (encrypted)."
-        },
         "blockedUsers": {
             "type": "array",
             "description": "A list of user UIDs that this user has blocked.",
@@ -121,10 +109,7 @@
         "tradeVolume",
         "completedTrades",
         "usernameChanged",
-        "createdAt",
-        "securityQuestion",
-        "securityAnswer",
-        "seedPhrase"
+        "createdAt"
       ]
     },
     "UserWallet": {

@@ -30,9 +30,8 @@ import { useState, Suspense } from "react";
 import { useFirebase } from "@/firebase";
 import { updateProfile, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SUPPORTED_CRYPTOS, CHAINS, SECURITY_QUESTIONS } from "@/lib/constants";
 import { countries } from "@/lib/countries";
 
 const formSchema = z.object({
@@ -43,8 +42,6 @@ const formSchema = z.object({
   country: z.string().min(1, "Please select your country."),
   userId: z.string().min(3, { message: "User ID must be at least 3 characters." }).regex(/^[a-zA-Z0-9_]+$/, "User ID can only contain letters, numbers, and underscores."),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
-  securityQuestion: z.string().min(1, "Please select a security question."),
-  securityAnswer: z.string().min(3, "Answer must be at least 3 characters."),
   captcha: z.boolean().refine((val) => val === true, {
     message: "Please confirm you are not a robot.",
   }),
@@ -81,8 +78,6 @@ function SignupFormComponent() {
       country: "",
       userId: searchParams.get("userId") || "",
       password: "",
-      securityQuestion: "",
-      securityAnswer: "",
       captcha: false,
     },
   });
@@ -129,8 +124,6 @@ function SignupFormComponent() {
           fullName: values.fullName,
           dob: dob.toISOString().split('T')[0], // YYYY-MM-DD
           country: values.country,
-          securityQuestion: values.securityQuestion,
-          securityAnswer: values.securityAnswer,
           isBanned: false,
           isOnHold: false,
           tradeVolume: 0,
@@ -313,37 +306,6 @@ function SignupFormComponent() {
                   </FormItem>
                 )}
               />
-                <FormField
-                    control={form.control}
-                    name="securityQuestion"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Security Question</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select a question" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {SECURITY_QUESTIONS.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                             <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="securityAnswer"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Security Answer</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Your secret answer" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
 
               <FormField
                 control={form.control}

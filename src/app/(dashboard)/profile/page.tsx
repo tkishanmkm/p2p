@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DefaultAvatar } from "@/components/icons";
-import { User as UserIcon, Calendar, CheckCircle, Clock, DollarSign, UserCheck, ThumbsUp, ThumbsDown, Loader2, Wallet } from "lucide-react";
+import { User as UserIcon, Calendar, CheckCircle, Clock, DollarSign, UserCheck, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
 import { toDate } from "@/lib/utils";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -108,7 +108,6 @@ export default function ProfilePage() {
                            <DetailItem icon={<Calendar size={20} />} label="Date of Birth" value={dobDate ? format(dobDate, "LLLL d, yyyy") : 'N/A'} />
                            <DetailItem icon={<Clock size={20} />} label="Member Since" value={createdDate ? `${format(createdDate, "PP")} (${formatDistanceToNow(createdDate)} ago)` : 'N/A'} />
                            <DetailItem icon={<DollarSign size={20} />} label="Preferred Currency" value={user.preferredCurrency || 'USD'} />
-                           <DetailItem icon={<Wallet size={20} />} label="Wallet Set" value={user.walletIndex} />
                         </CardContent>
                     </Card>
                 </div>
