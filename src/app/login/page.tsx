@@ -85,10 +85,6 @@ function LoginFormComponent() {
           if (userCredential) break; // Success, exit loop
         } catch (error: any) {
           lastError = error; // Store the error and continue to the next domain
-          // If we get invalid-credential, we know the user exists but password is wrong, no need to try other domains
-          if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-            break;
-          }
         }
       }
       

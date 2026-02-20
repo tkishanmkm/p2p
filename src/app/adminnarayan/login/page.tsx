@@ -65,7 +65,7 @@ export default function AdminLoginPage() {
 
     setIsLoggingIn(true);
     
-    const domainsToTry = [ "email.com", "paxones.app" ];
+    const domainsToTry = [ "email.com", "paxones.app", "tradenance.app", "tradenaire.app", "tradeflow.app" ];
     let userCredential: UserCredential | null = null;
     let lastError: any = null;
 
@@ -80,11 +80,7 @@ export default function AdminLoginPage() {
                 if (userCredential) break; // Login successful, exit loop
             } catch (error: any) {
                 lastError = error;
-                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-                  // If we know the user exists but the password is wrong, stop trying other domains.
-                  break; 
-                }
-                // Continue to next domain if user not found, etc.
+                // Continue to next domain
             }
         }
         
