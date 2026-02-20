@@ -302,6 +302,12 @@ export default function AdminDepositsPage() {
         setSelectedDeposit(null);
     };
 
+    const qrCodeValue = selectedDeposit ? 
+    (selectedDeposit.crypto === 'BTC' || selectedDeposit.crypto === 'LTC')
+        ? `${selectedDeposit.crypto.toLowerCase()}:${selectedDeposit.walletAddress}?amount=${selectedDeposit.amount}`
+        : selectedDeposit.walletAddress
+    : '';
+
     return (
         <>
             <div className="flex items-center justify-between">
@@ -461,11 +467,7 @@ export default function AdminDepositsPage() {
                             
                              <div className="flex flex-col items-center gap-2 pt-4">
                                 <div className="p-2 bg-white rounded-lg">
-                                    <QRCode value={
-                                        (selectedDeposit.crypto === 'BTC' || selectedDeposit.crypto === 'LTC')
-                                        ? `${selectedDeposit.crypto.toLowerCase()}:${selectedDeposit.walletAddress}?amount=${selectedDeposit.amount}`
-                                        : selectedDeposit.walletAddress
-                                    } size={128} />
+                                    <QRCode value={qrCodeValue} size={128} />
                                 </div>
                                  <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full">
                                     <p className="font-mono text-xs break-all text-center flex-grow">{selectedDeposit.walletAddress}</p>

@@ -43,7 +43,7 @@ export type Deposit = {
   amount: number;
   txId?: string; // Optional at first, provided by user
   walletAddress: string; // The address the user must send to
-  qrCodeUrl: string; // The QR for that address
+  qrCodeUrl?: string; // The QR for that address
   status: 'pending' | 'awaiting_confirmation' | 'approved' | 'declined' | 'expired'; // More specific statuses
   finalAmount?: number; // Admin can correct the amount
   adminId?: string;

@@ -134,6 +134,12 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   };
   
   const currentInstruction = wallet ? instructionsMap[wallet.crypto] : "";
+  
+  const qrCodeValue = createdDeposit ? 
+    (createdDeposit.crypto === 'BTC' || createdDeposit.crypto === 'LTC')
+        ? `${createdDeposit.crypto.toLowerCase()}:${createdDeposit.walletAddress}?amount=${createdDeposit.amount}`
+        : createdDeposit.walletAddress
+    : '';
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -226,7 +232,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                             </div>
                             <div className="flex flex-col items-center gap-4 my-4">
                                 <div className="p-2 bg-white rounded-lg">
-                                    <QRCode value={createdDeposit.qrCodeUrl} size={160} />
+                                    <QRCode value={qrCodeValue} size={160} />
                                 </div>
                                 <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full">
                                     <p className="font-mono text-xs break-all text-center flex-grow">{createdDeposit.walletAddress}</p>
@@ -274,5 +280,6 @@ const instructionsMap: Record<CryptoCurrency, string> = {
     MATIC: "",
     TRX: ""
 };
+
 
 

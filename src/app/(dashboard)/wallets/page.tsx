@@ -185,7 +185,7 @@ export default function WalletPage() {
   const handleCancelWithdrawal = async (withdrawal: Withdrawal) => {
     if (!firestore || !user || !withdrawal) return;
     try {
-      await cancelWithdrawalRequest(db, user.uid, withdrawal.id);
+      await cancelWithdrawalRequest(firestore, user.uid, withdrawal.id);
       toast({ title: "Withdrawal Cancelled", description: "Your funds have been returned to your available balance." });
       setIsDetailsOpen(false);
       setSelectedTx(null);
