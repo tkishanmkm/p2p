@@ -18,6 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Loader2, Trash2, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 
 type AddressEntry = {
   chain: string;
@@ -129,8 +130,8 @@ export default function DepositAddressSetsPage() {
           <CardDescription>Configure the deposit addresses for each of the 20 rotating sets assigned to users.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="max-w-xs">
-            <FormLabel>Select Address Set to Edit</FormLabel>
+          <div className="max-w-xs space-y-2">
+            <Label>Select Address Set to Edit</Label>
             <Select value={selectedSetId} onValueChange={setSelectedSetId}>
               <SelectTrigger>
                 <SelectValue />
