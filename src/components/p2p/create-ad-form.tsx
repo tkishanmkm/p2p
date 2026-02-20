@@ -179,23 +179,22 @@ const PaymentMethodSheet = ({ open, onOpenChange, title, description, methods, f
         <ScrollArea className="flex-grow rounded-md border">
           <div className="p-4 space-y-4">
             {filteredMethods.map((pm: string) => (
-              <FormItem key={pm} className="flex flex-row items-start space-x-3 space-y-0 py-2">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value?.includes(pm)}
-                    onCheckedChange={(checked) => {
-                      if (field.value?.length >= 5 && checked) {
-                        toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
-                        return;
-                      }
-                      return checked
-                        ? field.onChange([...(field.value || []), pm])
-                        : field.onChange(field.value?.filter((v: string) => v !== pm));
-                    }}
-                  />
-                </FormControl>
+              <div key={pm} className="flex flex-row items-center space-x-3 space-y-0 py-2">
+                <Checkbox
+                  id={`pm-sheet-${pm}`}
+                  checked={field.value?.includes(pm)}
+                  onCheckedChange={(checked) => {
+                    if (field.value?.length >= 5 && checked) {
+                      toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only add up to 5 payment methods.' });
+                      return;
+                    }
+                    return checked
+                      ? field.onChange([...(field.value || []), pm])
+                      : field.onChange(field.value?.filter((v: string) => v !== pm));
+                  }}
+                />
                 <Label htmlFor={`pm-sheet-${pm}`} className="font-normal w-full cursor-pointer">{pm}</Label>
-              </FormItem>
+              </div>
             ))}
           </div>
         </ScrollArea>
