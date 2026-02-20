@@ -266,28 +266,33 @@ export default function PublicProfilePage() {
                 </Card>
             )}
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Feedback</CardTitle>
-                    <CardDescription>Feedback left by other traders for {user.userId}.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {areFeedbackLoading ? (
+            {areFeedbackLoading && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Feedback</CardTitle>
+                        <CardDescription>Loading feedback...</CardDescription>
+                    </CardHeader>
+                    <CardContent>
                         <div className="space-y-4">
-                            <Skeleton className="h-16 w-full" />
-                            <Skeleton className="h-16 w-full" />
+                            <Skeleton className="h-20 w-full" />
+                            <Skeleton className="h-20 w-full" />
                         </div>
-                    ) : feedbacks && feedbacks.length > 0 ? (
-                        <div className="space-y-0">
+                    </CardContent>
+                </Card>
+            )}
+            {!areFeedbackLoading && feedbacks && feedbacks.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Feedback</CardTitle>
+                        <CardDescription>Feedback left by other traders for {user.userId}.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="divide-y">
                             {feedbacks.map(fb => <FeedbackCard key={fb.id} feedback={fb} />)}
                         </div>
-                    ) : (
-                         <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                            <p className="text-sm text-muted-foreground">No feedback yet.</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
         </div>
       </div>
     </>

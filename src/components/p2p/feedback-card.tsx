@@ -1,4 +1,5 @@
 
+
 'use client';
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
@@ -16,7 +17,7 @@ export function FeedbackCard({ feedback }: { feedback: Feedback }) {
     const { data: fromUser } = useDoc<User>(fromUserRef);
     
     return (
-        <div className="border-t py-4 first:border-t-0 first:pt-0 last:pb-0">
+        <div className="p-4">
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                     <p className="font-semibold text-sm">{feedback.fromUsername}</p>
