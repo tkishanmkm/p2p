@@ -22,10 +22,9 @@ import { Skeleton } from '../ui/skeleton';
 import { doc } from 'firebase/firestore';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { add, isPast } from 'date-fns';
-import { toDate } from '@/lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { toDate, cn } from '@/lib/utils';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
-import { cn } from '@/lib/utils';
+import { ScrollArea } from '../ui/scroll-area';
 
 
 const amountSchema = z.object({
@@ -221,98 +220,91 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
             </>
         )}
         {step === 2 && createdDeposit && (
-             <>
+            <>
                 <DialogHeader>
-                  <DialogTitle>Confirm Your Deposit</DialogTitle>
-                  <DialogDescription>
-                    Send exactly <span className="font-bold">{createdDeposit.amount} {createdDeposit.crypto}</span> to the address below.
-                  </DialogDescription>
+                    <DialogTitle>Confirm Your Deposit</DialogTitle>
+                    <DialogDescription>
+                        Your deposit request has been created.
+                    </DialogDescription>
                 </DialogHeader>
-
-                 <div className="space-y-4">
-                     {countdown.isFinished || isPast(toDate(createdDeposit.timerEnd)!) ? (
-                        <Alert variant="destructive">
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Request Expired</AlertTitle>
-                            <AlertDescription>
-                                This deposit request has expired. Please create a new deposit request.
-                            </AlertDescription>
-                        </Alert>
-                    ) : (
-                        <>
-                             <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50">
-                                <CardHeader className="text-center pb-2">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <CryptoLogo crypto={createdDeposit.crypto} className="h-6 w-6 text-amber-700 dark:text-amber-300" />
-                                        <CardTitle className="text-amber-800 dark:text-amber-200">Time Remaining</CardTitle>
+                <ScrollArea className="max-h-[70vh] -mr-6 pr-6">
+                    <div className="space-y-4">
+                        {countdown.isFinished || isPast(toDate(createdDeposit.timerEnd)!) ? (
+                            <Alert variant="destructive">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertTitle>Request Expired</AlertTitle>
+                                <AlertDescription>
+                                    This deposit request has expired. Please create a new deposit request.
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="text-center">
+                                    <p className="text-sm text-muted-foreground">Send exactly</p>
+                                    <div className="flex items-center justify-center gap-3 mt-1">
+                                        <CryptoLogo crypto={createdDeposit.crypto} className="h-8 w-8" />
+                                        <span className="text-3xl font-bold">{createdDeposit.amount}</span>
+                                        <span className="text-2xl text-muted-foreground">{createdDeposit.crypto}</span>
                                     </div>
-                                </CardHeader>
-                                <CardContent className="flex flex-col items-center gap-4">
+                                </div>
+                                <div className="flex flex-col items-center gap-4">
+                                    <div className="p-2 bg-white rounded-lg border">
+                                        <QRCode value={qrCodeValue} size={180} includeMargin={true} />
+                                    </div>
+                                    <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full max-w-sm mx-auto">
+                                        <p className="font-mono text-xs break-all text-center flex-grow p-2">{createdDeposit.walletAddress}</p>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => handleCopy(createdDeposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
+                                    </div>
+                                </div>
+                                <div className="p-4 border-2 border-dashed border-destructive/50 rounded-lg">
                                     <div className="flex justify-center gap-2 sm:gap-4">
-                                        <div className="flex flex-col items-center p-2 sm:p-3 bg-background rounded-lg w-20 sm:w-24 shadow-inner">
-                                            <span className="text-3xl sm:text-4xl font-mono text-destructive font-bold">{String(countdown.hours).padStart(2, '0')}</span>
+                                        <div className="flex flex-col items-center w-20">
+                                            <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.hours).padStart(2, '0')}</span>
                                             <span className="text-xs text-muted-foreground">HRS</span>
                                         </div>
-                                        <div className="flex flex-col items-center p-2 sm:p-3 bg-background rounded-lg w-20 sm:w-24 shadow-inner">
-                                            <span className="text-3xl sm:text-4xl font-mono text-destructive font-bold">{String(countdown.minutes).padStart(2, '0')}</span>
+                                        <div className="text-4xl font-bold text-destructive">:</div>
+                                        <div className="flex flex-col items-center w-20">
+                                            <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.minutes).padStart(2, '0')}</span>
                                             <span className="text-xs text-muted-foreground">MIN</span>
                                         </div>
-                                        <div className="flex flex-col items-center p-2 sm:p-3 bg-background rounded-lg w-20 sm:w-24 shadow-inner">
-                                            <span className="text-3xl sm:text-4xl font-mono text-destructive font-bold">{String(countdown.seconds).padStart(2, '0')}</span>
+                                        <div className="text-4xl font-bold text-destructive">:</div>
+                                        <div className="flex flex-col items-center w-20">
+                                            <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.seconds).padStart(2, '0')}</span>
                                             <span className="text-xs text-muted-foreground">SEC</span>
                                         </div>
                                     </div>
-                                    <div className="w-full pt-2">
-                                        <Alert variant="default" className="bg-transparent border-0 text-amber-900 dark:text-amber-200 p-0">
-                                            <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
-                                            <AlertTitle className="font-semibold text-amber-900 dark:text-amber-100">Instructions</AlertTitle>
-                                            <AlertDescription className="text-amber-800/90 dark:text-amber-200/90">
-                                                <ul className="list-disc list-inside text-xs space-y-1.5 mt-2">
-                                                    <li>{currentInstruction}</li>
-                                                    <li>Send exactly {createdDeposit.amount} {createdDeposit.crypto} to the address shown.</li>
-                                                    <li>After sending, copy the transaction hash (TxID) from your wallet.</li>
-                                                    <li>Paste the TxID below and submit to confirm your deposit.</li>
-                                                </ul>
-                                            </AlertDescription>
-                                        </Alert>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <div className="flex flex-col items-center gap-4 my-4">
-                                <div className="p-2 bg-white rounded-lg">
-                                    <QRCode value={qrCodeValue} size={160} />
                                 </div>
-                                <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full">
-                                    <p className="font-mono text-xs break-all text-center flex-grow">{createdDeposit.walletAddress}</p>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(createdDeposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
-                                </div>
-                            </div>
-
-                            <Form {...txIdForm}>
-                                <form onSubmit={txIdForm.handleSubmit(handleTxIdSubmit)} className="space-y-4">
-                                    <FormField
-                                        control={txIdForm.control}
-                                        name="txId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Transaction Hash (TxID)</FormLabel>
-                                            <FormControl><Input placeholder="Enter the transaction hash from your wallet" {...field} /></FormControl>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <DialogFooter>
+                                <Alert>
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <AlertTitle>Important Instructions</AlertTitle>
+                                    <AlertDescription className="text-xs space-y-1">
+                                    <p>{currentInstruction}</p>
+                                    <p>After sending, copy the transaction hash (TxID) from your wallet and paste it below to confirm.</p>
+                                    </AlertDescription>
+                                </Alert>
+                                <Form {...txIdForm}>
+                                    <form onSubmit={txIdForm.handleSubmit(handleTxIdSubmit)} className="space-y-4 pt-4">
+                                        <FormField
+                                            control={txIdForm.control}
+                                            name="txId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Transaction Hash (TxID)</FormLabel>
+                                                <FormControl><Input placeholder="Enter the transaction hash from your wallet" {...field} /></FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                         <Button type="submit" disabled={isLoading} className="w-full">
                                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            Submit Confirmation
+                                            Confirm Deposit
                                         </Button>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                        </>
-                    )}
-                </div>
+                                    </form>
+                                </Form>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
             </>
         )}
       </DialogContent>
@@ -329,6 +321,7 @@ const instructionsMap: Record<CryptoCurrency, string> = {
     MATIC: "",
     TRX: ""
 };
+
 
 
 
