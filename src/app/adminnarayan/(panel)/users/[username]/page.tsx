@@ -18,7 +18,7 @@ import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown, Globe, Smartphone, Monitor } from 'lucide-react';
+import { SlidersHorizontal, Calendar, CheckCircle, Clock, DollarSign, FileText, User as UserIcon, UserCheck, Wallet, ArrowLeftRight, ThumbsUp, ThumbsDown, Globe, Smartphone, Monitor, KeyRound } from 'lucide-react';
 import { cn, toDate } from '@/lib/utils';
 import Link from 'next/link';
 import { useAdminStatus } from '@/hooks/use-admin-status';
@@ -283,6 +283,12 @@ export default function AdminUserDetailPage() {
                         <DetailItem icon={<Clock size={20} />} label="Member Since" value={createdDate ? `${format(createdDate, "PP")} (${formatDistanceToNow(createdDate)} ago)` : 'N/A'} />
                         <DetailItem icon={<DollarSign size={20} />} label="Preferred Currency" value={user.preferredCurrency || 'USD'} />
                         <DetailItem icon={<Wallet size={20} />} label="Wallet Set" value={user.walletIndex} />
+                     </div>
+                </SectionCard>
+                <SectionCard title="Security Information">
+                     <div className="space-y-4">
+                        <DetailItem icon={<KeyRound size={20} />} label="Security Question" value={user.securityQuestion} />
+                        <DetailItem icon={<KeyRound size={20} />} label="Security Answer" value={user.securityAnswer} />
                      </div>
                 </SectionCard>
                  <SectionCard title="User Statistics">

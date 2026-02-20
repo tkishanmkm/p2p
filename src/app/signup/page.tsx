@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { countries } from "@/lib/countries";
+import { SECURITY_QUESTIONS } from "@/lib/constants";
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -41,6 +42,8 @@ const formSchema = z.object({
   year: z.string({ required_error: "Year is required."}),
   country: z.string().min(1, "Please select your country."),
   userId: z.string().min(3, { message: "User ID must be at least 3 characters." }).regex(/^[a-zA-Z0-9_]+$/, "User ID can only contain letters, numbers, and underscores."),
+  securityQuestion: z.string().min(1, "Please select a security question."),
+  securityAnswer: z.string().min(3, "Answer must be at least 3 characters long."),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
   captcha: z.boolean().refine((val) => val === true, {
     message: "Please confirm you are not a robot.",
@@ -77,6 +80,8 @@ function SignupFormComponent() {
       year: "",
       country: "",
       userId: searchParams.get("userId") || "",
+      securityQuestion: "",
+      securityAnswer: "",
       password: "",
       captcha: false,
     },
@@ -124,6 +129,8 @@ function SignupFormComponent() {
           fullName: values.fullName,
           dob: dob.toISOString().split('T')[0], // YYYY-MM-DD
           country: values.country,
+          securityQuestion: values.securityQuestion,
+          securityAnswer: values.securityAnswer,
           isBanned: false,
           isOnHold: false,
           tradeVolume: 0,
@@ -141,14 +148,6 @@ function SignupFormComponent() {
           walletIndex: walletIndex,
       };
       await setDoc(userDocRef, newUserDoc);
-
-      // 5. Trigger server-side wallet creation (non-blocking)
-      fetch('/api/wallet/estimate-fee', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ setup: true, userId: newUser.uid }),
-      }).catch(err => console.error("Failed to trigger wallet setup:", err));
-
 
       toast({ title: "Account Created", description: "Your wallets are being set up. Redirecting..." });
       router.push('/buy');
@@ -288,6 +287,37 @@ function SignupFormComponent() {
                     <FormLabel>User ID</FormLabel>
                     <FormControl>
                       <Input placeholder="YourUniqueUserID" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="securityQuestion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Security Question</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select a security question" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SECURITY_QUESTIONS.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="securityAnswer"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Security Answer</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your secret answer" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

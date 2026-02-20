@@ -96,6 +96,8 @@ export type User = {
   badges?: string[];
   isAdminAccount?: boolean;
   walletIndex?: number;
+  securityQuestion?: string;
+  securityAnswer?: string;
 };
 
 export type P2PAd = {

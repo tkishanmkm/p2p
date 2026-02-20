@@ -93,6 +93,14 @@
           "description": "Timestamp of when the user was last active.",
           "format": "date-time"
         },
+        "securityQuestion": {
+            "type": "string",
+            "description": "The user's selected security question for account recovery."
+        },
+        "securityAnswer": {
+            "type": "string",
+            "description": "The user's answer to the security question (encrypted)."
+        },
         "blockedUsers": {
             "type": "array",
             "description": "A list of user UIDs that this user has blocked.",
