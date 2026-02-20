@@ -3,8 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import type { DepositAddressSet, CryptoCurrency } from '@/lib/types';
@@ -157,12 +157,12 @@ export default function DepositAddressSetsPage() {
                 if (!formKey) return null;
                 const { fields, append, remove } = fieldArrays[formKey];
                 return (
-                  <Card as={AccordionItem} value={crypto.name} key={crypto.name}>
-                    <CardHeader>
-                      <AccordionTrigger className="text-xl font-semibold">{crypto.name} Addresses</AccordionTrigger>
-                    </CardHeader>
-                    <AccordionContent asChild>
-                      <CardContent className="space-y-4">
+                  <AccordionItem value={crypto.name} key={crypto.name} className="border rounded-lg bg-card text-card-foreground shadow-sm">
+                    <AccordionTrigger className="text-xl font-semibold p-6 hover:no-underline">
+                        <div className="w-full text-left">{crypto.name} Addresses</div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-6 pb-6">
+                        <div className="space-y-4">
                         {fields.map((field, index) => {
                           const availableChains = SUPPORTED_CRYPTOS.find(c => c.name === crypto.name)?.chains || [];
                           return (
@@ -172,11 +172,9 @@ export default function DepositAddressSetsPage() {
                                 name={`${formKey}.${index}.chain`}
                                 render={({ field }) => (
                                   <FormItem className="flex-1">
-                                    <FormLabel>Chain</FormLabel>
+                                    <Label>Chain</Label>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger><SelectValue placeholder="Select a chain" /></SelectTrigger>
-                                        </FormControl>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a chain" /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             {availableChains.map(chain => (
                                                 <SelectItem key={chain} value={chain}>{chain}</SelectItem>
@@ -192,7 +190,7 @@ export default function DepositAddressSetsPage() {
                                 name={`${formKey}.${index}.address`}
                                 render={({ field }) => (
                                   <FormItem className="flex-1">
-                                    <FormLabel>Deposit Address</FormLabel>
+                                    <Label>Deposit Address</Label>
                                     <FormControl><Input placeholder="Enter the full address" {...field} /></FormControl>
                                     <FormMessage />
                                   </FormItem>
@@ -207,9 +205,9 @@ export default function DepositAddressSetsPage() {
                         <Button type="button" variant="outline" size="sm" onClick={() => append({ chain: '', address: '' })}>
                           <PlusCircle className="mr-2 h-4 w-4" /> Add New {crypto.name} Chain
                         </Button>
-                      </CardContent>
+                        </div>
                     </AccordionContent>
-                  </Card>
+                  </AccordionItem>
                 );
               })}
             </Accordion>
