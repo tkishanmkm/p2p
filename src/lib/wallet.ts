@@ -1,5 +1,3 @@
-
-
 'use client';
 import {
   Firestore,
@@ -17,7 +15,7 @@ import {
   setDoc,
   orderBy,
 } from 'firebase/firestore';
-import type { CryptoCurrency, P2PAd, Trade, UserWallet, AppUser, Withdrawal, Deposit } from './types';
+import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Withdrawal, Deposit } from './types';
 import { add, isPast } from 'date-fns';
 import { toDate } from '@/lib/utils';
 import { SUPPORTED_CRYPTOS, CHAINS } from './constants';
@@ -505,6 +503,7 @@ export async function createDepositRequest(
     status: 'pending',
     createdAt: new Date().toISOString(),
     timerEnd: add(new Date(), { hours: 3 }).toISOString(),
+    walletIndex: walletIndex,
   };
 
   const depositCollectionRef = collection(db, 'deposits');

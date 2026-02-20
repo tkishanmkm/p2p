@@ -152,7 +152,8 @@ function DepositsTable({
                         <TableRow>
                             <TableHead>Deposit ID</TableHead>
                             <TableHead>User</TableHead>
-                            <TableHead>Crypto Amount</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Set #</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>TxID</TableHead>
                             <TableHead>Date</TableHead>
@@ -160,12 +161,13 @@ function DepositsTable({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading && <TableRow><TableCell colSpan={7}>Loading...</TableCell></TableRow>}
+                        {isLoading && <TableRow><TableCell colSpan={8}>Loading...</TableCell></TableRow>}
                         {!isLoading && filteredDeposits?.map((deposit) => (
                             <TableRow key={deposit.id} onClick={() => onRowClick(deposit)} className="cursor-pointer">
                                 <TableCell className="font-mono text-xs max-w-[100px] truncate">{deposit.id}</TableCell>
                                 <TableCell className="font-medium">{deposit.userDisplayName}</TableCell>
                                 <TableCell>{deposit.amount} {deposit.crypto}</TableCell>
+                                <TableCell>{deposit.walletIndex || 'N/A'}</TableCell>
                                 <TableCell>
                                     <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
                                     {deposit.status.replace(/_/g, ' ')}
@@ -196,7 +198,7 @@ function DepositsTable({
                                 </TableCell>
                             </TableRow>
                         ))}
-                        {!isLoading && !filteredDeposits?.length && <TableRow><TableCell colSpan={7} className="text-center h-24">No deposits found.</TableCell></TableRow>}
+                        {!isLoading && !filteredDeposits?.length && <TableRow><TableCell colSpan={8} className="text-center h-24">No deposits found.</TableCell></TableRow>}
                     </TableBody>
                 </Table>
             </div>
@@ -208,10 +210,17 @@ function DepositsTable({
                             <CardTitle className="text-base">{deposit.amount} {deposit.crypto}</CardTitle>
                             <CardDescription>{deposit.userDisplayName}</CardDescription>
                         </CardHeader>
-                         <CardContent>
-                             <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
-                                {deposit.status.replace(/_/g, ' ')}
-                            </Badge>
+                         <CardContent className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Status</span>
+                                <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
+                                    {deposit.status.replace(/_/g, ' ')}
+                                </Badge>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Set #</span>
+                                <span className="font-medium">{deposit.walletIndex || 'N/A'}</span>
+                            </div>
                         </CardContent>
                         {deposit.status === 'awaiting_confirmation' && (
                              <CardFooter className="gap-2">
@@ -440,6 +449,7 @@ export default function AdminDepositsPage() {
                         <div className="space-y-4 py-4 text-sm">
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Deposit ID</span><div className="flex items-center gap-2"><span className="font-mono text-xs">{selectedDeposit.id}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.id!)}><Copy className="h-3 w-3" /></Button></div></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedDeposit.userDisplayName}</span></div>
+                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Wallet Set #</span><span className="font-medium">{selectedDeposit.walletIndex || 'N/A'}</span></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Status</span><Badge variant="outline" className={cn("capitalize", statusColors[selectedDeposit.status])}>{selectedDeposit.status.replace(/_/g, ' ')}</Badge></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Requested Amount</span><span className="font-medium">{selectedDeposit.amount} {selectedDeposit.crypto}</span></div>
                             {selectedDeposit.finalAmount && <div className="flex justify-between items-center"><span className="text-muted-foreground">Approved Amount</span><span className="font-medium">{selectedDeposit.finalAmount} {selectedDeposit.crypto}</span></div>}

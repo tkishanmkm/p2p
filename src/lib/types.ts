@@ -49,6 +49,7 @@ export type Deposit = {
   adminId?: string;
   createdAt: string; // Use ISO string
   timerEnd: string; // When the pending request expires
+  walletIndex?: number;
 };
 
 
