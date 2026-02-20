@@ -1,9 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
-import { firebaseConfig } from '@/firebase/config';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { useFirebase } from '@/firebase';
 
 export interface BrandingConfig {
   appLogo?: string;
@@ -21,20 +20,21 @@ interface BrandingContextType {
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
 
-// Initialize a separate Firebase app instance for public data if it doesn't exist
-// This prevents auth state from interfering with public data fetching
-const publicAppName = 'public-branding-app';
-const publicApp = !getApps().some(app => app.name === publicAppName) 
-    ? initializeApp(firebaseConfig, publicAppName) 
-    : getApp(publicAppName);
-const publicFirestore = getFirestore(publicApp);
-
 export function BrandingProvider({ children }: { children: ReactNode }) {
+  const { firestore } = useFirebase();
   const [branding, setBranding] = useState<BrandingConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const brandingRef = doc(publicFirestore, '_config', 'branding');
+    // The useFirebase hook now correctly handles the availability of firestore.
+    // We wait until the firestore instance is available before trying to use it.
+    if (!firestore) {
+      // Keep loading until firestore is available.
+      setIsLoading(true);
+      return;
+    }
+
+    const brandingRef = doc(firestore, '_config', 'branding');
     const unsubscribe = onSnapshot(brandingRef, (doc) => {
       if (doc.exists()) {
         setBranding(doc.data() as BrandingConfig);
@@ -48,7 +48,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [firestore]); // The effect now correctly depends on the firestore instance.
 
   const value = { branding, isLoading };
 
