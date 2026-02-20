@@ -25,6 +25,14 @@ import { FIXED_WITHDRAWAL_FEES_USD } from '@/lib/constants';
 import { usePrices } from '@/context/price-context';
 import { statusColors } from '@/lib/status-colors';
 
+const depositStatusText: Record<Deposit['status'], string> = {
+  pending: "Awaiting Your Confirmation",
+  awaiting_confirmation: "Pending Admin Approval",
+  approved: "Approved",
+  declined: "Declined by Admin",
+  expired: "Expired",
+};
+
 function DepositsHistory({ deposits, isLoading, onRowClick }: { deposits: Deposit[] | null, isLoading: boolean, onRowClick: (deposit: Deposit) => void }) {
   if (isLoading) {
     return (
@@ -43,10 +51,10 @@ function DepositsHistory({ deposits, isLoading, onRowClick }: { deposits: Deposi
         <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
         <TableBody>
             {deposits?.map(d => (
-                <TableRow key={d.id} onClick={() => d.status === 'pending' && onRowClick(d)} className={d.status === 'pending' ? "cursor-pointer hover:bg-muted/50" : ""}>
+                <TableRow key={d.id} onClick={() => onRowClick(d)} className={"cursor-pointer hover:bg-muted/50"}>
                     <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
                     <TableCell>{d.amount}</TableCell>
-                    <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[d.status])}>{d.status.replace(/_/g, ' ')}</Badge></TableCell>
+                    <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[d.status])}>{depositStatusText[d.status]}</Badge></TableCell>
                     <TableCell>{toDate(d.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
                     <TableCell className="text-right">
                         <Button variant="ghost" size="icon">
