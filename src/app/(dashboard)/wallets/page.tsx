@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 import type { UserWallet, CryptoCurrency, Deposit, Withdrawal, User, CoinTransfer } from '@/lib/types';
@@ -30,11 +30,18 @@ const depositStatusText: Record<Deposit['status'], string> = {
   pending: "Awaiting Your Confirmation",
   awaiting_confirmation: "Pending Admin Approval",
   approved: "Approved",
-  declined: "Declined by Admin",
+  declined: "Cancelled by Admin",
   expired: "Expired",
 };
 
-function DepositsHistory({ deposits, isLoading, onRowClick }: { deposits: Deposit[] | null, isLoading: boolean, onRowClick: (deposit: Deposit) => void }) {
+function DepositsHistory({ userId, onRowClick }: { userId: string, onRowClick: (deposit: Deposit) => void }) {
+  const { firestore } = useFirebase();
+  const depositsQuery = useMemoFirebase(() =>
+      firestore ? query(collection(firestore, 'deposits'), where('userId', '==', userId), orderBy('createdAt', 'desc')) : null,
+      [firestore, userId]
+  );
+  const { data: deposits, isLoading } = useCollection<Deposit>(depositsQuery);
+
   if (isLoading) {
     return (
         <div className="space-y-2">
@@ -190,9 +197,6 @@ export default function WalletPage() {
   );
   const { data: wallets, isLoading: areWalletsLoading } = useCollection<UserWallet>(walletsRef);
 
-  const depositsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'deposits'), where('userId', '==', user.uid), orderBy('createdAt', 'desc')) : null, [firestore, user]);
-  const { data: deposits, isLoading: areDepositsLoading } = useCollection<Deposit>(depositsQuery);
-
   const withdrawalsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/withdrawals`), orderBy('createdAt', 'desc')) : null, [firestore, user]);
   const { data: withdrawals, isLoading: areWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
 
@@ -300,7 +304,7 @@ export default function WalletPage() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -376,7 +380,7 @@ export default function WalletPage() {
                     <TabsTrigger value="transfers">Transfers</TabsTrigger>
                 </TabsList>
                 <TabsContent value="deposits" className="mt-4">
-                     <DepositsHistory deposits={deposits} isLoading={areDepositsLoading} onRowClick={handleHistoryRowClick} />
+                     <DepositsHistory userId={user.uid} onRowClick={handleHistoryRowClick} />
                 </TabsContent>
                 <TabsContent value="withdrawals" className="mt-4">
                      <WithdrawalsHistory withdrawals={withdrawals} isLoading={areWithdrawalsLoading} onRowClick={handleHistoryRowClick} />
@@ -427,7 +431,7 @@ export default function WalletPage() {
                      <div className="flex justify-between">
                       <span className="text-muted-foreground">Status:</span> 
                       <Badge variant="outline" className={cn("capitalize", statusColors[selectedTx.status])}>
-                        {'status' in selectedTx ? selectedTx.status.replace(/_/g, ' ') : 'N/A'}
+                        {'walletAddress' in selectedTx ? depositStatusText[selectedTx.status as Deposit['status']] : selectedTx.status}
                       </Badge>
                     </div>
                     {'address' in selectedTx && (

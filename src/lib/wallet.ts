@@ -1,4 +1,5 @@
 
+
 'use client';
 import {
   Firestore,
@@ -589,6 +590,10 @@ export async function cancelWithdrawalRequest(db: Firestore, userId: string, wit
     const withdrawalSnap = await getDoc(withdrawalRef);
     if (!withdrawalSnap.exists()) throw new Error("Withdrawal request not found.");
     const withdrawal = withdrawalSnap.data() as Withdrawal;
+    
+    if (!withdrawal.chain) {
+      throw new Error("Cannot cancel withdrawal: Missing chain information on the withdrawal document. This may be a legacy transaction.");
+    }
 
     const walletId = `${withdrawal.crypto}-${withdrawal.chain}`;
     const userWalletRef = doc(db, 'users', userId, 'wallets', walletId);
