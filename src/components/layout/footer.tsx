@@ -22,7 +22,6 @@ export function Footer() {
       links: [
         { label: t('footer.terms'), href: "/terms" },
         { label: t('footer.privacy'), href: "/policy" },
-        { label: t('footer.aml'), href: "/aml-policy" },
       ],
     },
     {

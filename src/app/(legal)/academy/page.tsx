@@ -83,7 +83,6 @@ export default function AcademyPage() {
               <ul className="space-y-2">
                 <li><Link href="/terms" className="text-muted-foreground hover:text-foreground">Terms</Link></li>
                 <li><Link href="/policy" className="text-muted-foreground hover:text-foreground">Privacy</Link></li>
-                <li><Link href="/aml-policy" className="text-muted-foreground hover:text-foreground">AML Policy</Link></li>
               </ul>
             </div>
           </div>
