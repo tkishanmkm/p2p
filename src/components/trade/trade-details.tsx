@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -28,9 +29,9 @@ import { Label } from "@/components/ui/label";
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, RefreshCw, Clock, Loader2, Flag, ThumbsUp, ThumbsDown, Shield, Eye, Gavel } from 'lucide-react';
-import { add } from 'date-fns';
+import { add, isPast } from 'date-fns';
 import { Input } from '../ui/input';
-import { collection, addDoc, doc, updateDoc, runTransaction } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, runTransaction, query, where, limit, getDocs } from 'firebase/firestore';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { useAdminStatus } from '@/hooks/use-admin-status';
 import { adminCancelTrade, adminMarkTradeAsPaid, adminReleaseFunds, resolveDispute } from '@/lib/admin';
@@ -231,44 +232,36 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
 
         let positiveAdjustment = 0;
         let negativeAdjustment = 0;
+        
         const opponentFeedbackColRef = collection(firestore, 'users', opponentId, 'feedback');
-
+        
         if (existingFeedback) {
+          // UPDATE logic: Adjust counts based on rating change
           if (existingFeedback.rating !== values.rating) {
-            if (existingFeedback.rating === 'positive') {
-              positiveAdjustment -= 1;
-            } else if (existingFeedback.rating === 'negative') {
-              negativeAdjustment -= 1;
-            }
-            if (values.rating === 'positive') {
-              positiveAdjustment += 1;
-            } else if (values.rating === 'negative') {
-              negativeAdjustment += 1;
-            }
-          }
-          const feedbackDocRef = doc(firestore, 'trades', trade.id, 'feedback', existingFeedback.id);
-          transaction.update(feedbackDocRef, {
-            rating: values.rating,
-            comment: values.comment,
-          });
-          // Also update the denormalized copy
-          const denormalizedFeedbackRef = doc(opponentFeedbackColRef, existingFeedback.id);
-          transaction.update(denormalizedFeedbackRef, {
-            rating: values.rating,
-            comment: values.comment,
-          });
-        } else {
-          if (values.rating === 'positive') {
-            positiveAdjustment = 1;
-          } else {
-            negativeAdjustment = 1;
-          }
+            if (existingFeedback.rating === 'positive') positiveAdjustment = -1;
+            else if (existingFeedback.rating === 'negative') negativeAdjustment = -1;
 
-          const feedbackColRef = collection(firestore, 'trades', trade.id, 'feedback');
-          const newFeedbackRef = doc(feedbackColRef); // Generate a new ID
+            if (values.rating === 'positive') positiveAdjustment = 1;
+            else if (values.rating === 'negative') negativeAdjustment = 1;
+          }
           
+          const denormalizedFeedbackRef = doc(opponentFeedbackColRef, existingFeedback.id);
+          const originalTradeFeedbackRef = doc(collection(db, 'trades', existingFeedback.tradeId, 'feedback'), existingFeedback.id);
+
+          const updatedFeedbackPayload = { rating: values.rating, comment: values.comment };
+
+          transaction.update(denormalizedFeedbackRef, updatedFeedbackPayload);
+          transaction.update(originalTradeFeedbackRef, updatedFeedbackPayload);
+
+        } else {
+          // CREATE logic: Create new feedback docs and set initial adjustment
+          if (values.rating === 'positive') positiveAdjustment = 1;
+          else if (values.rating === 'negative') negativeAdjustment = 1;
+          
+          const newFeedbackId = doc(collection(db, 'temp')).id; // Generate a unique ID
+
           const feedbackPayload = {
-            id: newFeedbackRef.id,
+            id: newFeedbackId,
             tradeId: trade.id,
             fromUser: user.uid,
             fromUsername: user.displayName,
@@ -278,13 +271,14 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
             createdAt: new Date().toISOString(),
           };
           
-          // Write to original location
-          transaction.set(newFeedbackRef, feedbackPayload);
-          // Write denormalized copy to user's subcollection
-          const denormalizedFeedbackRef = doc(opponentFeedbackColRef, newFeedbackRef.id);
+          const originalTradeFeedbackRef = doc(collection(db, 'trades', trade.id, 'feedback'), newFeedbackId);
+          const denormalizedFeedbackRef = doc(opponentFeedbackColRef, newFeedbackId);
+          
+          transaction.set(originalTradeFeedbackRef, feedbackPayload);
           transaction.set(denormalizedFeedbackRef, feedbackPayload);
         }
         
+        // Update opponent's aggregate stats if there was a change
         if (positiveAdjustment !== 0 || negativeAdjustment !== 0) {
             const newPositive = (opponentData.positiveFeedback || 0) + positiveAdjustment;
             const newNegative = (opponentData.negativeFeedback || 0) + negativeAdjustment;
@@ -422,7 +416,8 @@ function AdminTradeActions({ trade }: { trade: Trade }) {
             if (disputeSnap.empty) throw new Error("No open dispute found for this trade.");
             const dispute = {id: disputeSnap.docs[0].id, ...disputeSnap.docs[0].data()} as Dispute;
             const winnerId = action === 'award_buyer' ? trade.buyerId : trade.sellerId;
-            await resolveDispute(firestore, trade, dispute, winnerId, adminUser.uid, reason);
+            // The fiatAmountInUSD is a required parameter for resolveDispute now
+            await resolveDispute(firestore, trade, dispute, winnerId, adminUser.uid, trade.fiatAmountInUSD || 0);
         }
         toast({ title: 'Admin Action Successful', description: 'The trade has been updated.' });
     } catch(e: any) {
@@ -430,14 +425,6 @@ function AdminTradeActions({ trade }: { trade: Trade }) {
     } finally {
         setDialogState({open: false, action: null});
     }
-  }
-
-  const actionMap = {
-      cancel: { label: 'Cancel Trade' },
-      paid: { label: 'Mark as Paid' },
-      release: { label: 'Release Funds' },
-      award_buyer: { label: 'Award to Buyer' },
-      award_seller: { label: 'Award to Seller' },
   }
 
   return (
@@ -487,6 +474,17 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
 
   const paymentTimeRemaining = useCountdown(trade.status === 'active' ? trade.expiresAt : new Date(0));
 
+  const opponentId = user?.uid === trade.buyerId ? trade.sellerId : trade.buyerId;
+
+  const feedbackQuery = useMemoFirebase(() => 
+      (firestore && user && opponentId) 
+          ? query(collection(firestore, 'users', opponentId, 'feedback'), where('fromUser', '==', user.uid), limit(1)) 
+          : null, 
+      [firestore, user, opponentId]
+  );
+  const { data: existingFeedbacks } = useCollection<Feedback>(feedbackQuery);
+  const userFeedback = existingFeedbacks?.[0];
+
   useEffect(() => {
     // Auto-expire logic
     const expireTrade = async () => {
@@ -502,15 +500,11 @@ export function TradeDetails({ trade, ad, currentUserRole }: { trade: Trade; ad?
     };
     expireTrade();
   }, [paymentTimeRemaining.isFinished, trade, firestore]);
-
-  const feedbackRef = useMemoFirebase(() => firestore ? collection(firestore, 'trades', trade.id, 'feedback') : null, [firestore, trade.id]);
-  const { data: feedbacks } = useCollection<Feedback>(feedbackRef);
   
   const disputesRef = useMemoFirebase(() => firestore ? collection(firestore, 'trades', trade.id, 'disputes') : null, [firestore, trade.id]);
   const { data: disputes } = useCollection<Dispute>(disputesRef);
   const resolvedDispute = disputes?.find(d => d.status === 'resolved');
 
-  const userFeedback = feedbacks?.find(f => f.fromUser === user?.uid);
   const showFeedbackSection = trade.status === 'released';
 
 

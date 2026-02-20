@@ -254,7 +254,11 @@ export default function PublicProfilePage() {
                     <CardContent className="space-y-4">
                     {areAdsLoading && <Skeleton className="h-32 w-full" />}
                     {!areAdsLoading && ads && ads.length > 0 ? (
-                        ads.map(ad => <AdCard key={ad.id} ad={ad} />)
+                        ads.map(ad => {
+                            // Enrich the ad with the live user data from the profile page
+                            const enrichedAd = { ...ad, user };
+                            return <AdCard key={ad.id} ad={enrichedAd} />;
+                        })
                     ) : (
                         <div className="text-center py-10 border-2 border-dashed rounded-lg">
                         <FileText className="mx-auto h-12 w-12 text-muted-foreground" />

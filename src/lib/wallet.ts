@@ -339,6 +339,7 @@ export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: s
   });
 }
 
+
 export async function cancelTrade(db: Firestore, trade: Trade, reason: string) {
   const tradeRef = doc(db, 'trades', trade.id);
 
