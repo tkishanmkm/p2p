@@ -21,7 +21,8 @@ import { useCountdown } from '@/hooks/use-countdown';
 import { Skeleton } from '../ui/skeleton';
 import { doc } from 'firebase/firestore';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
-import { isPast } from 'date-fns';
+import { add, isPast } from 'date-fns';
+import { toDate } from '@/lib/utils';
 
 const amountSchema = z.object({
   amount: z.coerce.number().positive("Amount must be a positive number."),
@@ -273,4 +274,5 @@ const instructionsMap: Record<CryptoCurrency, string> = {
     MATIC: "",
     TRX: ""
 };
+
 

@@ -21,7 +21,7 @@ import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
 import { SubmitTxHashDialog } from '@/components/wallets/submit-tx-hash-dialog';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
 import { cancelWithdrawalRequest } from '@/lib/wallet';
-import { FIXED_WITHDRAWAL_FEES_USD } from '@/lib/constants';
+import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { usePrices } from '@/context/price-context';
 import { statusColors } from '@/lib/status-colors';
 
@@ -105,40 +105,38 @@ export default function WalletPage() {
   const walletSummary = useMemo(() => {
     if (!wallets) return [];
 
-    const summary: Record<string, { coin: CryptoCurrency; totalBalance: number; totalLockedBalance: number; chains: UserWallet[] }> = {
-      BTC: { coin: 'BTC', totalBalance: 0, totalLockedBalance: 0, chains: [] },
-      ETH: { coin: 'ETH', totalBalance: 0, totalLockedBalance: 0, chains: [] },
-      LTC: { coin: 'LTC', totalBalance: 0, totalLockedBalance: 0, chains: [] },
-      USDT: { coin: 'USDT', totalBalance: 0, totalLockedBalance: 0, chains: [] },
-    };
-    
+    const summaryMap = new Map<CryptoCurrency, { totalBalance: number; totalLockedBalance: number; fiatValue: number; }>();
+
+    for (const crypto of SUPPORTED_CRYPTOS) {
+      summaryMap.set(crypto.name, { totalBalance: 0, totalLockedBalance: 0, fiatValue: 0 });
+    }
+  
     wallets.forEach(wallet => {
-      if (wallet.crypto in summary) {
-          summary[wallet.crypto].totalBalance += wallet.balance || 0;
-          summary[wallet.crypto].totalLockedBalance += wallet.lockedBalance || 0;
-          summary[wallet.crypto].chains.push(wallet);
-      }
+        const summary = summaryMap.get(wallet.crypto);
+        if (summary) {
+            summary.totalBalance += wallet.balance || 0;
+            summary.totalLockedBalance += wallet.lockedBalance || 0;
+        }
     });
 
     const preferredCurrency = userData?.preferredCurrency || 'USD';
     const exchangeRate = fiatRates[preferredCurrency] || 1;
 
-    // Calculate fiat value for sorting
-    const summaryWithValue = Object.values(summary).map(s => {
-        const totalCrypto = s.totalBalance + s.totalLockedBalance;
-        const priceInUsd = prices[s.coin] || 0;
-        const fiatValue = totalCrypto * priceInUsd * exchangeRate;
-        return { ...s, fiatValue };
+    const summaryArray = Array.from(summaryMap.entries()).map(([coin, data]) => {
+        const totalCrypto = data.totalBalance + data.totalLockedBalance;
+        const priceInUsd = prices[coin] || 0;
+        data.fiatValue = totalCrypto * priceInUsd * exchangeRate;
+        return { coin, ...data };
     });
     
-    // Sort by fiatValue from high to low
-    summaryWithValue.sort((a, b) => b.fiatValue - a.fiatValue);
+    summaryArray.sort((a, b) => b.fiatValue - a.fiatValue);
     
-    return summaryWithValue;
+    return summaryArray;
 
   }, [wallets, userData, prices, fiatRates]);
 
   const handleDepositClick = (coin: CryptoCurrency) => {
+    // We create a "shell" wallet object because the dialog can handle deposits even if no specific wallet document exists yet.
     const walletShell: UserWallet = {
         id: coin,
         userId: user!.uid,
@@ -187,7 +185,7 @@ export default function WalletPage() {
   const handleCancelWithdrawal = async (withdrawal: Withdrawal) => {
     if (!firestore || !user || !withdrawal) return;
     try {
-      await cancelWithdrawalRequest(firestore, user.uid, withdrawal.id);
+      await cancelWithdrawalRequest(db, user.uid, withdrawal.id);
       toast({ title: "Withdrawal Cancelled", description: "Your funds have been returned to your available balance." });
       setIsDetailsOpen(false);
       setSelectedTx(null);
@@ -226,7 +224,7 @@ export default function WalletPage() {
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 mb-8">
         {walletSummary.map((data) => {
-          const { coin, totalBalance, totalLockedBalance, chains } = data;
+          const { coin, totalBalance, totalLockedBalance } = data;
           if (!data) return null;
           const totalWalletBalance = totalBalance + totalLockedBalance;
 
@@ -253,10 +251,10 @@ export default function WalletPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex gap-2">
-                <Button size="sm" className="w-full" onClick={() => handleDepositClick(coin)}>
+                <Button size="sm" className="w-full" onClick={() => handleDepositClick(coin as CryptoCurrency)}>
                     <ArrowDown className="mr-2 h-4 w-4" />Deposit
                 </Button>
-                <Button size="sm" variant="outline" className="w-full" onClick={() => handleWithdrawClick(coin, totalBalance)}>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => handleWithdrawClick(coin as CryptoCurrency, totalBalance)}>
                     <ArrowUp className="mr-2 h-4 w-4" />Withdraw
                 </Button>
               </CardFooter>
