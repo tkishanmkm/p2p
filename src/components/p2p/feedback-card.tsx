@@ -1,5 +1,4 @@
 
-
 'use client';
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
@@ -35,8 +34,7 @@ export function FeedbackCard({ feedback }: { feedback: Feedback }) {
                 </div>
             </div>
             <p className="text-sm mb-2">{feedback.comment}</p>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Trade: {feedback.tradeId}</span>
+            <div className="flex items-center justify-end text-xs text-muted-foreground">
                 <span>{toDate(feedback.createdAt) ? formatDistanceToNow(toDate(feedback.createdAt)!) + ' ago' : ''}</span>
             </div>
         </div>
