@@ -255,8 +255,23 @@ export default function PublicProfilePage() {
                     {areAdsLoading && <Skeleton className="h-32 w-full" />}
                     {!areAdsLoading && ads && ads.length > 0 ? (
                         ads.map(ad => {
-                            // Enrich the ad with the live user data from the profile page
-                            const enrichedAd = { ...ad, user };
+                            // Enrich the ad's user object with live data from the profile
+                            const enrichedAd = {
+                                ...ad,
+                                user: {
+                                    ...ad.user, // Start with the ad's denormalized data
+                                    // Overwrite with live data from the fetched user profile
+                                    username: user.userId,
+                                    feedbackScore: user.feedbackScore,
+                                    positiveFeedback: user.positiveFeedback,
+                                    negativeFeedback: user.negativeFeedback,
+                                    completedTrades: user.completedTrades,
+                                    photoURL: user.photoURL,
+                                    badges: user.badges,
+                                    lastActive: user.lastActive,
+                                    country: user.country,
+                                },
+                            };
                             return <AdCard key={ad.id} ad={enrichedAd} />;
                         })
                     ) : (
