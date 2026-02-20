@@ -12,11 +12,16 @@ import { TradeChat } from '@/components/trade/trade-chat';
 import { CounterpartyInfoPanel } from '@/components/trade/counterparty-info-panel';
 import { Button } from '@/components/ui/button';
 import { useAdminStatus } from '@/hooks/use-admin-status';
+import { usePrices } from '@/context/price-context';
+import { claimFundsForTrade } from '@/lib/wallet';
+import { useToast } from '@/hooks/use-toast';
 
 function TradePageContent() {
   const params = useParams();
   const { firestore, user: authUser, isUserLoading } = useFirebase();
   const { isAdmin } = useAdminStatus();
+  const { fiatRates } = usePrices();
+  const { toast } = useToast();
   const tradeId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [activeView, setActiveView] = useState<'chat' | 'details'>('details');
@@ -68,6 +73,26 @@ function TradePageContent() {
 
     fetchTradeCount();
   }, [firestore, authUser, opponent]);
+  
+  useEffect(() => {
+    if (trade && trade.status === 'released' && !trade.claimedByBuyer && authUser?.uid === trade.buyerId && firestore) {
+        const claim = async () => {
+            try {
+                let usdAmount = trade.fiatAmountInUSD;
+                if (!usdAmount || isNaN(usdAmount)) {
+                    const exchangeRate = fiatRates[trade.fiatCurrency] || 1;
+                    usdAmount = trade.fiatAmount / exchangeRate;
+                }
+                await claimFundsForTrade(firestore, trade, trade.buyerId, usdAmount);
+                toast({ title: 'Funds Claimed', description: `The ${trade.crypto} has been added to your wallet.` });
+            } catch (error: any) {
+                console.error("Auto-claiming funds failed:", error);
+                toast({ variant: 'destructive', title: 'Claim Failed', description: error.message });
+            }
+        };
+        claim();
+    }
+  }, [trade, authUser, firestore, fiatRates, toast]);
 
 
   const currentUserRole = useMemo(() => {
@@ -113,7 +138,7 @@ function TradePageContent() {
       />
       
       {/* Desktop Layout */}
-      <div className="hidden md:grid md:grid-cols-[450px,1fr] gap-0 flex-1 min-h-0">
+      <div className="hidden md:grid md:grid-cols-[minmax(400px,_450px)_1fr] gap-0 flex-1 min-h-0">
         <div className="h-full border-r">
           <TradeDetails trade={trade} ad={ad} currentUserRole={currentUserRole} />
         </div>

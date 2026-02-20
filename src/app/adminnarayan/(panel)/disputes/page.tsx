@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -48,6 +49,7 @@ import Link from "next/link";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import { usePrices } from "@/context/price-context";
 
 const statusColors: Record<Dispute['status'], string> = {
   open: "border-red-500/50 text-red-600 bg-red-50",
@@ -67,6 +69,7 @@ export default function AdminDisputesPage() {
   const [disputes, setDisputes] = useState<Dispute[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const { fiatRates } = usePrices();
 
   useEffect(() => {
     if (isAdminLoading) return;
@@ -125,10 +128,21 @@ export default function AdminDisputesPage() {
         return;
     }
     const trade = tradeSnap.data() as Trade;
+    
+    let fiatAmountInUSD = trade.fiatAmountInUSD;
+    if (fiatAmountInUSD === undefined || fiatAmountInUSD === null || isNaN(fiatAmountInUSD)) {
+      const exchangeRate = fiatRates[trade.fiatCurrency] || 1;
+      fiatAmountInUSD = trade.fiatAmount / exchangeRate;
+    }
+    if (isNaN(fiatAmountInUSD)) {
+       toast({ variant: "destructive", title: "Calculation Error", description: "Could not calculate USD value for the trade. Cannot update volume." });
+       return;
+    }
+
     const winnerId = awardTo === 'buyer' ? trade.buyerId : trade.sellerId;
 
     try {
-      await resolveDispute(firestore, trade, selectedDispute, winnerId, adminUser.uid);
+      await resolveDispute(firestore, trade, selectedDispute, winnerId, adminUser.uid, fiatAmountInUSD);
       toast({ title: "Dispute Resolved", description: `Trade awarded to the ${awardTo}.` });
       if (!showAll) {
         setDisputes(disputes => disputes?.filter(d => d.id !== selectedDispute.id) || null);

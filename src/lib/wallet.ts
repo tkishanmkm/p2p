@@ -245,25 +245,26 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
   });
 }
 
-export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId: string) {
-  const tradeRef = doc(db, 'trades', tradeId);
-  const messagesCollectionRef = collection(db, 'trades', tradeId, 'messages');
+export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: string, fiatAmountInUSD: number) {
+  const tradeRef = doc(db, 'trades', trade.id);
+  const messagesCollectionRef = collection(db, 'trades', trade.id, 'messages');
 
   await runTransaction(db, async (transaction) => {
+    // Re-fetch trade inside transaction to ensure atomicity
     const tradeDoc = await transaction.get(tradeRef);
     if (!tradeDoc.exists()) throw new Error("Trade not found.");
+    const currentTrade = tradeDoc.data() as Trade;
+
+    if (currentTrade.status !== 'released') throw new Error("Funds have not been released by the seller.");
+    if (currentTrade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
+    if (currentTrade.claimedByBuyer) return; // Already claimed, exit silently.
     
-    const trade = tradeDoc.data() as Trade;
-    if (trade.status !== 'released') throw new Error("Funds have not been released by the seller.");
-    if (trade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
-    if (trade.claimedByBuyer) throw new Error("Funds have already been claimed.");
-    
-    const buyerWalletId = `${trade.crypto}-${trade.chain}`;
+    const buyerWalletId = `${currentTrade.crypto}-${currentTrade.chain}`;
 
     const buyerWalletRef = doc(db, 'users', buyerId, 'wallets', buyerWalletId);
     const buyerUserRef = doc(db, 'users', buyerId);
-    const sellerUserRef = doc(db, 'users', trade.sellerId);
-    const sellerNotificationRef = doc(collection(db, 'users', trade.sellerId, 'notifications'));
+    const sellerUserRef = doc(db, 'users', currentTrade.sellerId);
+    const sellerNotificationRef = doc(collection(db, 'users', currentTrade.sellerId, 'notifications'));
 
     const [buyerWalletDoc, buyerUserDoc, sellerUserDoc] = await Promise.all([
       transaction.get(buyerWalletRef),
@@ -271,8 +272,8 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
       transaction.get(sellerUserRef),
     ]);
     
-    const fee = trade.escrowFee || (trade.amount * 0.01);
-    const amountToBuyer = trade.amount - fee;
+    const fee = currentTrade.escrowFee || (currentTrade.amount * 0.01);
+    const amountToBuyer = currentTrade.amount - fee;
 
     const walletData = buyerWalletDoc.data() as UserWallet | undefined;
     const currentBalance = walletData?.balance || 0;
@@ -281,20 +282,23 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
     transaction.set(buyerWalletRef, {
         balance: currentBalance + amountToBuyer,
         lockedBalance: currentLockedBalance,
-        crypto: trade.crypto,
-        chain: trade.chain,
+        crypto: currentTrade.crypto,
+        chain: currentTrade.chain,
         userId: buyerId,
         id: buyerWalletId,
         updatedAt: new Date().toISOString(),
     }, { merge: true });
 
-    transaction.update(tradeRef, { claimedByBuyer: true });
+    transaction.update(tradeRef, { 
+        claimedByBuyer: true,
+        fiatAmountInUSD: fiatAmountInUSD, // Backfill if it was missing
+    });
 
     if (buyerUserDoc.exists()) {
         const buyerData = buyerUserDoc.data() as AppUser;
         transaction.update(buyerUserRef, {
             completedTrades: (buyerData.completedTrades || 0) + 1,
-            tradeVolume: (buyerData.tradeVolume || 0) + (trade.fiatAmountInUSD || 0),
+            tradeVolume: (buyerData.tradeVolume || 0) + fiatAmountInUSD,
             lastTradeAt: new Date().toISOString(),
         });
     }
@@ -302,29 +306,29 @@ export async function claimFundsForTrade(db: Firestore, tradeId: string, buyerId
         const sellerData = sellerUserDoc.data() as AppUser;
         transaction.update(sellerUserRef, {
             completedTrades: (sellerData.completedTrades || 0) + 1,
-            tradeVolume: (sellerData.tradeVolume || 0) + (trade.fiatAmountInUSD || 0),
+            tradeVolume: (sellerData.tradeVolume || 0) + fiatAmountInUSD,
             lastTradeAt: new Date().toISOString(),
         });
     }
 
     const ledgerRef = doc(collection(db, "escrow_ledger"));
     transaction.set(ledgerRef, {
-        tradeId: trade.tradeId,
+        tradeId: currentTrade.tradeId,
         feeAmount: fee,
-        crypto: trade.crypto,
+        crypto: currentTrade.crypto,
         createdAt: new Date().toISOString()
     });
 
     transaction.set(sellerNotificationRef, {
-        userId: trade.sellerId,
-        message: `Trade ${trade.tradeId} is complete. Funds have been claimed by the buyer.`,
-        link: `/trade/${trade.id}`,
+        userId: currentTrade.sellerId,
+        message: `Trade ${currentTrade.tradeId} is complete. Funds have been claimed by the buyer.`,
+        link: `/trade/${currentTrade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),
     });
 
     const systemMessage = {
-      tradeId: trade.id,
+      tradeId: currentTrade.id,
       senderId: 'system',
       senderUsername: 'System',
       message: 'Congratulations! The trade is completed.',
@@ -395,7 +399,8 @@ export async function sendCoinToUser(
   const recipientDoc = recipientSnapshot.docs[0];
   const recipient = { id: recipientDoc.id, ...(recipientDoc.data() as AppUser) };
   
-  const chainForCrypto = CHAINS[crypto][0];
+  const chainForCrypto = CHAINS[crypto]?.[0];
+  if (!chainForCrypto) throw new Error(`No chain configured for ${crypto}`);
   const walletId = `${crypto}-${chainForCrypto}`;
 
   const senderWalletRef = doc(db, "users", sender.uid, "wallets", walletId);
