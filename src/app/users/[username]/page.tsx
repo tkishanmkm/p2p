@@ -9,7 +9,7 @@ import { collection, query, where, limit, doc, orderBy } from 'firebase/firestor
 import type { User, P2PAd, Feedback } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DefaultAvatar } from '@/components/icons';
 import { AdCard } from '@/components/p2p/ad-card';
@@ -187,7 +187,7 @@ export default function PublicProfilePage() {
                 <CardContent className="pt-6 flex flex-col items-center text-center">
                     <Avatar className="h-32 w-32 mb-4 border-4 border-secondary shadow-lg">
                         {user.photoURL ? (
-                            <Image src={user.photoURL} alt={user.userId} width={128} height={128} className="object-cover"/>
+                            <AvatarImage src={user.photoURL} alt={user.userId} />
                         ) : (
                             <AvatarFallback className="bg-transparent">
                                 <DefaultAvatar />
@@ -270,20 +270,6 @@ export default function PublicProfilePage() {
                 </Card>
             )}
 
-            {areFeedbackLoading && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Feedback</CardTitle>
-                        <CardDescription>Loading feedback...</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <Skeleton className="h-20 w-full" />
-                            <Skeleton className="h-20 w-full" />
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
             {!areFeedbackLoading && feedbacks && feedbacks.length > 0 && (
                 <Card>
                     <CardHeader>

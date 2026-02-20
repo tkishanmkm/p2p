@@ -246,7 +246,7 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
           }
           
           const denormalizedFeedbackRef = doc(opponentFeedbackColRef, existingFeedback.id);
-          const originalTradeFeedbackRef = doc(collection(db, 'trades', existingFeedback.tradeId, 'feedback'), existingFeedback.id);
+          const originalTradeFeedbackRef = doc(collection(firestore, 'trades', existingFeedback.tradeId, 'feedback'), existingFeedback.id);
 
           const updatedFeedbackPayload = { rating: values.rating, comment: values.comment };
 
@@ -258,11 +258,11 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
           if (values.rating === 'positive') positiveAdjustment = 1;
           else if (values.rating === 'negative') negativeAdjustment = 1;
           
-          const newFeedbackId = doc(collection(db, 'temp')).id; // Generate a unique ID
+          const newFeedbackId = doc(collection(firestore, 'temp')).id; // Generate a unique ID
 
           const feedbackPayload = {
             id: newFeedbackId,
-            tradeId: trade.id,
+            tradeId: trade.tradeId,
             fromUser: user.uid,
             fromUsername: user.displayName,
             toUser: opponentId,
@@ -271,7 +271,7 @@ function FeedbackForm({ trade, existingFeedback }: { trade: Trade; existingFeedb
             createdAt: new Date().toISOString(),
           };
           
-          const originalTradeFeedbackRef = doc(collection(db, 'trades', trade.id, 'feedback'), newFeedbackId);
+          const originalTradeFeedbackRef = doc(collection(firestore, 'trades', trade.id, 'feedback'), newFeedbackId);
           const denormalizedFeedbackRef = doc(opponentFeedbackColRef, newFeedbackId);
           
           transaction.set(originalTradeFeedbackRef, feedbackPayload);

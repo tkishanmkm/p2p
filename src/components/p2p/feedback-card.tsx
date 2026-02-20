@@ -36,7 +36,7 @@ export function FeedbackCard({ feedback }: { feedback: Feedback }) {
             </div>
             <p className="text-sm mb-2">{feedback.comment}</p>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Trade: {feedback.tradeId.substring(0, 8)}...</span>
+                <span>Trade: {feedback.tradeId}</span>
                 <span>{toDate(feedback.createdAt) ? formatDistanceToNow(toDate(feedback.createdAt)!) + ' ago' : ''}</span>
             </div>
         </div>
