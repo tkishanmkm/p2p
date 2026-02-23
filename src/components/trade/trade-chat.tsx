@@ -233,7 +233,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
         </div>
         <TradeSummaryBar trade={trade} currentUserRole={isBuyer ? 'buy' : 'sell'} />
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden p-6 pt-0">
+      <CardContent className="flex-1 overflow-hidden p-6 pt-0 min-h-0">
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             <TradeInstructions trade={trade} isBuyer={isBuyer} />
