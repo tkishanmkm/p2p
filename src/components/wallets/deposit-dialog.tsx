@@ -61,7 +61,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [createdDeposit, setCreatedDeposit] = useState<Deposit | null>(null);
-  const countdown = useCountdown(createdDeposit?.timerEnd || new Date(0));
+  const countdown = useCountdown(createdDeposit?.timerEnd || 0);
 
   const addressSetRef = useMemoFirebase(() => (firestore && walletIndex) ? doc(firestore, "crypto_deposit_addresses", String(walletIndex)) : null, [firestore, walletIndex]);
   const { data: addressSetData, isLoading: isAddressSetLoading } = useDoc<DepositAddressSet>(addressSetRef);

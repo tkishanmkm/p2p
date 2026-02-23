@@ -37,7 +37,7 @@ export function SubmitTxHashDialog({ open, onOpenChange, deposit }: SubmitTxHash
   const { firestore } = useFirebase();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const countdown = useCountdown(deposit?.timerEnd || new Date(0));
+  const countdown = useCountdown(deposit?.timerEnd || 0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
