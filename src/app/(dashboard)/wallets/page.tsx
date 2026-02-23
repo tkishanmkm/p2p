@@ -51,10 +51,9 @@ function DepositsHistory({ userId, onRowClick }: { userId: string, onRowClick: (
 
   if (isLoading) {
     return (
-        <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
+        <div className="space-y-2 p-2 md:p-0">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
         </div>
     );
   }
@@ -62,8 +61,8 @@ function DepositsHistory({ userId, onRowClick }: { userId: string, onRowClick: (
     return <p className="text-center text-muted-foreground py-4">No deposit history.</p>;
   }
   return (
-    <ScrollArea className="h-72 rounded-md border">
-        <Table>
+    <ScrollArea className="h-72">
+        <Table className="hidden md:table">
             <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
             <TableBody>
                 {sortedDeposits?.map(d => {
@@ -86,6 +85,26 @@ function DepositsHistory({ userId, onRowClick }: { userId: string, onRowClick: (
                 })}
             </TableBody>
         </Table>
+        <div className="grid gap-4 md:hidden p-2">
+            {sortedDeposits.map(d => {
+                const isExpired = d.status === 'pending' && isPast(toDate(d.timerEnd)!);
+                const currentStatus = isExpired ? 'expired' : d.status;
+                return (
+                    <Card key={d.id} onClick={() => onRowClick(d)} className="cursor-pointer">
+                        <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-base">{d.amount} {d.crypto}</CardTitle>
+                                <Badge variant="outline" className={cn("capitalize", statusColors[currentStatus])}>{depositStatusText[currentStatus]}</Badge>
+                            </div>
+                            <CardDescription>{d.chain} Network</CardDescription>
+                        </CardHeader>
+                        <CardFooter className="text-xs text-muted-foreground">
+                            {toDate(d.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}
+                        </CardFooter>
+                    </Card>
+                )
+            })}
+        </div>
     </ScrollArea>
   );
 }
@@ -100,9 +119,9 @@ function WithdrawalsHistory({ userId, onRowClick }: { userId: string; onRowClick
 
   if (isLoading) {
     return (
-        <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
+        <div className="space-y-2 p-2 md:p-0">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
         </div>
     );
   }
@@ -110,8 +129,8 @@ function WithdrawalsHistory({ userId, onRowClick }: { userId: string; onRowClick
     return <p className="text-center text-muted-foreground py-4">No withdrawal history.</p>;
   }
   return (
-    <ScrollArea className="h-72 rounded-md border">
-        <Table>
+    <ScrollArea className="h-72">
+        <Table className="hidden md:table">
         <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
         <TableBody>
             {withdrawals?.map(w => (
@@ -125,6 +144,22 @@ function WithdrawalsHistory({ userId, onRowClick }: { userId: string; onRowClick
             ))}
         </TableBody>
         </Table>
+        <div className="grid gap-4 md:hidden p-2">
+            {withdrawals.map(w => (
+                <Card key={w.id} onClick={() => onRowClick(w)} className="cursor-pointer">
+                    <CardHeader>
+                        <div className="flex justify-between items-start">
+                            <CardTitle className="text-base">{w.amount} {w.crypto}</CardTitle>
+                            <Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>{w.status}</Badge>
+                        </div>
+                        <CardDescription>{w.chain} Network</CardDescription>
+                    </CardHeader>
+                    <CardFooter className="text-xs text-muted-foreground">
+                        {toDate(w.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}
+                    </CardFooter>
+                </Card>
+            ))}
+        </div>
     </ScrollArea>
   );
 }
@@ -140,10 +175,9 @@ function TransferHistoryTable({ userId, type, onRowClick }: { userId: string; ty
 
   if (isLoading) {
     return (
-        <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
+        <div className="space-y-2 p-2 md:p-0">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
         </div>
     );
   }
@@ -155,8 +189,8 @@ function TransferHistoryTable({ userId, type, onRowClick }: { userId: string; ty
       );
   }
   return (
-    <ScrollArea className="h-72 rounded-md border">
-        <Table>
+    <ScrollArea className="h-72">
+        <Table className="hidden md:table">
         <TableHeader>
             <TableRow>
             <TableHead>ID</TableHead>
@@ -188,6 +222,22 @@ function TransferHistoryTable({ userId, type, onRowClick }: { userId: string; ty
             ))}
         </TableBody>
         </Table>
+         <div className="grid gap-4 md:hidden p-2">
+            {transfers.map(t => (
+                <Card key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
+                    <CardHeader>
+                        <div className="flex justify-between items-start">
+                            <CardTitle className="text-base">{t.amount.toFixed(6)} {t.crypto}</CardTitle>
+                            <p className="text-xs text-muted-foreground">{type === 'sent' ? `To: ${t.recipientUsername}` : `From: ${t.senderUsername}`}</p>
+                        </div>
+                        <CardDescription className="font-mono text-xs">{t.publicId}</CardDescription>
+                    </CardHeader>
+                    <CardFooter className="text-xs text-muted-foreground">
+                         {toDate(t.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}
+                    </CardFooter>
+                </Card>
+            ))}
+        </div>
     </ScrollArea>
   );
 }
@@ -255,6 +305,8 @@ export default function WalletPage() {
 
   }, [wallets, userData, prices, fiatRates]);
 
+  const totalWalletValueUSD = useMemo(() => walletSummary.reduce((acc, wallet) => acc + wallet.fiatValue, 0), [walletSummary]);
+  
   const handleDepositClick = (coin: CryptoCurrency) => {
     const walletShell: UserWallet = {
         id: coin,
@@ -344,6 +396,10 @@ export default function WalletPage() {
       
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-semibold md:text-2xl">My Wallets</h1>
+        <div className="text-right">
+            <p className="text-sm text-muted-foreground">Total Balance</p>
+            <p className="text-xl font-bold">{totalWalletValueUSD.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}</p>
+        </div>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 mb-8">

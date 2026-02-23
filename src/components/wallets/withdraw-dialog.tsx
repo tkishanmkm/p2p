@@ -139,6 +139,11 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
         </DialogHeader>
         <div className="flex-1 min-h-0">
           <ScrollArea className="h-full -mr-6 pr-6">
+             <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Important</AlertTitle>
+                <AlertDescription>{dynamicInstruction}</AlertDescription>
+            </Alert>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-4">
@@ -211,11 +216,6 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
                           {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-24" /> : <span className="font-semibold">{amountToReceive.toFixed(8)} {wallet?.crypto}</span>}
                         </div>
                       </div>
-                      <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Important</AlertTitle>
-                        <AlertDescription>{dynamicInstruction}</AlertDescription>
-                      </Alert>
                     </div>
                     <DialogFooter className="pt-4">
                       <DialogClose asChild>
