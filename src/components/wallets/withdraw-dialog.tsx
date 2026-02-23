@@ -143,8 +143,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Request Withdrawal: {wallet?.crypto}</DialogTitle>
-          <DialogDescription>Withdrawal requests are reviewed and processed by an administrator.</DialogDescription>
+          <DialogTitle>Withdraw {wallet?.crypto}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

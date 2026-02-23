@@ -1,17 +1,31 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
 
 export const useCountdown = (targetDate: string | number | Date) => {
-  const countDownDate = new Date(targetDate).getTime();
+  const getInitialCountDown = () => {
+    const targetTime = new Date(targetDate).getTime();
+    if (isNaN(targetTime)) {
+      return 0; // Invalid date, countdown is finished
+    }
+    return targetTime - new Date().getTime();
+  };
 
-  const [countDown, setCountDown] = useState(
-    countDownDate - new Date().getTime()
-  );
+  const [countDown, setCountDown] = useState(getInitialCountDown());
 
   useEffect(() => {
+    // This effect runs whenever targetDate changes, resetting the countdown state.
+    setCountDown(getInitialCountDown());
+
+    const targetTime = new Date(targetDate).getTime();
+    if (isNaN(targetTime)) {
+      setCountDown(0);
+      return;
+    }
+
     const interval = setInterval(() => {
-      const newCountDown = countDownDate - new Date().getTime();
+      const newCountDown = targetTime - new Date().getTime();
       if (newCountDown > 0) {
         setCountDown(newCountDown);
       } else {
@@ -21,7 +35,8 @@ export const useCountdown = (targetDate: string | number | Date) => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [countDownDate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetDate]);
 
   return getReturnValues(countDown);
 };
