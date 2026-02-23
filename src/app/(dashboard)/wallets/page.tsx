@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -17,13 +18,14 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 import { Skeleton } from '@/components/ui/skeleton';
 import { DepositDialog } from '@/components/wallets/deposit-dialog';
 import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
+import { SubmitTxHashDialog } from '@/components/wallets/submit-tx-hash-dialog';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
 import { cancelWithdrawalRequest } from '@/lib/wallet';
 import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { usePrices } from '@/context/price-context';
 import { statusColors } from '@/lib/status-colors';
 import { isPast } from 'date-fns';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from '../ui/scroll-area';
 
 const depositStatusText: Record<Deposit['status'], string> = {
   pending: "Pending User Action",
@@ -594,4 +596,5 @@ export default function WalletPage() {
   );
 }
 
+    
     
