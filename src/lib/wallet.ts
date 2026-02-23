@@ -14,6 +14,7 @@ import {
   getDocs,
   setDoc,
   orderBy,
+  DocumentReference,
 } from 'firebase/firestore';
 import type { CryptoCurrency, P2PAd, Trade, UserWallet, User as AppUser, Withdrawal, Deposit } from './types';
 import { add, isPast } from 'date-fns';
@@ -403,40 +404,46 @@ export async function sendCoinToUser(
   const recipientWalletId = `${crypto}-${recipientDefaultChain}`;
   const recipientWalletRef = doc(db, "users", recipient.id, "wallets", recipientWalletId);
   const transferRef = doc(collection(db, "transfers"));
-  
+
+  // Get sender wallet references OUTSIDE the transaction
+  const senderWalletsQuery = query(collection(db, "users", sender.uid, "wallets"), where("crypto", "==", crypto));
+  const senderWalletsSnapshot = await getDocs(senderWalletsQuery);
+  const senderWalletRefs = senderWalletsSnapshot.docs.map(d => d.ref as DocumentReference<UserWallet>);
+
   let transferId = "";
 
   await runTransaction(db, async (transaction) => {
-    // 1. Get all sender's wallets for the specified crypto
-    const senderWalletsQuery = query(collection(db, "users", sender.uid, "wallets"), where("crypto", "==", crypto));
-    const senderWalletsSnapshot = await getDocs(senderWalletsQuery);
-    
-    // We need to read the wallet docs inside the transaction
-    const senderWalletDocs = await Promise.all(senderWalletsSnapshot.docs.map(d => transaction.get(d.ref)));
-    const senderWallets = senderWalletDocs.map(d => d.data() as UserWallet);
+    // --- READ PHASE ---
+    const senderWalletDocs = await Promise.all(senderWalletRefs.map(ref => transaction.get(ref)));
+    const recipientWalletDoc = await transaction.get(recipientWalletRef);
 
-    // 2. Check total balance
+    // --- WRITE PHASE ---
+
+    // 1. Process sender wallets
+    const senderWallets = senderWalletDocs.map(d => d.data()).filter((d): d is UserWallet => !!d);
+
     const totalBalance = senderWallets.reduce((acc, w) => acc + (w.balance || 0), 0);
     if (totalBalance < amount) {
       throw new Error(`Insufficient total ${crypto} balance to complete the transfer.`);
     }
 
-    // 3. Debit from sender's wallets sequentially
+    // 2. Debit from sender's wallets sequentially
     let amountToDebit = amount;
-    for (const wallet of senderWallets) {
+    for (const walletDoc of senderWalletDocs) {
       if (amountToDebit <= 0) break;
-      const walletRef = doc(db, "users", sender.uid, "wallets", wallet.id);
+      const wallet = walletDoc.data();
+      if (!wallet) continue;
+
       const available = wallet.balance || 0;
       const debitAmount = Math.min(amountToDebit, available);
 
       if (debitAmount > 0) {
-        transaction.update(walletRef, { balance: available - debitAmount });
+        transaction.update(walletDoc.ref, { balance: available - debitAmount, updatedAt: new Date().toISOString() });
         amountToDebit -= debitAmount;
       }
     }
 
-    // 4. Credit recipient's default wallet
-    const recipientWalletDoc = await transaction.get(recipientWalletRef);
+    // 3. Credit recipient's default wallet
     if (recipientWalletDoc.exists()) {
       const recipientWallet = recipientWalletDoc.data() as UserWallet;
       transaction.update(recipientWalletRef, {
@@ -455,6 +462,7 @@ export async function sendCoinToUser(
       });
     }
 
+    // 4. Create transfer log
     transferId = generateId("TX-", 10);
     transaction.set(transferRef, {
       publicId: transferId,
