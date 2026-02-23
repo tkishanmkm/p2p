@@ -422,7 +422,7 @@ export default function WalletPage() {
                     )}
                     {'walletAddress' in selectedTx && (
                        <div className="flex justify-between items-start gap-4">
-                        <span className="text-muted-foreground">Deposit ID:</span> 
+                        <span className="text-muted-foreground">Deposit Address:</span> 
                         <div className="flex items-center gap-2">
                            <span className="font-mono text-xs text-right break-all">{selectedTx.walletAddress}</span>
                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedTx.walletAddress)}><Copy className="h-3 w-3"/></Button>
