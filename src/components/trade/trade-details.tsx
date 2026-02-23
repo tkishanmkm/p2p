@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -19,7 +20,7 @@ import type { Feedback, P2PAd, Trade, TradeStatus, Dispute, User } from '@/lib/t
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -143,7 +144,28 @@ const ActionButtons = ({ trade, currentUserRole }: { trade: Trade; currentUserRo
     if (!user) return null;
 
     const handleMarkAsPaid = async () => { if (!firestore) return; try { await markTradeAsPaid(firestore, trade.id); toast({ title: "Success", description: "Seller has been notified that you've paid." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
-    const handleReleaseCrypto = async () => { if (!firestore) return; try { await releaseFundsFromEscrow(firestore, trade.id); toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
+    
+    const handleReleaseCrypto = async () => { 
+        if (!firestore) return; 
+        try { 
+            await releaseFundsFromEscrow(firestore, trade.id); 
+    
+            const messagesCollectionRef = collection(firestore, 'trades', trade.id, 'messages');
+            await addDoc(messagesCollectionRef, {
+                tradeId: trade.id,
+                senderId: 'system',
+                senderUsername: 'System',
+                message: 'Seller has released the crypto. The trade is complete.\nYou can now leave feedback for your partner.',
+                isModerator: true,
+                createdAt: new Date().toISOString(),
+            });
+    
+            toast({ title: "Crypto Released", description: "The crypto has been sent to the buyer." }); 
+        } catch (e: any) { 
+            toast({ variant: "destructive", title: "Error", description: e.message }); 
+        } 
+    };
+    
     const handleCancelTrade = async () => { if (!firestore) return; try { await cancelTrade(firestore, trade, 'Cancelled by user.'); toast({ title: "Trade Cancelled" }); } catch (e: any) { toast({ variant: "destructive", title: "Error", description: e.message }); } };
 
     const canBuyerCancel = currentUserRole === 'buy' && trade.status === 'active';

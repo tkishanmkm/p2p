@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -517,11 +518,27 @@ export async function adminMarkTradeAsPaid(db: Firestore, trade: Trade, adminId:
 
 export async function adminReleaseFunds(db: Firestore, trade: Trade, adminId: string, reason: string) {
     await releaseFundsFromEscrow(db, trade.id);
+
     const adminLogRef = doc(collection(db, "admin_logs"));
-    await setDoc(adminLogRef, {
+    const messagesCollectionRef = collection(db, 'trades', trade.id, 'messages');
+    const batch = writeBatch(db);
+
+    batch.set(adminLogRef, {
         adminId,
         action: `Admin released funds for trade ${trade.tradeId}. Reason: ${reason}`,
         targetId: trade.id,
         createdAt: new Date().toISOString(),
     });
+
+    const systemMessage = {
+        tradeId: trade.id,
+        senderId: 'system',
+        senderUsername: 'System',
+        message: `A moderator has released the crypto. The trade is now complete. Reason: ${reason}\nYou can now leave feedback for your partner.`,
+        isModerator: true,
+        createdAt: new Date().toISOString(),
+    };
+    batch.set(doc(messagesCollectionRef), systemMessage);
+
+    await batch.commit();
 }

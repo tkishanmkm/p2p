@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
@@ -249,8 +250,8 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
                      if (msg.message.includes("disputed")) {
                         return <SystemMessage key={msg.id} title="Trade is disputed. A moderator will join the chat shortly." timestamp={msg.createdAt} variant="destructive">{msg.message}</SystemMessage>;
                     }
-                    if (msg.message.includes("Congratulations! The trade is completed")) {
-                        return <SystemMessage key={msg.id} title="Congratulations! The trade is completed." timestamp={msg.createdAt} variant="success"><p>You can now leave feedback for this trade from the details panel.</p></SystemMessage>;
+                    if (msg.message.includes("The trade is complete")) {
+                        return <SystemMessage key={msg.id} title="Trade Completed" timestamp={msg.createdAt} variant="success"><p>{msg.message}</p></SystemMessage>;
                     }
                      if (msg.message.toLowerCase().includes("cancelled") || msg.message.toLowerCase().includes("expired")) {
                         return <SystemMessage key={msg.id} title="Trade Cancelled" timestamp={msg.createdAt} variant="destructive">{msg.message}</SystemMessage>;

@@ -1,4 +1,5 @@
 
+
 'use client';
 import {
   Firestore,
@@ -308,15 +309,6 @@ export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: s
         createdAt: new Date().toISOString(),
     });
 
-    const systemMessage = {
-      tradeId: currentTrade.id,
-      senderId: 'system',
-      senderUsername: 'System',
-      message: 'Congratulations! The trade is completed.',
-      isModerator: true,
-      createdAt: new Date().toISOString(),
-    };
-    transaction.set(doc(messagesCollectionRef), systemMessage);
   });
 }
 
