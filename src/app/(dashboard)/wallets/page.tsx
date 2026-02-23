@@ -307,7 +307,7 @@ export default function WalletPage() {
 
   }, [wallets, userData, prices, fiatRates]);
 
-  const totalWalletValue = useMemo(() => walletSummary.reduce((acc, wallet) => acc + wallet.fiatValue, 0), [walletSummary]);
+  const totalAvailableBalance = useMemo(() => walletSummary.reduce((acc, wallet) => acc + wallet.fiatValue, 0), [walletSummary]);
   
   const handleDepositClick = (coin: CryptoCurrency) => {
     const walletShell: UserWallet = {
@@ -390,7 +390,7 @@ export default function WalletPage() {
         <h1 className="text-lg font-semibold md:text-2xl">My Wallets</h1>
         <div className="text-right">
             <p className="text-sm text-muted-foreground">Total Available Balance</p>
-            <p className="text-xl font-bold">{totalWalletValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}</p>
+            <p className="text-xl font-bold">{totalAvailableBalance.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}</p>
         </div>
       </div>
       

@@ -379,7 +379,6 @@ export async function sendCoinToUser(
   sender: { uid: string; displayName: string | null },
   recipientUsername: string,
   crypto: CryptoCurrency,
-  chain: string,
   amount: number
 ): Promise<string> {
   if (sender.displayName === recipientUsername) throw new Error("You cannot send coins to yourself.");
@@ -397,29 +396,46 @@ export async function sendCoinToUser(
   const recipientDoc = recipientSnapshot.docs[0];
   const recipient = { id: recipientDoc.id, ...(recipientDoc.data() as AppUser) };
   
-  if (!chain) {
-      throw new Error(`Network for ${crypto} was not specified.`);
+  const recipientDefaultChain = CHAINS[crypto]?.[0];
+  if (!recipientDefaultChain) {
+    throw new Error(`No default network configured for ${crypto}. Cannot perform transfer.`);
   }
-  const walletId = `${crypto}-${chain}`;
-
-  const senderWalletRef = doc(db, "users", sender.uid, "wallets", walletId);
-  const recipientWalletRef = doc(db, "users", recipient.id, "wallets", walletId);
+  const recipientWalletId = `${crypto}-${recipientDefaultChain}`;
+  const recipientWalletRef = doc(db, "users", recipient.id, "wallets", recipientWalletId);
   const transferRef = doc(collection(db, "transfers"));
   
   let transferId = "";
 
   await runTransaction(db, async (transaction) => {
-    const senderWalletDoc = await transaction.get(senderWalletRef);
-    if (!senderWalletDoc.exists() || ((senderWalletDoc.data() as UserWallet).balance || 0) < amount) {
-      throw new Error(`Insufficient ${crypto} balance on the ${chain} network.`);
+    // 1. Get all sender's wallets for the specified crypto
+    const senderWalletsQuery = query(collection(db, "users", sender.uid, "wallets"), where("crypto", "==", crypto));
+    const senderWalletsSnapshot = await getDocs(senderWalletsQuery);
+    
+    // We need to read the wallet docs inside the transaction
+    const senderWalletDocs = await Promise.all(senderWalletsSnapshot.docs.map(d => transaction.get(d.ref)));
+    const senderWallets = senderWalletDocs.map(d => d.data() as UserWallet);
+
+    // 2. Check total balance
+    const totalBalance = senderWallets.reduce((acc, w) => acc + (w.balance || 0), 0);
+    if (totalBalance < amount) {
+      throw new Error(`Insufficient total ${crypto} balance to complete the transfer.`);
     }
 
-    const senderWallet = senderWalletDoc.data() as UserWallet;
-    transaction.update(senderWalletRef, {
-      balance: (senderWallet.balance || 0) - amount,
-      updatedAt: new Date().toISOString(),
-    });
+    // 3. Debit from sender's wallets sequentially
+    let amountToDebit = amount;
+    for (const wallet of senderWallets) {
+      if (amountToDebit <= 0) break;
+      const walletRef = doc(db, "users", sender.uid, "wallets", wallet.id);
+      const available = wallet.balance || 0;
+      const debitAmount = Math.min(amountToDebit, available);
 
+      if (debitAmount > 0) {
+        transaction.update(walletRef, { balance: available - debitAmount });
+        amountToDebit -= debitAmount;
+      }
+    }
+
+    // 4. Credit recipient's default wallet
     const recipientWalletDoc = await transaction.get(recipientWalletRef);
     if (recipientWalletDoc.exists()) {
       const recipientWallet = recipientWalletDoc.data() as UserWallet;
@@ -429,12 +445,12 @@ export async function sendCoinToUser(
       });
     } else {
       transaction.set(recipientWalletRef, {
+        id: recipientWalletId,
+        userId: recipient.id,
+        crypto: crypto,
+        chain: recipientDefaultChain,
         balance: amount,
         lockedBalance: 0,
-        crypto: crypto,
-        chain: chain,
-        userId: recipient.id,
-        id: walletId,
         updatedAt: new Date().toISOString(),
       });
     }

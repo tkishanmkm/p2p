@@ -54,7 +54,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, Send, ArrowUp, ArrowDown, AlertCircle, Copy } from 'lucide-react';
 import { CryptoCurrency, User, UserWallet, CoinTransfer } from '@/lib/types';
-import { CHAINS } from '@/lib/constants';
 import { toDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
@@ -63,18 +62,8 @@ import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 const transferSchema = z.object({
   recipientUsername: z.string().min(3, 'Recipient User ID is required.'),
   crypto: z.string().min(1, 'Please select a cryptocurrency.'),
-  chain: z.string().optional(),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
   password: z.string().min(1, "Your password is required to authorize the transfer."),
-}).superRefine((data, ctx) => {
-  const cryptoChains = CHAINS[data.crypto as CryptoCurrency];
-  if (cryptoChains && cryptoChains.length > 1 && !data.chain) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Please select a network.",
-      path: ["chain"],
-    });
-  }
 });
 
 
@@ -193,22 +182,11 @@ export default function TransferPage() {
     }
   });
 
-  const selectedCrypto = form.watch('crypto') as CryptoCurrency;
-  const selectedChain = form.watch('chain');
-  const chainsForSelectedCrypto = useMemo(() => CHAINS[selectedCrypto] || [], [selectedCrypto]);
-  const showChainSelector = chainsForSelectedCrypto.length > 1;
-
+  const watchedCryptoForBalance = form.watch('crypto');
   const availableBalanceForForm = useMemo(() => {
-    if (!selectedCrypto) return 0;
-    if (!showChainSelector) {
-        return aggregatedWallets.find(w => w.crypto === selectedCrypto)?.balance || 0;
-    }
-    if (selectedChain) {
-        return wallets?.find(w => w.crypto === selectedCrypto && w.chain === selectedChain)?.balance || 0;
-    }
-    // If chain is not selected for multi-chain asset, show total
-    return aggregatedWallets.find(w => w.crypto === selectedCrypto)?.balance || 0;
-  }, [selectedCrypto, selectedChain, showChainSelector, aggregatedWallets, wallets]);
+    if (!watchedCryptoForBalance) return 0;
+    return aggregatedWallets.find(w => w.crypto === watchedCryptoForBalance)?.balance || 0;
+  }, [watchedCryptoForBalance, aggregatedWallets]);
 
   
   const recipientUsernameValue = form.watch('recipientUsername');
@@ -256,7 +234,7 @@ export default function TransferPage() {
     if (values.amount > balanceToCheck) {
       form.setError('amount', {
         type: 'manual',
-        message: 'Amount exceeds available balance for selected network.',
+        message: 'Amount exceeds total available balance.',
       });
       setIsProcessing(false);
       return;
@@ -291,14 +269,11 @@ export default function TransferPage() {
       const credential = EmailAuthProvider.credential(auth.currentUser.email, values.password);
       await reauthenticateWithCredential(auth.currentUser, credential);
       
-      const chainToSendFrom = values.chain || chainsForSelectedCrypto[0];
-
       const transferId = await sendCoinToUser(
         firestore,
         { uid: authUser.uid, displayName: authUser.displayName },
         values.recipientUsername,
         values.crypto as CryptoCurrency,
-        chainToSendFrom,
         values.amount
       );
       toast({
@@ -308,7 +283,6 @@ export default function TransferPage() {
       form.reset({
           recipientUsername: '',
           crypto: '',
-          chain: '',
           amount: undefined,
           password: ''
       });
@@ -409,10 +383,7 @@ export default function TransferPage() {
                     <FormItem>
                       <FormLabel>Coin to Send</FormLabel>
                       <Select
-                        onValueChange={(value) => {
-                            field.onChange(value);
-                            form.setValue('chain', undefined); // Reset chain on crypto change
-                        }}
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -444,35 +415,6 @@ export default function TransferPage() {
                   )}
                 />
                 
-                {showChainSelector && (
-                    <FormField
-                        control={form.control}
-                        name="chain"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Network</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        {chainsForSelectedCrypto.map(chain => {
-                                            const chainBalance = wallets?.find(w => w.crypto === selectedCrypto && w.chain === chain)?.balance || 0;
-                                            return (
-                                                <SelectItem key={chain} value={chain} disabled={chainBalance <= 0}>
-                                                    <div className="flex justify-between w-full">
-                                                        <span>{chain}</span>
-                                                        <span className="text-muted-foreground">{chainBalance.toFixed(6)}</span>
-                                                    </div>
-                                                </SelectItem>
-                                            )
-                                        })}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                )}
-
                 <FormField
                   control={form.control}
                   name="amount"
@@ -484,7 +426,7 @@ export default function TransferPage() {
                       </FormControl>
                         <FormDescription>
                           Available: {availableBalanceForForm.toFixed(8)}{' '}
-                          {selectedCrypto} {selectedChain && `(${selectedChain})`}
+                          {watchedCryptoForBalance}
                         </FormDescription>
                       <FormMessage />
                     </FormItem>

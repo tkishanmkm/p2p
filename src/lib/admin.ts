@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import {
@@ -431,12 +429,12 @@ export async function adjustUserWalletBalance(
   }
 
   // This function needs to know the chain. We'll assume the first available chain.
-  const chain = CHAINS[crypto]?.[0];
-  if (!chain) {
-    throw new Error(`No chain configured for ${crypto}.`);
+  const defaultChain = CHAINS[crypto]?.[0];
+  if (!defaultChain) {
+    throw new Error(`No default chain configured for ${crypto}.`);
   }
 
-  const userWalletRef = doc(db, "users", userId, "wallets", `${crypto}-${chain}`);
+  const userWalletRef = doc(db, "users", userId, "wallets", `${crypto}-${defaultChain}`);
   const adminLogRef = doc(collection(db, "admin_logs"));
   const notificationRef = doc(collection(db, "users", userId, "notifications"));
 
@@ -463,10 +461,10 @@ export async function adjustUserWalletBalance(
 
     // Set or Update the wallet
     transaction.set(userWalletRef, {
-      id: `${crypto}-${chain}`,
+      id: `${crypto}-${defaultChain}`,
       userId: userId,
       crypto: crypto,
-      chain: chain,
+      chain: defaultChain,
       balance: newBalance,
       lockedBalance: currentLockedBalance, // Don't touch locked balance
       updatedAt: new Date().toISOString(),
