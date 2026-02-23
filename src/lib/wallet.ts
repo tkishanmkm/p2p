@@ -587,43 +587,46 @@ export async function createWithdrawalRequest(
 export async function cancelWithdrawalRequest(db: Firestore, userId: string, withdrawalId: string): Promise<void> {
     const withdrawalRef = doc(db, 'users', userId, 'withdrawals', withdrawalId);
 
-    const withdrawalSnap = await getDoc(withdrawalRef);
-    if (!withdrawalSnap.exists()) throw new Error("Withdrawal request not found.");
-    const withdrawal = withdrawalSnap.data() as Withdrawal;
-    
-    if (!withdrawal.chain) {
-      throw new Error("Cannot cancel withdrawal: Missing chain information on the withdrawal document. Please contact support to resolve manually.");
-    }
-
-    const walletId = `${withdrawal.crypto}-${withdrawal.chain}`;
-    const userWalletRef = doc(db, 'users', userId, 'wallets', walletId);
-
     await runTransaction(db, async (transaction) => {
         const withdrawalDoc = await transaction.get(withdrawalRef);
-        if (!withdrawalDoc.exists()) throw new Error("Withdrawal request not found inside transaction.");
+        if (!withdrawalDoc.exists()) {
+            throw new Error("Withdrawal request not found.");
+        }
 
-        const currentWithdrawal = withdrawalDoc.data() as Withdrawal;
-        if (currentWithdrawal.status !== 'pending') throw new Error("Only pending withdrawals can be cancelled.");
+        const withdrawal = withdrawalDoc.data() as Withdrawal;
+        if (withdrawal.status !== 'pending') {
+            throw new Error("Only pending withdrawals can be cancelled.");
+        }
+
+        if (!withdrawal.chain) {
+            throw new Error("Cannot cancel withdrawal: Missing chain information on the withdrawal document. Please contact support to resolve manually.");
+        }
+
+        const walletId = `${withdrawal.crypto}-${withdrawal.chain}`;
+        const userWalletRef = doc(db, 'users', userId, 'wallets', walletId);
         
         const walletDoc = await transaction.get(userWalletRef);
         
-        const currentBalance = (walletDoc.data()?.balance || 0);
-        const currentLockedBalance = (walletDoc.data()?.lockedBalance || 0);
+        const currentBalance = walletDoc.exists() ? (walletDoc.data().balance || 0) : 0;
+        const currentLockedBalance = walletDoc.exists() ? (walletDoc.data().lockedBalance || 0) : 0;
 
-        if (currentLockedBalance < currentWithdrawal.amount) {
-            console.error(`Inconsistent state: Locked balance (${currentLockedBalance}) is less than withdrawal amount (${currentWithdrawal.amount}) for user ${userId}. Refunding to available balance anyway.`);
+        if (currentLockedBalance < withdrawal.amount) {
+            console.error(`Inconsistent state: Locked balance (${currentLockedBalance}) is less than withdrawal amount (${withdrawal.amount}) for user ${userId}. Refunding to available balance anyway.`);
         }
         
+        // Return funds from locked to available balance
         transaction.set(userWalletRef, {
-            balance: currentBalance + currentWithdrawal.amount,
-            lockedBalance: Math.max(0, currentLockedBalance - currentWithdrawal.amount),
             id: walletId,
             userId: userId,
-            crypto: currentWithdrawal.crypto,
-            chain: currentWithdrawal.chain,
+            crypto: withdrawal.crypto,
+            chain: withdrawal.chain,
+            balance: currentBalance + withdrawal.amount,
+            lockedBalance: Math.max(0, currentLockedBalance - withdrawal.amount),
             updatedAt: new Date().toISOString(),
         }, { merge: true });
 
+        // Mark withdrawal as cancelled
         transaction.update(withdrawalRef, { status: "cancelled" });
     });
 }
+
