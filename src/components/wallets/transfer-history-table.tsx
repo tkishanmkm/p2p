@@ -1,6 +1,6 @@
 'use client';
 import { useMemo } from 'react';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useCollection, useMemoFirebase, useFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import type { CoinTransfer } from '@/lib/types';
 import { toDate } from '@/lib/utils';
@@ -73,7 +73,7 @@ export function TransferHistoryTable({ userId, type, onRowClick }: TransferHisto
                 </TableBody>
             </Table>
         </div>
-        <div className="grid gap-4 md:hidden p-2">
+        <div className="grid gap-4 md:hidden">
             {transfers.map(t => (
                 <Card key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
                     <CardHeader>
@@ -92,5 +92,4 @@ export function TransferHistoryTable({ userId, type, onRowClick }: TransferHisto
     </>
   );
 }
-
     
