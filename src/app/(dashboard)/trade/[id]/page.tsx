@@ -138,19 +138,23 @@ function TradePageContent() {
       />
       
       {/* Desktop Layout */}
-      <div className="hidden md:grid md:grid-cols-[minmax(400px,_450px)_1fr] gap-0 flex-1 min-h-0">
-        <div className="h-full border-r">
-          <TradeDetails trade={trade} ad={ad} currentUserRole={currentUserRole} />
+      <div className="hidden md:flex gap-0 flex-1 min-h-0">
+        <div className="w-[450px] shrink-0 border-r">
+          <div className="h-full">
+            <TradeDetails trade={trade} ad={ad} currentUserRole={currentUserRole} />
+          </div>
         </div>
-        <div className="h-full overflow-hidden">
-          <TradeChat
-            currentUserId={authUser.uid}
-            trade={trade}
-            opponent={opponent}
-            isAdmin={isAdmin}
-            sellerTerms={ad?.terms}
-            onInfoClick={() => setIsInfoPanelOpen(true)}
-          />
+        <div className="flex-1 relative">
+          <div className="absolute inset-0">
+            <TradeChat
+              currentUserId={authUser.uid}
+              trade={trade}
+              opponent={opponent}
+              isAdmin={isAdmin}
+              sellerTerms={ad?.terms}
+              onInfoClick={() => setIsInfoPanelOpen(true)}
+            />
+          </div>
         </div>
       </div>
       
