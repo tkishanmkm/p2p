@@ -26,6 +26,7 @@ import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { usePrices } from '@/context/price-context';
 import { statusColors } from '@/lib/status-colors';
 import { isPast } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const depositStatusText: Record<Deposit['status'], string> = {
   pending: "Pending User Action",
@@ -61,29 +62,31 @@ function DepositsHistory({ userId, onRowClick }: { userId: string, onRowClick: (
     return <p className="text-center text-muted-foreground py-4">No deposit history.</p>;
   }
   return (
-    <Table>
-        <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-        <TableBody>
-            {sortedDeposits?.map(d => {
-                const isExpired = d.status === 'pending' && isPast(toDate(d.timerEnd)!);
-                const currentStatus = isExpired ? 'expired' : d.status;
+    <ScrollArea className="h-72 rounded-md border">
+        <Table>
+            <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+            <TableBody>
+                {sortedDeposits?.map(d => {
+                    const isExpired = d.status === 'pending' && isPast(toDate(d.timerEnd)!);
+                    const currentStatus = isExpired ? 'expired' : d.status;
 
-                return (
-                    <TableRow key={d.id} onClick={() => onRowClick(d)} className={"cursor-pointer hover:bg-muted/50"}>
-                        <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
-                        <TableCell>{d.amount}</TableCell>
-                        <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[currentStatus])}>{depositStatusText[currentStatus]}</Badge></TableCell>
-                        <TableCell>{toDate(d.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
-                        <TableCell className="text-right">
-                            <Button variant="ghost" size="icon">
-                                <Eye className="h-4 w-4"/>
-                            </Button>
-                        </TableCell>
-                    </TableRow>
-                )
-            })}
-        </TableBody>
-    </Table>
+                    return (
+                        <TableRow key={d.id} onClick={() => onRowClick(d)} className={"cursor-pointer hover:bg-muted/50"}>
+                            <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
+                            <TableCell>{d.amount}</TableCell>
+                            <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[currentStatus])}>{depositStatusText[currentStatus]}</Badge></TableCell>
+                            <TableCell>{toDate(d.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="icon">
+                                    <Eye className="h-4 w-4"/>
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    )
+                })}
+            </TableBody>
+        </Table>
+    </ScrollArea>
   );
 }
 
@@ -107,20 +110,22 @@ function WithdrawalsHistory({ userId, onRowClick }: { userId: string; onRowClick
     return <p className="text-center text-muted-foreground py-4">No withdrawal history.</p>;
   }
   return (
-    <Table>
-      <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-      <TableBody>
-        {withdrawals?.map(w => (
-          <TableRow key={w.id} onClick={() => onRowClick(w)} className="cursor-pointer">
-            <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
-            <TableCell>{w.amount}</TableCell>
-            <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>{w.status}</Badge></TableCell>
-            <TableCell>{toDate(w.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
-            <TableCell className="text-right"><Button variant="ghost" size="icon"><Eye className="h-4 w-4"/></Button></TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <ScrollArea className="h-72 rounded-md border">
+        <Table>
+        <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+        <TableBody>
+            {withdrawals?.map(w => (
+            <TableRow key={w.id} onClick={() => onRowClick(w)} className="cursor-pointer">
+                <TableCell>{w.crypto} <span className="text-muted-foreground text-xs">({w.chain})</span></TableCell>
+                <TableCell>{w.amount}</TableCell>
+                <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[w.status])}>{w.status}</Badge></TableCell>
+                <TableCell>{toDate(w.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
+                <TableCell className="text-right"><Button variant="ghost" size="icon"><Eye className="h-4 w-4"/></Button></TableCell>
+            </TableRow>
+            ))}
+        </TableBody>
+        </Table>
+    </ScrollArea>
   );
 }
 
@@ -150,38 +155,40 @@ function TransferHistoryTable({ userId, type, onRowClick }: { userId: string; ty
       );
   }
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>{type === 'sent' ? 'Recipient' : 'Sender'}</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>Date</TableHead>
-           <TableHead className="text-right">Action</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {transfers?.map((t) => (
-            <TableRow key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
-              <TableCell className="font-mono text-xs">{t.publicId}</TableCell>
-              <TableCell>
-                {type === 'sent' ? t.recipientUsername : t.senderUsername}
-              </TableCell>
-              <TableCell className="font-medium">
-                {t.amount.toFixed(8)} {t.crypto}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {toDate(t.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'}
-              </TableCell>
-               <TableCell className="text-right">
-                  <Button variant="ghost" size="icon">
-                      <Eye className="h-4 w-4"/>
-                  </Button>
-              </TableCell>
+    <ScrollArea className="h-72 rounded-md border">
+        <Table>
+        <TableHeader>
+            <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead>{type === 'sent' ? 'Recipient' : 'Sender'}</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead className="text-right">Action</TableHead>
             </TableRow>
-          ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+            {transfers?.map((t) => (
+                <TableRow key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
+                <TableCell className="font-mono text-xs">{t.publicId}</TableCell>
+                <TableCell>
+                    {type === 'sent' ? t.recipientUsername : t.senderUsername}
+                </TableCell>
+                <TableCell className="font-medium">
+                    {t.amount.toFixed(8)} {t.crypto}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                    {toDate(t.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'}
+                </TableCell>
+                <TableCell className="text-right">
+                    <Button variant="ghost" size="icon">
+                        <Eye className="h-4 w-4"/>
+                    </Button>
+                </TableCell>
+                </TableRow>
+            ))}
+        </TableBody>
+        </Table>
+    </ScrollArea>
   );
 }
 
