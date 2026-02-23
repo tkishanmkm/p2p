@@ -75,15 +75,27 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
   
   const watchedAmount = form.watch('amount');
   const watchedChain = form.watch('chain');
-  const selectedChain = isMultiChain ? watchedChain : chains[0];
 
-  const feeKey = wallet?.crypto && selectedChain 
-    ? `${wallet.crypto}-${selectedChain}` 
-    : wallet?.crypto;
+  const { feeInCrypto, feeInUsd } = useMemo(() => {
+    if (!wallet?.crypto || arePricesLoading) {
+      return { feeInCrypto: 0, feeInUsd: 0 };
+    }
+    
+    const chain = isMultiChain ? watchedChain : chains[0];
 
-  const feeInUsd = feeKey ? FIXED_WITHDRAWAL_FEES_USD[feeKey] || FIXED_WITHDRAWAL_FEES_USD[wallet!.crypto] || 0 : 0;
-  const cryptoPrice = wallet ? prices[wallet.crypto] : 0;
-  const feeInCrypto = cryptoPrice > 0 ? feeInUsd / cryptoPrice : 0;
+    if (!chain) {
+      return { feeInCrypto: 0, feeInUsd: 0 };
+    }
+
+    const key = `${wallet.crypto}-${chain}`;
+    // For single-chain assets, the key will be like 'BTC-BTC'. We need to handle the fallback.
+    const usdFee = FIXED_WITHDRAWAL_FEES_USD[key] || FIXED_WITHDRAWAL_FEES_USD[wallet.crypto] || 0;
+    
+    const price = prices[wallet.crypto];
+    const cryptoFee = price > 0 ? usdFee / price : 0;
+
+    return { feeInCrypto: cryptoFee, feeInUsd: usdFee };
+  }, [wallet, arePricesLoading, isMultiChain, watchedChain, chains, prices]);
 
   const amountToReceive = Math.max(0, (watchedAmount || 0) - feeInCrypto);
   const availableBalance = totalAvailableBalance !== undefined ? totalAvailableBalance : wallet?.balance || 0;
