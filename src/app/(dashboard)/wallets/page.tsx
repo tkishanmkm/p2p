@@ -18,7 +18,6 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 import { Skeleton } from '@/components/ui/skeleton';
 import { DepositDialog } from '@/components/wallets/deposit-dialog';
 import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
-import { SubmitTxHashDialog } from '@/components/wallets/submit-tx-hash-dialog';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
 import { cancelWithdrawalRequest } from '@/lib/wallet';
 import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
@@ -173,13 +172,12 @@ export default function WalletPage() {
   const { data: userData } = useDoc<User>(userDocRef);
 
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
-  const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
-  const [selectedTransfer, setSelectedTransfer] = useState<CoinTransfer | null>(null);
   const [selectedWalletsForDialog, setSelectedWalletsForDialog] = useState<UserWallet[] | null>(null);
+  const [initialDepositForDialog, setInitialDepositForDialog] = useState<Deposit | null>(null);
+  const [selectedTransfer, setSelectedTransfer] = useState<CoinTransfer | null>(null);
   
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
-  const [isSubmitTxHashOpen, setIsSubmitTxHashOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isTransferDetailsOpen, setIsTransferDetailsOpen] = useState(false);
   
@@ -250,8 +248,8 @@ export default function WalletPage() {
   const handleHistoryRowClick = (tx: Deposit | Withdrawal) => {
     const isDeposit = 'walletAddress' in tx;
     if (isDeposit && tx.status === 'pending' && !isPast(toDate(tx.timerEnd)!)) {
-        setSelectedDeposit(tx);
-        setIsSubmitTxHashOpen(true);
+        setInitialDepositForDialog(tx);
+        setIsDepositOpen(true);
     } else {
         setSelectedTx(tx);
         setIsDetailsOpen(true);
@@ -295,9 +293,19 @@ export default function WalletPage() {
 
   return (
     <>
-      <DepositDialog open={isDepositOpen} onOpenChange={setIsDepositOpen} wallets={selectedWalletsForDialog} walletIndex={userData?.walletIndex} />
+      <DepositDialog 
+        open={isDepositOpen} 
+        onOpenChange={(isOpen) => {
+            setIsDepositOpen(isOpen);
+            if (!isOpen) {
+                setInitialDepositForDialog(null);
+            }
+        }} 
+        wallets={selectedWalletsForDialog} 
+        walletIndex={userData?.walletIndex}
+        initialDeposit={initialDepositForDialog}
+      />
       <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} wallets={selectedWalletsForDialog} />
-      <SubmitTxHashDialog open={isSubmitTxHashOpen} onOpenChange={setIsSubmitTxHashOpen} deposit={selectedDeposit} />
       
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-semibold md:text-2xl">My Wallets</h1>
@@ -414,7 +422,7 @@ export default function WalletPage() {
                     )}
                     {'walletAddress' in selectedTx && (
                        <div className="flex justify-between items-start gap-4">
-                        <span className="text-muted-foreground">Deposit Address:</span> 
+                        <span className="text-muted-foreground">Deposit ID:</span> 
                         <div className="flex items-center gap-2">
                            <span className="font-mono text-xs text-right break-all">{selectedTx.walletAddress}</span>
                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedTx.walletAddress)}><Copy className="h-3 w-3"/></Button>

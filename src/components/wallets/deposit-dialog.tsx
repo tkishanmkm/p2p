@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, AlertTriangle, Loader2, Clock } from "lucide-react";
+import { Copy, AlertTriangle, Loader2, Clock, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import type { UserWallet, Deposit, CryptoCurrency, DepositAddressSet } from '@/lib/types';
@@ -20,7 +21,7 @@ import { useCountdown } from '@/hooks/use-countdown';
 import { Skeleton } from '../ui/skeleton';
 import { doc, updateDoc } from 'firebase/firestore';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
-import { add, isPast } from 'date-fns';
+import { isPast } from 'date-fns';
 import { toDate, cn } from '@/lib/utils';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
 import { ScrollArea } from '../ui/scroll-area';
@@ -40,8 +41,9 @@ type TxIdFormValues = z.infer<typeof txIdSchema>;
 interface DepositDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wallet: UserWallet | null;
+  wallets: UserWallet[] | null;
   walletIndex: number | undefined;
+  initialDeposit?: Deposit | null;
 }
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?: string }) => {
@@ -54,7 +56,7 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?:
     }
 }
 
-export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: DepositDialogProps) {
+export function DepositDialog({ open, onOpenChange, wallets, walletIndex, initialDeposit }: DepositDialogProps) {
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
   const [isLoading, setIsLoading] = useState(false);
@@ -64,6 +66,13 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
 
   const addressSetRef = useMemoFirebase(() => (firestore && walletIndex) ? doc(firestore, "crypto_deposit_addresses", String(walletIndex)) : null, [firestore, walletIndex]);
   const { data: addressSetData, isLoading: isAddressSetLoading } = useDoc<DepositAddressSet>(addressSetRef);
+
+  useEffect(() => {
+    if (initialDeposit && open) {
+        setCreatedDeposit(initialDeposit);
+        setStep(2);
+    }
+  }, [initialDeposit, open]);
 
   useEffect(() => {
     const expireDepositRequest = async () => {
@@ -80,11 +89,12 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
     expireDepositRequest();
   }, [countdown.isFinished, createdDeposit, firestore]);
 
+  const crypto = wallets?.[0]?.crypto;
   const availableChains = useMemo(() => {
-    if (!wallet) return [];
-    const supported = SUPPORTED_CRYPTOS.find(c => c.name === wallet.crypto);
+    if (!crypto) return [];
+    const supported = SUPPORTED_CRYPTOS.find(c => c.name === crypto);
     return supported?.chains || [];
-  }, [wallet]);
+  }, [crypto]);
   
   const showChainSelector = availableChains.length > 1;
 
@@ -111,14 +121,14 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   }, [availableChains, amountForm, open]);
 
   const handleCreateRequest = async (values: AmountFormValues) => {
-    if (!wallet || !user || !user.displayName || walletIndex === undefined) {
+    if (!crypto || !user || !user.displayName || walletIndex === undefined) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create request. User data missing.' });
       return;
     }
     setIsLoading(true);
     try {
       const chainToUse = values.chain!;
-      const newDeposit = await createDepositRequest(firestore, user.uid, user.displayName, walletIndex, wallet.crypto, chainToUse, values.amount);
+      const newDeposit = await createDepositRequest(firestore, user.uid, user.displayName, walletIndex, crypto, chainToUse, values.amount);
       setCreatedDeposit(newDeposit);
       setStep(2);
     } catch (error: any) {
@@ -160,7 +170,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
     onOpenChange(isOpen);
   };
   
-  const currentInstruction = wallet ? instructionsMap[wallet.crypto] : "";
+  const currentInstruction = crypto ? instructionsMap[crypto] : "";
   
   const qrCodeValue = createdDeposit ? 
     (createdDeposit.crypto === 'BTC' || createdDeposit.crypto === 'LTC')
@@ -172,11 +182,11 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-3xl">
         {step === 1 && (
             <>
             <DialogHeader>
-                <DialogTitle>Deposit {wallet?.crypto}</DialogTitle>
+                <DialogTitle>Deposit {crypto}</DialogTitle>
                 <DialogDescription>
                     Enter the amount and network you wish to deposit.
                 </DialogDescription>
@@ -211,7 +221,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                         name="amount"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Amount in {wallet?.crypto}</FormLabel>
+                                <FormLabel>Amount in {crypto}</FormLabel>
                                 <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -228,7 +238,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading || isAddressSetLoading} className="w-full">
                             {(isLoading || isAddressSetLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Request
+                            Deposit
                         </Button>
                     </DialogFooter>
                 </form>
@@ -247,7 +257,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertTitle>Request Expired</AlertTitle>
                                 <AlertDescription>
-                                    This deposit request has expired. Please create a new deposit request.
+                                    This deposit request has expired because the 3-hour payment window has passed. Please create a new deposit request.
                                 </AlertDescription>
                             </Alert>
                         ) : (
@@ -257,53 +267,59 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <CryptoLogo crypto={createdDeposit.crypto} className="h-6 w-6" />
-                                            <span className="text-xl font-bold">{createdDeposit.amount} {createdDeposit.crypto}</span>
+                                            <span className="text-xl font-bold">{createdDeposit.amount}</span>
+                                            <span className="text-lg text-muted-foreground">{createdDeposit.crypto} ({createdDeposit.chain})</span>
                                         </div>
                                         <Button size="sm" variant="ghost" className="text-xs h-auto py-1" onClick={() => handleCopy(String(createdDeposit.amount))}>
-                                            <Copy className="mr-1.5 h-3 w-3" /> Copy
+                                            <Copy className="mr-1.5 h-3 w-3" /> Copy Amount
                                         </Button>
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">Network: {createdDeposit.chain}</p>
                                 </div>
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="p-2 bg-white rounded-lg border">
-                                        <QRCode value={qrCodeValue} size={180} includeMargin={true} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="p-2 bg-white rounded-lg border">
+                                            <QRCode value={qrCodeValue} size={180} includeMargin={true} />
+                                        </div>
+                                        <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full max-w-sm mx-auto">
+                                            <p className="font-mono text-xs break-all text-center flex-grow p-2">{createdDeposit.walletAddress}</p>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => handleCopy(createdDeposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full">
-                                        <p className="font-mono text-xs break-all text-center flex-grow p-2">{createdDeposit.walletAddress}</p>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => handleCopy(createdDeposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
+                                    <div className="space-y-4">
+                                         <Alert>
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertTitle>Important Instructions</AlertTitle>
+                                            <AlertDescription className="text-xs space-y-1">
+                                            <p>{currentInstruction}</p>
+                                            <p>After sending, copy the transaction hash (TxID) from your wallet and paste it below to confirm.</p>
+                                            </AlertDescription>
+                                        </Alert>
+                                        
+                                        <div className="text-center text-xs text-muted-foreground">
+                                            <p>Time to confirm: <span className="font-mono text-destructive">{`${String(countdown.hours).padStart(2, '0')}:${String(countdown.minutes).padStart(2, '0')}:${String(countdown.seconds).padStart(2, '0')}`}</span></p>
+                                        </div>
+                                        
+                                        <Form {...txIdForm}>
+                                            <form onSubmit={txIdForm.handleSubmit(handleTxIdSubmit)} className="space-y-4 pt-4 border-t">
+                                                <FormField
+                                                    control={txIdForm.control}
+                                                    name="txId"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                        <FormLabel>Transaction Hash (TxID)</FormLabel>
+                                                        <FormControl><Input placeholder="Enter the transaction hash from your wallet" {...field} /></FormControl>
+                                                        <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <Button type="submit" disabled={isLoading} className="w-full">
+                                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                    Confirm Deposit
+                                                </Button>
+                                            </form>
+                                        </Form>
                                     </div>
                                 </div>
-                                <Alert>
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Instructions</AlertTitle>
-                                    <AlertDescription className="text-xs space-y-1">
-                                    <p>{currentInstruction}</p>
-                                    <p>After sending, copy the transaction hash (TxID) from your wallet and paste it below to confirm.</p>
-                                    </AlertDescription>
-                                </Alert>
-                                 <div className="text-center text-xs text-muted-foreground">
-                                    <p>Time to confirm: <span className="font-mono text-destructive">{`${String(countdown.hours).padStart(2, '0')}:${String(countdown.minutes).padStart(2, '0')}:${String(countdown.seconds).padStart(2, '0')}`}</span></p>
-                                </div>
-                                <Form {...txIdForm}>
-                                    <form onSubmit={txIdForm.handleSubmit(handleTxIdSubmit)} className="space-y-4 pt-4 border-t">
-                                        <FormField
-                                            control={txIdForm.control}
-                                            name="txId"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Transaction Hash (TxID)</FormLabel>
-                                                <FormControl><Input placeholder="Enter the transaction hash from your wallet" {...field} /></FormControl>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <Button type="submit" disabled={isLoading} className="w-full">
-                                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            Confirm Deposit
-                                        </Button>
-                                    </form>
-                                </Form>
                             </div>
                         )}
                     </div>
