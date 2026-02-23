@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -19,7 +18,7 @@ import { createDepositRequest, confirmDepositWithTxId } from '@/lib/wallet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useCountdown } from '@/hooks/use-countdown';
 import { Skeleton } from '../ui/skeleton';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { add, isPast } from 'date-fns';
 import { toDate, cn } from '@/lib/utils';
@@ -65,6 +64,21 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
 
   const addressSetRef = useMemoFirebase(() => (firestore && walletIndex) ? doc(firestore, "crypto_deposit_addresses", String(walletIndex)) : null, [firestore, walletIndex]);
   const { data: addressSetData, isLoading: isAddressSetLoading } = useDoc<DepositAddressSet>(addressSetRef);
+
+  useEffect(() => {
+    const expireDepositRequest = async () => {
+      if (countdown.isFinished && createdDeposit?.status === 'pending' && firestore) {
+        const depositRef = doc(firestore, "deposits", createdDeposit.id);
+        try {
+          await updateDoc(depositRef, { status: "expired" });
+          setCreatedDeposit(prev => prev ? { ...prev, status: 'expired' } : null);
+        } catch (error) {
+          console.error("Failed to update deposit status to expired:", error);
+        }
+      }
+    };
+    expireDepositRequest();
+  }, [countdown.isFinished, createdDeposit, firestore]);
 
   const availableChains = useMemo(() => {
     if (!wallet) return [];
@@ -154,6 +168,8 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
         : createdDeposit.walletAddress
     : '';
 
+  const isRequestExpired = countdown.isFinished || (createdDeposit && isPast(toDate(createdDeposit.timerEnd)!)) || createdDeposit?.status === 'expired';
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -229,7 +245,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] -mr-6 pr-6">
                     <div className="space-y-4">
-                        {countdown.isFinished || isPast(toDate(createdDeposit.timerEnd)!) ? (
+                        {isRequestExpired ? (
                             <Alert variant="destructive">
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertTitle>Request Expired</AlertTitle>
@@ -321,8 +337,3 @@ const instructionsMap: Record<CryptoCurrency, string> = {
     MATIC: "",
     TRX: ""
 };
-
-
-
-
-
