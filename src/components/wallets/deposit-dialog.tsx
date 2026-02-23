@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -60,23 +61,10 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [createdDeposit, setCreatedDeposit] = useState<Deposit | null>(null);
+  const countdown = useCountdown(createdDeposit?.timerEnd || 0);
 
   const addressSetRef = useMemoFirebase(() => (firestore && walletIndex) ? doc(firestore, "crypto_deposit_addresses", String(walletIndex)) : null, [firestore, walletIndex]);
   const { data: addressSetData, isLoading: isAddressSetLoading } = useDoc<DepositAddressSet>(addressSetRef);
-  
-  // This state will hold the target date for the countdown
-  const [countdownTarget, setCountdownTarget] = useState<string | number | Date>(0);
-
-  // Initialize countdown hook with the state
-  const countdown = useCountdown(countdownTarget);
-
-  useEffect(() => {
-    // When a deposit is created, update the countdown target
-    if (createdDeposit?.timerEnd) {
-      setCountdownTarget(createdDeposit.timerEnd);
-    }
-  }, [createdDeposit]);
-
 
   useEffect(() => {
     const expireDepositRequest = async () => {
@@ -168,7 +156,6 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
           txIdForm.reset();
           setStep(1);
           setCreatedDeposit(null);
-          setCountdownTarget(0); // Reset countdown target
       }, 300);
     }
     onOpenChange(isOpen);
@@ -288,7 +275,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                                         </div>
                                     </div>
                                     <div className="space-y-4">
-                                        <div className="text-center p-2 border-2 border-dashed border-destructive/50 rounded-lg">
+                                         <div className="text-center p-2 border-2 border-dashed border-destructive/50 rounded-lg">
                                             <div className="font-mono text-base text-destructive font-semibold" role="timer">
                                                 <span>{String(countdown.hours).padStart(2, '0')}</span>:
                                                 <span>{String(countdown.minutes).padStart(2, '0')}</span>:
@@ -344,3 +331,4 @@ const instructionsMap: Record<CryptoCurrency, string> = {
     MATIC: "",
     TRX: ""
 };
+
