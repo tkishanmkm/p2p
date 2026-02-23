@@ -76,7 +76,14 @@ function DepositsHistory({ userId, onRowClick }: { userId: string, onRowClick: (
   );
 }
 
-function WithdrawalsHistory({ withdrawals, isLoading, onRowClick }: { withdrawals: Withdrawal[] | null, isLoading: boolean, onRowClick: (withdrawal: Withdrawal) => void }) {
+function WithdrawalsHistory({ userId, onRowClick }: { userId: string; onRowClick: (withdrawal: Withdrawal) => void }) {
+    const { firestore } = useFirebase();
+    const withdrawalsQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'users', userId, 'withdrawals'), orderBy('createdAt', 'desc')) : null,
+        [firestore, userId]
+    );
+    const { data: withdrawals, isLoading } = useCollection<Withdrawal>(withdrawalsQuery);
+
   if (isLoading) {
     return (
         <div className="space-y-2">
@@ -106,17 +113,15 @@ function WithdrawalsHistory({ withdrawals, isLoading, onRowClick }: { withdrawal
   );
 }
 
-function TransferHistoryTable({
-  transfers,
-  isLoading,
-  type,
-  onRowClick
-}: {
-  transfers: CoinTransfer[] | null;
-  isLoading: boolean;
-  type: 'sent' | 'received';
-  onRowClick: (transfer: CoinTransfer) => void;
-}) {
+function TransferHistoryTable({ userId, type, onRowClick }: { userId: string; type: 'sent' | 'received'; onRowClick: (transfer: CoinTransfer) => void; }) {
+  const { firestore } = useFirebase();
+  const transfersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const field = type === 'sent' ? 'senderId' : 'recipientId';
+    return query(collection(firestore, 'transfers'), where(field, '==', userId), orderBy('createdAt', 'desc'));
+  }, [firestore, userId, type]);
+  const { data: transfers, isLoading } = useCollection<CoinTransfer>(transfersQuery);
+
   if (isLoading) {
     return (
         <div className="space-y-2">
@@ -196,15 +201,6 @@ export default function WalletPage() {
     [firestore, user]
   );
   const { data: wallets, isLoading: areWalletsLoading } = useCollection<UserWallet>(walletsRef);
-
-  const withdrawalsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/withdrawals`), orderBy('createdAt', 'desc')) : null, [firestore, user]);
-  const { data: withdrawals, isLoading: areWithdrawalsLoading } = useCollection<Withdrawal>(withdrawalsQuery);
-
-  const sentQuery = useMemoFirebase(() => (user ? query(collection(firestore, 'transfers'), where('senderId', '==', user.uid), orderBy('createdAt', 'desc')) : null), [firestore, user]);
-  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<CoinTransfer>(sentQuery);
-
-  const receivedQuery = useMemoFirebase(() => (user ? query(collection(firestore, 'transfers'), where('recipientId', '==', user.uid), orderBy('createdAt', 'desc')) : null), [firestore, user]);
-  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<CoinTransfer>(receivedQuery);
 
   const isLoading = isUserLoading || areWalletsLoading;
 
@@ -346,7 +342,9 @@ export default function WalletPage() {
               <CardContent className="space-y-4">
                 <div>
                   <div className="text-3xl font-bold">{totalBalance.toFixed(6)}</div>
-                  <p className="text-xs text-muted-foreground">Available Balance</p>
+                    <p className="text-xs text-muted-foreground">
+                        ≈ {data.fiatValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}
+                    </p>
                 </div>
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
@@ -383,7 +381,7 @@ export default function WalletPage() {
                      <DepositsHistory userId={user.uid} onRowClick={handleHistoryRowClick} />
                 </TabsContent>
                 <TabsContent value="withdrawals" className="mt-4">
-                     <WithdrawalsHistory withdrawals={withdrawals} isLoading={areWithdrawalsLoading} onRowClick={handleHistoryRowClick} />
+                     <WithdrawalsHistory userId={user.uid} onRowClick={handleHistoryRowClick} />
                 </TabsContent>
                 <TabsContent value="transfers" className="mt-4">
                     <Tabs defaultValue="received">
@@ -393,18 +391,16 @@ export default function WalletPage() {
                         </TabsList>
                         <TabsContent value="received" className="mt-4">
                             <TransferHistoryTable
-                            transfers={receivedTransfers}
-                            isLoading={isLoadingReceived}
-                            type="received"
-                            onRowClick={handleTransferRowClick}
+                                userId={user.uid}
+                                type="received"
+                                onRowClick={handleTransferRowClick}
                             />
                         </TabsContent>
                         <TabsContent value="sent" className="mt-4">
                             <TransferHistoryTable
-                            transfers={sentTransfers}
-                            isLoading={isLoadingSent}
-                            type="sent"
-                            onRowClick={handleTransferRowClick}
+                                userId={user.uid}
+                                type="sent"
+                                onRowClick={handleTransferRowClick}
                             />
                         </TabsContent>
                     </Tabs>
