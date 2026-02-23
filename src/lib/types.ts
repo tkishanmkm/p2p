@@ -1,3 +1,4 @@
+
 'use client';
 import { Timestamp } from "firebase/firestore";
 
@@ -16,14 +17,12 @@ export type Language = {
 }
 
 export type UserWallet = {
-  id: string; // Composite ID, e.g., "USDT-TRC20"
+  id: string; // The crypto symbol, e.g., "BTC", "USDT"
   userId: string;
   crypto: CryptoCurrency;
-  chain: string; // e.g., "ERC20", "TRC20", "Bitcoin"
   balance: number;
   lockedBalance: number;
   updatedAt: string;
-  depositAddress?: string; // Optional deposit address
 };
 
 export type DepositAddressSet = {
@@ -147,7 +146,6 @@ export type Trade = {
   buyer: { username: string; country?: string };
   seller: { username: string; country?: string };
   crypto: CryptoCurrency;
-  chain: string;
   amount: number;
   escrowFee: number;
   fiatCurrency: string;

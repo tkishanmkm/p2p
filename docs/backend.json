@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -124,12 +125,11 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserWallet",
       "type": "object",
-      "description": "Represents a user's wallet for a specific cryptocurrency.",
+      "description": "Represents a user's wallet for a specific cryptocurrency, aggregating balance across all networks.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the user wallet.",
-          "format": "uuid"
+          "description": "The cryptocurrency symbol (e.g., BTC, USDT)."
         },
         "userId": {
           "type": "string",
@@ -141,7 +141,7 @@
         },
         "balance": {
           "type": "number",
-          "description": "Current balance of the cryptocurrency in the wallet."
+          "description": "Current available balance of the cryptocurrency in the wallet."
         },
         "lockedBalance": {
           "type": "number",
@@ -866,7 +866,7 @@
           "schema": {
             "$ref": "#/backend/entities/UserWallet"
           },
-          "description": "Stores wallet information for each user. Access controlled by the parent 'users' document.",
+          "description": "Stores a single wallet for each cryptocurrency (e.g., BTC, USDT). The walletId is the crypto symbol. Access controlled by the parent 'users' document.",
           "params": [
             {
               "name": "userId",
@@ -874,7 +874,7 @@
             },
             {
               "name": "walletId",
-              "description": "The unique identifier for the user wallet."
+              "description": "The cryptocurrency symbol (e.g., BTC, USDT)."
             }
           ]
         }

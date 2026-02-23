@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -17,10 +18,9 @@ import {
 } from "firebase/firestore";
 import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, SupportTicket, User as AppUser } from "./types";
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from "./wallet";
-import { CHAINS } from "./constants";
 
 /**
- * Approves a deposit and updates the user's wallet balance in a single transaction.
+ * Approves a deposit and updates the user's single wallet for that cryptocurrency.
  */
 export async function approveDeposit(
   db: Firestore,
@@ -29,7 +29,7 @@ export async function approveDeposit(
   adminId: string
 ): Promise<void> {
   const depositRef = doc(db, "deposits", deposit.id);
-  const userWalletRef = doc(db, "users", deposit.userId, "wallets", `${deposit.crypto}-${deposit.chain}`);
+  const userWalletRef = doc(db, "users", deposit.userId, "wallets", deposit.crypto);
   const notificationRef = doc(collection(db, "users", deposit.userId, "notifications"));
 
   await runTransaction(db, async (transaction) => {
@@ -48,9 +48,8 @@ export async function approveDeposit(
         balance: newBalance,
         lockedBalance: currentLockedBalance, // Preserve existing locked balance
         crypto: deposit.crypto,
-        chain: deposit.chain,
         userId: deposit.userId,
-        id: `${deposit.crypto}-${deposit.chain}`,
+        id: deposit.crypto,
         updatedAt: new Date().toISOString(),
     }, { merge: true });
 
@@ -97,7 +96,7 @@ export async function approveWithdrawal(
   adminId: string
 ): Promise<void> {
   const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
-  const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", `${withdrawal.crypto}-${withdrawal.chain}`);
+  const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
   const notificationRef = doc(collection(db, "users", withdrawal.userId, "notifications"));
 
   await runTransaction(db, async (transaction) => {
@@ -148,11 +147,8 @@ export async function declineWithdrawal(
   withdrawal: Withdrawal,
   adminId: string
 ): Promise<void> {
-    if (!withdrawal.chain) {
-        throw new Error("Cannot decline withdrawal: Missing chain information. Please resolve manually.");
-    }
     const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
-    const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", `${withdrawal.crypto}-${withdrawal.chain}`);
+    const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
     const notificationRef = doc(collection(db, "users", withdrawal.userId, "notifications"));
 
     await runTransaction(db, async (transaction) => {
@@ -173,9 +169,8 @@ export async function declineWithdrawal(
             balance: (wallet.balance || 0) + withdrawal.amount,
             lockedBalance: Math.max(0, (wallet.lockedBalance || 0) - withdrawal.amount),
             crypto: withdrawal.crypto,
-            chain: withdrawal.chain,
             userId: withdrawal.userId,
-            id: `${withdrawal.crypto}-${withdrawal.chain}`,
+            id: withdrawal.crypto,
             updatedAt: new Date().toISOString(),
         }, { merge: true });
 
@@ -263,8 +258,7 @@ export async function resolveDispute(
   const tradeRef = doc(db, "trades", trade.id);
   const disputeRef = doc(db, "trades", trade.id, "disputes", dispute.id);
   
-  const sellerWalletId = `${trade.crypto}-${trade.chain}`;
-  const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", sellerWalletId);
+  const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
   const messagesCollectionRef = collection(db, 'trades', trade.id, 'messages');
 
   return runTransaction(db, async (transaction) => {
@@ -291,8 +285,7 @@ export async function resolveDispute(
     } else { // Winner is BUYER: Release the funds fully to them
       finalTradeStatus = 'released';
       
-      const buyerWalletId = `${trade.crypto}-${trade.chain}`;
-      const buyerWalletRef = doc(db, 'users', trade.buyerId, 'wallets', buyerWalletId);
+      const buyerWalletRef = doc(db, 'users', trade.buyerId, 'wallets', trade.crypto);
       const buyerUserRef = doc(db, 'users', trade.buyerId);
       const sellerUserRef = doc(db, 'users', trade.sellerId);
       
@@ -317,9 +310,8 @@ export async function resolveDispute(
         balance: (walletData?.balance || 0) + amountToBuyer,
         lockedBalance: (walletData?.lockedBalance || 0),
         crypto: trade.crypto,
-        chain: trade.chain,
         userId: trade.buyerId,
-        id: buyerWalletId,
+        id: trade.crypto,
         updatedAt: new Date().toISOString(),
       }, { merge: true });
 
@@ -427,14 +419,8 @@ export async function adjustUserWalletBalance(
   if (amount <= 0) {
     throw new Error("Amount must be a positive number.");
   }
-
-  // This function needs to know the chain. We'll assume the first available chain.
-  const defaultChain = CHAINS[crypto]?.[0];
-  if (!defaultChain) {
-    throw new Error(`No default chain configured for ${crypto}.`);
-  }
-
-  const userWalletRef = doc(db, "users", userId, "wallets", `${crypto}-${defaultChain}`);
+  
+  const userWalletRef = doc(db, "users", userId, "wallets", crypto);
   const adminLogRef = doc(collection(db, "admin_logs"));
   const notificationRef = doc(collection(db, "users", userId, "notifications"));
 
@@ -461,10 +447,9 @@ export async function adjustUserWalletBalance(
 
     // Set or Update the wallet
     transaction.set(userWalletRef, {
-      id: `${crypto}-${defaultChain}`,
+      id: crypto,
       userId: userId,
       crypto: crypto,
-      chain: defaultChain,
       balance: newBalance,
       lockedBalance: currentLockedBalance, // Don't touch locked balance
       updatedAt: new Date().toISOString(),
