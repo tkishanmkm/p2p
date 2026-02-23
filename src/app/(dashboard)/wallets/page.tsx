@@ -292,7 +292,7 @@ export default function WalletPage() {
     const exchangeRate = fiatRates[preferredCurrency] || 1;
 
     const summaryArray = Array.from(summaryMap.entries()).map(([coin, data]) => {
-        const total = data.availableBalance + data.lockedBalance;
+        const total = data.availableBalance;
         const priceInUsd = prices[coin] || 0;
         const fiatValue = total * priceInUsd * exchangeRate;
         
@@ -403,14 +403,14 @@ export default function WalletPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-semibold md:text-2xl">My Wallets</h1>
         <div className="text-right">
-            <p className="text-sm text-muted-foreground">Total Balance</p>
+            <p className="text-sm text-muted-foreground">Total Available Balance</p>
             <p className="text-xl font-bold">{totalWalletValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}</p>
         </div>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 mb-8">
         {walletSummary.map((data) => {
-          const { coin, totalBalance, availableBalance, lockedBalance, fiatValue } = data;
+          const { coin, totalBalance, availableBalance, fiatValue } = data;
           if (!data) return null;
           
           return (
@@ -423,18 +423,8 @@ export default function WalletPage() {
                 <div>
                   <div className="text-3xl font-bold">{totalBalance.toFixed(6)}</div>
                     <p className="text-xs text-muted-foreground">
-                        ≈ {fiatValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}
+                        Available Balance ≈ {fiatValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}
                     </p>
-                </div>
-                <div className="text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Available:</span>
-                    <span>{availableBalance.toFixed(6)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Locked in Trades:</span>
-                    <span>{lockedBalance.toFixed(6)}</span>
-                  </div>
                 </div>
               </CardContent>
               <CardFooter className="flex gap-2">
