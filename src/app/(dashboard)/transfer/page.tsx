@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { query, collection, where, limit, getDocs, orderBy } from 'firebase/firestore';
+import { query, collection, where, limit, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { sendCoinToUser } from '@/lib/wallet';
 import {
@@ -24,14 +24,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -55,9 +47,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, Send, ArrowUp, ArrowDown, AlertCircle, Copy } from 'lucide-react';
 import { CryptoCurrency, User, UserWallet, CoinTransfer } from '@/lib/types';
 import { toDate } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { TransferHistoryTable } from '@/components/wallets/transfer-history-table';
 
 const transferSchema = z.object({
   recipientUsername: z.string().min(3, 'Recipient User ID is required.'),
@@ -68,65 +60,6 @@ const transferSchema = z.object({
 
 
 type TransferFormValues = z.infer<typeof transferSchema>;
-
-function TransferHistoryTable({
-  transfers,
-  isLoading,
-  type,
-  currentUsername,
-  onRowClick
-}: {
-  transfers: CoinTransfer[] | null;
-  isLoading: boolean;
-  type: 'sent' | 'received';
-  currentUsername: string;
-  onRowClick: (transfer: CoinTransfer) => void;
-}) {
-  if (isLoading) {
-    return (
-        <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-        </div>
-    );
-  }
-  if (!transfers || transfers.length === 0) {
-      return (
-        <div className="h-24 text-center flex items-center justify-center text-muted-foreground">
-            No {type} transfers yet.
-        </div>
-      );
-  }
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>{type === 'sent' ? 'Recipient' : 'Sender'}</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>Date</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {transfers?.map((t) => (
-            <TableRow key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
-              <TableCell className="font-mono text-xs">{t.publicId}</TableCell>
-              <TableCell>
-                {type === 'sent' ? t.recipientUsername : t.senderUsername}
-              </TableCell>
-              <TableCell className="font-medium">
-                {t.amount.toFixed(8)} {t.crypto}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {toDate(t.createdAt)?.toLocaleString() ?? 'N/A'}
-              </TableCell>
-            </TableRow>
-          ))}
-      </TableBody>
-    </Table>
-  );
-}
 
 export default function TransferPage() {
   const { firestore, user: authUser, isUserLoading: isAuthLoading, auth } = useFirebase();
@@ -157,7 +90,9 @@ export default function TransferPage() {
             acc[wallet.crypto] = { balance: 0, chains: [] };
         }
         acc[wallet.crypto].balance += wallet.balance || 0;
-        acc[wallet.crypto].chains.push(wallet.chain);
+        if (!acc[wallet.crypto].chains.includes(wallet.chain)) {
+          acc[wallet.crypto].chains.push(wallet.chain);
+        }
         return acc;
     }, {} as Record<string, { balance: number, chains: string[] }>);
 
@@ -168,12 +103,6 @@ export default function TransferPage() {
     }));
   }, [wallets]);
 
-
-  const sentQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('senderId', '==', authUser.uid), orderBy('createdAt', 'desc')) : null), [firestore, authUser]);
-  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<CoinTransfer>(sentQuery);
-
-  const receivedQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('recipientId', '==', authUser.uid), orderBy('createdAt', 'desc')) : null), [firestore, authUser]);
-  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<CoinTransfer>(receivedQuery);
 
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferSchema),
@@ -488,19 +417,15 @@ export default function TransferPage() {
               </TabsList>
               <TabsContent value="received" className="mt-4">
                 <TransferHistoryTable
-                  transfers={receivedTransfers}
-                  isLoading={isLoadingReceived}
+                  userId={authUser.uid}
                   type="received"
-                  currentUsername={authUser?.displayName || ''}
                   onRowClick={handleRowClick}
                 />
               </TabsContent>
               <TabsContent value="sent" className="mt-4">
                 <TransferHistoryTable
-                  transfers={sentTransfers}
-                  isLoading={isLoadingSent}
+                  userId={authUser.uid}
                   type="sent"
-                  currentUsername={authUser?.displayName || ''}
                   onRowClick={handleRowClick}
                 />
               </TabsContent>
@@ -529,3 +454,5 @@ export default function TransferPage() {
     </>
   );
 }
+
+    

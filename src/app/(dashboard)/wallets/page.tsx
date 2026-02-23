@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 import type { UserWallet, CryptoCurrency, Deposit, Withdrawal, User, CoinTransfer } from '@/lib/types';
@@ -25,6 +25,7 @@ import { usePrices } from '@/context/price-context';
 import { statusColors } from '@/lib/status-colors';
 import { isPast } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { TransferHistoryTable } from '@/components/wallets/transfer-history-table';
 
 const depositStatusText: Record<Deposit['status'], string> = {
   pending: "Pending User Action",
@@ -161,85 +162,6 @@ function WithdrawalsHistory({ userId, onRowClick }: { userId: string; onRowClick
     </ScrollArea>
   );
 }
-
-function TransferHistoryTable({ userId, type, onRowClick }: { userId: string; type: 'sent' | 'received'; onRowClick: (transfer: CoinTransfer) => void; }) {
-  const { firestore } = useFirebase();
-  const transfersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    const field = type === 'sent' ? 'senderId' : 'recipientId';
-    return query(collection(firestore, 'transfers'), where(field, '==', userId), orderBy('createdAt', 'desc'));
-  }, [firestore, userId, type]);
-  const { data: transfers, isLoading } = useCollection<CoinTransfer>(transfersQuery);
-
-  if (isLoading) {
-    return (
-        <div className="space-y-2 p-2 md:p-0">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-        </div>
-    );
-  }
-  if (!transfers || transfers.length === 0) {
-      return (
-        <div className="h-24 text-center flex items-center justify-center text-muted-foreground">
-            No {type} transfers yet.
-        </div>
-      );
-  }
-  return (
-    <ScrollArea className="h-72">
-        <Table className="hidden md:table">
-        <TableHeader>
-            <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>{type === 'sent' ? 'Recipient' : 'Sender'}</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-        </TableHeader>
-        <TableBody>
-            {transfers?.map((t) => (
-                <TableRow key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
-                <TableCell className="font-mono text-xs">{t.publicId}</TableCell>
-                <TableCell>
-                    {type === 'sent' ? t.recipientUsername : t.senderUsername}
-                </TableCell>
-                <TableCell className="font-medium">
-                    {t.amount.toFixed(8)} {t.crypto}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                    {toDate(t.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' }) ?? 'N/A'}
-                </TableCell>
-                <TableCell className="text-right">
-                    <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4"/>
-                    </Button>
-                </TableCell>
-                </TableRow>
-            ))}
-        </TableBody>
-        </Table>
-         <div className="grid gap-4 md:hidden p-2">
-            {transfers.map(t => (
-                <Card key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
-                    <CardHeader>
-                        <div className="flex justify-between items-start">
-                            <CardTitle className="text-base">{t.amount.toFixed(6)} {t.crypto}</CardTitle>
-                            <p className="text-xs text-muted-foreground">{type === 'sent' ? `To: ${t.recipientUsername}` : `From: ${t.senderUsername}`}</p>
-                        </div>
-                        <CardDescription className="font-mono text-xs">{t.publicId}</CardDescription>
-                    </CardHeader>
-                    <CardFooter className="text-xs text-muted-foreground">
-                         {toDate(t.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}
-                    </CardFooter>
-                </Card>
-            ))}
-        </div>
-    </ScrollArea>
-  );
-}
-
 
 export default function WalletPage() {
   const { firestore, user, isUserLoading } = useFirebase();
@@ -571,3 +493,5 @@ export default function WalletPage() {
     </>
   );
 }
+
+    
