@@ -205,7 +205,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
 
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="grid grid-rows-[auto_1fr_auto] h-full">
       <CardHeader className="space-y-4">
         <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -233,7 +233,7 @@ export function TradeChat({ currentUserId, trade, opponent, isAdmin, sellerTerms
         </div>
         <TradeSummaryBar trade={trade} currentUserRole={isBuyer ? 'buy' : 'sell'} />
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden min-h-0">
+      <CardContent className="overflow-hidden p-6 pt-0">
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             <TradeInstructions trade={trade} isBuyer={isBuyer} />
