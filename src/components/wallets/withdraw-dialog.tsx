@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -16,7 +17,7 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { createWithdrawalRequest } from '@/lib/wallet';
 import { usePrices } from '@/context/price-context';
-import { FIXED_WITHDRAWAL_FEES_USD } from '@/lib/constants';
+import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 
@@ -42,7 +43,12 @@ export function WithdrawDialog({ open, onOpenChange, wallets }: WithdrawDialogPr
   const { prices, isLoading: arePricesLoading } = usePrices();
 
   const crypto = wallets?.[0]?.crypto;
-  const chains = useMemo(() => wallets?.map(w => w.chain) || [], [wallets]);
+  const chains = useMemo(() => {
+    if (!crypto) return [];
+    const supported = SUPPORTED_CRYPTOS.find(c => c.name === crypto);
+    return supported?.chains || [];
+  }, [crypto]);
+  
   const isMultiChain = chains.length > 1;
 
   const form = useForm<WithdrawFormValues>({
@@ -61,12 +67,10 @@ export function WithdrawDialog({ open, onOpenChange, wallets }: WithdrawDialogPr
   const watchedAmount = form.watch('amount');
   const watchedChain = form.watch('chain');
 
-  const selectedWallet = useMemo(() => {
-      if (!wallets || !watchedChain) return null;
-      return wallets.find(w => w.chain === watchedChain);
-  }, [wallets, watchedChain]);
-
-  const availableBalance = selectedWallet?.balance || 0;
+  const availableBalance = useMemo(() => {
+    if (!wallets) return 0;
+    return wallets.reduce((acc, w) => acc + (w.balance || 0), 0);
+  }, [wallets]);
 
   const { feeInCrypto, feeInUsd } = useMemo(() => {
     if (!crypto || arePricesLoading || !watchedChain) {
@@ -92,7 +96,7 @@ export function WithdrawDialog({ open, onOpenChange, wallets }: WithdrawDialogPr
     if (values.amount > availableBalance) {
       form.setError("amount", {
         type: "manual",
-        message: "Amount exceeds available balance for this network.",
+        message: "Amount exceeds total available balance.",
       });
       return;
     }
@@ -161,11 +165,10 @@ export function WithdrawDialog({ open, onOpenChange, wallets }: WithdrawDialogPr
                         <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
                             <SelectContent>
-                            {wallets?.map(w => (
-                                <SelectItem key={w.chain} value={w.chain}>
+                            {chains.map(c => (
+                                <SelectItem key={c} value={c}>
                                     <div className="flex justify-between w-full">
-                                        <span>{w.chain}</span>
-                                        <span className="text-muted-foreground">{w.balance.toFixed(6)}</span>
+                                        <span>{c}</span>
                                     </div>
                                 </SelectItem>
                             ))}
@@ -244,3 +247,5 @@ export function WithdrawDialog({ open, onOpenChange, wallets }: WithdrawDialogPr
     </Dialog>
   );
 }
+
+    

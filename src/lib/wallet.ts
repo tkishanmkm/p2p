@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Firestore,
@@ -565,36 +566,83 @@ export async function createWithdrawalRequest(
     db: Firestore,
     user: AppUser,
     crypto: CryptoCurrency,
-    chain: string,
+    chain: string, // This is the withdrawal network
     amount: number,
     address: string,
-    fee: number,
+    fee: number
 ): Promise<void> {
-    const walletId = `${crypto}-${chain}`;
-    const userWalletRef = doc(db, "users", user.id, "wallets", walletId);
     const withdrawalRef = doc(collection(db, "users", user.id, "withdrawals"));
+    const walletsBaseRef = collection(db, "users", user.id, "wallets");
+
+    // 1. Construct all possible wallet references for the given crypto
+    const possibleChains = SUPPORTED_CRYPTOS.find(c => c.name === crypto)?.chains || [];
+    const walletRefs = possibleChains.map(c => doc(walletsBaseRef, `${crypto}-${c}`));
 
     await runTransaction(db, async (transaction) => {
-        const walletDoc = await transaction.get(userWalletRef);
-        
-        if (!walletDoc.exists()) {
-            throw new Error(`Your ${walletId} wallet does not exist. Please deposit funds first.`);
-        }
-        
-        const wallet = walletDoc.data() as UserWallet;
+        // --- READ PHASE ---
+        const walletDocs = await Promise.all(walletRefs.map(ref => transaction.get(ref)));
 
-        if ((wallet.balance || 0) < amount) {
-            throw new Error("Insufficient available balance.");
+        const walletsWithData = walletDocs
+            .map((docSnap, index) => ({
+                ref: walletRefs[index],
+                data: docSnap.data() as UserWallet,
+                exists: docSnap.exists()
+            }))
+            .filter(w => w.exists && w.data.balance > 0);
+        
+        const totalAvailableBalance = walletsWithData.reduce((acc, w) => acc + w.data.balance, 0);
+
+        // --- VALIDATION ---
+        if (totalAvailableBalance < amount) {
+            throw new Error("Insufficient total available balance.");
+        }
+
+        // --- WRITE PHASE ---
+        // Debit from wallets sequentially
+        let amountToDebit = amount;
+        for (const { ref, data } of walletsWithData) {
+            if (amountToDebit <= 0) break;
+            
+            const debitFromThisWallet = Math.min(amountToDebit, data.balance);
+
+            if (debitFromThisWallet > 0) {
+                transaction.update(ref, { 
+                    balance: data.balance - debitFromThisWallet,
+                    updatedAt: new Date().toISOString() 
+                });
+                amountToDebit -= debitFromThisWallet;
+            }
+        }
+
+        // Lock funds in the target withdrawal chain's wallet
+        const targetWalletId = `${crypto}-${chain}`;
+        const targetWalletRef = doc(db, "users", user.id, "wallets", targetWalletId);
+        
+        // Find the doc we already read
+        const targetWalletSnap = walletDocs.find(snap => snap.ref.path === targetWalletRef.path);
+
+        if (targetWalletSnap && targetWalletSnap.exists()) {
+             const targetWalletData = targetWalletSnap.data() as UserWallet;
+             transaction.update(targetWalletRef, {
+                lockedBalance: (targetWalletData.lockedBalance || 0) + amount,
+             });
+        } else {
+             // If wallet for the withdrawal chain doesn't exist, create it and lock the funds
+             transaction.set(targetWalletRef, {
+                id: targetWalletId,
+                userId: user.id,
+                crypto: crypto,
+                chain: chain,
+                balance: 0,
+                lockedBalance: amount,
+                updatedAt: new Date().toISOString(),
+            });
         }
         
-        transaction.update(userWalletRef, {
-            balance: (wallet.balance || 0) - amount,
-            lockedBalance: (wallet.lockedBalance || 0) + amount,
-        });
-        
+        // Create the withdrawal document
         transaction.set(withdrawalRef, {
             userId: user.id,
-            userDisplayName: user.userId,
+            userDisplayName: user.displayName,
             crypto,
             chain,
             amount,
@@ -651,3 +699,5 @@ export async function cancelWithdrawalRequest(db: Firestore, userId: string, wit
         transaction.update(withdrawalRef, { status: "cancelled" });
     });
 }
+
+    
