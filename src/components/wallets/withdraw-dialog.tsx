@@ -68,7 +68,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
           isMultiChain: isMultiChain,
           address: '',
           amount: undefined,
-          chain: chains.length === 1 ? chains[0] : '',
+          chain: chains.length === 1 ? chains[0] : undefined,
           password: '',
       });
   }, [open, wallet, isMultiChain, chains, form]);
@@ -168,7 +168,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
                           render={({ field }) => (
                               <FormItem>
                                   <FormLabel>Network</FormLabel>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <Select onValueChange={field.onChange} value={field.value || ''}>
                                       <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
                                       <SelectContent>
                                           {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
