@@ -150,6 +150,9 @@ export async function declineWithdrawal(
   withdrawal: Withdrawal,
   adminId: string
 ): Promise<void> {
+    if (!withdrawal.chain) {
+        throw new Error("Cannot decline withdrawal: Missing chain information. Please resolve manually.");
+    }
     const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
     const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", `${withdrawal.crypto}-${withdrawal.chain}`);
     const notificationRef = doc(collection(db, "users", withdrawal.userId, "notifications"));
@@ -161,21 +164,22 @@ export async function declineWithdrawal(
         }
 
         const walletDoc = await transaction.get(userWalletRef);
-        if (!walletDoc.exists()) {
-            throw new Error("User wallet not found. Critical error.");
-        }
+        const wallet = (walletDoc.data() as UserWallet) || {};
 
-        const wallet = walletDoc.data() as UserWallet;
         if ((wallet.lockedBalance || 0) < withdrawal.amount) {
-            throw new Error("Insufficient locked balance to return. Critical error.");
+            console.error(`Inconsistent state: Locked balance (${wallet.lockedBalance}) is less than withdrawal amount (${withdrawal.amount}) for user ${withdrawal.userId}. Refunding to available balance anyway.`);
         }
 
-        // Return funds from locked to available balance
-        transaction.update(userWalletRef, {
+        // Return funds from locked to available balance, create wallet if needed
+        transaction.set(userWalletRef, {
             balance: (wallet.balance || 0) + withdrawal.amount,
-            lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
+            lockedBalance: Math.max(0, (wallet.lockedBalance || 0) - withdrawal.amount),
+            crypto: withdrawal.crypto,
+            chain: withdrawal.chain,
+            userId: withdrawal.userId,
+            id: `${withdrawal.crypto}-${withdrawal.chain}`,
             updatedAt: new Date().toISOString(),
-        });
+        }, { merge: true });
 
         // Mark withdrawal as declined
         transaction.update(withdrawalRef, {

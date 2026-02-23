@@ -592,7 +592,7 @@ export async function cancelWithdrawalRequest(db: Firestore, userId: string, wit
     const withdrawal = withdrawalSnap.data() as Withdrawal;
     
     if (!withdrawal.chain) {
-      throw new Error("Cannot cancel withdrawal: Missing chain information on the withdrawal document. This may be a legacy transaction.");
+      throw new Error("Cannot cancel withdrawal: Missing chain information on the withdrawal document. Please contact support to resolve manually.");
     }
 
     const walletId = `${withdrawal.crypto}-${withdrawal.chain}`;
@@ -606,19 +606,23 @@ export async function cancelWithdrawalRequest(db: Firestore, userId: string, wit
         if (currentWithdrawal.status !== 'pending') throw new Error("Only pending withdrawals can be cancelled.");
         
         const walletDoc = await transaction.get(userWalletRef);
-        if (!walletDoc.exists()) {
-            throw new Error(`User wallet ${walletId} not found.`);
-        }
-        const wallet = walletDoc.data() as UserWallet;
+        
+        const currentBalance = (walletDoc.data()?.balance || 0);
+        const currentLockedBalance = (walletDoc.data()?.lockedBalance || 0);
 
-        if ((wallet.lockedBalance || 0) < currentWithdrawal.amount) {
-            console.error(`Inconsistent state: Locked balance (${wallet.lockedBalance}) is less than withdrawal amount (${currentWithdrawal.amount}) for user ${userId}. Refunding to available balance anyway.`);
+        if (currentLockedBalance < currentWithdrawal.amount) {
+            console.error(`Inconsistent state: Locked balance (${currentLockedBalance}) is less than withdrawal amount (${currentWithdrawal.amount}) for user ${userId}. Refunding to available balance anyway.`);
         }
         
-        transaction.update(userWalletRef, {
-            balance: (wallet.balance || 0) + currentWithdrawal.amount,
-            lockedBalance: Math.max(0, (wallet.lockedBalance || 0) - currentWithdrawal.amount), // Ensure not negative
-        });
+        transaction.set(userWalletRef, {
+            balance: currentBalance + currentWithdrawal.amount,
+            lockedBalance: Math.max(0, currentLockedBalance - currentWithdrawal.amount),
+            id: walletId,
+            userId: userId,
+            crypto: currentWithdrawal.crypto,
+            chain: currentWithdrawal.chain,
+            updatedAt: new Date().toISOString(),
+        }, { merge: true });
 
         transaction.update(withdrawalRef, { status: "cancelled" });
     });
