@@ -133,103 +133,103 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex flex-col max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md flex flex-col max-h-[90vh]">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Withdraw {wallet?.crypto}</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 min-h-0">
-          <ScrollArea className="h-full -mr-6 pr-6">
-             <Alert variant="destructive" className="mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Important</AlertTitle>
-                <AlertDescription>{dynamicInstruction}</AlertDescription>
-            </Alert>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+                <ScrollArea className="flex-1 pr-6 -mr-6">
                     <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="chain"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Network</FormLabel>
-                            {isMultiChain ? (
-                              <Select onValueChange={field.onChange} value={field.value || ''}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Input value={chains[0]} disabled />
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Important</AlertTitle>
+                            <AlertDescription>{dynamicInstruction}</AlertDescription>
+                        </Alert>
+                        <FormField
+                            control={form.control}
+                            name="chain"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Network</FormLabel>
+                                {isMultiChain ? (
+                                <Select onValueChange={field.onChange} value={field.value || ''}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                    {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                ) : (
+                                <Input value={chains[0]} disabled />
+                                )}
+                                <FormMessage />
+                            </FormItem>
                             )}
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="address"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Recipient Address</FormLabel>
-                            <FormControl><Input placeholder={`Enter the destination ${wallet?.crypto} address`} {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="amount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Amount to Withdraw</FormLabel>
-                            <div className="relative">
-                              <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
-                              <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-2" onClick={handleSetMax}>Max</Button>
+                        />
+                        <FormField
+                            control={form.control}
+                            name="address"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Recipient Address</FormLabel>
+                                <FormControl><Input placeholder={`Enter the destination ${wallet?.crypto} address`} {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="amount"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Amount to Withdraw</FormLabel>
+                                <div className="relative">
+                                <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
+                                <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-2" onClick={handleSetMax}>Max</Button>
+                                </div>
+                                <FormDescription>
+                                {wallet ? `Available: ${availableBalance.toFixed(8)} ${wallet.crypto}` : ''}
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="password"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Your Password</FormLabel>
+                                <FormControl><Input type="password" placeholder="Enter password to confirm" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <div className="text-sm space-y-1 border rounded-md p-3 bg-secondary/50">
+                            <div className="flex justify-between">
+                            <span className="text-muted-foreground">Fee:</span>
+                            {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-20" /> : <span className="font-medium">{feeInCrypto.toFixed(8)} {wallet?.crypto} (~${feeInUsd.toFixed(2)})</span>}
                             </div>
-                            <FormDescription>
-                              {wallet ? `Available: ${availableBalance.toFixed(8)} ${wallet.crypto}` : ''}
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Your Password</FormLabel>
-                            <FormControl><Input type="password" placeholder="Enter password to confirm" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="text-sm space-y-1 border rounded-md p-3 bg-secondary/50">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Fee:</span>
-                          {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-20" /> : <span className="font-medium">{feeInCrypto.toFixed(8)} {wallet?.crypto} (~${feeInUsd.toFixed(2)})</span>}
+                            <div className="flex justify-between">
+                            <span className="text-muted-foreground">You will receive:</span>
+                            {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-24" /> : <span className="font-semibold">{amountToReceive.toFixed(8)} {wallet?.crypto}</span>}
+                            </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">You will receive:</span>
-                          {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-24" /> : <span className="font-semibold">{amountToReceive.toFixed(8)} {wallet?.crypto}</span>}
-                        </div>
-                      </div>
                     </div>
-                    <DialogFooter className="pt-4">
-                      <DialogClose asChild>
-                        <Button type="button" variant="secondary" className="w-full sm:w-auto">Cancel</Button>
-                      </DialogClose>
-                      <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Request Withdrawal
-                      </Button>
-                    </DialogFooter>
-                </form>
-            </Form>
-          </ScrollArea>
-        </div>
+                </ScrollArea>
+
+                <DialogFooter className="pt-4 flex-shrink-0">
+                    <DialogClose asChild>
+                    <Button type="button" variant="secondary" className="w-full sm:w-auto">Cancel</Button>
+                    </DialogClose>
+                    <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Request Withdrawal
+                    </Button>
+                </DialogFooter>
+            </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
