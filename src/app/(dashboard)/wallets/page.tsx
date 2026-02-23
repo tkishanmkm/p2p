@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -174,7 +175,6 @@ export default function WalletPage() {
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [selectedTransfer, setSelectedTransfer] = useState<CoinTransfer | null>(null);
-  const [selectedWalletForDialog, setSelectedWalletForDialog] = useState<UserWallet | null>(null);
   const [selectedWalletsForDialog, setSelectedWalletsForDialog] = useState<UserWallet[] | null>(null);
   
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -231,18 +231,9 @@ export default function WalletPage() {
 
   const totalAvailableBalance = useMemo(() => walletSummary.reduce((acc, wallet) => acc + wallet.fiatValue, 0), [walletSummary]);
   
-  const handleDepositClick = (coin: CryptoCurrency) => {
-    const walletShell: UserWallet = {
-        id: coin,
-        userId: user!.uid,
-        crypto: coin,
-        chain: '', 
-        balance: 0,
-        lockedBalance: 0,
-        updatedAt: '',
-    };
-    setSelectedWalletForDialog(walletShell);
-    setIsDepositOpen(true);
+  const handleDepositClick = (walletsForCoin: UserWallet[]) => {
+      setSelectedWalletsForDialog(walletsForCoin);
+      setIsDepositOpen(true);
   };
 
   const handleWithdrawClick = (walletsForCoin: UserWallet[]) => {
@@ -304,7 +295,7 @@ export default function WalletPage() {
 
   return (
     <>
-      <DepositDialog open={isDepositOpen} onOpenChange={setIsDepositOpen} wallet={selectedWalletForDialog} walletIndex={userData?.walletIndex} />
+      <DepositDialog open={isDepositOpen} onOpenChange={setIsDepositOpen} wallets={selectedWalletsForDialog} walletIndex={userData?.walletIndex} />
       <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} wallets={selectedWalletsForDialog} />
       <SubmitTxHashDialog open={isSubmitTxHashOpen} onOpenChange={setIsSubmitTxHashOpen} deposit={selectedDeposit} />
       
@@ -336,7 +327,7 @@ export default function WalletPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex gap-2">
-                <Button size="sm" className="w-full" onClick={() => handleDepositClick(coin as CryptoCurrency)}>
+                <Button size="sm" className="w-full" onClick={() => handleDepositClick(data.wallets)}>
                     <ArrowDown className="mr-2 h-4 w-4" />Deposit
                 </Button>
                 <Button size="sm" variant="outline" className="w-full" onClick={() => handleWithdrawClick(data.wallets)}>
@@ -399,7 +390,7 @@ export default function WalletPage() {
               {selectedTx && (
                 <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tx ID:</span> 
+                      <span className="text-muted-foreground">{'walletAddress' in selectedTx ? 'Deposit ID' : 'Withdrawal ID'}:</span> 
                       <span className="font-mono text-xs max-w-[200px] truncate">{selectedTx.id}</span>
                     </div>
                      <div className="flex justify-between">
@@ -493,5 +484,6 @@ export default function WalletPage() {
     </>
   );
 }
+    
 
     
