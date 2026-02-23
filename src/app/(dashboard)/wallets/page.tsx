@@ -25,7 +25,7 @@ import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { usePrices } from '@/context/price-context';
 import { statusColors } from '@/lib/status-colors';
 import { isPast } from 'date-fns';
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const depositStatusText: Record<Deposit['status'], string> = {
   pending: "Pending User Action",
@@ -595,6 +595,3 @@ export default function WalletPage() {
     </>
   );
 }
-
-    
-    
