@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -61,10 +60,23 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [createdDeposit, setCreatedDeposit] = useState<Deposit | null>(null);
-  const countdown = useCountdown(createdDeposit?.timerEnd || 0);
 
   const addressSetRef = useMemoFirebase(() => (firestore && walletIndex) ? doc(firestore, "crypto_deposit_addresses", String(walletIndex)) : null, [firestore, walletIndex]);
   const { data: addressSetData, isLoading: isAddressSetLoading } = useDoc<DepositAddressSet>(addressSetRef);
+  
+  // This state will hold the target date for the countdown
+  const [countdownTarget, setCountdownTarget] = useState<string | number | Date>(0);
+
+  // Initialize countdown hook with the state
+  const countdown = useCountdown(countdownTarget);
+
+  useEffect(() => {
+    // When a deposit is created, update the countdown target
+    if (createdDeposit?.timerEnd) {
+      setCountdownTarget(createdDeposit.timerEnd);
+    }
+  }, [createdDeposit]);
+
 
   useEffect(() => {
     const expireDepositRequest = async () => {
@@ -156,6 +168,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
           txIdForm.reset();
           setStep(1);
           setCreatedDeposit(null);
+          setCountdownTarget(0); // Reset countdown target
       }, 300);
     }
     onOpenChange(isOpen);
@@ -239,10 +252,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
         {step === 2 && createdDeposit && (
             <>
                 <DialogHeader>
-                    <DialogTitle>Confirm Your Deposit</DialogTitle>
-                    <DialogDescription>
-                        Your deposit request has been created.
-                    </DialogDescription>
+                    <DialogTitle>Deposit</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] -mr-6 pr-6">
                     <div className="space-y-4">
@@ -275,20 +285,20 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                                         </div>
                                     </div>
                                     <div className="space-y-4">
-                                        <div className="p-4 border-2 border-dashed border-destructive/50 rounded-lg">
-                                            <div className="flex justify-center gap-2 sm:gap-4">
-                                                <div className="flex flex-col items-center w-20">
-                                                    <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.hours).padStart(2, '0')}</span>
+                                        <div className="p-2 border-2 border-dashed border-destructive/50 rounded-lg">
+                                            <div className="flex justify-center gap-1 sm:gap-2 items-center">
+                                                <div className="flex flex-col items-center p-2 rounded-md w-16">
+                                                    <span className="text-2xl font-mono text-destructive font-bold">{String(countdown.hours).padStart(2, '0')}</span>
                                                     <span className="text-xs text-muted-foreground">HRS</span>
                                                 </div>
-                                                <div className="text-4xl font-bold text-destructive">:</div>
-                                                <div className="flex flex-col items-center w-20">
-                                                    <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.minutes).padStart(2, '0')}</span>
+                                                <div className="text-2xl font-bold text-destructive">:</div>
+                                                <div className="flex flex-col items-center p-2 rounded-md w-16">
+                                                    <span className="text-2xl font-mono text-destructive font-bold">{String(countdown.minutes).padStart(2, '0')}</span>
                                                     <span className="text-xs text-muted-foreground">MIN</span>
                                                 </div>
-                                                <div className="text-4xl font-bold text-destructive">:</div>
-                                                <div className="flex flex-col items-center w-20">
-                                                    <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.seconds).padStart(2, '0')}</span>
+                                                <div className="text-2xl font-bold text-destructive">:</div>
+                                                <div className="flex flex-col items-center p-2 rounded-md w-16">
+                                                    <span className="text-2xl font-mono text-destructive font-bold">{String(countdown.seconds).padStart(2, '0')}</span>
                                                     <span className="text-xs text-muted-foreground">SEC</span>
                                                 </div>
                                             </div>
