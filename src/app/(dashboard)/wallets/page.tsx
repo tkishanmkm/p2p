@@ -28,7 +28,7 @@ import { statusColors } from '@/lib/status-colors';
 
 const depositStatusText: Record<Deposit['status'], string> = {
   pending: "Awaiting Your Confirmation",
-  awaiting_confirmation: "Pending Admin Approval",
+  awaiting_confirmation: "Waiting for Approval",
   approved: "Approved",
   declined: "Cancelled by Admin",
   expired: "Expired",
@@ -37,10 +37,15 @@ const depositStatusText: Record<Deposit['status'], string> = {
 function DepositsHistory({ userId, onRowClick }: { userId: string, onRowClick: (deposit: Deposit) => void }) {
   const { firestore } = useFirebase();
   const depositsQuery = useMemoFirebase(() =>
-      firestore ? query(collection(firestore, 'deposits'), where('userId', '==', userId), orderBy('createdAt', 'desc')) : null,
+      firestore ? query(collection(firestore, 'deposits'), where('userId', '==', userId)) : null,
       [firestore, userId]
   );
   const { data: deposits, isLoading } = useCollection<Deposit>(depositsQuery);
+
+  const sortedDeposits = useMemo(() => {
+      if (!deposits) return null;
+      return [...deposits].sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+  }, [deposits]);
 
   if (isLoading) {
     return (
@@ -51,14 +56,14 @@ function DepositsHistory({ userId, onRowClick }: { userId: string, onRowClick: (
         </div>
     );
   }
-  if (!deposits?.length) {
+  if (!sortedDeposits?.length) {
     return <p className="text-center text-muted-foreground py-4">No deposit history.</p>;
   }
   return (
     <Table>
         <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
         <TableBody>
-            {deposits?.map(d => (
+            {sortedDeposits?.map(d => (
                 <TableRow key={d.id} onClick={() => onRowClick(d)} className={"cursor-pointer hover:bg-muted/50"}>
                     <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
                     <TableCell>{d.amount}</TableCell>
