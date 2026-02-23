@@ -20,6 +20,7 @@ import { usePrices } from '@/context/price-context';
 import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { ScrollArea } from '../ui/scroll-area';
 
 const withdrawSchema = z.object({
   address: z.string().min(1, "Recipient address is required."),
@@ -147,83 +148,87 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                 {isMultiChain && (
-                    <FormField
-                        control={form.control}
-                        name="chain"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Network</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                )}
-                <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Recipient Address</FormLabel>
-                        <FormControl><Input placeholder="Enter the destination address" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+              <ScrollArea className="max-h-[60vh] -mr-6 pr-6">
+                <div className="space-y-4">
+                  {isMultiChain && (
+                      <FormField
+                          control={form.control}
+                          name="chain"
+                          render={({ field }) => (
+                              <FormItem>
+                                  <FormLabel>Network</FormLabel>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
+                                      <SelectContent>
+                                          {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                  )}
+                  <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormLabel>Recipient Address</FormLabel>
+                          <FormControl><Input placeholder="Enter the destination address" {...field} /></FormControl>
+                          <FormMessage />
+                          </FormItem>
+                      )}
+                  />
 
-                <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Amount to Withdraw</FormLabel>
-                        <div className="relative">
-                            <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
-                            <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-2" onClick={handleSetMax}>Max</Button>
-                        </div>
-                        <FormDescription>
-                            {wallet ? `Available: ${availableBalance.toFixed(8)} ${wallet.crypto}` : ''}
-                        </FormDescription>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Your Password</FormLabel>
-                        <FormControl><Input type="password" placeholder="Enter password to confirm" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                  <FormField
+                      control={form.control}
+                      name="amount"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormLabel>Amount to Withdraw</FormLabel>
+                          <div className="relative">
+                              <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
+                              <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-2" onClick={handleSetMax}>Max</Button>
+                          </div>
+                          <FormDescription>
+                              {wallet ? `Available: ${availableBalance.toFixed(8)} ${wallet.crypto}` : ''}
+                          </FormDescription>
+                          <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormLabel>Your Password</FormLabel>
+                          <FormControl><Input type="password" placeholder="Enter password to confirm" {...field} /></FormControl>
+                          <FormMessage />
+                          </FormItem>
+                      )}
+                  />
 
-                 <div className="text-sm space-y-1 border rounded-md p-3 bg-secondary/50">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Fee:</span>
-                        {arePricesLoading ? <Skeleton className="h-4 w-20" /> : <span className="font-medium">{feeInCrypto.toFixed(8)} {wallet?.crypto} (~${feeInUsd.toFixed(2)})</span>}
-                    </div>
-                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">You will receive:</span>
-                        {arePricesLoading ? <Skeleton className="h-4 w-24" /> : <span className="font-semibold">{amountToReceive.toFixed(8)} {wallet?.crypto}</span>}
-                    </div>
+                  <div className="text-sm space-y-1 border rounded-md p-3 bg-secondary/50">
+                      <div className="flex justify-between">
+                          <span className="text-muted-foreground">Fee:</span>
+                          {arePricesLoading ? <Skeleton className="h-4 w-20" /> : <span className="font-medium">{feeInCrypto.toFixed(8)} {wallet?.crypto} (~${feeInUsd.toFixed(2)})</span>}
+                      </div>
+                      <div className="flex justify-between">
+                          <span className="text-muted-foreground">You will receive:</span>
+                          {arePricesLoading ? <Skeleton className="h-4 w-24" /> : <span className="font-semibold">{amountToReceive.toFixed(8)} {wallet?.crypto}</span>}
+                      </div>
+                  </div>
+                  
+                  <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Important</AlertTitle>
+                      <AlertDescription>
+                          Double-check the address and network. Sending funds to the wrong address or network may result in permanent loss. Transactions are irreversible.
+                      </AlertDescription>
+                  </Alert>
                 </div>
-                
-                <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Important</AlertTitle>
-                    <AlertDescription>
-                        Double-check the address and network. Sending funds to the wrong address or network may result in permanent loss. Transactions are irreversible.
-                    </AlertDescription>
-                </Alert>
+              </ScrollArea>
                 
                  <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
                     <DialogClose asChild>

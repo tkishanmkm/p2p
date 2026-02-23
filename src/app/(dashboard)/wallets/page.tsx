@@ -25,9 +25,10 @@ import { cancelWithdrawalRequest } from '@/lib/wallet';
 import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
 import { usePrices } from '@/context/price-context';
 import { statusColors } from '@/lib/status-colors';
+import { isPast } from 'date-fns';
 
 const depositStatusText: Record<Deposit['status'], string> = {
-  pending: "Awaiting Your Confirmation",
+  pending: "Pending User Action",
   awaiting_confirmation: "Waiting for Approval",
   approved: "Approved",
   declined: "Cancelled by Admin",
@@ -63,19 +64,24 @@ function DepositsHistory({ userId, onRowClick }: { userId: string, onRowClick: (
     <Table>
         <TableHeader><TableRow><TableHead>Asset</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
         <TableBody>
-            {sortedDeposits?.map(d => (
-                <TableRow key={d.id} onClick={() => onRowClick(d)} className={"cursor-pointer hover:bg-muted/50"}>
-                    <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
-                    <TableCell>{d.amount}</TableCell>
-                    <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[d.status])}>{depositStatusText[d.status]}</Badge></TableCell>
-                    <TableCell>{toDate(d.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
-                    <TableCell className="text-right">
-                        <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4"/>
-                        </Button>
-                    </TableCell>
-                </TableRow>
-            ))}
+            {sortedDeposits?.map(d => {
+                const isExpired = d.status === 'pending' && isPast(toDate(d.timerEnd)!);
+                const currentStatus = isExpired ? 'expired' : d.status;
+
+                return (
+                    <TableRow key={d.id} onClick={() => onRowClick(d)} className={"cursor-pointer hover:bg-muted/50"}>
+                        <TableCell>{d.crypto} <span className="text-muted-foreground text-xs">({d.chain})</span></TableCell>
+                        <TableCell>{d.amount}</TableCell>
+                        <TableCell><Badge variant="outline" className={cn("capitalize", statusColors[currentStatus])}>{depositStatusText[currentStatus]}</Badge></TableCell>
+                        <TableCell>{toDate(d.createdAt)?.toLocaleString('default', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
+                        <TableCell className="text-right">
+                            <Button variant="ghost" size="icon">
+                                <Eye className="h-4 w-4"/>
+                            </Button>
+                        </TableCell>
+                    </TableRow>
+                )
+            })}
         </TableBody>
     </Table>
   );
@@ -279,7 +285,7 @@ export default function WalletPage() {
   
   const handleHistoryRowClick = (tx: Deposit | Withdrawal) => {
     const isDeposit = 'walletAddress' in tx;
-    if (isDeposit && tx.status === 'pending') {
+    if (isDeposit && tx.status === 'pending' && !isPast(toDate(tx.timerEnd)!)) {
         setSelectedDeposit(tx);
         setIsSubmitTxHashOpen(true);
     } else {

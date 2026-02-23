@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -172,7 +173,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-3xl">
         {step === 1 && (
             <>
             <DialogHeader>
@@ -250,7 +251,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertTitle>Request Expired</AlertTitle>
                                 <AlertDescription>
-                                    This deposit request has expired. Please create a new deposit request.
+                                    This deposit request has expired because the 3-hour payment window has passed. Please create a new deposit request.
                                 </AlertDescription>
                             </Alert>
                         ) : (
@@ -263,60 +264,64 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                                         <span className="text-2xl text-muted-foreground">{createdDeposit.crypto}</span>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="p-2 bg-white rounded-lg border">
-                                        <QRCode value={qrCodeValue} size={180} includeMargin={true} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="p-2 bg-white rounded-lg border">
+                                            <QRCode value={qrCodeValue} size={180} includeMargin={true} />
+                                        </div>
+                                        <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full max-w-sm mx-auto">
+                                            <p className="font-mono text-xs break-all text-center flex-grow p-2">{createdDeposit.walletAddress}</p>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => handleCopy(createdDeposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full max-w-sm mx-auto">
-                                        <p className="font-mono text-xs break-all text-center flex-grow p-2">{createdDeposit.walletAddress}</p>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => handleCopy(createdDeposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
+                                    <div className="space-y-4">
+                                        <div className="p-4 border-2 border-dashed border-destructive/50 rounded-lg">
+                                            <div className="flex justify-center gap-2 sm:gap-4">
+                                                <div className="flex flex-col items-center w-20">
+                                                    <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.hours).padStart(2, '0')}</span>
+                                                    <span className="text-xs text-muted-foreground">HRS</span>
+                                                </div>
+                                                <div className="text-4xl font-bold text-destructive">:</div>
+                                                <div className="flex flex-col items-center w-20">
+                                                    <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.minutes).padStart(2, '0')}</span>
+                                                    <span className="text-xs text-muted-foreground">MIN</span>
+                                                </div>
+                                                <div className="text-4xl font-bold text-destructive">:</div>
+                                                <div className="flex flex-col items-center w-20">
+                                                    <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.seconds).padStart(2, '0')}</span>
+                                                    <span className="text-xs text-muted-foreground">SEC</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Alert>
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <AlertTitle>Important Instructions</AlertTitle>
+                                            <AlertDescription className="text-xs space-y-1">
+                                            <p>{currentInstruction}</p>
+                                            <p>After sending, copy the transaction hash (TxID) from your wallet and paste it below to confirm.</p>
+                                            </AlertDescription>
+                                        </Alert>
+                                        <Form {...txIdForm}>
+                                            <form onSubmit={txIdForm.handleSubmit(handleTxIdSubmit)} className="space-y-4 pt-4">
+                                                <FormField
+                                                    control={txIdForm.control}
+                                                    name="txId"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                        <FormLabel>Transaction Hash (TxID)</FormLabel>
+                                                        <FormControl><Input placeholder="Enter the transaction hash from your wallet" {...field} /></FormControl>
+                                                        <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <Button type="submit" disabled={isLoading} className="w-full">
+                                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                    Confirm Deposit
+                                                </Button>
+                                            </form>
+                                        </Form>
                                     </div>
                                 </div>
-                                <div className="p-4 border-2 border-dashed border-destructive/50 rounded-lg">
-                                    <div className="flex justify-center gap-2 sm:gap-4">
-                                        <div className="flex flex-col items-center w-20">
-                                            <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.hours).padStart(2, '0')}</span>
-                                            <span className="text-xs text-muted-foreground">HRS</span>
-                                        </div>
-                                        <div className="text-4xl font-bold text-destructive">:</div>
-                                        <div className="flex flex-col items-center w-20">
-                                            <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.minutes).padStart(2, '0')}</span>
-                                            <span className="text-xs text-muted-foreground">MIN</span>
-                                        </div>
-                                        <div className="text-4xl font-bold text-destructive">:</div>
-                                        <div className="flex flex-col items-center w-20">
-                                            <span className="text-4xl font-mono text-destructive font-bold">{String(countdown.seconds).padStart(2, '0')}</span>
-                                            <span className="text-xs text-muted-foreground">SEC</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <Alert>
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Important Instructions</AlertTitle>
-                                    <AlertDescription className="text-xs space-y-1">
-                                    <p>{currentInstruction}</p>
-                                    <p>After sending, copy the transaction hash (TxID) from your wallet and paste it below to confirm.</p>
-                                    </AlertDescription>
-                                </Alert>
-                                <Form {...txIdForm}>
-                                    <form onSubmit={txIdForm.handleSubmit(handleTxIdSubmit)} className="space-y-4 pt-4">
-                                        <FormField
-                                            control={txIdForm.control}
-                                            name="txId"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Transaction Hash (TxID)</FormLabel>
-                                                <FormControl><Input placeholder="Enter the transaction hash from your wallet" {...field} /></FormControl>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <Button type="submit" disabled={isLoading} className="w-full">
-                                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            Confirm Deposit
-                                        </Button>
-                                    </form>
-                                </Form>
                             </div>
                         )}
                     </div>
