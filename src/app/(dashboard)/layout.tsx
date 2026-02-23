@@ -23,7 +23,7 @@ export default function DashboardLayout({
       <DashboardHeader />
       <main className={cn(
         "flex-1 flex flex-col bg-secondary/30",
-        isTradePage ? "overflow-hidden" : "gap-4 p-2 sm:p-4 lg:p-6"
+        isTradePage ? "overflow-hidden min-h-0" : "gap-4 p-2 sm:p-4 lg:p-6"
       )}>
         {children}
       </main>
