@@ -131,6 +131,7 @@ function SignupFormComponent() {
           country: values.country,
           securityQuestion: values.securityQuestion,
           securityAnswer: values.securityAnswer,
+          wallets: {}, // Initialize with an empty wallets object
           isBanned: false,
           isOnHold: false,
           tradeVolume: 0,
@@ -149,26 +150,7 @@ function SignupFormComponent() {
       };
       await setDoc(userDocRef, newUserDoc);
 
-      // 5. Create wallet sub-documents for the new user
-      const walletBatch = writeBatch(firestore);
-      for (const crypto of SUPPORTED_CRYPTOS) {
-        for (const chain of crypto.chains) {
-          const walletId = `${crypto.name}-${chain}`;
-          const walletRef = doc(firestore, `users/${newUser.uid}/wallets/${walletId}`);
-          walletBatch.set(walletRef, {
-            id: walletId,
-            userId: newUser.uid,
-            crypto: crypto.name,
-            chain: chain,
-            balance: 0,
-            lockedBalance: 0,
-            updatedAt: new Date().toISOString(),
-          });
-        }
-      }
-      await walletBatch.commit();
-
-      toast({ title: "Account Created", description: "Your wallets are being set up. Redirecting..." });
+      toast({ title: "Account Created", description: "Your account is ready. Redirecting..." });
       router.push('/buy');
 
     } catch (error: any) {
@@ -406,3 +388,5 @@ export default function SignupPage() {
     </Suspense>
   )
 }
+
+    

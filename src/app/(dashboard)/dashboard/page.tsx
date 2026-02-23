@@ -1,7 +1,8 @@
+
 'use client';
 
-import { useFirebase, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import {
   Card,
   CardContent,
@@ -22,16 +23,17 @@ import { Button } from '@/components/ui/button';
 import { Minus, Plus, BookOpen, ShieldCheck, LifeBuoy, FileText, ArrowRight, ArrowLeftRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { BtcLogo, EthLogo, UsdtLogo, LtcLogo } from '@/components/icons';
-import type { CryptoCurrency, User, UserWallet, P2PAd, Trade } from '@/lib/types';
+import type { CryptoCurrency, User, Trade } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrices } from '@/context/price-context';
 import { useState, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn, toDate } from '@/lib/utils';
 import { statusColors } from '@/lib/status-colors';
-import { format, formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { FlagIcon } from '@/components/ui/flag-icon';
+import { collection, query, where } from 'firebase/firestore';
+import { useCollection } from '@/firebase';
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
@@ -65,20 +67,16 @@ export default function DashboardPage() {
     [firestore, authUser]
   );
   const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
-
-  const walletsRef = useMemoFirebase(
-    () => (authUser ? collection(firestore, 'users', authUser.uid, 'wallets') : null),
-    [firestore, authUser]
-  );
-  const { data: wallets, isLoading: areWalletsLoading } = useCollection<UserWallet>(walletsRef);
   
-  const walletsWithBalance = useMemo(() => wallets?.filter(w => (w.balance || 0) > 0) || [], [wallets]);
+  const wallets = useMemo(() => user?.wallets ? Object.entries(user.wallets).map(([crypto, data]) => ({ crypto: crypto as CryptoCurrency, ...data })) : [], [user]);
+  const walletsWithBalance = useMemo(() => wallets.filter(w => (w.balance || 0) > 0), [wallets]);
 
-  const totalWalletValueUSD =
+  const totalWalletValueUSD = useMemo(() => 
     wallets?.reduce((acc, wallet) => {
       const value = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
       return acc + value;
-    }, 0) || 0;
+    }, 0) || 0
+  , [wallets, prices]);
 
   const preferredCurrency = user?.preferredCurrency || 'USD';
   const exchangeRate = fiatRates[preferredCurrency] || 1;
@@ -148,7 +146,7 @@ export default function DashboardPage() {
                 </div>
             </CardHeader>
             <CardContent>
-                {areWalletsLoading ? (
+                {isUserLoading ? (
                 <Skeleton className="h-40 w-full" />
                 ) : (
                 <>
@@ -165,7 +163,7 @@ export default function DashboardPage() {
                             const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
                             const valueConverted = valueUSD * exchangeRate;
                             return (
-                            <TableRow key={wallet.id}>
+                            <TableRow key={wallet.crypto}>
                                 <TableCell>
                                 <div className="flex items-center gap-3">
                                     <CryptoLogo crypto={wallet.crypto} />
@@ -193,7 +191,7 @@ export default function DashboardPage() {
                             const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
                             const valueConverted = valueUSD * exchangeRate;
                             return (
-                                <Card key={wallet.id}>
+                                <Card key={wallet.crypto}>
                                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                                         <div className="flex items-center gap-2">
                                             <CryptoLogo crypto={wallet.crypto} />
@@ -360,3 +358,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    

@@ -16,15 +16,6 @@ export type Language = {
   dialects?: Language[];
 }
 
-export type UserWallet = {
-  id: string; // The crypto symbol, e.g., "BTC", "USDT"
-  userId: string;
-  crypto: CryptoCurrency;
-  balance: number;
-  lockedBalance: number;
-  updatedAt: string;
-};
-
 export type DepositAddressSet = {
   id: string; // "1", "2", ... "20"
   setName: string; // e.g., "Set 1"
@@ -77,6 +68,12 @@ export type User = {
   country?: string;
   ipBasedCountry?: string;
   photoURL?: string;
+  wallets?: {
+    [key in CryptoCurrency]?: {
+      balance: number;
+      lockedBalance: number;
+    }
+  };
   isBanned: boolean;
   isOnHold: boolean;
   tradeVolume: number;
@@ -205,7 +202,7 @@ export type AdminLog = {
     action: string;
     targetId: string; // Can be userId, tradeId, etc.
     createdAt: string;
-}
+};
 
 export type PaymentMethod = {
     id: string;
@@ -265,3 +262,5 @@ export type Notification = {
     isRead: boolean;
     createdAt: string;
 }
+
+    
