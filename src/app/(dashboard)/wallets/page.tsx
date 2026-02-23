@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -253,6 +252,8 @@ export default function WalletPage() {
   const [selectedTx, setSelectedTx] = useState<Deposit | Withdrawal | null>(null);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [selectedTransfer, setSelectedTransfer] = useState<CoinTransfer | null>(null);
+  const [selectedWalletForDialog, setSelectedWalletForDialog] = useState<UserWallet | null>(null);
+  const [selectedWalletsForDialog, setSelectedWalletsForDialog] = useState<UserWallet[] | null>(null);
   
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
@@ -260,9 +261,6 @@ export default function WalletPage() {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isTransferDetailsOpen, setIsTransferDetailsOpen] = useState(false);
   
-  const [selectedWalletForDialog, setSelectedWalletForDialog] = useState<UserWallet | null>(null);
-  const [totalBalanceForDialog, setTotalBalanceForDialog] = useState<number | undefined>(undefined);
-
   const walletsRef = useMemoFirebase(
     () => (user ? collection(firestore, `users/${user.uid}/wallets`) : null),
     [firestore, user]
@@ -274,17 +272,17 @@ export default function WalletPage() {
   const walletSummary = useMemo(() => {
     if (!wallets) return [];
 
-    const summaryMap = new Map<CryptoCurrency, { availableBalance: number; lockedBalance: number }>();
+    const summaryMap = new Map<CryptoCurrency, { availableBalance: number; wallets: UserWallet[] }>();
 
     for (const crypto of SUPPORTED_CRYPTOS) {
-      summaryMap.set(crypto.name, { availableBalance: 0, lockedBalance: 0 });
+      summaryMap.set(crypto.name, { availableBalance: 0, wallets: [] });
     }
   
     wallets.forEach(wallet => {
         const summary = summaryMap.get(wallet.crypto);
         if (summary) {
             summary.availableBalance += wallet.balance || 0;
-            summary.lockedBalance += wallet.lockedBalance || 0;
+            summary.wallets.push(wallet);
         }
     });
 
@@ -292,16 +290,14 @@ export default function WalletPage() {
     const exchangeRate = fiatRates[preferredCurrency] || 1;
 
     const summaryArray = Array.from(summaryMap.entries()).map(([coin, data]) => {
-        const total = data.availableBalance;
         const priceInUsd = prices[coin] || 0;
-        const fiatValue = total * priceInUsd * exchangeRate;
+        const fiatValue = data.availableBalance * priceInUsd * exchangeRate;
         
         return { 
             coin, 
             availableBalance: data.availableBalance, 
-            lockedBalance: data.lockedBalance, 
-            totalBalance: total,
-            fiatValue 
+            fiatValue,
+            wallets: data.wallets
         };
     });
     
@@ -327,19 +323,9 @@ export default function WalletPage() {
     setIsDepositOpen(true);
   };
 
-  const handleWithdrawClick = (coin: CryptoCurrency, availableBalance: number) => {
-      const walletShell: UserWallet = {
-        id: coin,
-        userId: user!.uid,
-        crypto: coin,
-        chain: '',
-        balance: availableBalance,
-        lockedBalance: 0,
-        updatedAt: '',
-    };
-    setSelectedWalletForDialog(walletShell);
-    setTotalBalanceForDialog(availableBalance);
-    setIsWithdrawOpen(true);
+  const handleWithdrawClick = (walletsForCoin: UserWallet[]) => {
+      setSelectedWalletsForDialog(walletsForCoin);
+      setIsWithdrawOpen(true);
   };
 
 
@@ -397,7 +383,7 @@ export default function WalletPage() {
   return (
     <>
       <DepositDialog open={isDepositOpen} onOpenChange={setIsDepositOpen} wallet={selectedWalletForDialog} walletIndex={userData?.walletIndex} />
-      <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} wallet={selectedWalletForDialog} totalAvailableBalance={totalBalanceForDialog} />
+      <WithdrawDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen} wallets={selectedWalletsForDialog} />
       <SubmitTxHashDialog open={isSubmitTxHashOpen} onOpenChange={setIsSubmitTxHashOpen} deposit={selectedDeposit} />
       
       <div className="flex items-center justify-between mb-6">
@@ -410,7 +396,7 @@ export default function WalletPage() {
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 mb-8">
         {walletSummary.map((data) => {
-          const { coin, totalBalance, availableBalance, fiatValue } = data;
+          const { coin, availableBalance, fiatValue } = data;
           if (!data) return null;
           
           return (
@@ -421,9 +407,9 @@ export default function WalletPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <div className="text-3xl font-bold">{totalBalance.toFixed(6)}</div>
+                  <div className="text-3xl font-bold">{availableBalance.toFixed(6)}</div>
                     <p className="text-xs text-muted-foreground">
-                        Available Balance ≈ {fiatValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}
+                        ≈ {fiatValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}
                     </p>
                 </div>
               </CardContent>
@@ -431,7 +417,7 @@ export default function WalletPage() {
                 <Button size="sm" className="w-full" onClick={() => handleDepositClick(coin as CryptoCurrency)}>
                     <ArrowDown className="mr-2 h-4 w-4" />Deposit
                 </Button>
-                <Button size="sm" variant="outline" className="w-full" onClick={() => handleWithdrawClick(coin as CryptoCurrency, availableBalance)}>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => handleWithdrawClick(data.wallets)}>
                     <ArrowUp className="mr-2 h-4 w-4" />Withdraw
                 </Button>
               </CardFooter>

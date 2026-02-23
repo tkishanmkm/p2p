@@ -1,5 +1,3 @@
-
-
 'use client';
 import {
   Firestore,
@@ -245,19 +243,18 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
   });
 }
 
-export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: string, fiatAmountInUSD: number) {
+export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: string) {
   const tradeRef = doc(db, 'trades', trade.id);
   const messagesCollectionRef = collection(db, 'trades', trade.id, 'messages');
 
   await runTransaction(db, async (transaction) => {
-    // Re-fetch trade inside transaction to ensure atomicity
     const tradeDoc = await transaction.get(tradeRef);
     if (!tradeDoc.exists()) throw new Error("Trade not found.");
     const currentTrade = tradeDoc.data() as Trade;
 
     if (currentTrade.status !== 'released') throw new Error("Funds have not been released by the seller.");
     if (currentTrade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
-    if (currentTrade.claimedByBuyer) return; // Already claimed, exit silently.
+    if (currentTrade.claimedByBuyer) return;
     
     const buyerWalletId = `${currentTrade.crypto}-${currentTrade.chain}`;
 
@@ -291,14 +288,13 @@ export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: s
 
     transaction.update(tradeRef, { 
         claimedByBuyer: true,
-        fiatAmountInUSD: fiatAmountInUSD, // Backfill if it was missing
     });
 
     if (buyerUserDoc.exists()) {
         const buyerData = buyerUserDoc.data() as AppUser;
         transaction.update(buyerUserRef, {
             completedTrades: (buyerData.completedTrades || 0) + 1,
-            tradeVolume: (buyerData.tradeVolume || 0) + fiatAmountInUSD,
+            tradeVolume: (buyerData.tradeVolume || 0) + (currentTrade.fiatAmountInUSD || 0),
             lastTradeAt: new Date().toISOString(),
         });
     }
@@ -306,7 +302,7 @@ export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: s
         const sellerData = sellerUserDoc.data() as AppUser;
         transaction.update(sellerUserRef, {
             completedTrades: (sellerData.completedTrades || 0) + 1,
-            tradeVolume: (sellerData.tradeVolume || 0) + fiatAmountInUSD,
+            tradeVolume: (sellerData.tradeVolume || 0) + (currentTrade.fiatAmountInUSD || 0),
             lastTradeAt: new Date().toISOString(),
         });
     }
@@ -383,6 +379,7 @@ export async function sendCoinToUser(
   sender: { uid: string; displayName: string | null },
   recipientUsername: string,
   crypto: CryptoCurrency,
+  chain: string,
   amount: number
 ): Promise<string> {
   if (sender.displayName === recipientUsername) throw new Error("You cannot send coins to yourself.");
@@ -400,9 +397,10 @@ export async function sendCoinToUser(
   const recipientDoc = recipientSnapshot.docs[0];
   const recipient = { id: recipientDoc.id, ...(recipientDoc.data() as AppUser) };
   
-  const chainForCrypto = CHAINS[crypto]?.[0];
-  if (!chainForCrypto) throw new Error(`No chain configured for ${crypto}`);
-  const walletId = `${crypto}-${chainForCrypto}`;
+  if (!chain) {
+      throw new Error(`Network for ${crypto} was not specified.`);
+  }
+  const walletId = `${crypto}-${chain}`;
 
   const senderWalletRef = doc(db, "users", sender.uid, "wallets", walletId);
   const recipientWalletRef = doc(db, "users", recipient.id, "wallets", walletId);
@@ -413,7 +411,7 @@ export async function sendCoinToUser(
   await runTransaction(db, async (transaction) => {
     const senderWalletDoc = await transaction.get(senderWalletRef);
     if (!senderWalletDoc.exists() || ((senderWalletDoc.data() as UserWallet).balance || 0) < amount) {
-      throw new Error(`Insufficient ${crypto} balance.`);
+      throw new Error(`Insufficient ${crypto} balance on the ${chain} network.`);
     }
 
     const senderWallet = senderWalletDoc.data() as UserWallet;
@@ -434,7 +432,7 @@ export async function sendCoinToUser(
         balance: amount,
         lockedBalance: 0,
         crypto: crypto,
-        chain: chainForCrypto,
+        chain: chain,
         userId: recipient.id,
         id: walletId,
         updatedAt: new Date().toISOString(),
@@ -629,4 +627,3 @@ export async function cancelWithdrawalRequest(db: Firestore, userId: string, wit
         transaction.update(withdrawalRef, { status: "cancelled" });
     });
 }
-

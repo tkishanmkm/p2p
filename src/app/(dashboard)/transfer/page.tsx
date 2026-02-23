@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -56,7 +54,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, Send, ArrowUp, ArrowDown, AlertCircle, Copy } from 'lucide-react';
 import { CryptoCurrency, User, UserWallet, CoinTransfer } from '@/lib/types';
-import { SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { CHAINS } from '@/lib/constants';
 import { toDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
@@ -65,9 +63,20 @@ import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 const transferSchema = z.object({
   recipientUsername: z.string().min(3, 'Recipient User ID is required.'),
   crypto: z.string().min(1, 'Please select a cryptocurrency.'),
+  chain: z.string().optional(),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
   password: z.string().min(1, "Your password is required to authorize the transfer."),
+}).superRefine((data, ctx) => {
+  const cryptoChains = CHAINS[data.crypto as CryptoCurrency];
+  if (cryptoChains && cryptoChains.length > 1 && !data.chain) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please select a network.",
+      path: ["chain"],
+    });
+  }
 });
+
 
 type TransferFormValues = z.infer<typeof transferSchema>;
 
@@ -152,6 +161,25 @@ export default function TransferPage() {
   const walletsRef = useMemoFirebase(() => (authUser ? collection(firestore, 'users', authUser.uid, 'wallets') : null), [authUser, firestore]);
   const { data: wallets } = useCollection<UserWallet>(walletsRef);
 
+  const aggregatedWallets = useMemo(() => {
+    if (!wallets) return [];
+    const summary = wallets.reduce((acc, wallet) => {
+        if (!acc[wallet.crypto]) {
+            acc[wallet.crypto] = { balance: 0, chains: [] };
+        }
+        acc[wallet.crypto].balance += wallet.balance || 0;
+        acc[wallet.crypto].chains.push(wallet.chain);
+        return acc;
+    }, {} as Record<string, { balance: number, chains: string[] }>);
+
+    return Object.entries(summary).map(([crypto, data]) => ({
+        crypto: crypto as CryptoCurrency,
+        balance: data.balance,
+        chains: data.chains
+    }));
+  }, [wallets]);
+
+
   const sentQuery = useMemoFirebase(() => (authUser ? query(collection(firestore, 'transfers'), where('senderId', '==', authUser.uid), orderBy('createdAt', 'desc')) : null), [firestore, authUser]);
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<CoinTransfer>(sentQuery);
 
@@ -166,7 +194,22 @@ export default function TransferPage() {
   });
 
   const selectedCrypto = form.watch('crypto') as CryptoCurrency;
-  const selectedWallet = wallets?.find((w) => w.crypto === selectedCrypto);
+  const selectedChain = form.watch('chain');
+  const chainsForSelectedCrypto = useMemo(() => CHAINS[selectedCrypto] || [], [selectedCrypto]);
+  const showChainSelector = chainsForSelectedCrypto.length > 1;
+
+  const availableBalanceForForm = useMemo(() => {
+    if (!selectedCrypto) return 0;
+    if (!showChainSelector) {
+        return aggregatedWallets.find(w => w.crypto === selectedCrypto)?.balance || 0;
+    }
+    if (selectedChain) {
+        return wallets?.find(w => w.crypto === selectedCrypto && w.chain === selectedChain)?.balance || 0;
+    }
+    // If chain is not selected for multi-chain asset, show total
+    return aggregatedWallets.find(w => w.crypto === selectedCrypto)?.balance || 0;
+  }, [selectedCrypto, selectedChain, showChainSelector, aggregatedWallets, wallets]);
+
   
   const recipientUsernameValue = form.watch('recipientUsername');
 
@@ -209,10 +252,11 @@ export default function TransferPage() {
     if (!firestore || !authUser || !auth) return;
     setIsProcessing(true);
 
-    if (selectedWallet && values.amount > selectedWallet.balance) {
+    const balanceToCheck = availableBalanceForForm;
+    if (values.amount > balanceToCheck) {
       form.setError('amount', {
         type: 'manual',
-        message: 'Amount exceeds available balance.',
+        message: 'Amount exceeds available balance for selected network.',
       });
       setIsProcessing(false);
       return;
@@ -246,12 +290,15 @@ export default function TransferPage() {
       }
       const credential = EmailAuthProvider.credential(auth.currentUser.email, values.password);
       await reauthenticateWithCredential(auth.currentUser, credential);
+      
+      const chainToSendFrom = values.chain || chainsForSelectedCrypto[0];
 
       const transferId = await sendCoinToUser(
         firestore,
         { uid: authUser.uid, displayName: authUser.displayName },
         values.recipientUsername,
         values.crypto as CryptoCurrency,
+        chainToSendFrom,
         values.amount
       );
       toast({
@@ -261,6 +308,7 @@ export default function TransferPage() {
       form.reset({
           recipientUsername: '',
           crypto: '',
+          chain: '',
           amount: undefined,
           password: ''
       });
@@ -361,7 +409,10 @@ export default function TransferPage() {
                     <FormItem>
                       <FormLabel>Coin to Send</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue('chain', undefined); // Reset chain on crypto change
+                        }}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -370,8 +421,8 @@ export default function TransferPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {wallets && wallets.length > 0 ? (
-                            wallets
+                          {aggregatedWallets && aggregatedWallets.length > 0 ? (
+                            aggregatedWallets
                               .filter((w) => w.balance > 0)
                               .map((w) => (
                                 <SelectItem key={w.crypto} value={w.crypto}>
@@ -392,6 +443,36 @@ export default function TransferPage() {
                     </FormItem>
                   )}
                 />
+                
+                {showChainSelector && (
+                    <FormField
+                        control={form.control}
+                        name="chain"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Network</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {chainsForSelectedCrypto.map(chain => {
+                                            const chainBalance = wallets?.find(w => w.crypto === selectedCrypto && w.chain === chain)?.balance || 0;
+                                            return (
+                                                <SelectItem key={chain} value={chain} disabled={chainBalance <= 0}>
+                                                    <div className="flex justify-between w-full">
+                                                        <span>{chain}</span>
+                                                        <span className="text-muted-foreground">{chainBalance.toFixed(6)}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            )
+                                        })}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
+
                 <FormField
                   control={form.control}
                   name="amount"
@@ -401,12 +482,10 @@ export default function TransferPage() {
                       <FormControl>
                         <Input type="number" step="any" {...field} />
                       </FormControl>
-                      {selectedWallet && (
                         <FormDescription>
-                          Available: {selectedWallet.balance.toFixed(8)}{' '}
-                          {selectedWallet.crypto}
+                          Available: {availableBalanceForForm.toFixed(8)}{' '}
+                          {selectedCrypto} {selectedChain && `(${selectedChain})`}
                         </FormDescription>
-                      )}
                       <FormMessage />
                     </FormItem>
                   )}

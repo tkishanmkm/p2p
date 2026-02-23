@@ -16,7 +16,7 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { createWithdrawalRequest } from '@/lib/wallet';
 import { usePrices } from '@/context/price-context';
-import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
+import { FIXED_WITHDRAWAL_FEES_USD } from '@/lib/constants';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 
@@ -32,17 +32,17 @@ type WithdrawFormValues = z.infer<typeof withdrawSchema>;
 interface WithdrawDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wallet: UserWallet | null;
-  totalAvailableBalance?: number;
+  wallets: UserWallet[] | null;
 }
 
-export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalance }: WithdrawDialogProps) {
+export function WithdrawDialog({ open, onOpenChange, wallets }: WithdrawDialogProps) {
   const { firestore, user, auth } = useFirebase();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { prices, isLoading: arePricesLoading } = usePrices();
 
-  const chains = useMemo(() => SUPPORTED_CRYPTOS.find(c => c.name === wallet?.crypto)?.chains || [], [wallet?.crypto]);
+  const crypto = wallets?.[0]?.crypto;
+  const chains = useMemo(() => wallets?.map(w => w.chain) || [], [wallets]);
   const isMultiChain = chains.length > 1;
 
   const form = useForm<WithdrawFormValues>({
@@ -56,37 +56,43 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
       chain: chains.length === 1 ? chains[0] : undefined,
       password: '',
     });
-  }, [open, wallet, chains, form]);
+  }, [open, wallets, chains, form]);
   
   const watchedAmount = form.watch('amount');
   const watchedChain = form.watch('chain');
 
+  const selectedWallet = useMemo(() => {
+      if (!wallets || !watchedChain) return null;
+      return wallets.find(w => w.chain === watchedChain);
+  }, [wallets, watchedChain]);
+
+  const availableBalance = selectedWallet?.balance || 0;
+
   const { feeInCrypto, feeInUsd } = useMemo(() => {
-    if (!wallet?.crypto || arePricesLoading || !watchedChain) {
+    if (!crypto || arePricesLoading || !watchedChain) {
       return { feeInCrypto: 0, feeInUsd: 0 };
     }
 
-    const key = `${wallet.crypto}-${watchedChain}`;
-    const usdFee = FIXED_WITHDRAWAL_FEES_USD[key] || FIXED_WITHDRAWAL_FEES_USD[wallet.crypto] || 0;
+    const key = `${crypto}-${watchedChain}`;
+    const usdFee = FIXED_WITHDRAWAL_FEES_USD[key] || FIXED_WITHDRAWAL_FEES_USD[crypto] || 0;
     
-    const price = prices[wallet.crypto];
+    const price = prices[crypto];
     const cryptoFee = price > 0 ? usdFee / price : 0;
 
     return { feeInCrypto: cryptoFee, feeInUsd: usdFee };
-  }, [wallet, arePricesLoading, watchedChain, prices]);
+  }, [crypto, arePricesLoading, watchedChain, prices]);
 
   const amountToReceive = Math.max(0, (watchedAmount || 0) - feeInCrypto);
-  const availableBalance = totalAvailableBalance !== undefined ? totalAvailableBalance : wallet?.balance || 0;
-
+  
   async function onSubmit(values: WithdrawFormValues) {
-    if (!user || !wallet || !auth?.currentUser?.email) {
+    if (!user || !wallets || !auth?.currentUser?.email) {
         toast({ variant: 'destructive', title: 'Error', description: 'Cannot process withdrawal request. User or wallet data missing.' });
         return;
     }
     if (values.amount > availableBalance) {
       form.setError("amount", {
         type: "manual",
-        message: "Amount exceeds available balance.",
+        message: "Amount exceeds available balance for this network.",
       });
       return;
     }
@@ -97,10 +103,10 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
       const credential = EmailAuthProvider.credential(auth.currentUser.email, values.password);
       await reauthenticateWithCredential(auth.currentUser, credential);
       
-      await createWithdrawalRequest(firestore, user, wallet.crypto, values.chain, values.amount, values.address, feeInCrypto);
+      await createWithdrawalRequest(firestore, user, crypto!, values.chain, values.amount, values.address, feeInCrypto);
       toast({
           title: "Withdrawal Request Submitted",
-          description: `Your request to withdraw ${values.amount} ${wallet.crypto} is awaiting admin approval.`,
+          description: `Your request to withdraw ${values.amount} ${crypto} is awaiting admin approval.`,
       });
       onOpenChange(false);
     } catch (error: any) {
@@ -116,8 +122,9 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
   }
   
   const handleSetMax = () => {
-      if (!wallet) return;
-      form.setValue('amount', availableBalance, { shouldValidate: true });
+      if (availableBalance > 0) {
+        form.setValue('amount', availableBalance, { shouldValidate: true });
+      }
   }
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -133,7 +140,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md flex flex-col max-h-[90vh]">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Withdraw {wallet?.crypto}</DialogTitle>
+          <DialogTitle>Withdraw {crypto}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-4 -mr-4">
@@ -154,7 +161,14 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
                         <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
                             <SelectContent>
-                            {chains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            {wallets?.map(w => (
+                                <SelectItem key={w.chain} value={w.chain}>
+                                    <div className="flex justify-between w-full">
+                                        <span>{w.chain}</span>
+                                        <span className="text-muted-foreground">{w.balance.toFixed(6)}</span>
+                                    </div>
+                                </SelectItem>
+                            ))}
                             </SelectContent>
                         </Select>
                         ) : (
@@ -170,7 +184,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Recipient Address</FormLabel>
-                        <FormControl><Input placeholder={`Enter the destination ${wallet?.crypto} address`} {...field} /></FormControl>
+                        <FormControl><Input placeholder={`Enter the destination ${crypto} address`} {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -186,7 +200,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
                         <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-2" onClick={handleSetMax}>Max</Button>
                         </div>
                         <FormDescription>
-                        {wallet ? `Available: ${availableBalance.toFixed(8)} ${wallet.crypto}` : ''}
+                          {wallets ? `Available: ${availableBalance.toFixed(8)} ${crypto}` : ''}
                         </FormDescription>
                         <FormMessage />
                     </FormItem>
@@ -206,11 +220,11 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
                 <div className="text-sm space-y-1 border rounded-md p-3 bg-secondary/50">
                     <div className="flex justify-between">
                     <span className="text-muted-foreground">Fee:</span>
-                    {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-20" /> : <span className="font-medium">{feeInCrypto.toFixed(8)} {wallet?.crypto} (~${feeInUsd.toFixed(2)})</span>}
+                    {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-20" /> : <span className="font-medium">{feeInCrypto.toFixed(8)} {crypto} (~${feeInUsd.toFixed(2)})</span>}
                     </div>
                     <div className="flex justify-between">
                     <span className="text-muted-foreground">You will receive:</span>
-                    {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-24" /> : <span className="font-semibold">{amountToReceive.toFixed(8)} {wallet?.crypto}</span>}
+                    {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-24" /> : <span className="font-semibold">{amountToReceive.toFixed(8)} {crypto}</span>}
                     </div>
                 </div>
             </form>
@@ -223,7 +237,7 @@ export function WithdrawDialog({ open, onOpenChange, wallet, totalAvailableBalan
             </DialogClose>
             <Button type="submit" form="withdraw-form" disabled={isLoading} className="w-full sm:w-auto">
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Withdrawal
+            Withdraw
             </Button>
         </DialogFooter>
       </DialogContent>
