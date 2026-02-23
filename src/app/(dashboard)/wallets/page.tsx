@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -19,7 +17,6 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 import { Skeleton } from '@/components/ui/skeleton';
 import { DepositDialog } from '@/components/wallets/deposit-dialog';
 import { WithdrawDialog } from '@/components/wallets/withdraw-dialog';
-import { SubmitTxHashDialog } from '@/components/wallets/submit-tx-hash-dialog';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
 import { cancelWithdrawalRequest } from '@/lib/wallet';
 import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
@@ -275,17 +272,17 @@ export default function WalletPage() {
   const walletSummary = useMemo(() => {
     if (!wallets) return [];
 
-    const summaryMap = new Map<CryptoCurrency, { totalBalance: number; totalLockedBalance: number; fiatValue: number; }>();
+    const summaryMap = new Map<CryptoCurrency, { availableBalance: number; lockedBalance: number }>();
 
     for (const crypto of SUPPORTED_CRYPTOS) {
-      summaryMap.set(crypto.name, { totalBalance: 0, totalLockedBalance: 0, fiatValue: 0 });
+      summaryMap.set(crypto.name, { availableBalance: 0, lockedBalance: 0 });
     }
   
     wallets.forEach(wallet => {
         const summary = summaryMap.get(wallet.crypto);
         if (summary) {
-            summary.totalBalance += wallet.balance || 0;
-            summary.totalLockedBalance += wallet.lockedBalance || 0;
+            summary.availableBalance += wallet.balance || 0;
+            summary.lockedBalance += wallet.lockedBalance || 0;
         }
     });
 
@@ -293,10 +290,17 @@ export default function WalletPage() {
     const exchangeRate = fiatRates[preferredCurrency] || 1;
 
     const summaryArray = Array.from(summaryMap.entries()).map(([coin, data]) => {
-        const availableCrypto = data.totalBalance;
+        const total = data.availableBalance + data.lockedBalance;
         const priceInUsd = prices[coin] || 0;
-        data.fiatValue = availableCrypto * priceInUsd * exchangeRate;
-        return { coin, ...data };
+        const fiatValue = total * priceInUsd * exchangeRate;
+        
+        return { 
+            coin, 
+            availableBalance: data.availableBalance, 
+            lockedBalance: data.lockedBalance, 
+            totalBalance: total,
+            fiatValue 
+        };
     });
     
     summaryArray.sort((a, b) => b.fiatValue - a.fiatValue);
@@ -305,7 +309,7 @@ export default function WalletPage() {
 
   }, [wallets, userData, prices, fiatRates]);
 
-  const totalWalletValueUSD = useMemo(() => walletSummary.reduce((acc, wallet) => acc + wallet.fiatValue, 0), [walletSummary]);
+  const totalWalletValue = useMemo(() => walletSummary.reduce((acc, wallet) => acc + wallet.fiatValue, 0), [walletSummary]);
   
   const handleDepositClick = (coin: CryptoCurrency) => {
     const walletShell: UserWallet = {
@@ -321,18 +325,18 @@ export default function WalletPage() {
     setIsDepositOpen(true);
   };
 
-  const handleWithdrawClick = (coin: CryptoCurrency, totalBalance: number) => {
+  const handleWithdrawClick = (coin: CryptoCurrency, availableBalance: number) => {
       const walletShell: UserWallet = {
         id: coin,
         userId: user!.uid,
         crypto: coin,
         chain: '',
-        balance: totalBalance,
+        balance: availableBalance,
         lockedBalance: 0,
         updatedAt: '',
     };
     setSelectedWalletForDialog(walletShell);
-    setTotalBalanceForDialog(totalBalance);
+    setTotalBalanceForDialog(availableBalance);
     setIsWithdrawOpen(true);
   };
 
@@ -398,13 +402,13 @@ export default function WalletPage() {
         <h1 className="text-lg font-semibold md:text-2xl">My Wallets</h1>
         <div className="text-right">
             <p className="text-sm text-muted-foreground">Total Balance</p>
-            <p className="text-xl font-bold">{totalWalletValueUSD.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}</p>
+            <p className="text-xl font-bold">{totalWalletValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}</p>
         </div>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 mb-8">
         {walletSummary.map((data) => {
-          const { coin, totalBalance, totalLockedBalance } = data;
+          const { coin, totalBalance, availableBalance, lockedBalance, fiatValue } = data;
           if (!data) return null;
           
           return (
@@ -417,13 +421,17 @@ export default function WalletPage() {
                 <div>
                   <div className="text-3xl font-bold">{totalBalance.toFixed(6)}</div>
                     <p className="text-xs text-muted-foreground">
-                        ≈ {data.fiatValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}
+                        ≈ {fiatValue.toLocaleString(undefined, { style: 'currency', currency: userData?.preferredCurrency || 'USD' })}
                     </p>
                 </div>
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
+                    <span className="text-muted-foreground">Available:</span>
+                    <span>{availableBalance.toFixed(6)}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Locked in Trades:</span>
-                    <span>{totalLockedBalance.toFixed(6)}</span>
+                    <span>{lockedBalance.toFixed(6)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -431,7 +439,7 @@ export default function WalletPage() {
                 <Button size="sm" className="w-full" onClick={() => handleDepositClick(coin as CryptoCurrency)}>
                     <ArrowDown className="mr-2 h-4 w-4" />Deposit
                 </Button>
-                <Button size="sm" variant="outline" className="w-full" onClick={() => handleWithdrawClick(coin as CryptoCurrency, totalBalance)}>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => handleWithdrawClick(coin as CryptoCurrency, availableBalance)}>
                     <ArrowUp className="mr-2 h-4 w-4" />Withdraw
                 </Button>
               </CardFooter>
@@ -585,3 +593,5 @@ export default function WalletPage() {
     </>
   );
 }
+
+    
