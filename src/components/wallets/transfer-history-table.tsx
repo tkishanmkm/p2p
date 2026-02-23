@@ -1,7 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import { useCollection, useMemoFirebase, useFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { CoinTransfer } from '@/lib/types';
 import { toDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,10 +20,18 @@ export function TransferHistoryTable({ userId, type, onRowClick }: TransferHisto
   const transfersQuery = useMemoFirebase(() => {
     if (!firestore || !userId) return null;
     const field = type === 'sent' ? 'senderId' : 'recipientId';
-    return query(collection(firestore, 'transfers'), where(field, '==', userId), orderBy('createdAt', 'desc'));
+    // Removed orderBy from the query to avoid needing a composite index
+    return query(collection(firestore, 'transfers'), where(field, '==', userId));
   }, [firestore, userId, type]);
 
   const { data: transfers, isLoading } = useCollection<CoinTransfer>(transfersQuery);
+
+  // Sort the transfers on the client-side
+  const sortedTransfers = useMemo(() => {
+    if (!transfers) return null;
+    return [...transfers].sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+  }, [transfers]);
+
 
   if (isLoading) {
     return (
@@ -35,7 +43,7 @@ export function TransferHistoryTable({ userId, type, onRowClick }: TransferHisto
     );
   }
 
-  if (!transfers || transfers.length === 0) {
+  if (!sortedTransfers || sortedTransfers.length === 0) {
       return (
         <div className="h-24 text-center flex items-center justify-center text-muted-foreground">
             No {type} transfers yet.
@@ -56,7 +64,7 @@ export function TransferHistoryTable({ userId, type, onRowClick }: TransferHisto
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {transfers.map((t) => (
+                {sortedTransfers.map((t) => (
                     <TableRow key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
                     <TableCell className="font-mono text-xs">{t.publicId}</TableCell>
                     <TableCell>
@@ -74,7 +82,7 @@ export function TransferHistoryTable({ userId, type, onRowClick }: TransferHisto
             </Table>
         </div>
         <div className="grid gap-4 md:hidden">
-            {transfers.map(t => (
+            {sortedTransfers.map(t => (
                 <Card key={t.id} onClick={() => onRowClick(t)} className="cursor-pointer">
                     <CardHeader>
                         <div className="flex justify-between items-start">
@@ -92,4 +100,3 @@ export function TransferHistoryTable({ userId, type, onRowClick }: TransferHisto
     </>
   );
 }
-    
