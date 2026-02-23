@@ -252,7 +252,7 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
         {step === 2 && createdDeposit && (
             <>
                 <DialogHeader>
-                    <DialogTitle>Deposit</DialogTitle>
+                    <DialogTitle>Deposit {createdDeposit.crypto}</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] -mr-6 pr-6">
                     <div className="space-y-4">
@@ -266,12 +266,15 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                             </Alert>
                         ) : (
                             <div className="space-y-6">
-                                <div className="text-center">
-                                    <p className="text-sm text-muted-foreground">Send exactly</p>
-                                    <div className="flex items-center justify-center gap-3 mt-1">
+                                <div className="p-4 border rounded-lg bg-secondary/50 space-y-2">
+                                    <p className="text-sm text-muted-foreground text-center">Send exactly</p>
+                                    <div className="flex items-center justify-center gap-3">
                                         <CryptoLogo crypto={createdDeposit.crypto} className="h-8 w-8" />
                                         <span className="text-3xl font-bold">{createdDeposit.amount}</span>
-                                        <span className="text-2xl text-muted-foreground">{createdDeposit.crypto}</span>
+                                        <div className="flex flex-col text-left">
+                                            <span className="text-2xl font-semibold">{createdDeposit.crypto}</span>
+                                            <span className="text-xs text-muted-foreground -mt-1">{createdDeposit.chain} Network</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -285,22 +288,11 @@ export function DepositDialog({ open, onOpenChange, wallet, walletIndex }: Depos
                                         </div>
                                     </div>
                                     <div className="space-y-4">
-                                        <div className="p-2 border-2 border-dashed border-destructive/50 rounded-lg">
-                                            <div className="flex justify-center gap-1 sm:gap-2 items-center">
-                                                <div className="flex flex-col items-center p-2 rounded-md w-16">
-                                                    <span className="text-2xl font-mono text-destructive font-bold">{String(countdown.hours).padStart(2, '0')}</span>
-                                                    <span className="text-xs text-muted-foreground">HRS</span>
-                                                </div>
-                                                <div className="text-2xl font-bold text-destructive">:</div>
-                                                <div className="flex flex-col items-center p-2 rounded-md w-16">
-                                                    <span className="text-2xl font-mono text-destructive font-bold">{String(countdown.minutes).padStart(2, '0')}</span>
-                                                    <span className="text-xs text-muted-foreground">MIN</span>
-                                                </div>
-                                                <div className="text-2xl font-bold text-destructive">:</div>
-                                                <div className="flex flex-col items-center p-2 rounded-md w-16">
-                                                    <span className="text-2xl font-mono text-destructive font-bold">{String(countdown.seconds).padStart(2, '0')}</span>
-                                                    <span className="text-xs text-muted-foreground">SEC</span>
-                                                </div>
+                                        <div className="text-center p-2 border-2 border-dashed border-destructive/50 rounded-lg">
+                                            <div className="font-mono text-base text-destructive font-semibold" role="timer">
+                                                <span>{String(countdown.hours).padStart(2, '0')}</span>:
+                                                <span>{String(countdown.minutes).padStart(2, '0')}</span>:
+                                                <span>{String(countdown.seconds).padStart(2, '0')}</span>
                                             </div>
                                         </div>
                                         <Alert>
