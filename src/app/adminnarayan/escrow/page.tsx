@@ -1,2 +1,7 @@
-// This file is intentionally left blank to resolve a routing conflict.
-// The correct page is located at src/app/adminnarayan/(panel)/escrow/page.tsx.
+'use client';
+
+/**
+ * REDUNDANT ROUTE
+ * This file is disabled to resolve a conflict with src/app/adminnarayan/(panel)/escrow/page.tsx.
+ * In Next.js, two parallel pages cannot resolve to the same path.
+ */
