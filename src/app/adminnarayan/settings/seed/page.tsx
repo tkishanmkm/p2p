@@ -1,4 +1,1 @@
-/**
- * REDUNDANT ROUTE
- * This file is intentionally empty to resolve a routing conflict.
- */
+// This redundant placeholder file has been cleared to prevent potential routing issues.
