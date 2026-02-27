@@ -1,4 +1,2 @@
-
-'use client';
-// Consolidated into src/app/adminnarayan/users/page.tsx
-export default function RedundantPage() { return null; }
+// This file is cleared to resolve a routing conflict with src/app/adminnarayan/users/page.tsx.
+// Consolidated admin routes to the root directory.
