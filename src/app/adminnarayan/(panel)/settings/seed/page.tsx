@@ -1,1 +1,1 @@
-// This file is permanently decommissioned to resolve a Next.js routing conflict.
+// This file is decommissioned to resolve a parallel route conflict.

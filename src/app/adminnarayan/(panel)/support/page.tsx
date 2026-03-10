@@ -1,2 +1,2 @@
-// This file is permanently decommissioned to resolve a Next.js routing conflict.
-// The active page is now located at src/app/adminnarayan/support/page.tsx.
+// This file is decommissioned to resolve a parallel route conflict.
+// The active page is located at src/app/adminnarayan/support/page.tsx.
