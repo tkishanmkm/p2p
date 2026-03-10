@@ -1,2 +1,2 @@
-// This file has been cleared to resolve a parallel route conflict with src/app/adminnarayan/layout.tsx.
-// Administrative layout logic is now centralized in the root /adminnarayan directory.
+// This file is cleared to resolve a parallel route conflict with src/app/adminnarayan/layout.tsx.
+// Routing groups like (panel) are transparent to the URL, so this file must not export a default component.
