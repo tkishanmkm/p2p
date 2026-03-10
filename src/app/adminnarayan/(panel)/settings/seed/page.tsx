@@ -1,4 +1,2 @@
 // Redundant route group file.
-export default function RedundantPage() {
-  return null;
-}
+// This file is kept empty to resolve Next.js parallel route conflicts.

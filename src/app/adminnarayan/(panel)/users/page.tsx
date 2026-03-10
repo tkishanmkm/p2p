@@ -1,4 +1,2 @@
 // Redundant route group file. Active page is at src/app/adminnarayan/users/page.tsx
-export default function RedundantPage() {
-  return null;
-}
+// This file is kept empty to resolve Next.js parallel route conflicts.
