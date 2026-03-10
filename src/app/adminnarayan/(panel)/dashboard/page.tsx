@@ -1,1 +1,1 @@
-// Parallel route conflict resolved. The admin dashboard is served from src/app/adminnarayan/dashboard/page.tsx.
+// Redundant route group file. Active page is at src/app/adminnarayan/dashboard/page.tsx

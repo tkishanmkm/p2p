@@ -1,1 +1,1 @@
-// Decommissioned to resolve parallel route conflict. Using root layout at src/app/adminnarayan/layout.tsx
+// Redundant layout file. Active layout is at src/app/adminnarayan/layout.tsx

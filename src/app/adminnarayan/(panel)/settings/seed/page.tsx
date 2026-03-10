@@ -1,1 +1,1 @@
-// Decommissioned to resolve parallel route conflict.
+// Redundant route group file.
