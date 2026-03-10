@@ -1,3 +1,2 @@
-// This file is no longer used to avoid route conflicts.
-// The active admin layout is at src/app/adminnarayan/layout.tsx.
-// This file is kept empty to resolve Next.js parallel route conflicts.
+// Redundant route group layout file. Active layout is at src/app/adminnarayan/layout.tsx
+export default function Layout({ children }: { children: React.ReactNode }) { return <>{children}</>; }
