@@ -1,7 +1,2 @@
-
-/**
- * Consolidated at src/app/adminnarayan/escrow/page.tsx
- */
-export default function ClearedAdminEscrowPage() {
-  return null;
-}
+// This file is decommissioned to resolve a parallel route conflict.
+// The escrow ledger page is served from src/app/adminnarayan/escrow/page.tsx.

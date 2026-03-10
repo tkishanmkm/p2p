@@ -1,7 +1,2 @@
-
-/**
- * Consolidated at src/app/adminnarayan/disputes/page.tsx
- */
-export default function ClearedAdminDisputesPage() {
-  return null;
-}
+// This file is decommissioned to resolve a parallel route conflict.
+// The dispute resolution page is served from src/app/adminnarayan/disputes/page.tsx.

@@ -1,4 +1,2 @@
-// This layout is redundant. Admin layout is managed in src/app/adminnarayan/layout.tsx.
-export default function RedundantAdminPanelLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
+// This file is decommissioned.
+// The primary admin layout is src/app/adminnarayan/layout.tsx.

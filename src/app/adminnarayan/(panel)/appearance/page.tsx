@@ -1,7 +1,2 @@
-
-/**
- * Consolidated at src/app/adminnarayan/appearance/page.tsx
- */
-export default function ClearedAdminAppearancePage() {
-  return null;
-}
+// This file is decommissioned to resolve a parallel route conflict.
+// The appearance settings page is served from src/app/adminnarayan/appearance/page.tsx.

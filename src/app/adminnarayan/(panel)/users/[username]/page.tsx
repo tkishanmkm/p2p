@@ -1,7 +1,2 @@
-
-/**
- * Consolidated at src/app/adminnarayan/users/[username]/page.tsx
- */
-export default function ClearedAdminUserDetailPage() {
-  return null;
-}
+// This file is decommissioned to resolve a parallel route conflict.
+// The user detail page is served from src/app/adminnarayan/users/[username]/page.tsx.

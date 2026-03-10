@@ -1,7 +1,2 @@
-
-/**
- * Consolidated at src/app/adminnarayan/transfers/page.tsx
- */
-export default function ClearedAdminTransfersPage() {
-  return null;
-}
+// This file is decommissioned to resolve a parallel route conflict.
+// The transfer history page is served from src/app/adminnarayan/transfers/page.tsx.

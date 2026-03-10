@@ -1,7 +1,1 @@
-
-/**
- * Decommissioned.
- */
-export default function ClearedSeedPage() {
-  return null;
-}
+// This file is decommissioned.

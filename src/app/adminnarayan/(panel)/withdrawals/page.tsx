@@ -1,7 +1,2 @@
-
-/**
- * Consolidated at src/app/adminnarayan/withdrawals/page.tsx
- */
-export default function ClearedAdminWithdrawalsPage() {
-  return null;
-}
+// This file is decommissioned to resolve a parallel route conflict.
+// The withdrawals management page is served from src/app/adminnarayan/withdrawals/page.tsx.

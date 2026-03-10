@@ -1,7 +1,2 @@
-
-/**
- * Consolidated at src/app/adminnarayan/deposits/page.tsx
- */
-export default function ClearedAdminDepositsPage() {
-  return null;
-}
+// This file is decommissioned to resolve a parallel route conflict.
+// The deposits management page is served from src/app/adminnarayan/deposits/page.tsx.
