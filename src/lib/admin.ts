@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import {
@@ -21,7 +19,7 @@ import type { CryptoCurrency, Deposit, Dispute, Trade, UserWallet, Withdrawal, S
 import { cancelTrade, markTradeAsPaid, releaseFundsFromEscrow } from "./wallet";
 
 /**
- * Approves a deposit and updates the user's single wallet for that cryptocurrency.
+ * Approves a deposit and updates the user's aggregate wallet for that cryptocurrency.
  */
 export async function approveDeposit(
   db: Firestore,
@@ -30,30 +28,23 @@ export async function approveDeposit(
   adminId: string
 ): Promise<void> {
   const depositRef = doc(db, "deposits", deposit.id);
-  const userWalletRef = doc(db, "users", deposit.userId, "wallets", deposit.crypto);
+  const userRef = doc(db, "users", deposit.userId);
   const notificationRef = doc(collection(db, "users", deposit.userId, "notifications"));
 
   await runTransaction(db, async (transaction) => {
-    const walletDoc = await transaction.get(userWalletRef);
-    let newBalance = approvedAmount;
-    let currentLockedBalance = 0;
+    const userDoc = await transaction.get(userRef);
+    if (!userDoc.exists()) throw new Error("User profile not found.");
+    
+    const userData = userDoc.data() as AppUser;
+    const currentWallet = userData.wallets?.[deposit.crypto] || { balance: 0, lockedBalance: 0 };
 
-    if (walletDoc.exists()) {
-      const walletData = walletDoc.data() as UserWallet;
-      newBalance += (walletData.balance || 0);
-      currentLockedBalance = walletData.lockedBalance || 0;
-    }
+    const newBalance = (currentWallet.balance || 0) + approvedAmount;
 
-    // Use set with merge to safely update or create the wallet
-    transaction.set(userWalletRef, {
-        balance: newBalance,
-        lockedBalance: currentLockedBalance, // Preserve existing locked balance
-        crypto: deposit.crypto,
-        userId: deposit.userId,
-        id: deposit.crypto,
-        updatedAt: new Date().toISOString(),
-    }, { merge: true });
-
+    // Update the unified balance on the user document
+    transaction.update(userRef, {
+        [`wallets.${deposit.crypto}.balance`]: newBalance,
+        [`wallets.${deposit.crypto}.lockedBalance`]: currentWallet.lockedBalance || 0,
+    });
 
     // Mark the deposit as approved
     transaction.update(depositRef, {
@@ -69,7 +60,7 @@ export async function approveDeposit(
         isRead: false,
         createdAt: new Date().toISOString(),
         link: `/wallets`
-    })
+    });
   });
 }
 
@@ -97,7 +88,7 @@ export async function approveWithdrawal(
   adminId: string
 ): Promise<void> {
   const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
-  const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
+  const userRef = doc(db, "users", withdrawal.userId);
   const notificationRef = doc(collection(db, "users", withdrawal.userId, "notifications"));
 
   await runTransaction(db, async (transaction) => {
@@ -106,21 +97,19 @@ export async function approveWithdrawal(
       throw new Error("Withdrawal is not pending or does not exist.");
     }
     
-    const walletDoc = await transaction.get(userWalletRef);
-    if (!walletDoc.exists()) {
-      throw new Error("User wallet not found. Critical error.");
-    }
+    const userDoc = await transaction.get(userRef);
+    if (!userDoc.exists()) throw new Error("User profile not found.");
     
-    const wallet = walletDoc.data() as UserWallet;
-    if ((wallet.lockedBalance || 0) < withdrawal.amount) {
+    const userData = userDoc.data() as AppUser;
+    const currentWallet = userData.wallets?.[withdrawal.crypto];
+
+    if (!currentWallet || (currentWallet.lockedBalance || 0) < withdrawal.amount) {
       throw new Error("Insufficient locked balance. Critical error.");
     }
 
-    // Deduct from locked balance, preserving available balance
-    transaction.update(userWalletRef, {
-      balance: wallet.balance || 0, // Preserve available balance
-      lockedBalance: (wallet.lockedBalance || 0) - withdrawal.amount,
-      updatedAt: new Date().toISOString(),
+    // Deduct from locked balance on user document
+    transaction.update(userRef, {
+      [`wallets.${withdrawal.crypto}.lockedBalance`]: (currentWallet.lockedBalance || 0) - withdrawal.amount,
     });
 
     // Mark withdrawal as approved
@@ -141,7 +130,7 @@ export async function approveWithdrawal(
 }
 
 /**
- * Declines a withdrawal request and returns funds to the user's available balance.
+ * Declines a withdrawal request and returns funds to the user's aggregate available balance.
  */
 export async function declineWithdrawal(
   db: Firestore,
@@ -149,7 +138,7 @@ export async function declineWithdrawal(
   adminId: string
 ): Promise<void> {
     const withdrawalRef = doc(db, "users", withdrawal.userId, "withdrawals", withdrawal.id);
-    const userWalletRef = doc(db, "users", withdrawal.userId, "wallets", withdrawal.crypto);
+    const userRef = doc(db, "users", withdrawal.userId);
     const notificationRef = doc(collection(db, "users", withdrawal.userId, "notifications"));
 
     await runTransaction(db, async (transaction) => {
@@ -158,22 +147,17 @@ export async function declineWithdrawal(
             throw new Error("Withdrawal is not pending or does not exist.");
         }
 
-        const walletDoc = await transaction.get(userWalletRef);
-        const wallet = (walletDoc.data() as UserWallet) || {};
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) throw new Error("User profile not found.");
+        
+        const userData = userDoc.data() as AppUser;
+        const currentWallet = userData.wallets?.[withdrawal.crypto] || { balance: 0, lockedBalance: 0 };
 
-        if ((wallet.lockedBalance || 0) < withdrawal.amount) {
-            console.error(`Inconsistent state: Locked balance (${wallet.lockedBalance}) is less than withdrawal amount (${withdrawal.amount}) for user ${withdrawal.userId}. Refunding to available balance anyway.`);
-        }
-
-        // Return funds from locked to available balance, create wallet if needed
-        transaction.set(userWalletRef, {
-            balance: (wallet.balance || 0) + withdrawal.amount,
-            lockedBalance: Math.max(0, (wallet.lockedBalance || 0) - withdrawal.amount),
-            crypto: withdrawal.crypto,
-            userId: withdrawal.userId,
-            id: withdrawal.crypto,
-            updatedAt: new Date().toISOString(),
-        }, { merge: true });
+        // Return funds from locked to available balance on user document
+        transaction.update(userRef, {
+            [`wallets.${withdrawal.crypto}.balance`]: (currentWallet.balance || 0) + withdrawal.amount,
+            [`wallets.${withdrawal.crypto}.lockedBalance`]: Math.max(0, (currentWallet.lockedBalance || 0) - withdrawal.amount),
+        });
 
         // Mark withdrawal as declined
         transaction.update(withdrawalRef, {
@@ -258,63 +242,66 @@ export async function resolveDispute(
 ) {
   const tradeRef = doc(db, "trades", trade.id);
   const disputeRef = doc(db, "trades", trade.id, "disputes", dispute.id);
-  
-  const sellerWalletRef = doc(db, "users", trade.sellerId, "wallets", trade.crypto);
   const messagesCollectionRef = collection(db, 'trades', trade.id, 'messages');
 
   return runTransaction(db, async (transaction) => {
-    const sellerWalletDoc = await transaction.get(sellerWalletRef);
-    if (!sellerWalletDoc.exists()) throw new Error("Seller wallet not found.");
-    const sellerWallet = sellerWalletDoc.data() as UserWallet;
+    const sellerUserRef = doc(db, 'users', trade.sellerId);
+    const buyerUserRef = doc(db, 'users', trade.buyerId);
+    
+    const [sellerDoc, buyerDoc] = await Promise.all([
+        transaction.get(sellerUserRef),
+        transaction.get(buyerUserRef),
+    ]);
+
+    if (!sellerDoc.exists()) throw new Error("Seller profile not found.");
+    if (!buyerDoc.exists()) throw new Error("Buyer profile not found.");
+
+    const sellerData = sellerDoc.data() as AppUser;
+    const buyerData = buyerDoc.data() as AppUser;
 
     const winnerUsername = winnerId === trade.buyerId ? trade.buyer.username : trade.seller.username;
     let finalTradeStatus: 'cancelled' | 'released';
     let systemMessageText: string;
 
     if (winnerId === trade.sellerId) {
-      // Logic for when SELLER wins: Cancel the trade and return funds from escrow
+      // SELLER wins: Cancel trade and return funds to their available balance
       finalTradeStatus = 'cancelled';
+      const sellerWallet = sellerData.wallets?.[trade.crypto] || { balance: 0, lockedBalance: 0 };
+      
       if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to return.");
-      transaction.update(sellerWalletRef, {
-        balance: (sellerWallet.balance || 0) + trade.amount,
-        lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-        updatedAt: new Date().toISOString()
+      
+      transaction.update(sellerUserRef, {
+        [`wallets.${trade.crypto}.balance`]: (sellerWallet.balance || 0) + trade.amount,
+        [`wallets.${trade.crypto}.lockedBalance`]: (sellerWallet.lockedBalance || 0) - trade.amount,
       });
       transaction.update(tradeRef, { status: finalTradeStatus });
-      systemMessageText = `Dispute resolved. The trade has been awarded to the seller (${winnerUsername}) and is now cancelled.`;
+      systemMessageText = `Dispute resolved. The trade has been awarded to the seller (${winnerUsername}) and is now cancelled. Funds returned to seller.`;
 
-    } else { // Winner is BUYER: Release the funds fully to them
+    } else { // BUYER wins: Release funds to them
       finalTradeStatus = 'released';
       
-      const buyerWalletRef = doc(db, 'users', trade.buyerId, 'wallets', trade.crypto);
-      const buyerUserRef = doc(db, 'users', trade.buyerId);
-      const sellerUserRef = doc(db, 'users', trade.sellerId);
-      
-      const [buyerWalletDoc, buyerUserDoc, sellerUserDoc] = await Promise.all([
-          transaction.get(buyerWalletRef),
-          transaction.get(buyerUserRef),
-          transaction.get(sellerUserRef),
-      ]);
+      const sellerWallet = sellerData.wallets?.[trade.crypto] || { balance: 0, lockedBalance: 0 };
+      const buyerWallet = buyerData.wallets?.[trade.crypto] || { balance: 0, lockedBalance: 0 };
 
       // 1. Decrement seller's locked balance
       if ((sellerWallet.lockedBalance || 0) < trade.amount) throw new Error("Insufficient locked funds to release.");
-      transaction.update(sellerWalletRef, {
-        lockedBalance: (sellerWallet.lockedBalance || 0) - trade.amount,
-        updatedAt: new Date().toISOString()
+      transaction.update(sellerUserRef, {
+        [`wallets.${trade.crypto}.lockedBalance`]: (sellerWallet.lockedBalance || 0) - trade.amount,
+        completedTrades: (sellerData.completedTrades || 0) + 1,
+        tradeVolume: (sellerData.tradeVolume || 0) + fiatAmountInUSD,
+        lastTradeAt: new Date().toISOString(),
       });
       
       // 2. Calculate fees and credit buyer
       const fee = trade.escrowFee || (trade.amount * 0.01);
       const amountToBuyer = trade.amount - fee;
-      const walletData = buyerWalletDoc.data() as UserWallet | undefined;
-      transaction.set(buyerWalletRef, {
-        balance: (walletData?.balance || 0) + amountToBuyer,
-        lockedBalance: (walletData?.lockedBalance || 0),
-        crypto: trade.crypto,
-        userId: trade.buyerId,
-        id: trade.crypto,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      
+      transaction.update(buyerUserRef, {
+        [`wallets.${trade.crypto}.balance`]: (buyerWallet.balance || 0) + amountToBuyer,
+        completedTrades: (buyerData.completedTrades || 0) + 1,
+        tradeVolume: (buyerData.tradeVolume || 0) + fiatAmountInUSD,
+        lastTradeAt: new Date().toISOString(),
+      });
 
       // 3. Log escrow fee
       const ledgerRef = doc(collection(db, "escrow_ledger"));
@@ -325,27 +312,15 @@ export async function resolveDispute(
           createdAt: new Date().toISOString()
       });
 
-      // 4. Update stats for both users
-      if (buyerUserDoc.exists()) transaction.update(buyerUserRef, {
-          completedTrades: (buyerUserDoc.data().completedTrades || 0) + 1,
-          tradeVolume: (buyerUserDoc.data().tradeVolume || 0) + fiatAmountInUSD,
-          lastTradeAt: new Date().toISOString(),
-      });
-       if (sellerUserDoc.exists()) transaction.update(sellerUserRef, {
-          completedTrades: (sellerUserDoc.data().completedTrades || 0) + 1,
-          tradeVolume: (sellerUserDoc.data().tradeVolume || 0) + fiatAmountInUSD,
-          lastTradeAt: new Date().toISOString(),
-      });
-
-      // 5. Update trade status and backfill fiatAmountInUSD if it was missing
+      // 4. Update trade status
       transaction.update(tradeRef, { 
           status: finalTradeStatus, 
           releasedAt: new Date().toISOString(),
-          claimedByBuyer: true, // Mark as claimed since admin did it
+          claimedByBuyer: true,
           fiatAmountInUSD: fiatAmountInUSD,
       });
 
-      systemMessageText = `Dispute resolved. The trade has been awarded to the buyer (${winnerUsername}) and is now completed.`;
+      systemMessageText = `Dispute resolved. The trade has been awarded to the buyer (${winnerUsername}) and is now completed. Funds released to buyer.`;
     }
 
     // Update dispute doc
@@ -367,25 +342,20 @@ export async function resolveDispute(
     });
 
     // Add notifications
-    const opponentId = winnerId === trade.buyerId ? trade.sellerId : trade.buyerId;
-
     const winnerNotifRef = doc(collection(db, 'users', winnerId, 'notifications'));
-    const winnerMessage = finalTradeStatus === 'released'
-        ? `Congratulations! You have won the dispute for trade ${trade.tradeId}. The crypto has been added to your wallet.`
-        : `You have won the dispute for trade ${trade.tradeId}. The trade has been cancelled.`;
     transaction.set(winnerNotifRef, {
         userId: winnerId,
-        message: winnerMessage,
+        message: `You have won the dispute for trade ${trade.tradeId}.`,
         link: `/trade/${trade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),
     });
 
+    const opponentId = winnerId === trade.buyerId ? trade.sellerId : trade.buyerId;
     const loserNotifRef = doc(collection(db, 'users', opponentId, 'notifications'));
-    const loserMessage = `The dispute for trade ${trade.tradeId} has been resolved in favor of the other party. The trade is now ${finalTradeStatus === 'released' ? 'completed' : 'cancelled'}.`;
     transaction.set(loserNotifRef, {
         userId: opponentId,
-        message: loserMessage,
+        message: `The dispute for trade ${trade.tradeId} has been resolved in favor of the other party.`,
         link: `/trade/${trade.id}`,
         isRead: false,
         createdAt: new Date().toISOString(),
@@ -404,8 +374,6 @@ export async function updateSupportTicketStatus(db: Firestore, ticketId: string,
 
 /**
  * Manually adjusts a user's wallet balance.
- * Creates a wallet if it doesn't exist for an 'add' operation.
- * Logs the action to the admin logs.
  */
 export async function adjustUserWalletBalance(
   db: Firestore,
@@ -421,42 +389,34 @@ export async function adjustUserWalletBalance(
     throw new Error("Amount must be a positive number.");
   }
   
-  const userWalletRef = doc(db, "users", userId, "wallets", crypto);
+  const userRef = doc(db, "users", userId);
   const adminLogRef = doc(collection(db, "admin_logs"));
   const notificationRef = doc(collection(db, "users", userId, "notifications"));
 
   await runTransaction(db, async (transaction) => {
-    const walletDoc = await transaction.get(userWalletRef);
-    let currentBalance = 0;
-    let currentLockedBalance = 0;
-
-    if (walletDoc.exists()) {
-      const walletData = walletDoc.data() as UserWallet;
-      currentBalance = (walletData.balance || 0);
-      currentLockedBalance = (walletData.lockedBalance || 0);
-    }
+    const userDoc = await transaction.get(userRef);
+    if (!userDoc.exists()) throw new Error("User profile not found.");
+    
+    const userData = userDoc.data() as AppUser;
+    const currentWallet = userData.wallets?.[crypto] || { balance: 0, lockedBalance: 0 };
 
     let newBalance: number;
     if (action === 'add') {
-      newBalance = currentBalance + amount;
+      newBalance = (currentWallet.balance || 0) + amount;
     } else { // subtract
-      newBalance = currentBalance - amount;
+      newBalance = (currentWallet.balance || 0) - amount;
       if (newBalance < 0) {
         throw new Error("Cannot subtract more than the available balance.");
       }
     }
 
-    // Set or Update the wallet
-    transaction.set(userWalletRef, {
-      id: crypto,
-      userId: userId,
-      crypto: crypto,
-      balance: newBalance,
-      lockedBalance: currentLockedBalance, // Don't touch locked balance
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    // Update the unified balance on the user document
+    transaction.update(userRef, {
+      [`wallets.${crypto}.balance`]: newBalance,
+      [`wallets.${crypto}.lockedBalance`]: currentWallet.lockedBalance || 0,
+    });
 
-    // Create a log entry for this action
+    // Create log
     transaction.set(adminLogRef, {
       adminId: adminId,
       action: `Adjusted ${userDisplayName}'s ${crypto} balance. Action: ${action}, Amount: ${amount}. Reason: ${reason}`,
@@ -465,10 +425,9 @@ export async function adjustUserWalletBalance(
     });
 
      // Create user notification
-    const notificationMessage = `An admin has adjusted your ${crypto} wallet balance. Action: ${action}, Amount: ${amount}. Reason: ${reason}`;
     transaction.set(notificationRef, {
         userId,
-        message: notificationMessage,
+        message: `An admin has adjusted your ${crypto} wallet balance. Action: ${action}, Amount: ${amount}. Reason: ${reason}`,
         isRead: false,
         createdAt: new Date().toISOString(),
         link: '/wallets'
@@ -478,9 +437,6 @@ export async function adjustUserWalletBalance(
 
 /**
  * Allows an administrator to remove a user from another user's block list.
- * @param db The Firestore instance.
- * @param ownerUserId The UID of the user whose block list is being modified.
- * @param targetUserIdToUnblock The UID of the user to remove from the block list.
  */
 export async function adminUnblockUser(
   db: Firestore,

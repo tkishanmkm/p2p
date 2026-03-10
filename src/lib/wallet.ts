@@ -1,5 +1,3 @@
-
-
 'use client';
 import {
   Firestore,
@@ -56,41 +54,33 @@ export async function initiateTrade(
         throw new Error("You cannot trade with yourself.");
     }
     
-    const sellerWalletRef = doc(db, 'users', sellerId);
     const buyerDocRef = doc(db, 'users', buyerId);
     const sellerDocRef = doc(db, 'users', sellerId);
     const newTradeRef = doc(collection(db, 'trades'));
 
   try {
     const newTradeId = await runTransaction(db, async (transaction) => {
-        const [sellerWalletDoc, buyerDoc, sellerDoc] = await Promise.all([
-            transaction.get(sellerWalletRef),
+        const [buyerDoc, sellerDoc] = await Promise.all([
             transaction.get(buyerDocRef),
             transaction.get(sellerDocRef)
         ]);
 
-      if (!sellerWalletDoc.exists()) {
-        throw new Error(`Seller's profile does not exist.`);
-      }
-       if (!buyerDoc.exists()) {
-        throw new Error("Buyer's profile does not exist.");
-      }
-      if (!sellerDoc.exists()) {
-        throw new Error("Seller's profile does not exist.");
-      }
+      if (!buyerDoc.exists()) throw new Error("Buyer's profile does not exist.");
+      if (!sellerDoc.exists()) throw new Error("Seller's profile does not exist.");
+      
       const buyerData = buyerDoc.data() as AppUser;
       const sellerData = sellerDoc.data() as AppUser;
 
-
-      const sellerWallet = sellerWalletDoc.data() as AppUser;
-      if (!sellerWallet.wallets || !sellerWallet.wallets[ad.crypto] || (sellerWallet.wallets[ad.crypto]?.balance ?? 0) < cryptoAmount) {
+      const sellerWallet = sellerData.wallets?.[ad.crypto] || { balance: 0, lockedBalance: 0 };
+      if ((sellerWallet.balance ?? 0) < cryptoAmount) {
         throw new Error('Seller has insufficient funds.');
       }
 
-      const newSellerBalance = (sellerWallet.wallets[ad.crypto]?.balance ?? 0) - cryptoAmount;
-      const newSellerLockedBalance = (sellerWallet.wallets[ad.crypto]?.lockedBalance ?? 0) + cryptoAmount;
+      // Lock funds from the aggregate crypto balance
+      const newSellerBalance = (sellerWallet.balance ?? 0) - cryptoAmount;
+      const newSellerLockedBalance = (sellerWallet.lockedBalance ?? 0) + cryptoAmount;
 
-      transaction.update(sellerWalletRef, {
+      transaction.update(sellerDocRef, {
         [`wallets.${ad.crypto}.balance`]: newSellerBalance,
         [`wallets.${ad.crypto}.lockedBalance`]: newSellerLockedBalance,
       });
@@ -172,7 +162,7 @@ export async function markTradeAsPaid(db: Firestore, tradeId: string) {
           tradeId: tradeId,
           senderId: 'system',
           senderUsername: 'System',
-          message: `Buyer has marked the trade as Paid. Kindly check and release the payment only after you have received the funds. Be aware of fake screenshots. Always confirm the payment in your bank account before releasing the crypto.`,
+          message: `Buyer has marked the trade as Paid. Kindly check and release only after you have received the funds in your account.`,
           isModerator: true,
           createdAt: new Date().toISOString(),
         };
@@ -206,19 +196,19 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
     const trade = tradeDoc.data() as Trade;
     if (trade.status !== 'paid' && trade.status !== 'disputed') throw new Error("This trade is not ready for release.");
 
-    const sellerWalletRef = doc(db, 'users', trade.sellerId);
+    const sellerUserRef = doc(db, 'users', trade.sellerId);
+    const sellerDoc = await transaction.get(sellerUserRef);
+    if (!sellerDoc.exists()) throw new Error("Seller profile not found.");
 
-    const sellerWalletDoc = await transaction.get(sellerWalletRef);
-    if (!sellerWalletDoc.exists()) throw new Error("Seller profile not found.");
+    const sellerData = sellerDoc.data() as AppUser;
+    const sellerWallet = sellerData.wallets?.[trade.crypto];
 
-    const sellerWallet = sellerWalletDoc.data() as AppUser;
-
-    if (!sellerWallet.wallets || !sellerWallet.wallets[trade.crypto] || (sellerWallet.wallets[trade.crypto]?.lockedBalance ?? 0) < trade.amount) {
+    if (!sellerWallet || (sellerWallet.lockedBalance ?? 0) < trade.amount) {
         throw new Error("Seller has insufficient locked funds. Critical error.");
     }
     
-    transaction.update(sellerWalletRef, {
-        [`wallets.${trade.crypto}.lockedBalance`]: (sellerWallet.wallets[trade.crypto]?.lockedBalance ?? 0) - trade.amount,
+    transaction.update(sellerUserRef, {
+        [`wallets.${trade.crypto}.lockedBalance`]: (sellerWallet.lockedBalance ?? 0) - trade.amount,
     });
 
     transaction.update(tradeRef, {
@@ -250,25 +240,28 @@ export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: s
     if (currentTrade.buyerId !== buyerId) throw new Error("You are not the buyer of this trade.");
     if (currentTrade.claimedByBuyer) return;
     
-    const buyerWalletRef = doc(db, 'users', buyerId);
     const buyerUserRef = doc(db, 'users', buyerId);
     const sellerUserRef = doc(db, 'users', currentTrade.sellerId);
     const sellerNotificationRef = doc(collection(db, 'users', currentTrade.sellerId, 'notifications'));
 
-    const [buyerWalletDoc, buyerUserDoc, sellerUserDoc] = await Promise.all([
-      transaction.get(buyerWalletRef),
+    const [buyerUserDoc, sellerUserDoc] = await Promise.all([
       transaction.get(buyerUserRef),
       transaction.get(sellerUserRef),
     ]);
     
+    if (!buyerUserDoc.exists()) throw new Error("Buyer profile not found.");
+    
+    const buyerData = buyerUserDoc.data() as AppUser;
     const fee = currentTrade.escrowFee || (currentTrade.amount * 0.01);
     const amountToBuyer = currentTrade.amount - fee;
 
-    const walletData = buyerWalletDoc.data() as AppUser | undefined;
-    const currentBalance = walletData?.wallets?.[currentTrade.crypto]?.balance ?? 0;
+    const currentBalance = buyerData.wallets?.[currentTrade.crypto]?.balance ?? 0;
     
-    transaction.update(buyerWalletRef, {
+    transaction.update(buyerUserRef, {
         [`wallets.${currentTrade.crypto}.balance`]: currentBalance + amountToBuyer,
+        completedTrades: (buyerData.completedTrades || 0) + 1,
+        tradeVolume: (buyerData.tradeVolume || 0) + (fiatAmountInUSD || 0),
+        lastTradeAt: new Date().toISOString(),
     });
 
     transaction.update(tradeRef, { 
@@ -276,14 +269,6 @@ export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: s
         fiatAmountInUSD: fiatAmountInUSD
     });
 
-    if (buyerUserDoc.exists()) {
-        const buyerData = buyerUserDoc.data() as AppUser;
-        transaction.update(buyerUserRef, {
-            completedTrades: (buyerData.completedTrades || 0) + 1,
-            tradeVolume: (buyerData.tradeVolume || 0) + (fiatAmountInUSD || 0),
-            lastTradeAt: new Date().toISOString(),
-        });
-    }
      if (sellerUserDoc.exists()) {
         const sellerData = sellerUserDoc.data() as AppUser;
         transaction.update(sellerUserRef, {
@@ -325,23 +310,20 @@ export async function cancelTrade(db: Firestore, trade: Trade, reason: string) {
     if (["released", "cancelled", "expired"].includes(liveTrade.status)) return;
     
     if (['active', 'paid', 'disputed'].includes(liveTrade.status)) {
-      const sellerWalletRef = doc(db, "users", liveTrade.sellerId);
-      const sellerWalletDoc = await transaction.get(sellerWalletRef);
+      const sellerUserRef = doc(db, "users", liveTrade.sellerId);
+      const sellerDoc = await transaction.get(sellerUserRef);
 
-      if (sellerWalletDoc.exists()) {
-        const sellerWallet = sellerWalletDoc.data() as AppUser;
+      if (sellerDoc.exists()) {
+        const sellerData = sellerDoc.data() as AppUser;
         const crypto = liveTrade.crypto;
+        const sellerWallet = sellerData.wallets?.[crypto];
         
-        if (sellerWallet.wallets && sellerWallet.wallets[crypto] && (sellerWallet.wallets[crypto].lockedBalance || 0) >= liveTrade.amount) {
-          transaction.update(sellerWalletRef, {
-            [`wallets.${crypto}.balance`]: (sellerWallet.wallets[crypto].balance || 0) + liveTrade.amount,
-            [`wallets.${crypto}.lockedBalance`]: (sellerWallet.wallets[crypto].lockedBalance || 0) - liveTrade.amount,
+        if (sellerWallet && (sellerWallet.lockedBalance || 0) >= liveTrade.amount) {
+          transaction.update(sellerUserRef, {
+            [`wallets.${crypto}.balance`]: (sellerWallet.balance || 0) + liveTrade.amount,
+            [`wallets.${crypto}.lockedBalance`]: (sellerWallet.lockedBalance || 0) - liveTrade.amount,
           });
-        } else {
-            console.error(`Critical Error: Insufficient locked balance for seller ${liveTrade.sellerId} to cancel trade ${liveTrade.id}`);
         }
-      } else {
-         console.error(`Critical Error: Seller profile not found for trade ${liveTrade.id}`);
       }
     }
 
@@ -361,7 +343,7 @@ export async function cancelTrade(db: Firestore, trade: Trade, reason: string) {
     };
     transaction.set(doc(messagesCollectionRef), systemMessage);
 
-    // Add notifications for both users
+    // Add notifications
     const buyerNotificationRef = doc(collection(db, 'users', liveTrade.buyerId, 'notifications'));
     transaction.set(buyerNotificationRef, {
         userId: liveTrade.buyerId,
@@ -402,39 +384,38 @@ export async function sendCoinToUser(
   const recipientSnapshot = await getDocs(recipientQuery);
   if (recipientSnapshot.empty) throw new Error(`User "${recipientUsername}" not found.`);
   const recipientDoc = recipientSnapshot.docs[0];
-  const recipient = { id: recipientDoc.id, ...(recipientDoc.data() as AppUser) };
+  const recipientId = recipientDoc.id;
   
-  const senderWalletRef = doc(db, "users", sender.uid);
-  const recipientWalletRef = doc(db, "users", recipient.id);
+  const senderUserRef = doc(db, "users", sender.uid);
+  const recipientUserRef = doc(db, "users", recipientId);
   const transferRef = doc(collection(db, "transfers"));
   
   let transferId = "";
 
   await runTransaction(db, async (transaction) => {
-    // --- READ PHASE ---
-    const senderWalletDoc = await transaction.get(senderWalletRef);
-    const recipientWalletDoc = await transaction.get(recipientWalletRef);
+    const [senderDoc, recipientDocSnap] = await Promise.all([
+        transaction.get(senderUserRef),
+        transaction.get(recipientUserRef),
+    ]);
     
-    if (!senderWalletDoc.exists()) throw new Error("Sender profile not found.");
-    const senderWallet = senderWalletDoc.data() as AppUser;
+    if (!senderDoc.exists()) throw new Error("Sender profile not found.");
+    const senderData = senderDoc.data() as AppUser;
+    const recipientData = recipientDocSnap.data() as AppUser;
     
-    if (!senderWallet.wallets || !senderWallet.wallets[crypto] || (senderWallet.wallets[crypto]?.balance ?? 0) < amount) {
+    const senderWallet = senderData.wallets?.[crypto];
+    if (!senderWallet || (senderWallet.balance ?? 0) < amount) {
         throw new Error(`Insufficient ${crypto} balance to complete the transfer.`);
     }
 
-    // --- WRITE PHASE ---
-    
-    // 1. Debit sender's wallet
-    transaction.update(senderWalletRef, {
-        [`wallets.${crypto}.balance`]: (senderWallet.wallets[crypto]?.balance ?? 0) - amount
+    // 1. Debit sender's aggregate balance
+    transaction.update(senderUserRef, {
+        [`wallets.${crypto}.balance`]: (senderWallet.balance ?? 0) - amount
     });
 
-    // 2. Credit recipient's wallet
-    const recipientWalletData = recipientWalletDoc.data() as AppUser | undefined;
-    const currentRecipientBalance = recipientWalletData?.wallets?.[crypto]?.balance ?? 0;
-    
-    transaction.update(recipientWalletRef, {
-        [`wallets.${crypto}.balance`]: currentRecipientBalance + amount
+    // 2. Credit recipient's aggregate balance
+    const recipientWallet = recipientData.wallets?.[crypto] || { balance: 0, lockedBalance: 0 };
+    transaction.update(recipientUserRef, {
+        [`wallets.${crypto}.balance`]: (recipientWallet.balance ?? 0) + amount
     });
 
     // 3. Create transfer log
@@ -442,9 +423,9 @@ export async function sendCoinToUser(
     transaction.set(transferRef, {
       publicId: transferId,
       senderId: sender.uid,
-      recipientId: recipient.id,
+      recipientId: recipientId,
       senderUsername: sender.displayName,
-      recipientUsername: recipient.userId,
+      recipientUsername: recipientData.userId,
       crypto,
       amount,
       createdAt: new Date().toISOString(),
@@ -471,13 +452,12 @@ export async function createDepositRequest(
     throw new Error("Deposit amount must be positive.");
   }
 
-  // Determine the address ID based on the user's assigned walletIndex
   const addressSetId = ((walletIndex - 1) % 20) + 1;
   const addressDocRef = doc(db, "crypto_deposit_addresses", String(addressSetId));
   
   const addressDoc = await getDoc(addressDocRef);
   if (!addressDoc.exists()) {
-    throw new Error(`Deposit address set #${addressSetId} is not configured by the admin.`);
+    throw new Error(`Deposit address set #${addressSetId} is not configured.`);
   }
 
   const addresses = addressDoc.data()?.addresses;
@@ -485,7 +465,7 @@ export async function createDepositRequest(
   const depositAddress = addresses?.[addressKey];
 
   if (!depositAddress) {
-    throw new Error(`Deposit address for ${crypto} on ${chain} is not configured in set #${addressSetId}.`);
+    throw new Error(`Deposit address for ${crypto} on ${chain} is not configured.`);
   }
 
   const newDeposit: Omit<Deposit, 'id'> = {
@@ -508,7 +488,7 @@ export async function createDepositRequest(
 }
 
 /**
- * Updates a pending deposit with a transaction hash, moving it to 'awaiting_confirmation'.
+ * Updates a pending deposit with a transaction hash.
  */
 export async function confirmDepositWithTxId(db: Firestore, depositId: string, txId: string): Promise<void> {
   if (!txId.trim()) {
@@ -518,13 +498,10 @@ export async function confirmDepositWithTxId(db: Firestore, depositId: string, t
 
   await runTransaction(db, async (transaction) => {
     const depositDoc = await transaction.get(depositRef);
-    if (!depositDoc.exists()) {
-      throw new Error("Deposit request not found.");
-    }
+    if (!depositDoc.exists()) throw new Error("Deposit request not found.");
+    
     const depositData = depositDoc.data() as Deposit;
-    if (depositData.status !== 'pending') {
-      throw new Error("This deposit is no longer awaiting payment confirmation.");
-    }
+    if (depositData.status !== 'pending') throw new Error("This deposit is no longer confirming.");
     if (isPast(toDate(depositData.timerEnd)!)) {
       transaction.update(depositRef, { status: 'expired' });
       throw new Error("This deposit request has expired.");
@@ -546,28 +523,26 @@ export async function createWithdrawalRequest(
     fee: number
 ): Promise<void> {
     const withdrawalRef = doc(collection(db, "users", user.id, "withdrawals"));
-    const walletRef = doc(db, "users", user.id);
+    const userRef = doc(db, "users", user.id);
 
     await runTransaction(db, async (transaction) => {
-        // --- READ PHASE ---
-        const walletDoc = await transaction.get(walletRef);
-        if (!walletDoc.exists()) {
-             throw new Error("User profile not found.");
-        }
-        const walletData = walletDoc.data() as AppUser;
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) throw new Error("User profile not found.");
+        
+        const userData = userDoc.data() as AppUser;
+        const currentWallet = userData.wallets?.[crypto];
 
-        if (!walletData.wallets || !walletData.wallets[crypto] || (walletData.wallets[crypto].balance || 0) < amount) {
+        if (!currentWallet || (currentWallet.balance || 0) < amount) {
              throw new Error("Insufficient available balance.");
         }
         
-        // --- WRITE PHASE ---
-        // Debit from available balance and add to locked balance
-        transaction.update(walletRef, {
-            [`wallets.${crypto}.balance`]: (walletData.wallets[crypto].balance || 0) - amount,
-            [`wallets.${crypto}.lockedBalance`]: (walletData.wallets[crypto].lockedBalance || 0) + amount,
+        // Debit from available balance and add to locked balance on user document
+        transaction.update(userRef, {
+            [`wallets.${crypto}.balance`]: (currentWallet.balance || 0) - amount,
+            [`wallets.${crypto}.lockedBalance`]: (currentWallet.lockedBalance || 0) + amount,
         });
         
-        // Create the withdrawal document
+        // Create withdrawal log
         transaction.set(withdrawalRef, {
             userId: user.id,
             userDisplayName: user.userId,
@@ -584,39 +559,29 @@ export async function createWithdrawalRequest(
 
 export async function cancelWithdrawalRequest(db: Firestore, userId: string, withdrawalId: string): Promise<void> {
     const withdrawalRef = doc(db, 'users', userId, 'withdrawals', withdrawalId);
+    const userRef = doc(db, 'users', userId);
 
     await runTransaction(db, async (transaction) => {
         const withdrawalDoc = await transaction.get(withdrawalRef);
-        if (!withdrawalDoc.exists()) {
-            throw new Error("Withdrawal request not found.");
-        }
+        if (!withdrawalDoc.exists()) throw new Error("Withdrawal request not found.");
 
         const withdrawal = withdrawalDoc.data() as Withdrawal;
-        if (withdrawal.status !== 'pending') {
-            throw new Error("Only pending withdrawals can be cancelled.");
-        }
+        if (withdrawal.status !== 'pending') throw new Error("Only pending withdrawals can be cancelled.");
 
-        const userWalletRef = doc(db, 'users', userId);
-        const walletDoc = await transaction.get(userWalletRef);
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) throw new Error("User profile not found.");
         
-        if (!walletDoc.exists()) {
-            throw new Error("User profile not found. Cannot refund balance.");
-        }
-        
-        const walletData = walletDoc.data() as AppUser;
-        const crypto = withdrawal.crypto;
+        const userData = userDoc.data() as AppUser;
+        const currentWallet = userData.wallets?.[withdrawal.crypto];
 
-        const currentBalance = walletData.wallets?.[crypto]?.balance ?? 0;
-        const currentLockedBalance = walletData.wallets?.[crypto]?.lockedBalance ?? 0;
-
-        if (currentLockedBalance < withdrawal.amount) {
-            console.error(`Inconsistent state: Locked balance (${currentLockedBalance}) is less than withdrawal amount (${withdrawal.amount}) for user ${userId}. Refunding to available balance anyway.`);
+        if (!currentWallet || (currentWallet.lockedBalance || 0) < withdrawal.amount) {
+            console.error(`Inconsistent state: Locked balance is less than withdrawal amount for user ${userId}.`);
         }
         
-        // Return funds from locked to available balance
-        transaction.update(userWalletRef, {
-            [`wallets.${crypto}.balance`]: currentBalance + withdrawal.amount,
-            [`wallets.${crypto}.lockedBalance`]: Math.max(0, currentLockedBalance - withdrawal.amount),
+        // Return funds from locked to available balance on user document
+        transaction.update(userRef, {
+            [`wallets.${withdrawal.crypto}.balance`]: (currentWallet?.balance || 0) + withdrawal.amount,
+            [`wallets.${withdrawal.crypto}.lockedBalance`]: Math.max(0, (currentWallet?.lockedBalance || 0) - withdrawal.amount),
         });
 
         // Mark withdrawal as cancelled

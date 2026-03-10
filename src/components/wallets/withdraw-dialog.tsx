@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -9,12 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { UserWallet } from "@/lib/types";
+import { User, UserWallet, CryptoCurrency } from "@/lib/types";
 import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { Skeleton } from '../ui/skeleton';
 import { createWithdrawalRequest } from '@/lib/wallet';
 import { usePrices } from '@/context/price-context';
 import { FIXED_WITHDRAWAL_FEES_USD, SUPPORTED_CRYPTOS } from '@/lib/constants';
@@ -25,7 +23,7 @@ const withdrawSchema = z.object({
   address: z.string().min(1, "Recipient address is required."),
   amount: z.coerce.number().positive("Amount must be a positive number."),
   chain: z.string().min(1, "Please select a network."),
-  password: z.string().min(1, "Your password is required to authorize this withdrawal."),
+  password: z.string().min(1, "Password required for security."),
 });
 
 type WithdrawFormValues = z.infer<typeof withdrawSchema>;
@@ -33,219 +31,127 @@ type WithdrawFormValues = z.infer<typeof withdrawSchema>;
 interface WithdrawDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wallets: UserWallet[] | null;
+  asset: CryptoCurrency | null;
+  userWallets: User['wallets'] | undefined;
 }
 
-export function WithdrawDialog({ open, onOpenChange, wallets }: WithdrawDialogProps) {
+export function WithdrawDialog({ open, onOpenChange, asset, userWallets }: WithdrawDialogProps) {
   const { firestore, user, auth } = useFirebase();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { prices, isLoading: arePricesLoading } = usePrices();
 
-  const crypto = wallets?.[0]?.crypto;
-  const chains = useMemo(() => {
-    if (!crypto) return [];
-    const supported = SUPPORTED_CRYPTOS.find(c => c.name === crypto);
-    return supported?.chains || [];
-  }, [crypto]);
-  
-  const isMultiChain = chains.length > 1;
+  const availableChains = useMemo(() => {
+    if (!asset) return [];
+    return SUPPORTED_CRYPTOS.find(c => c.name === asset)?.chains || [];
+  }, [asset]);
 
   const form = useForm<WithdrawFormValues>({
     resolver: zodResolver(withdrawSchema),
   });
 
   useEffect(() => {
-    form.reset({
-      address: '',
-      amount: undefined,
-      chain: chains.length === 1 ? chains[0] : undefined,
-      password: '',
-    });
-  }, [open, wallets, chains, form]);
+    if (open) {
+        form.reset({
+            address: '',
+            amount: undefined,
+            chain: availableChains.length === 1 ? availableChains[0] : "",
+            password: '',
+        });
+    }
+  }, [open, availableChains, form]);
   
   const watchedAmount = form.watch('amount');
   const watchedChain = form.watch('chain');
 
   const availableBalance = useMemo(() => {
-    if (!wallets) return 0;
-    return wallets.reduce((acc, w) => acc + (w.balance || 0), 0);
-  }, [wallets]);
+    if (!asset || !userWallets) return 0;
+    return userWallets[asset]?.balance || 0;
+  }, [asset, userWallets]);
 
-  const { feeInCrypto, feeInUsd } = useMemo(() => {
-    if (!crypto || arePricesLoading || !watchedChain) {
-      return { feeInCrypto: 0, feeInUsd: 0 };
-    }
+  const { feeInCrypto } = useMemo(() => {
+    if (!asset || arePricesLoading || !watchedChain) return { feeInCrypto: 0 };
+    const key = `${asset}-${watchedChain}`;
+    const usdFee = FIXED_WITHDRAWAL_FEES_USD[key] || FIXED_WITHDRAWAL_FEES_USD[asset] || 0;
+    const price = prices[asset];
+    return { feeInCrypto: price > 0 ? usdFee / price : 0 };
+  }, [asset, arePricesLoading, watchedChain, prices]);
 
-    const key = `${crypto}-${watchedChain}`;
-    const usdFee = FIXED_WITHDRAWAL_FEES_USD[key] || FIXED_WITHDRAWAL_FEES_USD[crypto] || 0;
-    
-    const price = prices[crypto];
-    const cryptoFee = price > 0 ? usdFee / price : 0;
-
-    return { feeInCrypto: cryptoFee, feeInUsd: usdFee };
-  }, [crypto, arePricesLoading, watchedChain, prices]);
-
-  const amountToReceive = Math.max(0, (watchedAmount || 0) - feeInCrypto);
-  
   async function onSubmit(values: WithdrawFormValues) {
-    if (!user || !wallets || !auth?.currentUser?.email) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Cannot process withdrawal request. User or wallet data missing.' });
-        return;
-    }
+    if (!user || !asset || !auth?.currentUser?.email) return;
     if (values.amount > availableBalance) {
-      form.setError("amount", {
-        type: "manual",
-        message: "Amount exceeds total available balance.",
-      });
+      form.setError("amount", { message: "Insufficient balance." });
       return;
     }
     
     setIsLoading(true);
-
     try {
       const credential = EmailAuthProvider.credential(auth.currentUser.email, values.password);
       await reauthenticateWithCredential(auth.currentUser, credential);
       
-      await createWithdrawalRequest(firestore, user, crypto!, values.chain, values.amount, values.address, feeInCrypto);
-      toast({
-          title: "Withdrawal Request Submitted",
-          description: `Your request to withdraw ${values.amount} ${crypto} is awaiting admin approval.`,
-      });
+      const appUser = { id: user.uid, userId: user.displayName || "" } as User;
+      await createWithdrawalRequest(firestore, appUser, asset, values.chain, values.amount, values.address, feeInCrypto);
+      toast({ title: "Requested", description: "Withdrawal is awaiting approval." });
       onOpenChange(false);
     } catch (error: any) {
-      let errorMessage = error.message || "An unknown error occurred during withdrawal.";
-      if (error.code === 'auth/wrong-password' || error.code === "auth/invalid-credential") {
-          errorMessage = "The password you entered is incorrect.";
-          form.setError("password", { type: "manual", message: errorMessage });
-      }
-      toast({ variant: 'destructive', title: "Withdrawal Failed", description: errorMessage });
+      toast({ variant: 'destructive', title: "Failed", description: error.message });
     } finally {
       setIsLoading(false);
     }
   }
-  
-  const handleSetMax = () => {
-      if (availableBalance > 0) {
-        form.setValue('amount', availableBalance, { shouldValidate: true });
-      }
-  }
-
-  const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      form.reset();
-    }
-    onOpenChange(isOpen);
-  };
-
-  const dynamicInstruction = `Ensure the recipient address supports the ${watchedChain || 'selected'} network. Withdrawals to other networks are irreversible and may result in a permanent loss of funds.`;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md flex flex-col max-h-[90vh]">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Withdraw {crypto}</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto pr-4 -mr-4">
-          <Form {...form}>
-            <form id="withdraw-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Important</AlertTitle>
-                    <AlertDescription>{dynamicInstruction}</AlertDescription>
-                </Alert>
-                <FormField
-                    control={form.control}
-                    name="chain"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Network</FormLabel>
-                        {isMultiChain ? (
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                            {chains.map(c => (
-                                <SelectItem key={c} value={c}>
-                                    <div className="flex justify-between w-full">
-                                        <span>{c}</span>
-                                    </div>
-                                </SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        ) : (
-                        <Input value={chains[0]} disabled />
-                        )}
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Recipient Address</FormLabel>
-                        <FormControl><Input placeholder={`Enter the destination ${crypto} address`} {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Amount to Withdraw</FormLabel>
-                        <div className="relative">
-                        <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
-                        <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-2" onClick={handleSetMax}>Max</Button>
-                        </div>
-                        <FormDescription>
-                          {wallets ? `Available: ${availableBalance.toFixed(8)} ${crypto}` : ''}
-                        </FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Your Password</FormLabel>
-                        <FormControl><Input type="password" placeholder="Enter password to confirm" {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <div className="text-sm space-y-1 border rounded-md p-3 bg-secondary/50">
-                    <div className="flex justify-between">
-                    <span className="text-muted-foreground">Fee:</span>
-                    {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-20" /> : <span className="font-medium">{feeInCrypto.toFixed(8)} {crypto} (~${feeInUsd.toFixed(2)})</span>}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Withdraw {asset}</DialogTitle></DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField control={form.control} name="chain" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Network</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select network" /></SelectTrigger></FormControl>
+                        <SelectContent>{availableChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+            )} />
+            <FormField control={form.control} name="address" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Recipient Address</FormLabel>
+                    <FormControl><Input placeholder="Destination address" {...field} /></FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
+            <FormField control={form.control} name="amount" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <div className="relative">
+                        <FormControl><Input type="number" step="any" {...field} /></FormControl>
+                        <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={() => form.setValue('amount', availableBalance)}>Max</Button>
                     </div>
-                    <div className="flex justify-between">
-                    <span className="text-muted-foreground">You will receive:</span>
-                    {arePricesLoading || !watchedChain ? <Skeleton className="h-4 w-24" /> : <span className="font-semibold">{amountToReceive.toFixed(8)} {crypto}</span>}
-                    </div>
-                </div>
-            </form>
-          </Form>
-        </div>
-
-        <DialogFooter className="pt-4 flex-shrink-0">
-            <DialogClose asChild>
-            <Button type="button" variant="secondary" className="w-full sm:w-auto">Cancel</Button>
-            </DialogClose>
-            <Button type="submit" form="withdraw-form" disabled={isLoading} className="w-full sm:w-auto">
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Withdraw
+                    <FormDescription>Available: {availableBalance.toFixed(8)} {asset}</FormDescription>
+                    <FormMessage />
+                </FormItem>
+            )} />
+            <FormField control={form.control} name="password" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl><Input type="password" {...field} /></FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
+            <div className="p-3 bg-secondary/50 rounded-md text-sm space-y-1">
+                <div className="flex justify-between"><span>Fee:</span><span>{feeInCrypto.toFixed(8)} {asset}</span></div>
+                <div className="flex justify-between font-semibold"><span>You receive:</span><span>{Math.max(0, (watchedAmount || 0) - feeInCrypto).toFixed(8)} {asset}</span></div>
+            </div>
+            <Button type="submit" disabled={isLoading} className="w-full">
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirm Withdrawal
             </Button>
-        </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
 }
-
-    

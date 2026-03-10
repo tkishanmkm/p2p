@@ -13,22 +13,21 @@ import { useToast } from "@/hooks/use-toast";
 import { Copy, AlertTriangle, Loader2, Clock, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import type { UserWallet, Deposit, CryptoCurrency, DepositAddressSet } from '@/lib/types';
+import type { Deposit, CryptoCurrency, DepositAddressSet } from '@/lib/types';
 import { createDepositRequest, confirmDepositWithTxId } from '@/lib/wallet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useCountdown } from '@/hooks/use-countdown';
 import { Skeleton } from '../ui/skeleton';
 import { doc, updateDoc } from 'firebase/firestore';
 import { SUPPORTED_CRYPTOS } from '@/lib/constants';
-import { add, isPast } from 'date-fns';
-import { toDate, cn } from '@/lib/utils';
+import { isPast } from 'date-fns';
+import { toDate } from '@/lib/utils';
 import { BtcLogo, EthLogo, LtcLogo, UsdtLogo } from '@/components/icons';
 import { ScrollArea } from '../ui/scroll-area';
 
-
 const amountSchema = z.object({
   amount: z.coerce.number().positive("Amount must be a positive number."),
-  chain: z.string().optional(),
+  chain: z.string().min(1, "Please select a network."),
 });
 type AmountFormValues = z.infer<typeof amountSchema>;
 
@@ -40,7 +39,7 @@ type TxIdFormValues = z.infer<typeof txIdSchema>;
 interface DepositDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wallets: UserWallet[] | null;
+  asset: CryptoCurrency | null;
   walletIndex: number | undefined;
   initialDeposit?: Deposit | null;
 }
@@ -55,7 +54,7 @@ const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency, className?:
     }
 }
 
-export function DepositDialog({ open, onOpenChange, wallets, walletIndex, initialDeposit }: DepositDialogProps) {
+export function DepositDialog({ open, onOpenChange, asset, walletIndex, initialDeposit }: DepositDialogProps) {
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
   const [isLoading, setIsLoading] = useState(false);
@@ -73,38 +72,15 @@ export function DepositDialog({ open, onOpenChange, wallets, walletIndex, initia
     }
   }, [initialDeposit, open]);
 
-  useEffect(() => {
-    const expireDepositRequest = async () => {
-      if (countdown.isFinished && createdDeposit?.status === 'pending' && firestore) {
-        const depositRef = doc(firestore, "deposits", createdDeposit.id);
-        try {
-          await updateDoc(depositRef, { status: "expired" });
-          setCreatedDeposit(prev => prev ? { ...prev, status: 'expired' } : null);
-        } catch (error) {
-          console.error("Failed to update deposit status to expired:", error);
-        }
-      }
-    };
-    expireDepositRequest();
-  }, [countdown.isFinished, createdDeposit, firestore]);
-
-  const crypto = wallets?.[0]?.crypto;
   const availableChains = useMemo(() => {
-    if (!crypto) return [];
-    const supported = SUPPORTED_CRYPTOS.find(c => c.name === crypto);
+    if (!asset) return [];
+    const supported = SUPPORTED_CRYPTOS.find(c => c.name === asset);
     return supported?.chains || [];
-  }, [crypto]);
-  
-  const showChainSelector = availableChains.length > 1;
+  }, [asset]);
 
   const amountForm = useForm<AmountFormValues>({
-    resolver: zodResolver(amountSchema.refine(data => {
-        if (showChainSelector) return !!data.chain;
-        return true;
-    }, {
-        message: "Please select a network.",
-        path: ["chain"],
-    })),
+    resolver: zodResolver(amountSchema),
+    defaultValues: { chain: availableChains.length === 1 ? availableChains[0] : "" }
   });
 
   const txIdForm = useForm<TxIdFormValues>({
@@ -112,26 +88,20 @@ export function DepositDialog({ open, onOpenChange, wallets, walletIndex, initia
   });
 
   useEffect(() => {
-    if (availableChains.length === 1) {
+    if (open && availableChains.length === 1) {
         amountForm.setValue('chain', availableChains[0]);
-    } else {
-        amountForm.setValue('chain', undefined);
     }
   }, [availableChains, amountForm, open]);
 
   const handleCreateRequest = async (values: AmountFormValues) => {
-    if (!crypto || !user || !user.displayName || walletIndex === undefined) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not create request. User data missing.' });
-      return;
-    }
+    if (!asset || !user || !user.displayName || walletIndex === undefined) return;
     setIsLoading(true);
     try {
-      const chainToUse = values.chain!;
-      const newDeposit = await createDepositRequest(firestore, user.uid, user.displayName, walletIndex, crypto, chainToUse, values.amount);
+      const newDeposit = await createDepositRequest(firestore, user.uid, user.displayName, walletIndex, asset, values.chain, values.amount);
       setCreatedDeposit(newDeposit);
       setStep(2);
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Failed to Create Deposit Request', description: error.message });
+      toast({ variant: 'destructive', title: 'Failed', description: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -142,198 +112,85 @@ export function DepositDialog({ open, onOpenChange, wallets, walletIndex, initia
     setIsLoading(true);
     try {
       await confirmDepositWithTxId(firestore, createdDeposit.id, values.txId);
-      toast({ title: 'Transaction Submitted', description: 'Your deposit is now awaiting admin confirmation.' });
+      toast({ title: 'Submitted', description: 'Awaiting admin confirmation.' });
       handleOpenChange(false);
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Submission Failed', description: error.message });
+      toast({ variant: 'destructive', title: 'Failed', description: error.message });
     } finally {
       setIsLoading(false);
     }
   }
 
-
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: "Copied!" });
-  };
-
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      setTimeout(() => {
-          amountForm.reset();
-          txIdForm.reset();
-          setStep(1);
-          setCreatedDeposit(null);
-      }, 300);
+      setTimeout(() => { setStep(1); setCreatedDeposit(null); amountForm.reset(); txIdForm.reset(); }, 300);
     }
     onOpenChange(isOpen);
   };
-  
-  const currentInstruction = crypto ? instructionsMap[crypto] : "";
-  
-  const qrCodeValue = createdDeposit ? 
-    (createdDeposit.crypto === 'BTC' || createdDeposit.crypto === 'LTC')
-        ? `${createdDeposit.crypto.toLowerCase()}:${createdDeposit.walletAddress}?amount=${createdDeposit.amount}`
-        : createdDeposit.walletAddress
-    : '';
 
-  const isRequestExpired = countdown.isFinished || (createdDeposit && isPast(toDate(createdDeposit.timerEnd)!)) || createdDeposit?.status === 'expired';
+  const isRequestExpired = createdDeposit?.status === 'expired' || (createdDeposit && isPast(toDate(createdDeposit.timerEnd)!));
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
-        {step === 1 && (
+        {step === 1 ? (
             <>
-            <DialogHeader>
-                <DialogTitle>Deposit {crypto}</DialogTitle>
-                <DialogDescription>
-                    Enter the amount you wish to deposit and select the correct network.
-                </DialogDescription>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Deposit {asset}</DialogTitle></DialogHeader>
             <Form {...amountForm}>
-                <form onSubmit={amountForm.handleSubmit(handleCreateRequest)} className="space-y-4 pt-4">
-                    {isAddressSetLoading ? <Skeleton className="h-20 w-full" /> : (
-                       <FormField
-                            control={amountForm.control}
-                            name="chain"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Network</FormLabel>
-                                    {showChainSelector ? (
-                                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                                            <FormControl><SelectTrigger><SelectValue placeholder="Select a network" /></SelectTrigger></FormControl>
-                                            <SelectContent>
-                                                {availableChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    ) : (
-                                        <Input value={availableChains[0] || 'Loading...'} disabled />
-                                    )}
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    )}
-                    <FormField
-                        control={amountForm.control}
-                        name="amount"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Amount in {crypto}</FormLabel>
-                                <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                     <Alert>
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Instructions</AlertTitle>
-                        <AlertDescription className="text-xs space-y-1">
-                           <p>{currentInstruction}</p>
-                           <p>After creating the request, you must send the crypto to the unique address shown and then submit the transaction hash (TxID).</p>
-                        </AlertDescription>
-                    </Alert>
-                    <DialogFooter>
-                        <Button type="submit" disabled={isLoading || isAddressSetLoading} className="w-full">
-                            {(isLoading || isAddressSetLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Deposit
-                        </Button>
-                    </DialogFooter>
+                <form onSubmit={amountForm.handleSubmit(handleCreateRequest)} className="space-y-4">
+                    <FormField control={amountForm.control} name="chain" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Network</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select network" /></SelectTrigger></FormControl>
+                                <SelectContent>{availableChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={amountForm.control} name="amount" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Amount</FormLabel>
+                            <FormControl><Input type="number" step="any" placeholder="0.00" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <Button type="submit" disabled={isLoading} className="w-full">
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Get Deposit Address
+                    </Button>
                 </form>
             </Form>
             </>
-        )}
-        {step === 2 && createdDeposit && (
+        ) : (
             <>
-                <DialogHeader>
-                    <DialogTitle>Deposit</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="max-h-[70vh] -mr-6 pr-6">
+                <DialogHeader><DialogTitle>Send {createdDeposit?.crypto}</DialogTitle></DialogHeader>
+                {isRequestExpired ? <Alert variant="destructive"><AlertTitle>Expired</AlertTitle><AlertDescription>This request is no longer active.</AlertDescription></Alert> : (
                     <div className="space-y-4">
-                        {isRequestExpired ? (
-                            <Alert variant="destructive">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertTitle>Request Expired</AlertTitle>
-                                <AlertDescription>
-                                    This deposit request has expired. Please create a new deposit request.
-                                </AlertDescription>
-                            </Alert>
-                        ) : (
-                            <div className="space-y-6">
-                                <div className="p-4 border rounded-lg bg-secondary/50">
-                                    <p className="text-xs text-muted-foreground">Send exactly</p>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <CryptoLogo crypto={createdDeposit.crypto} className="h-6 w-6" />
-                                            <span className="text-xl font-bold">{createdDeposit.amount}</span>
-                                            <span className="text-lg text-muted-foreground">{createdDeposit.crypto} ({createdDeposit.chain})</span>
-                                        </div>
-                                        <Button size="sm" variant="ghost" className="text-xs h-auto py-1" onClick={() => handleCopy(String(createdDeposit.amount))}>
-                                            <Copy className="mr-1.5 h-3 w-3" /> Copy Amount
-                                        </Button>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="p-2 bg-white rounded-lg border">
-                                        <QRCode value={qrCodeValue} size={180} includeMargin={true} />
-                                    </div>
-                                    <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full max-w-sm mx-auto">
-                                        <p className="font-mono text-xs break-all text-center flex-grow p-2">{createdDeposit.walletAddress}</p>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => handleCopy(createdDeposit.walletAddress)}><Copy className="h-4 w-4" /></Button>
-                                    </div>
-                                </div>
-                                <div className="space-y-4">
-                                    <Alert>
-                                        <AlertCircle className="h-4 w-4" />
-                                        <AlertTitle>Instructions</AlertTitle>
-                                        <AlertDescription className="text-xs space-y-1">
-                                        <p>{currentInstruction}</p>
-                                        <p>After sending, copy the transaction hash (TxID) from your wallet and paste it below to confirm.</p>
-                                        </AlertDescription>
-                                    </Alert>
-                                    
-                                    <div className="text-center text-xs text-muted-foreground">
-                                        <p><Clock className="inline-block h-3 w-3 mr-1"/> Time to confirm: <span className="font-mono text-destructive">{`${String(countdown.hours).padStart(2, '0')}:${String(countdown.minutes).padStart(2, '0')}:${String(countdown.seconds).padStart(2, '0')}`}</span></p>
-                                    </div>
-                                    
-                                    <Form {...txIdForm}>
-                                        <form onSubmit={txIdForm.handleSubmit(handleTxIdSubmit)} className="space-y-4 pt-4 border-t">
-                                            <FormField
-                                                control={txIdForm.control}
-                                                name="txId"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                    <FormLabel>Transaction Hash (TxID)</FormLabel>
-                                                    <FormControl><Input placeholder="Enter the transaction hash from your wallet" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <Button type="submit" disabled={isLoading} className="w-full">
-                                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                Confirm Deposit
-                                            </Button>
-                                        </form>
-                                    </Form>
-                                </div>
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="p-2 bg-white rounded-lg border"><QRCode value={createdDeposit?.walletAddress || ''} size={160} /></div>
+                            <div className="text-center">
+                                <p className="text-sm font-mono break-all">{createdDeposit?.walletAddress}</p>
+                                <Button variant="link" size="sm" onClick={() => { navigator.clipboard.writeText(createdDeposit?.walletAddress || ''); toast({title:'Copied'}); }}>Copy Address</Button>
                             </div>
-                        )}
+                        </div>
+                        <Form {...txIdForm}>
+                            <form onSubmit={txIdForm.handleSubmit(handleTxIdSubmit)} className="space-y-4 border-t pt-4">
+                                <FormField control={txIdForm.control} name="txId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Transaction ID (TxID)</FormLabel>
+                                        <FormControl><Input placeholder="Paste TxID here" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <Button type="submit" disabled={isLoading} className="w-full">Confirm Sent</Button>
+                            </form>
+                        </Form>
                     </div>
-                </ScrollArea>
+                )}
             </>
         )}
       </DialogContent>
     </Dialog>
   );
 }
-
-const instructionsMap: Record<CryptoCurrency, string> = {
-    BTC: "Ensure you are sending Bitcoin (BTC) from a wallet on the BTC network. Other assets sent to this address may be lost.",
-    ETH: "Ensure you are sending Ethereum (ETH) from a wallet on the ETH network. Other assets sent to this address may be lost.",
-    LTC: "Ensure you are sending Litecoin (LTC) from a wallet on the LTC network. Other assets sent to this address may be lost.",
-    USDT: "Ensure you select the correct network (e.g., ERC20, TRC20, BEP20) that matches your sending wallet. Sending to the wrong network may result in a permanent loss of funds.",
-    BNB: "",
-    MATIC: "",
-    TRX: ""
-};

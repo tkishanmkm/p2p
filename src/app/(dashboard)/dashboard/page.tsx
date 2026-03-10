@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -68,15 +67,24 @@ export default function DashboardPage() {
   );
   const { data: user, isLoading: isUserLoading } = useDoc<User>(userRef);
   
-  const wallets = useMemo(() => user?.wallets ? Object.entries(user.wallets).map(([crypto, data]) => ({ crypto: crypto as CryptoCurrency, ...data })) : [], [user]);
-  const walletsWithBalance = useMemo(() => wallets.filter(w => (w.balance || 0) > 0), [wallets]);
+  // Unified balance list from the user's document wallets map
+  const unifiedWallets = useMemo(() => {
+    if (!user?.wallets) return [];
+    return Object.entries(user.wallets).map(([crypto, data]) => ({
+      crypto: crypto as CryptoCurrency,
+      balance: data.balance || 0,
+      lockedBalance: data.lockedBalance || 0
+    }));
+  }, [user]);
+
+  const walletsWithBalance = useMemo(() => unifiedWallets.filter(w => w.balance > 0 || w.lockedBalance > 0), [unifiedWallets]);
 
   const totalWalletValueUSD = useMemo(() => 
-    wallets?.reduce((acc, wallet) => {
+    unifiedWallets.reduce((acc, wallet) => {
       const value = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
       return acc + value;
     }, 0) || 0
-  , [wallets, prices]);
+  , [unifiedWallets, prices]);
 
   const preferredCurrency = user?.preferredCurrency || 'USD';
   const exchangeRate = fiatRates[preferredCurrency] || 1;
@@ -117,8 +125,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-semibold md:text-3xl">Welcome back, {user?.userId || authUser?.displayName}!</h1>
         )}
         <p className="text-muted-foreground">
-          Here's a complete overview of your P2P trading activity. You can manage your wallet, view your reputation, and
-          stay on top of your trades.
+          Here's a complete overview of your P2P trading activity.
         </p>
       </div>
       
@@ -127,9 +134,9 @@ export default function DashboardPage() {
             <Card>
             <CardHeader className="flex flex-row items-center">
                 <div className="grid gap-2">
-                <CardTitle>My Wallet</CardTitle>
+                <CardTitle>Unified Balance</CardTitle>
                 <CardDescription>
-                    Total available value: {totalWalletValueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Total estimated value: {totalWalletValueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2 })}
                 </CardDescription>
                 </div>
                 <div className="ml-auto flex gap-2">
@@ -154,8 +161,9 @@ export default function DashboardPage() {
                         <TableHeader>
                         <TableRow>
                             <TableHead>Asset</TableHead>
-                            <TableHead>Available Balance</TableHead>
-                            <TableHead className="text-right">{preferredCurrency} Value (est.)</TableHead>
+                            <TableHead>Available</TableHead>
+                            <TableHead>In Escrow</TableHead>
+                            <TableHead className="text-right">{preferredCurrency} Value</TableHead>
                         </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -171,16 +179,17 @@ export default function DashboardPage() {
                                 </div>
                                 </TableCell>
                                 <TableCell>{(wallet.balance || 0).toFixed(8)}</TableCell>
+                                <TableCell className="text-muted-foreground">{(wallet.lockedBalance || 0).toFixed(8)}</TableCell>
                                 <TableCell className="text-right">
-                                {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2 })}
                                 </TableCell>
                             </TableRow>
                             );
                         })}
                         {(!walletsWithBalance || walletsWithBalance.length === 0) && (
                             <TableRow>
-                            <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
-                                No wallets with balance. Deposit funds to get started.
+                            <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
+                                No funds detected. Deposit crypto to start trading.
                             </TableCell>
                             </TableRow>
                         )}
@@ -198,7 +207,7 @@ export default function DashboardPage() {
                                             <CardTitle className="text-lg">{wallet.crypto}</CardTitle>
                                         </div>
                                         <div className="font-semibold text-right">
-                                            {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            {valueConverted.toLocaleString(undefined, { style: 'currency', currency: preferredCurrency, minimumFractionDigits: 2 })}
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-1 text-sm">
@@ -206,13 +215,17 @@ export default function DashboardPage() {
                                             <span className="text-muted-foreground">Available</span>
                                             <span>{(wallet.balance || 0).toFixed(8)}</span>
                                         </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">In Escrow</span>
+                                            <span>{(wallet.lockedBalance || 0).toFixed(8)}</span>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             )
                         })}
                          {(!walletsWithBalance || walletsWithBalance.length === 0) && (
                             <div className="text-center text-muted-foreground py-10">
-                                No wallets with balance.
+                                No funds detected.
                             </div>
                         )}
                     </div>
@@ -308,7 +321,7 @@ export default function DashboardPage() {
             <Card>
             <CardHeader>
                 <CardTitle>Platform Resources</CardTitle>
-                <CardDescription>Get help, read our policies, and learn more about secure trading practices.</CardDescription>
+                <CardDescription>Get help and read our policies.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
                 <Link
@@ -318,7 +331,7 @@ export default function DashboardPage() {
                 <LifeBuoy className="h-8 w-8 text-primary" />
                 <div>
                     <h3 className="font-semibold">FAQ</h3>
-                    <p className="text-sm text-muted-foreground">Find answers to common questions.</p>
+                    <p className="text-sm text-muted-foreground">Common questions.</p>
                 </div>
                 </Link>
                 <Link
@@ -328,7 +341,7 @@ export default function DashboardPage() {
                 <BookOpen className="h-8 w-8 text-primary" />
                 <div>
                     <h3 className="font-semibold">Guides</h3>
-                    <p className="text-sm text-muted-foreground">Learn how to trade safely.</p>
+                    <p className="text-sm text-muted-foreground">Learn how to trade.</p>
                 </div>
                 </Link>
                 <Link
@@ -337,8 +350,8 @@ export default function DashboardPage() {
                 >
                 <FileText className="h-8 w-8 text-primary" />
                 <div>
-                    <h3 className="font-semibold">Terms of Service</h3>
-                    <p className="text-sm text-muted-foreground">Read the platform rules.</p>
+                    <h3 className="font-semibold">Terms</h3>
+                    <p className="text-sm text-muted-foreground">Platform rules.</p>
                 </div>
                 </Link>
                 <Link
@@ -347,8 +360,8 @@ export default function DashboardPage() {
                 >
                 <ShieldCheck className="h-8 w-8 text-primary" />
                 <div>
-                    <h3 className="font-semibold">Privacy Policy</h3>
-                    <p className="text-sm text-muted-foreground">How we protect your data.</p>
+                    <h3 className="font-semibold">Privacy</h3>
+                    <p className="text-sm text-muted-foreground">Your data safety.</p>
                 </div>
                 </Link>
             </CardContent>
@@ -358,5 +371,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
