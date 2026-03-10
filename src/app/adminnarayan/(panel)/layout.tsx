@@ -1,2 +1,1 @@
-// This file is decommissioned.
-// The primary admin layout is src/app/adminnarayan/layout.tsx.
+// Decommissioned to resolve parallel route conflict. Using root layout at src/app/adminnarayan/layout.tsx
