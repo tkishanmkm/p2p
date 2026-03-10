@@ -1,2 +1,8 @@
-// This file is cleared to resolve a routing conflict with src/app/adminnarayan/dashboard/page.tsx.
-// Consolidated admin routes to the root directory.
+
+/**
+ * This route is now consolidated at src/app/adminnarayan/dashboard/page.tsx
+ * to resolve parallel route conflicts in Next.js.
+ */
+export default function ClearedAdminDashboardPage() {
+  return null;
+}
