@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * This file has been decommissioned to resolve a Next.js routing conflict.
- * The primary admin dashboard is now located at src/app/adminnarayan/dashboard/page.tsx.
+ * This file is cleared to resolve a routing conflict with src/app/adminnarayan/dashboard/page.tsx.
+ * Route groups like (panel) are transparent to the URL path in Next.js.
  */
-export default function DecommissionedPage() {
+export default function ClearedPage() {
   return null;
 }
