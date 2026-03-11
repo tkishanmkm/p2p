@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -14,6 +13,11 @@ import { collection, collectionGroup, query, where, getDocs } from "firebase/fir
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { useState, useEffect } from "react";
 
+/**
+ * Main Admin Dashboard
+ * This page serves as the entry point for administrators.
+ * Route: /adminnarayan/dashboard
+ */
 export default function AdminDashboardPage() {
     const { firestore } = useFirebase();
     const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
@@ -54,7 +58,7 @@ export default function AdminDashboardPage() {
                     getDocs(tradesQuery),
                     getDocs(disputesQuery),
                     getDocs(depositsQuery),
-                    getDocs(withdrawalsSnapshot)
+                    getDocs(withdrawalsSnapshot ? withdrawalsQuery : query(collection(firestore, '_null'))) // fallback if query is invalid
                 ]);
 
                 const allUsers = usersSnapshot.docs.map(doc => doc.data());

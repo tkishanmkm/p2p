@@ -1,2 +1,2 @@
-// This file is cleared to resolve a parallel route conflict with src/app/adminnarayan/layout.tsx.
-// Routing groups like (panel) are transparent to the URL, so this file must not export a default component.
+// This file has been decommissioned to resolve a routing conflict.
+// The primary admin layout is now located at src/app/adminnarayan/layout.tsx.
