@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from "react";
@@ -160,7 +159,7 @@ function DepositsTable({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading && <TableRow><TableCell colSpan={8}>Loading...</TableCell></TableRow>}
+                        {isLoading && <TableRow><TableCell colSpan={8} className="text-center">Loading...</TableCell></TableRow>}
                         {!isLoading && filteredDeposits?.map((deposit) => (
                             <TableRow key={deposit.id} onClick={() => onRowClick(deposit)} className="cursor-pointer">
                                 <TableCell className="font-mono text-xs max-w-[100px] truncate">{deposit.id}</TableCell>
@@ -202,7 +201,7 @@ function DepositsTable({
                 </Table>
             </div>
              <div className="grid gap-4 md:hidden">
-                {isLoading && <p>Loading...</p>}
+                {isLoading && <p className="text-center py-4 text-muted-foreground">Loading...</p>}
                 {!isLoading && filteredDeposits?.map((deposit) => (
                     <Card key={deposit.id} onClick={() => onRowClick(deposit)}>
                         <CardHeader>
@@ -301,11 +300,14 @@ export default function AdminDepositsPage() {
         setSelectedDeposit(null);
     };
 
-    const qrCodeValue = selectedDeposit ? 
-    (selectedDeposit.crypto === 'BTC' || selectedDeposit.crypto === 'LTC')
-        ? `${selectedDeposit.crypto.toLowerCase()}:${selectedDeposit.walletAddress}?amount=${selectedDeposit.amount}`
-        : selectedDeposit.walletAddress
-    : '';
+    const qrCodeValue = useMemo(() => {
+        if (!selectedDeposit) return '';
+        const isBtcOrLtc = selectedDeposit.crypto === 'BTC' || selectedDeposit.crypto === 'LTC';
+        if (isBtcOrLtc) {
+            return `${selectedDeposit.crypto.toLowerCase()}:${selectedDeposit.walletAddress}?amount=${selectedDeposit.amount}`;
+        }
+        return selectedDeposit.walletAddress;
+    }, [selectedDeposit]);
 
     return (
         <>
@@ -452,14 +454,14 @@ export default function AdminDepositsPage() {
                     </DialogHeader>
                     {selectedDeposit && (
                         <div className="space-y-4 py-4 text-sm">
-                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Deposit ID</span><div className="flex items-center gap-2"><span className="font-mono text-xs">{selectedDeposit.id}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.id!)}><Copy className="h-3 w-3" /></Button></div></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Deposit ID</span><div className="flex items-center gap-2"><span className="font-mono text-xs">{selectedDeposit.id}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.id)}><Copy className="h-3 w-3" /></Button></div></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedDeposit.userDisplayName}</span></div>
                              <div className="flex justify-between items-center"><span className="text-muted-foreground">Wallet Set #</span><span className="font-medium">{selectedDeposit.walletIndex || 'N/A'}</span></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Status</span><Badge variant="outline" className={cn("capitalize", statusColors[selectedDeposit.status])}>{selectedDeposit.status.replace(/_/g, ' ')}</Badge></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Requested Amount</span><span className="font-medium">{selectedDeposit.amount} {selectedDeposit.crypto}</span></div>
                             {selectedDeposit.finalAmount && <div className="flex justify-between items-center"><span className="text-muted-foreground">Approved Amount</span><span className="font-medium">{selectedDeposit.finalAmount} {selectedDeposit.crypto}</span></div>}
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Chain</span><span className="font-medium">{selectedDeposit.chain}</span></div>
-                            <div className="flex justify-between items-start gap-4"><span className="text-muted-foreground flex-shrink-0">TxID</span><div className="flex items-center gap-2"><span className="font-mono text-xs break-all text-right">{selectedDeposit.txId || 'N/A'}</span>{selectedDeposit.txId && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.txId!)}><Copy className="h-3 w-3" /></Button></div></div>
+                            <div className="flex justify-between items-start gap-4"><span className="text-muted-foreground flex-shrink-0">TxID</span><div className="flex items-center gap-2"><span className="font-mono text-xs break-all text-right">{selectedDeposit.txId || 'N/A'}</span>{selectedDeposit.txId && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.txId)}><Copy className="h-3 w-3" /></Button></div></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Date Requested</span><span className="font-medium">{toDate(selectedDeposit.createdAt)?.toLocaleString()}</span></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Expires</span><span className="font-medium">{toDate(selectedDeposit.timerEnd)?.toLocaleString()}</span></div>
                             {selectedDeposit.adminId && <div className="flex justify-between items-center"><span className="text-muted-foreground">Processed by Admin</span><span className="font-mono text-xs">{selectedDeposit.adminId}</span></div>}
