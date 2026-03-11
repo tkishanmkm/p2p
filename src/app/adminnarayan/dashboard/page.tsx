@@ -58,7 +58,7 @@ export default function AdminDashboardPage() {
                     getDocs(tradesQuery),
                     getDocs(disputesQuery),
                     getDocs(depositsQuery),
-                    getDocs(withdrawalsSnapshot ? withdrawalsQuery : query(collection(firestore, '_null'))) // fallback if query is invalid
+                    getDocs(withdrawalsQuery)
                 ]);
 
                 const allUsers = usersSnapshot.docs.map(doc => doc.data());
