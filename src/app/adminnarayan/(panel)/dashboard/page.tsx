@@ -1,2 +1,2 @@
-// This file is decommissioned to resolve a Next.js routing conflict.
-// The active dashboard page is located at src/app/adminnarayan/dashboard/page.tsx.
+// This file has been cleared to resolve a Next.js parallel route conflict.
+// The active dashboard is located at src/app/adminnarayan/dashboard/page.tsx.

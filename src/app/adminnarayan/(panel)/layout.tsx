@@ -1,2 +1,2 @@
-// This file is decommissioned to resolve a Next.js routing conflict.
+// This file has been cleared to resolve a Next.js parallel route conflict.
 // The active admin layout is located at src/app/adminnarayan/layout.tsx.
