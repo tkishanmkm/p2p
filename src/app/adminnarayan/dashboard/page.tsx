@@ -55,7 +55,7 @@ export default function AdminDashboardPage() {
                     withdrawalsSnapshot
                 ] = await Promise.all([
                     getDocs(usersQuery),
-                    getDocs(tradesQuery),
+                    getDocs(tradesSnapshot ? tradesQuery : query(collection(firestore, 'trades'))), // Ensure query is valid
                     getDocs(disputesQuery),
                     getDocs(depositsQuery),
                     getDocs(withdrawalsQuery)
