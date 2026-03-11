@@ -56,7 +56,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { QRCodeSVG } from "qrcode.react";
 
-const statusColors: Record<Deposit['status'], string> = {
+const statusColors: Record<string, string> = {
   pending: "border-gray-500/50 text-gray-600 bg-gray-50",
   awaiting_confirmation: "border-yellow-500/50 text-yellow-600 bg-yellow-50",
   approved: "border-green-500/50 text-green-600 bg-green-50",
@@ -64,7 +64,7 @@ const statusColors: Record<Deposit['status'], string> = {
   expired: "border-orange-500/50 text-orange-600 bg-orange-50",
 };
 
-const depositStatusText: Record<Deposit['status'], string> = {
+const depositStatusText: Record<string, string> = {
   pending: "Pending User Action",
   awaiting_confirmation: "Waiting for Approval",
   approved: "Approved",
@@ -115,7 +115,7 @@ function DepositsTable({
                     q = query(depositsRef);
                 }
                 const querySnapshot = await getDocs(q);
-                let depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
+                const depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
 
                 depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
 
@@ -150,7 +150,7 @@ function DepositsTable({
     }, [deposits, searchTerm]);
 
     return (
-        <>
+        <div className="space-y-4">
             <div className="hidden md:block">
                 <Table>
                     <TableHeader>
@@ -175,7 +175,7 @@ function DepositsTable({
                                 <TableCell>{deposit.walletIndex || 'N/A'}</TableCell>
                                 <TableCell>
                                     <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
-                                    {depositStatusText[deposit.status]}
+                                    {depositStatusText[deposit.status] || deposit.status}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="font-mono text-xs truncate max-w-[100px]">{deposit.txId || 'N/A'}</TableCell>
@@ -219,7 +219,7 @@ function DepositsTable({
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Status</span>
                                 <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
-                                    {depositStatusText[deposit.status]}
+                                    {depositStatusText[deposit.status] || deposit.status}
                                 </Badge>
                             </div>
                             <div className="flex justify-between">
@@ -241,7 +241,7 @@ function DepositsTable({
                 ))}
                  {!isLoading && !filteredDeposits?.length && <p className="text-center text-sm text-muted-foreground py-8">No deposits found.</p>}
             </div>
-        </>
+        </div>
     );
 }
 
@@ -317,7 +317,7 @@ export default function AdminDepositsPage() {
     }, [selectedDeposit]);
 
     return (
-        <>
+        <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-lg font-semibold md:text-2xl">Deposit Requests</h1>
             </div>
@@ -462,7 +462,7 @@ export default function AdminDepositsPage() {
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Deposit ID</span><div className="flex items-center gap-2"><span className="font-mono text-xs">{selectedDeposit.id}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.id)}><Copy className="h-3 w-3" /></Button></div></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedDeposit.userDisplayName}</span></div>
                              <div className="flex justify-between items-center"><span className="text-muted-foreground">Wallet Set #</span><span className="font-medium">{selectedDeposit.walletIndex || 'N/A'}</span></div>
-                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Status</span><Badge variant="outline" className={cn("capitalize", statusColors[selectedDeposit.status])}>{depositStatusText[selectedDeposit.status]}</Badge></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Status</span><Badge variant="outline" className={cn("capitalize", statusColors[selectedDeposit.status])}>{depositStatusText[selectedDeposit.status] || selectedDeposit.status}</Badge></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Requested Amount</span><span className="font-medium">{selectedDeposit.amount} {selectedDeposit.crypto}</span></div>
                             {selectedDeposit.finalAmount && <div className="flex justify-between items-center"><span className="text-muted-foreground">Approved Amount</span><span className="font-medium">{selectedDeposit.finalAmount} {selectedDeposit.crypto}</span></div>}
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Chain</span><span className="font-medium">{selectedDeposit.chain}</span></div>
@@ -484,6 +484,6 @@ export default function AdminDepositsPage() {
                     )}
                 </DialogContent>
             </Dialog>
-        </>
+        </div>
     );
 }
