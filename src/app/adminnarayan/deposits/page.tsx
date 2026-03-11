@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useFirebase } from "@/firebase";
-import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -54,8 +54,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import QRCode from "qrcode.react";
-
+import { QRCodeSVG } from "qrcode.react";
 
 const statusColors: Record<Deposit['status'], string> = {
   pending: "border-gray-500/50 text-gray-600 bg-gray-50",
@@ -63,6 +62,14 @@ const statusColors: Record<Deposit['status'], string> = {
   approved: "border-green-500/50 text-green-600 bg-green-50",
   declined: "border-red-500/50 text-red-600 bg-red-50",
   expired: "border-orange-500/50 text-orange-600 bg-orange-50",
+};
+
+const depositStatusText: Record<Deposit['status'], string> = {
+  pending: "Pending User Action",
+  awaiting_confirmation: "Waiting for Approval",
+  approved: "Approved",
+  declined: "Cancelled by Admin",
+  expired: "Expired",
 };
 
 function DepositsTable({ 
@@ -168,7 +175,7 @@ function DepositsTable({
                                 <TableCell>{deposit.walletIndex || 'N/A'}</TableCell>
                                 <TableCell>
                                     <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
-                                    {deposit.status.replace(/_/g, ' ')}
+                                    {depositStatusText[deposit.status]}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="font-mono text-xs truncate max-w-[100px]">{deposit.txId || 'N/A'}</TableCell>
@@ -212,7 +219,7 @@ function DepositsTable({
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Status</span>
                                 <Badge variant="outline" className={cn("capitalize", statusColors[deposit.status])}>
-                                    {deposit.status.replace(/_/g, ' ')}
+                                    {depositStatusText[deposit.status]}
                                 </Badge>
                             </div>
                             <div className="flex justify-between">
@@ -385,46 +392,44 @@ export default function AdminDepositsPage() {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Approve Deposit?</AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-4 text-sm pt-2">
-                                <p>
-                                    You are about to approve a deposit for user <strong className="text-foreground">{selectedDeposit?.userDisplayName}</strong>. This will credit their wallet. This action cannot be undone.
-                                </p>
-                                <div className="p-4 border rounded-md space-y-3 bg-secondary/50 text-foreground">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-muted-foreground">User:</span>
-                                        <span className="font-semibold">{selectedDeposit?.userDisplayName}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-muted-foreground">Requested Amount:</span>
-                                        <span className="font-semibold">{selectedDeposit?.amount} {selectedDeposit?.crypto}</span>
-                                    </div>
-                                     <div className="flex justify-between items-center gap-2">
-                                        <span className="text-muted-foreground">TxID:</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-mono text-xs bg-muted p-1 rounded max-w-[180px] truncate">{selectedDeposit?.txId || 'N/A'}</span>
-                                            {selectedDeposit?.txId && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.txId!)}>
-                                                <Copy className="h-3 w-3" />
-                                            </Button>}
-                                        </div>
-                                    </div>
+                        <div className="space-y-4 text-sm pt-2">
+                            <p className="text-muted-foreground">
+                                You are about to approve a deposit for user <strong className="text-foreground">{selectedDeposit?.userDisplayName}</strong>. This will credit their wallet. This action cannot be undone.
+                            </p>
+                            <div className="p-4 border rounded-md space-y-3 bg-secondary/50 text-foreground">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground">User:</span>
+                                    <span className="font-semibold">{selectedDeposit?.userDisplayName}</span>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="approved-amount">Approved Amount ({selectedDeposit?.crypto})</Label>
-                                    <Input 
-                                        id="approved-amount"
-                                        type="number"
-                                        step="any"
-                                        value={editableAmount}
-                                        onChange={(e) => setEditableAmount(e.target.value)}
-                                        className="bg-background"
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        You can correct the amount here if the user sent a different amount than requested.
-                                    </p>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground">Requested Amount:</span>
+                                    <span className="font-semibold">{selectedDeposit?.amount} {selectedDeposit?.crypto}</span>
+                                </div>
+                                    <div className="flex justify-between items-center gap-2">
+                                    <span className="text-muted-foreground">TxID:</span>
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                        <span className="font-mono text-xs bg-muted p-1 rounded max-w-[180px] truncate">{selectedDeposit?.txId || 'N/A'}</span>
+                                        {selectedDeposit?.txId && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.txId!)}>
+                                            <Copy className="h-3 w-3" />
+                                        </Button>}
+                                    </div>
                                 </div>
                             </div>
-                        </AlertDialogDescription>
+                            <div className="space-y-2">
+                                <Label htmlFor="approved-amount">Approved Amount ({selectedDeposit?.crypto})</Label>
+                                <Input 
+                                    id="approved-amount"
+                                    type="number"
+                                    step="any"
+                                    value={editableAmount}
+                                    onChange={(e) => setEditableAmount(e.target.value)}
+                                    className="bg-background"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    You can correct the amount here if the user sent a different amount than requested.
+                                </p>
+                            </div>
+                        </div>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setSelectedDeposit(null)}>Cancel</AlertDialogCancel>
@@ -457,7 +462,7 @@ export default function AdminDepositsPage() {
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Deposit ID</span><div className="flex items-center gap-2"><span className="font-mono text-xs">{selectedDeposit.id}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.id)}><Copy className="h-3 w-3" /></Button></div></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">User</span><span className="font-medium">{selectedDeposit.userDisplayName}</span></div>
                              <div className="flex justify-between items-center"><span className="text-muted-foreground">Wallet Set #</span><span className="font-medium">{selectedDeposit.walletIndex || 'N/A'}</span></div>
-                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Status</span><Badge variant="outline" className={cn("capitalize", statusColors[selectedDeposit.status])}>{selectedDeposit.status.replace(/_/g, ' ')}</Badge></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Status</span><Badge variant="outline" className={cn("capitalize", statusColors[selectedDeposit.status])}>{depositStatusText[selectedDeposit.status]}</Badge></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Requested Amount</span><span className="font-medium">{selectedDeposit.amount} {selectedDeposit.crypto}</span></div>
                             {selectedDeposit.finalAmount && <div className="flex justify-between items-center"><span className="text-muted-foreground">Approved Amount</span><span className="font-medium">{selectedDeposit.finalAmount} {selectedDeposit.crypto}</span></div>}
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Chain</span><span className="font-medium">{selectedDeposit.chain}</span></div>
@@ -468,7 +473,7 @@ export default function AdminDepositsPage() {
                             
                              <div className="flex flex-col items-center gap-2 pt-4">
                                 <div className="p-2 bg-white rounded-lg">
-                                    <QRCode value={qrCodeValue} size={128} />
+                                    <QRCodeSVG value={qrCodeValue} size={128} />
                                 </div>
                                  <div className="flex items-center gap-1 p-1 bg-muted rounded-md w-full">
                                     <p className="font-mono text-xs break-all text-center flex-grow">{selectedDeposit.walletAddress}</p>
