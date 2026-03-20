@@ -309,11 +309,13 @@ export default function AdminDepositsPage() {
         setSelectedDeposit(null);
     };
 
-    const qrCodeValue = selectedDeposit 
-        ? (selectedDeposit.crypto === 'BTC' || selectedDeposit.crypto === 'LTC'
+    const qrCodeValue = useMemo(() => {
+        if (!selectedDeposit) return '';
+        const isLegacy = selectedDeposit.crypto === 'BTC' || selectedDeposit.crypto === 'LTC';
+        return isLegacy 
             ? `${selectedDeposit.crypto.toLowerCase()}:${selectedDeposit.walletAddress}?amount=${selectedDeposit.amount}`
-            : selectedDeposit.walletAddress)
-        : '';
+            : selectedDeposit.walletAddress;
+    }, [selectedDeposit]);
 
     return (
         <div className="space-y-6">
