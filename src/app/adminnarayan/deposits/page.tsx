@@ -117,7 +117,6 @@ function DepositsTable({
                 const querySnapshot = await getDocs(q);
                 const depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
 
-                // Sort client-side for consistent ordering
                 depositsData.sort((a, b) => {
                     const dateA = toDate(a.createdAt)?.getTime() ?? 0;
                     const dateB = toDate(b.createdAt)?.getTime() ?? 0;
