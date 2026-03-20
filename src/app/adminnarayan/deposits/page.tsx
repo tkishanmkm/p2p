@@ -28,7 +28,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Check, X, Copy, Search } from "lucide-react";
+import { MoreHorizontal, Check, X, Copy, Search, Eye } from "lucide-react";
 import type { Deposit } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { approveDeposit, declineDeposit } from "@/lib/admin";
@@ -72,19 +72,21 @@ const depositStatusText: Record<string, string> = {
   expired: "Expired",
 };
 
+interface DepositsTableProps {
+    status?: Deposit['status'];
+    searchTerm: string;
+    onRowClick: (deposit: Deposit) => void;
+    onApproveClick: (deposit: Deposit) => void;
+    onDeclineClick: (deposit: Deposit) => void;
+}
+
 function DepositsTable({ 
     status, 
     searchTerm, 
     onRowClick, 
     onApproveClick, 
     onDeclineClick 
-}: { 
-    status?: Deposit['status'], 
-    searchTerm: string, 
-    onRowClick: (deposit: Deposit) => void,
-    onApproveClick: (deposit: Deposit) => void,
-    onDeclineClick: (deposit: Deposit) => void
-}) {
+}: DepositsTableProps) {
     const { firestore } = useFirebase();
     const { isAdmin, isLoading: isAdminLoading } = useAdminStatus();
     const { toast } = useToast();
@@ -108,12 +110,8 @@ function DepositsTable({
             setIsLoading(true);
             try {
                 const depositsRef = collection(firestore, "deposits");
-                let q;
-                if (status) {
-                    q = query(depositsRef, where("status", "==", status));
-                } else {
-                    q = query(depositsRef);
-                }
+                let q = status ? query(depositsRef, where("status", "==", status)) : query(depositsRef);
+                
                 const querySnapshot = await getDocs(q);
                 const depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
 
@@ -171,7 +169,7 @@ function DepositsTable({
                     <TableBody>
                         {isLoading && <TableRow><TableCell colSpan={7} className="text-center">Loading...</TableCell></TableRow>}
                         {!isLoading && filteredDeposits?.map((deposit) => (
-                            <TableRow key={deposit.id} onClick={() => onRowClick(deposit)} className="cursor-pointer">
+                            <TableRow key={deposit.id} onClick={() => onRowClick(deposit)} className="cursor-pointer hover:bg-muted/50">
                                 <TableCell className="font-mono text-xs max-w-[100px] truncate">{deposit.id}</TableCell>
                                 <TableCell className="font-medium">{deposit.userDisplayName}</TableCell>
                                 <TableCell>{deposit.amount} {deposit.crypto}</TableCell>
@@ -183,25 +181,30 @@ function DepositsTable({
                                 <TableCell className="font-mono text-xs truncate max-w-[100px]">{deposit.txId || 'N/A'}</TableCell>
                                 <TableCell>{toDate(deposit.createdAt)?.toLocaleString() ?? 'N/A'}</TableCell>
                                 <TableCell className="text-right">
-                                    {deposit.status === 'awaiting_confirmation' && (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                    <span className="sr-only">Toggle menu</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onApproveClick(deposit); }}>
-                                                    <Check className="mr-2 h-4 w-4" /> Approve
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDeclineClick(deposit); }}>
-                                                    <X className="mr-2 h-4 w-4" /> Decline
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
+                                    <div className="flex items-center justify-end gap-2">
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onRowClick(deposit); }}>
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
+                                        {deposit.status === 'awaiting_confirmation' && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                        <span className="sr-only">Toggle menu</span>
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onApproveClick(deposit); }}>
+                                                        <Check className="mr-2 h-4 w-4" /> Approve
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDeclineClick(deposit); }}>
+                                                        <X className="mr-2 h-4 w-4" /> Decline
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -347,7 +350,13 @@ export default function AdminDepositsPage() {
                             <CardDescription>Users have confirmed these transfers. Please verify and approve or decline.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <DepositsTable status="awaiting_confirmation" searchTerm={searchTerm} onRowClick={handleRowClick} onApproveClick={handleApproveClick} onDeclineClick={handleDeclineClick} />
+                           <DepositsTable 
+                                status="awaiting_confirmation" 
+                                searchTerm={searchTerm} 
+                                onRowClick={handleRowClick} 
+                                onApproveClick={handleApproveClick} 
+                                onDeclineClick={handleDeclineClick} 
+                            />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -358,7 +367,13 @@ export default function AdminDepositsPage() {
                             <CardDescription>Users have initiated these deposits but have not yet confirmed the transfer.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <DepositsTable status="pending" searchTerm={searchTerm} onRowClick={handleRowClick} onApproveClick={handleApproveClick} onDeclineClick={handleDeclineClick} />
+                           <DepositsTable 
+                                status="pending" 
+                                searchTerm={searchTerm} 
+                                onRowClick={handleRowClick} 
+                                onApproveClick={handleApproveClick} 
+                                onDeclineClick={handleDeclineClick} 
+                            />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -369,7 +384,13 @@ export default function AdminDepositsPage() {
                             <CardDescription>These requests were not completed by the user in time.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <DepositsTable status="expired" searchTerm={searchTerm} onRowClick={handleRowClick} onApproveClick={handleApproveClick} onDeclineClick={handleDeclineClick} />
+                           <DepositsTable 
+                                status="expired" 
+                                searchTerm={searchTerm} 
+                                onRowClick={handleRowClick} 
+                                onApproveClick={handleApproveClick} 
+                                onDeclineClick={handleDeclineClick} 
+                            />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -380,7 +401,12 @@ export default function AdminDepositsPage() {
                             <CardDescription>A complete history of all deposit requests on the platform.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <DepositsTable searchTerm={searchTerm} onRowClick={handleRowClick} onApproveClick={handleApproveClick} onDeclineClick={handleDeclineClick}/>
+                           <DepositsTable 
+                                searchTerm={searchTerm} 
+                                onRowClick={handleRowClick} 
+                                onApproveClick={handleApproveClick} 
+                                onDeclineClick={handleDeclineClick}
+                            />
                         </CardContent>
                     </Card>
                 </TabsContent>
