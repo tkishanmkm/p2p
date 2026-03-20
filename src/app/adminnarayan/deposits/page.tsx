@@ -117,7 +117,12 @@ function DepositsTable({
                 const querySnapshot = await getDocs(q);
                 const depositsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
 
-                depositsData.sort((a, b) => (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0));
+                // Sort client-side for consistent ordering
+                depositsData.sort((a, b) => {
+                    const dateA = toDate(a.createdAt)?.getTime() ?? 0;
+                    const dateB = toDate(b.createdAt)?.getTime() ?? 0;
+                    return dateB - dateA;
+                });
 
                 setDeposits(depositsData);
             } catch (error) {
@@ -403,7 +408,7 @@ export default function AdminDepositsPage() {
                                     <span className="text-muted-foreground">TxID:</span>
                                     <div className="flex items-center gap-2 overflow-hidden">
                                         <span className="font-mono text-xs bg-muted p-1 rounded max-w-[180px] truncate">{selectedDeposit?.txId || 'N/A'}</span>
-                                        {selectedDeposit?.txId && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit.txId!)}>
+                                        {selectedDeposit?.txId && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(selectedDeposit!.txId!)}>
                                             <Copy className="h-3 w-3" />
                                         </Button>}
                                     </div>
