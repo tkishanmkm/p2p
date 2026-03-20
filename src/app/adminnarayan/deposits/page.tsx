@@ -28,7 +28,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Check, X, Copy, Search, Eye } from "lucide-react";
+import { MoreHorizontal, Check, X, Copy, Search, Eye, Loader2 } from "lucide-react";
 import type { Deposit } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { approveDeposit, declineDeposit } from "@/lib/admin";
@@ -55,6 +55,7 @@ import { useAdminStatus } from "@/hooks/use-admin-status";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { QRCodeSVG } from "qrcode.react";
+import { isPast } from "date-fns";
 
 const statusColors: Record<string, string> = {
   pending: "border-gray-500/50 text-gray-600 bg-gray-50",
@@ -308,14 +309,11 @@ export default function AdminDepositsPage() {
         setSelectedDeposit(null);
     };
 
-    const qrCodeValue = useMemo(() => {
-        if (!selectedDeposit) return '';
-        const isBtcOrLtc = selectedDeposit.crypto === 'BTC' || selectedDeposit.crypto === 'LTC';
-        if (isBtcOrLtc) {
-            return `${selectedDeposit.crypto.toLowerCase()}:${selectedDeposit.walletAddress}?amount=${selectedDeposit.amount}`;
-        }
-        return selectedDeposit.walletAddress;
-    }, [selectedDeposit]);
+    const qrCodeValue = selectedDeposit 
+        ? (selectedDeposit.crypto === 'BTC' || selectedDeposit.crypto === 'LTC'
+            ? `${selectedDeposit.crypto.toLowerCase()}:${selectedDeposit.walletAddress}?amount=${selectedDeposit.amount}`
+            : selectedDeposit.walletAddress)
+        : '';
 
     return (
         <div className="space-y-6">
