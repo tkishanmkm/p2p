@@ -12,43 +12,37 @@ export default function PolicyPage() {
           <p className="text-muted-foreground">Last updated: {new Date().toLocaleDateString()}</p>
     
           <h2>1. Introduction</h2>
-          <p>Paxones ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Services. Please read this policy carefully. If you do not agree with the terms of this privacy policy, please do not access the site.</p>
+          <p>Paxones is committed to protecting your privacy. This policy explains how we handle your information. If you do not agree, please do not use the Services.</p>
     
-          <h2>2. Information We Collect</h2>
-          <p>We may collect information about you in a variety of ways. The information we may collect on the Services includes:</p>
+          <h2>2. Data Usage & Dispute Policy</h2>
+          <p>We use your data to facilitate secure P2P transactions. <strong>Please note:</strong> Paxones is not responsible for the result of any dispute. Disputes are awarded only to users who provide complete evidence and cooperate with our team. If you lose funds, we are not responsible.</p>
+    
+          <h2>3. Information We Collect</h2>
           <ul>
-            <li><strong>Personal Data:</strong> Personally identifiable information, such as your name, email address, and date of birth, that you voluntarily give to us when you register for an account.</li>
-            <li><strong>Financial Data:</strong> Data related to your trading activity, such as transaction history, wallet balances, and payment methods.</li>
-            <li><strong>Derivative Data:</strong> Information our servers automatically collect when you access the Services, such as your IP address, browser type, and operating system.</li>
+            <li><strong>Personal Data:</strong> Name, ID, and date of birth provided during registration.</li>
+            <li><strong>Financial Data:</strong> Wallet balances and trade history.</li>
+            <li><strong>Communication:</strong> Chat logs within the platform are stored for security and dispute resolution.</li>
           </ul>
+
+          <section className="mt-12 pt-8 border-t border-muted">
+            <h2 className="text-2xl font-bold mb-4">Terms of Use & Code of Conduct</h2>
+            <div className="bg-secondary/50 p-6 rounded-xl space-y-4">
+              <p className="font-semibold underline">To maintain a safe environment, all users must adhere to the following:</p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li><strong>No Offside Trades:</strong> All trading must happen through the Paxones escrow system. Off-platform trades are strictly prohibited.</li>
+                <li><strong>No Offside Chat:</strong> All communication regarding a trade must take place within the Paxones trade chat.</li>
+                <li><strong>No Contact Sharing:</strong> Sharing phone numbers, Telegram IDs, or social media handles is not allowed.</li>
+                <li><strong>No Fake Receipts:</strong> Uploading edited or fraudulent payment receipts will result in an immediate and permanent ban.</li>
+                <li><strong>No Cheating:</strong> Any attempt to manipulate the system, cheat users, or provide false information is strictly forbidden.</li>
+                <li><strong>Cooperation:</strong> You must cooperate fully with moderators during a dispute. Failure to do so will result in an unfavorable resolution.</li>
+              </ul>
+              <p className="text-sm italic">Violation of these terms will result in account suspension and loss of access to the platform.</p>
+            </div>
+          </section>
     
-          <h2>3. Use of Your Information</h2>
-          <p>Having accurate information about you permits us to provide you with a smooth, efficient, and customized experience. Specifically, we may use information collected about you via the Services to:</p>
-          <ul>
-            <li>Create and manage your account.</li>
-            <li>Facilitate P2P transactions and provide escrow services.</li>
-            <li>Process payments and refunds.</li>
-            <li>Monitor and analyze usage and trends to improve your experience with the Services.</li>
-            <li>Prevent fraudulent transactions, monitor against theft, and protect against criminal activity.</li>
-            <li>Resolve disputes and troubleshoot problems.</li>
-          </ul>
-    
-          <h2>4. Disclosure of Your Information</h2>
-          <p>We may share information we have collected about you in certain situations. Your information may be disclosed as follows:</p>
-          <ul>
-            <li><strong>By Law or to Protect Rights:</strong> If we believe the release of information about you is necessary to respond to legal process, to investigate or remedy potential violations of our policies, or to protect the rights, property, and safety of others, we may share your information as permitted or required by any applicable law, rule, or regulation.</li>
-            <li><strong>With Other Users:</strong> During a P2P trade, your username (User ID) will be visible to the other party in the trade. We do not share your real name or other sensitive personal information.</li>
-            <li><strong>Third-Party Service Providers:</strong> We may share your information with third parties that perform services for us or on our behalf, including data analysis, hosting services, and customer service.</li>
-          </ul>
-    
-          <h2>5. Security of Your Information</h2>
-          <p>We use administrative, technical, and physical security measures to help protect your personal information. While we have taken reasonable steps to secure the personal information you provide to us, please be aware that despite our efforts, no security measures are perfect or impenetrable, and no method of data transmission can be guaranteed against any interception or other type of misuse.</p>
-    
-          <h2>6. Policy for Children</h2>
-          <p>We do not knowingly solicit information from or market to children under the age of 18. If we learn that we have collected personal information from a child under age 18 without verification of parental consent, we will delete that information as quickly as possible.</p>
-    
-          <h2>7. Contact Us</h2>
-          <p>If you have questions or comments about this Privacy Policy, please contact us through our <Link href="/contact" className="font-semibold underline">support page</Link>.</p>
+          <div className="not-prose mt-8 border-t pt-8">
+            <p>For privacy inquiries or to report violations, please <Link href="/contact" className="font-semibold underline">contact our support team</Link>.</p>
+          </div>
         </div>
       </main>
       <Footer />
