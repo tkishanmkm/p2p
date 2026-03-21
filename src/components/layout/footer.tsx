@@ -13,8 +13,6 @@ export function Footer() {
       title: t('footer.company'),
       links: [
         { label: t('footer.about'), href: "/about" },
-        { label: t('footer.careers'), href: "/careers" },
-        { label: t('footer.press'), href: "/press" },
       ],
     },
     {
