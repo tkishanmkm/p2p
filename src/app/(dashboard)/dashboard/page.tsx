@@ -33,6 +33,7 @@ import { useRouter } from 'next/navigation';
 import { FlagIcon } from '@/components/ui/flag-icon';
 import { collection, query, where } from 'firebase/firestore';
 import { useCollection } from '@/firebase';
+import { SUPPORTED_CRYPTOS } from '@/lib/constants';
 
 
 const CryptoLogo = ({ crypto, className }: { crypto: CryptoCurrency; className?: string }) => {
@@ -69,15 +70,22 @@ export default function DashboardPage() {
   
   // Unified balance list from the user's document wallets map
   const unifiedWallets = useMemo(() => {
-    if (!user?.wallets) return [];
-    return Object.entries(user.wallets).map(([crypto, data]) => ({
-      crypto: crypto as CryptoCurrency,
-      balance: data.balance || 0,
-      lockedBalance: data.lockedBalance || 0
-    }));
+    return SUPPORTED_CRYPTOS.map(crypto => {
+        const coin = crypto.name;
+        const walletData = user?.wallets?.[coin] || { balance: 0, lockedBalance: 0 };
+        return {
+            crypto: coin,
+            balance: typeof walletData.balance === 'number' ? walletData.balance : 0,
+            lockedBalance: typeof walletData.lockedBalance === 'number' ? walletData.lockedBalance : 0
+        }
+    });
   }, [user]);
 
-  const walletsWithBalance = useMemo(() => unifiedWallets.filter(w => w.balance > 0 || w.lockedBalance > 0), [unifiedWallets]);
+  // For the dashboard table, only show wallets that have some activity, or all major ones
+  const walletsToShow = useMemo(() => {
+      const active = unifiedWallets.filter(w => w.balance > 0 || w.lockedBalance > 0);
+      return active.length > 0 ? active : unifiedWallets;
+  }, [unifiedWallets]);
 
   const totalWalletValueUSD = useMemo(() => 
     unifiedWallets.reduce((acc, wallet) => {
@@ -167,7 +175,7 @@ export default function DashboardPage() {
                         </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {walletsWithBalance.map((wallet) => {
+                        {walletsToShow.map((wallet) => {
                             const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
                             const valueConverted = valueUSD * exchangeRate;
                             return (
@@ -186,7 +194,7 @@ export default function DashboardPage() {
                             </TableRow>
                             );
                         })}
-                        {(!walletsWithBalance || walletsWithBalance.length === 0) && (
+                        {(!walletsToShow || walletsToShow.length === 0) && (
                             <TableRow>
                             <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
                                 No funds detected. Deposit crypto to start trading.
@@ -196,7 +204,7 @@ export default function DashboardPage() {
                         </TableBody>
                     </Table>
                     <div className="md:hidden space-y-4">
-                        {walletsWithBalance.map((wallet) => {
+                        {walletsToShow.map((wallet) => {
                             const valueUSD = (wallet.balance || 0) * (prices[wallet.crypto] || 0);
                             const valueConverted = valueUSD * exchangeRate;
                             return (
@@ -223,7 +231,7 @@ export default function DashboardPage() {
                                 </Card>
                             )
                         })}
-                         {(!walletsWithBalance || walletsWithBalance.length === 0) && (
+                         {(!walletsToShow || walletsToShow.length === 0) && (
                             <div className="text-center text-muted-foreground py-10">
                                 No funds detected.
                             </div>

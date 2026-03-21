@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from "react";
@@ -169,7 +168,7 @@ function DepositsTable({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading && <TableRow><TableCell colSpan={7} className="text-center">Loading...</TableCell></TableRow>}
+                        {isLoading && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-4">Loading...</TableCell></TableRow>}
                         {!isLoading && filteredDeposits?.map((deposit) => (
                             <TableRow key={deposit.id} onClick={() => onRowClick(deposit)} className="cursor-pointer hover:bg-muted/50">
                                 <TableCell className="font-mono text-xs max-w-[100px] truncate">{deposit.id}</TableCell>
@@ -210,7 +209,7 @@ function DepositsTable({
                                 </TableCell>
                             </TableRow>
                         ))}
-                        {!isLoading && !filteredDeposits?.length && <TableRow><TableCell colSpan={7} className="text-center h-24">No deposits found.</TableCell></TableRow>}
+                        {!isLoading && !filteredDeposits?.length && <TableRow><TableCell colSpan={7} className="text-center h-24 text-muted-foreground">No deposits found.</TableCell></TableRow>}
                     </TableBody>
                 </Table>
             </div>

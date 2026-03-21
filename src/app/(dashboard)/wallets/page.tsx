@@ -157,14 +157,17 @@ export default function WalletPage() {
 
     return SUPPORTED_CRYPTOS.map(crypto => {
         const coin = crypto.name;
+        // Correctly handle balance lookup from the unified wallets map
         const walletData = userData?.wallets?.[coin] || { balance: 0, lockedBalance: 0 };
         const priceInUsd = prices[coin] || 0;
-        const fiatValue = (walletData.balance || 0) * priceInUsd * exchangeRate;
+        const availableBalance = typeof walletData.balance === 'number' ? walletData.balance : 0;
+        const lockedBalance = typeof walletData.lockedBalance === 'number' ? walletData.lockedBalance : 0;
+        const fiatValue = availableBalance * priceInUsd * exchangeRate;
         
         return { 
             coin, 
-            availableBalance: walletData.balance || 0,
-            lockedBalance: walletData.lockedBalance || 0,
+            availableBalance,
+            lockedBalance,
             fiatValue
         };
     }).sort((a, b) => b.fiatValue - a.fiatValue);
