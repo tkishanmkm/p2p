@@ -274,6 +274,7 @@ export default function AdminDepositsPage() {
     };
     
     const copyToClipboard = (text: string) => {
+        if (!text) return;
         navigator.clipboard.writeText(text);
         toast({ title: "Copied to clipboard" });
     };

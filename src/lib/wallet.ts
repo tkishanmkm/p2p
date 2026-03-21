@@ -30,6 +30,10 @@ function generateId(prefix: string, length: number) {
   return prefix + result;
 }
 
+/**
+ * Initiates a trade by locking the seller's funds.
+ * Balance is checked against the unified coin wallet on the user document.
+ */
 export async function initiateTrade(
   db: Firestore,
   initiatorId: string,
@@ -71,15 +75,19 @@ export async function initiateTrade(
       const buyerData = buyerDoc.data() as AppUser;
       const sellerData = sellerDoc.data() as AppUser;
 
-      const sellerWallet = sellerData.wallets?.[ad.crypto] || { balance: 0, lockedBalance: 0 };
-      if ((sellerWallet.balance ?? 0) < cryptoAmount) {
+      // Access current wallet state from the seller's unified document map
+      const sellerWallets = sellerData.wallets || {};
+      const sellerCoinWallet = sellerWallets[ad.crypto] || { balance: 0, lockedBalance: 0 };
+
+      if ((sellerCoinWallet.balance || 0) < cryptoAmount) {
         throw new Error('Seller has insufficient funds.');
       }
 
-      // Lock funds from the aggregate crypto balance
-      const newSellerBalance = (sellerWallet.balance ?? 0) - cryptoAmount;
-      const newSellerLockedBalance = (sellerWallet.lockedBalance ?? 0) + cryptoAmount;
+      // Calculate new balances for the seller
+      const newSellerBalance = (sellerCoinWallet.balance || 0) - cryptoAmount;
+      const newSellerLockedBalance = (sellerCoinWallet.lockedBalance || 0) + cryptoAmount;
 
+      // Update seller's aggregate crypto balance on the user document
       transaction.update(sellerDocRef, {
         [`wallets.${ad.crypto}.balance`]: newSellerBalance,
         [`wallets.${ad.crypto}.lockedBalance`]: newSellerLockedBalance,
@@ -114,6 +122,7 @@ export async function initiateTrade(
         }
       };
 
+      // Notifications
       const buyerNotificationRef = doc(collection(db, 'users', buyerId, 'notifications'));
       transaction.set(buyerNotificationRef, {
           userId: buyerId,
@@ -201,14 +210,15 @@ export async function releaseFundsFromEscrow(db: Firestore, tradeId: string) {
     if (!sellerDoc.exists()) throw new Error("Seller profile not found.");
 
     const sellerData = sellerDoc.data() as AppUser;
-    const sellerWallet = sellerData.wallets?.[trade.crypto];
+    const sellerCoinWallet = sellerData.wallets?.[trade.crypto];
 
-    if (!sellerWallet || (sellerWallet.lockedBalance ?? 0) < trade.amount) {
+    if (!sellerCoinWallet || (sellerCoinWallet.lockedBalance ?? 0) < trade.amount) {
         throw new Error("Seller has insufficient locked funds. Critical error.");
     }
     
+    // Deduct from locked balance on the seller's unified document
     transaction.update(sellerUserRef, {
-        [`wallets.${trade.crypto}.lockedBalance`]: (sellerWallet.lockedBalance ?? 0) - trade.amount,
+        [`wallets.${trade.crypto}.lockedBalance`]: (sellerCoinWallet.lockedBalance ?? 0) - trade.amount,
     });
 
     transaction.update(tradeRef, {
@@ -257,6 +267,7 @@ export async function claimFundsForTrade(db: Firestore, trade: Trade, buyerId: s
 
     const currentBalance = buyerData.wallets?.[currentTrade.crypto]?.balance ?? 0;
     
+    // Credit buyer's unified balance on the user document
     transaction.update(buyerUserRef, {
         [`wallets.${currentTrade.crypto}.balance`]: currentBalance + amountToBuyer,
         completedTrades: (buyerData.completedTrades || 0) + 1,
@@ -316,12 +327,13 @@ export async function cancelTrade(db: Firestore, trade: Trade, reason: string) {
       if (sellerDoc.exists()) {
         const sellerData = sellerDoc.data() as AppUser;
         const crypto = liveTrade.crypto;
-        const sellerWallet = sellerData.wallets?.[crypto];
+        const sellerCoinWallet = sellerData.wallets?.[crypto];
         
-        if (sellerWallet && (sellerWallet.lockedBalance || 0) >= liveTrade.amount) {
+        if (sellerCoinWallet && (sellerCoinWallet.lockedBalance || 0) >= liveTrade.amount) {
+          // Return funds to seller's available balance on the unified document map
           transaction.update(sellerUserRef, {
-            [`wallets.${crypto}.balance`]: (sellerWallet.balance || 0) + liveTrade.amount,
-            [`wallets.${crypto}.lockedBalance`]: (sellerWallet.lockedBalance || 0) - liveTrade.amount,
+            [`wallets.${crypto}.balance`]: (sellerCoinWallet.balance || 0) + liveTrade.amount,
+            [`wallets.${crypto}.lockedBalance`]: (sellerCoinWallet.lockedBalance || 0) - liveTrade.amount,
           });
         }
       }
@@ -332,7 +344,6 @@ export async function cancelTrade(db: Firestore, trade: Trade, reason: string) {
         cancellationReason: reason,
     });
     
-    // Add system message to chat
     const systemMessage = {
       tradeId: trade.id,
       senderId: 'system',
@@ -343,7 +354,6 @@ export async function cancelTrade(db: Firestore, trade: Trade, reason: string) {
     };
     transaction.set(doc(messagesCollectionRef), systemMessage);
 
-    // Add notifications
     const buyerNotificationRef = doc(collection(db, 'users', liveTrade.buyerId, 'notifications'));
     transaction.set(buyerNotificationRef, {
         userId: liveTrade.buyerId,
@@ -407,18 +417,16 @@ export async function sendCoinToUser(
         throw new Error(`Insufficient ${crypto} balance to complete the transfer.`);
     }
 
-    // 1. Debit sender's aggregate balance
+    // Update aggregate balances on both user documents
     transaction.update(senderUserRef, {
         [`wallets.${crypto}.balance`]: (senderWallet.balance ?? 0) - amount
     });
 
-    // 2. Credit recipient's aggregate balance
     const recipientWallet = recipientData.wallets?.[crypto] || { balance: 0, lockedBalance: 0 };
     transaction.update(recipientUserRef, {
         [`wallets.${crypto}.balance`]: (recipientWallet.balance ?? 0) + amount
     });
 
-    // 3. Create transfer log
     transferId = generateId("TX-", 10);
     transaction.set(transferRef, {
       publicId: transferId,
@@ -574,10 +582,6 @@ export async function cancelWithdrawalRequest(db: Firestore, userId: string, wit
         const userData = userDoc.data() as AppUser;
         const currentWallet = userData.wallets?.[withdrawal.crypto];
 
-        if (!currentWallet || (currentWallet.lockedBalance || 0) < withdrawal.amount) {
-            console.error(`Inconsistent state: Locked balance is less than withdrawal amount for user ${userId}.`);
-        }
-        
         // Return funds from locked to available balance on user document
         transaction.update(userRef, {
             [`wallets.${withdrawal.crypto}.balance`]: (currentWallet?.balance || 0) + withdrawal.amount,
